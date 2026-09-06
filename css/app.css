@@ -1,0 +1,162 @@
+  :root{
+    --rose:#ff6d8a; --rose-soft:#e3738f; --amber:#e6a44e; --cream:#e9c9b0;
+    --muted:#a98874; --chip:rgba(18,9,13,.58); --line:rgba(255,192,166,.16);
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%; background:#070406; overflow:hidden; overscroll-behavior:none}
+  body{font-family:'Sora',sans-serif; -webkit-user-select:none; user-select:none}
+  #wrap{position:fixed; inset:0; display:flex; align-items:center; justify-content:center}
+  #stage{position:relative; width:min(100vw, calc(100vh * 16 / 9)); aspect-ratio:16/9;
+         background:#0d0709; overflow:hidden; touch-action:none; cursor:grab; box-shadow:0 0 120px rgba(0,0,0,.9)}
+  #stage.drag{cursor:grabbing}
+  #scene{position:absolute; inset:0; width:100%; height:100%; display:block}
+
+  /* ---------- HUD (all sizes in em = 10 logical canvas px) ---------- */
+  .hud{position:absolute; z-index:5; pointer-events:none}
+  .lbl{font-size:.85em; font-weight:300; letter-spacing:.22em; text-transform:uppercase; color:var(--muted)}
+
+  /* her pleasure — left */
+  #plWrap{left:1.6em; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; align-items:center; gap:.7em}
+  #plName{font-size:1.35em; color:var(--cream); letter-spacing:.28em; font-weight:600}
+  #plName svg{width:.9em;height:.9em;fill:var(--rose);vertical-align:-.08em;margin-left:.3em}
+  #plMood{font-size:.95em; color:var(--rose-soft); font-style:italic; font-family:'Cormorant Garamond',serif; font-size:1.25em; height:1.4em}
+  #plBar{width:1em; height:23em; background:rgba(20,9,14,.6); border:1px solid var(--line);
+         border-radius:.6em; position:relative; overflow:hidden; backdrop-filter:blur(4px)}
+  #plFill{position:absolute; left:0; right:0; bottom:0; height:100%; background:var(--rose);
+          transform-origin:bottom; transform:scaleY(0); border-radius:.6em; transition:background .5s}
+  #plMoodPulse{position:absolute; inset:0; box-shadow:inset 0 0 8px var(--rose); border-radius:.6em; opacity:0}
+  #plBar.hot #plFill{background:#ff4a6e}
+  #plBar.hot #plMoodPulse{animation:pp 1s infinite}
+  @keyframes pp{0%,100%{opacity:.15}50%{opacity:.55}}
+  #plTicks{position:absolute; inset:0}
+  #plTicks i{position:absolute; left:15%; right:15%; height:1px; background:rgba(233,201,176,.22)}
+
+  #orgHearts{display:flex; gap:.35em; min-height:1em}
+  #orgHearts svg{width:1.1em; height:1.1em; fill:var(--rose); filter:drop-shadow(0 0 4px rgba(255,109,138,.8))}
+
+  /* depth gauge — right */
+  #dpWrap{right:1.6em; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; align-items:center; gap:.7em}
+  #dpBar{width:.85em; height:18em; background:rgba(20,9,14,.6); border:1px solid var(--line);
+         border-radius:.6em; position:relative; overflow:hidden; backdrop-filter:blur(4px)}
+  #dpFill{position:absolute; left:0; right:0; bottom:0; height:100%; background:rgba(230,164,78,.35);
+          transform-origin:bottom; transform:scaleY(.2)}
+  #hotZone{position:absolute; left:-.15em; right:-.15em; background:rgba(255,109,138,.30);
+           border-top:1px solid rgba(255,109,138,.55); border-bottom:1px solid rgba(255,109,138,.55)}
+  #dpMark{position:absolute; left:-.35em; right:-.35em; height:2px; background:#ffe9d8; box-shadow:0 0 6px rgba(255,230,210,.9)}
+  #spotFx{position:absolute; right:3.4em; top:24em; font-family:'Cormorant Garamond',serif; font-style:italic;
+         color:#ffd7e0; font-size:1.4em; opacity:0; white-space:nowrap; text-shadow:0 0 8px rgba(255,90,130,.8)}
+  #spotFx.pop{animation:spot .8s ease-out}
+  @keyframes spot{0%{opacity:0; transform:translateY(.6em)}25%{opacity:1}100%{opacity:0; transform:translateY(-1em)}}
+
+  /* bottom-left: stamina + rhythm */
+  #slWrap{left:1.7em; bottom:1.6em; display:flex; flex-direction:column; gap:.9em}
+  #stamBox,#tempoBox{background:var(--chip); border:1px solid var(--line); border-radius:.9em;
+         padding:.9em 1.2em; backdrop-filter:blur(6px); min-width:21em}
+  #stamRow,#tempoRow{display:flex; align-items:baseline; justify-content:space-between; gap:2em; margin-bottom:.55em}
+  .val{font-size:1em; color:var(--cream)}
+  #stamBar{height:.75em; background:rgba(0,0,0,.45); border-radius:.5em; overflow:hidden; position:relative}
+  #stamFill{height:100%; background:var(--amber); border-radius:.5em; transform-origin:left; transform:scaleX(1)}
+  #stamBox.tired #stamFill{background:#e05555}
+  #stamBox.tired .lbl{color:#ff9c9c; animation:blinkT 1s infinite}
+  @keyframes blinkT{50%{opacity:.35}}
+  #tempoStrip{height:1em; background:rgba(0,0,0,.45); border-radius:.5em; position:relative; overflow:visible}
+  #tBand{position:absolute; top:0; bottom:0; background:rgba(255,109,138,.22);
+         border-left:1px solid rgba(255,109,138,.4); border-right:1px solid rgba(255,109,138,.4); border-radius:.4em}
+  #tMark{position:absolute; top:50%; width:.6em; height:.6em; margin:-.3em 0 0 -.3em; border-radius:50%;
+         background:#ffe9d8; box-shadow:0 0 8px rgba(255,230,210,.9)}
+  #comboChip{font-size:1.05em; color:#ffd7e0; opacity:0; transition:opacity .3s}
+  #comboChip.on{opacity:1}
+  #comboChip b{font-weight:600; color:#ff8ba1}
+
+  /* top-center stats */
+  #topBar{left:50%; top:1.2em; transform:translateX(-50%); display:flex; gap:1.6em; font-size:.95em;
+          color:rgba(233,201,176,.55); letter-spacing:.12em; font-weight:300}
+
+  /* action buttons */
+  #actWrap{right:1.7em; bottom:1.6em; display:flex; flex-direction:column; align-items:flex-end; gap:.8em; pointer-events:auto}
+  .abtn{font-family:'Sora',sans-serif; font-weight:400; font-size:1.05em; letter-spacing:.14em;
+        background:var(--chip); color:var(--cream); border:1px solid var(--line); border-radius:2em;
+        padding:.75em 1.4em; cursor:pointer; backdrop-filter:blur(6px); display:flex; align-items:center; gap:.9em;
+        transition:border-color .25s, color .25s}
+  .abtn kbd{font-family:'Sora',sans-serif; font-size:.75em; letter-spacing:.05em; border:1px solid rgba(233,201,176,.3);
+            border-radius:.4em; padding:.15em .5em; color:rgba(233,201,176,.6)}
+  .abtn.on{border-color:rgba(255,109,138,.8); color:#ffd7e0}
+  .abtn.on kbd{border-color:rgba(255,109,138,.6); color:var(--rose-soft)}
+  #btnClimax{border-color:rgba(255,109,138,.45); color:#ffc9d5; padding:1em 2em}
+  #btnClimax.ready{animation:climaxP 1.4s infinite}
+  @keyframes climaxP{0%,100%{box-shadow:0 0 0 0 rgba(255,109,138,0)}50%{box-shadow:0 0 18px 2px rgba(255,109,138,.5)}}
+  #btnClimax:disabled{opacity:.35; cursor:default; animation:none}
+
+  /* top-right utility */
+  #util{right:1.6em; top:1.2em; display:flex; gap:.7em; pointer-events:auto}
+  .ubtn{width:2.7em; height:2.7em; border-radius:50%; background:var(--chip); border:1px solid var(--line);
+        cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px)}
+  .ubtn svg{width:1.3em; height:1.3em; stroke:var(--cream); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+  .ubtn:hover svg{stroke:#ffd7e0}
+  .ubtn.on{border-color:rgba(255,109,138,.8)}
+  .ubtn.on svg{stroke:#ffd7e0}
+
+  /* speech bubble */
+  #bubble{position:absolute; z-index:6; font-family:'Cormorant Garamond',serif; font-style:italic;
+          font-size:1.9em; color:#ffe9ef; background:rgba(28,10,18,.74); border:1px solid rgba(255,150,170,.28);
+          border-radius:1em; padding:.45em .95em; max-width:15em; text-align:center;
+          backdrop-filter:blur(8px); opacity:0; transition:opacity .35s; pointer-events:none;
+          text-shadow:0 1px 6px rgba(0,0,0,.6)}
+  #bubble.show{opacity:1}
+  #bubble:after{content:''; position:absolute; left:32%; bottom:-.55em; width:1em; height:1em;
+               background:rgba(28,10,18,.74); border-right:1px solid rgba(255,150,170,.28); border-bottom:1px solid rgba(255,150,170,.28);
+               transform:rotate(45deg)}
+
+  /* tutorial hint (retired — inputs are on the intro card) */
+  #hint{display:none}
+  #hint .h1{font-size:1.15em; letter-spacing:.2em; color:var(--cream); font-weight:300; background:var(--chip);
+            padding:.6em 1.2em; border-radius:2em; border:1px solid var(--line); backdrop-filter:blur(6px)}
+  #hint .h2{font-size:.95em; color:rgba(233,201,176,.6); letter-spacing:.1em}
+  #hint .hand{width:3.4em; height:3.4em; animation:handMove 1.6s ease-in-out infinite}
+  #hint .hand svg{width:100%; height:100%; stroke:var(--cream); fill:rgba(233,201,176,.15); stroke-width:1.5}
+  @keyframes handMove{0%,100%{transform:translateY(-1.6em)}50%{transform:translateY(1.6em)}}
+
+  #mashTip{left:50%; top:12%; transform:translateX(-50%); font-size:1.2em; letter-spacing:.3em; color:#ffd7e0;
+           background:var(--chip); padding:.7em 1.6em; border-radius:2em; border:1px solid rgba(255,109,138,.5);
+           display:none; backdrop-filter:blur(6px)}
+  #mashTip b{color:#fff}
+
+  /* ---------- overlays ---------- */
+  .ov{position:absolute; inset:0; z-index:20; display:flex; align-items:center; justify-content:center;
+      background:rgba(8,4,7,.78); backdrop-filter:blur(5px); pointer-events:auto}
+  .ov.hide{display:none}
+  .card{width:46em; max-width:92%; background:rgba(18,9,13,.92); border:1px solid var(--line);
+        border-radius:1.6em; padding:3em 3.4em; position:relative; box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .chip18{position:absolute; right:2em; top:2em; font-size:.8em; letter-spacing:.18em; color:#ffb0c0;
+         border:1px solid rgba(255,109,138,.5); border-radius:2em; padding:.35em .9em}
+  .card h1{font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; font-size:4.2em;
+           color:#ffe9ef; letter-spacing:.06em; line-height:1}
+  .card .sub{font-size:1em; color:var(--muted); letter-spacing:.3em; margin:.8em 0 1.8em; text-transform:uppercase}
+  .card .quote{font-family:'Cormorant Garamond',serif; font-style:italic; font-size:1.6em; color:#f2c7cf;
+               border-left:2px solid rgba(255,109,138,.5); padding-left:1.2em; margin-bottom:2.2em; line-height:1.5}
+  .how{display:flex; flex-direction:column; gap:1.1em; margin-bottom:2.4em}
+  .how .row{display:flex; gap:1.1em; align-items:baseline; font-size:1.02em; color:#d9bcaa; font-weight:300; line-height:1.55}
+  .how .row b{color:var(--cream); font-weight:600}
+  .how .n{flex:0 0 auto; width:1.7em; height:1.7em; border:1px solid var(--line); border-radius:50%;
+          display:inline-flex; align-items:center; justify-content:center; font-size:.8em; color:var(--rose-soft)}
+  .bigbtn{font-family:'Sora',sans-serif; font-size:1.15em; letter-spacing:.2em; font-weight:400;
+          background:var(--rose); color:#2b0a14; border:none; border-radius:2em; padding:1em 2.6em; cursor:pointer;
+          transition:transform .15s, box-shadow .15s}
+  .bigbtn:hover{transform:translateY(-2px); box-shadow:0 8px 30px rgba(255,109,138,.35)}
+  .bigbtn.ghost{background:transparent; color:var(--cream); border:1px solid var(--line)}
+  .keysline{margin-top:1.6em; font-size:.85em; color:rgba(233,201,176,.45); letter-spacing:.08em; line-height:2}
+  .keysline kbd{border:1px solid rgba(233,201,176,.25); border-radius:.35em; padding:.1em .5em; font-family:'Sora',sans-serif}
+
+  /* end stats */
+  #endGrid{display:grid; grid-template-columns:1fr auto; gap:.7em 2em; margin:1.6em 0 2.2em; font-weight:300}
+  #endGrid .k{color:var(--muted); font-size:.95em; letter-spacing:.12em}
+  #endGrid .v{color:var(--cream); text-align:right; font-weight:400}
+  #grade{font-family:'Cormorant Garamond',serif; font-style:italic; font-size:6em; line-height:1; color:var(--rose);
+        text-shadow:0 0 30px rgba(255,109,138,.35)}
+  #gradeNote{font-family:'Cormorant Garamond',serif; font-style:italic; color:#f2c7cf; font-size:1.5em; margin-top:.2em}
+  #syncBadge{display:none; font-size:1em; color:#ffd7e0; letter-spacing:.25em; border:1px solid rgba(255,109,138,.6);
+            border-radius:2em; padding:.5em 1.2em; width:max-content; margin-top:1em; animation:pp 1.4s infinite}
+  #syncBadge.show{display:block}
+  .btnRow{display:flex; gap:1em}
+  #endHead{display:flex; align-items:center; gap:1.8em}
+  #coPlayer + #btnClimax.ready{}

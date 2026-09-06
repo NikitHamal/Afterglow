@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Afterglow — an intimate night with Yuki</title>
+<link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Sora:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="scene"></canvas>
+
+    <!-- HUD -->
+    <div class="hud" id="plWrap">
+      <div id="plName">YUKI <svg viewBox="0 0 24 24"><path d="M12 20.3S3.6 15 1.9 9.9C.7 6.3 3.2 3 6.6 3c2.2 0 3.9 1.3 4.7 2.7h1.4C13.5 4.3 15.2 3 17.4 3c3.4 0 5.9 3.3 4.7 6.9C20.4 15 12 20.3 12 20.3z"/></svg></div>
+      <div id="plMood">snug</div>
+      <div id="plBar"><div id="plFill"></div><div id="plMoodPulse"></div>
+        <div id="plTicks"><i style="bottom:25%"></i><i style="bottom:50%"></i><i style="bottom:75%"></i></div>
+      </div>
+      <div id="orgHearts"></div>
+    </div>
+
+    <div class="hud" id="dpWrap">
+      <div class="lbl">depth</div>
+      <div id="dpBar"><div id="dpFill"></div><div id="hotZone"></div><div id="dpMark"></div></div>
+      <div id="spotFx">her spot ♥</div>
+    </div>
+
+    <div class="hud" id="slWrap">
+      <div id="stamBox">
+        <div id="stamRow"><span class="lbl" id="stamLbl">stamina</span><span class="val" id="stamVal">100</span></div>
+        <div id="stamBar"><div id="stamFill"></div></div>
+      </div>
+      <div id="tempoBox">
+        <div id="tempoRow"><span class="lbl">rhythm</span><span id="comboChip">×<b>1.0</b></span></div>
+        <div id="tempoStrip"><div id="tBand"></div><div id="tMark"></div></div>
+      </div>
+    </div>
+
+    <div class="hud" id="topBar"><span id="clock">0:00</span><span id="strk">0 strokes</span></div>
+
+    <div class="hud" id="actWrap">
+      <button class="abtn" id="btnKiss">EMBRACE <kbd>E</kbd></button>
+      <button class="abtn" id="btnRub">RUB HER <kbd>C</kbd></button>
+      <button class="abtn" id="btnClimax">CLIMAX <kbd>X</kbd></button>
+    </div>
+
+    <div class="hud" id="util">
+      <button class="ubtn" id="btnMute" title="sound"><svg id="icoSnd" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
+      <button class="ubtn" id="btnFull" title="fullscreen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button>
+      <button class="ubtn" id="btnView" title="first-person view (V)"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg></button>
+      <button class="ubtn" id="btnRestart" title="restart"><svg viewBox="0 0 24 24"><path d="M4.5 8A8 8 0 1 1 3 13.5"/><path d="M4 3v5h5"/></svg></button>
+    </div>
+
+    <div id="bubble"></div>
+
+    <div class="hud" id="hint">
+      <div class="h1">HOLD &amp; DRAG&nbsp;&nbsp;↑&nbsp;↓</div>
+      <div class="hand"><svg viewBox="0 0 24 24"><path d="M8 12V6.5a1.5 1.5 0 0 1 3 0V11m0-5.5V4a1.5 1.5 0 0 1 3 0v7m0-4.5a1.5 1.5 0 0 1 3 0V13m0-1a1.5 1.5 0 0 1 3 .3V15a7 7 0 0 1-7 7h-1a7 7 0 0 1-6.2-3.8L4 14.5a1.6 1.6 0 0 1 2.7-1.6L8 14"/></svg></div>
+      <div class="h2">drag down = deeper&nbsp;·&nbsp;up = pull back</div>
+    </div>
+
+    <div class="hud" id="mashTip">CLIMAXING — <b>MASH CLICK</b></div>
+
+    <!-- intro -->
+    <div class="ov" id="intro">
+      <div class="card">
+        <div class="chip18">18+</div>
+        <h1>Afterglow</h1>
+        <div class="sub">a slow night in with Yuki</div>
+        <div class="quote">“Mm… finally we're alone. You remember how I like it… right?<br>Don't just stare — <b>touch me</b>.”</div>
+        <div class="how">
+          <div class="row"><span class="n">1</span><span><b>Hold SPACE to thrust</b> — he strokes at her favourite tempo automatically. Or <b>hold &amp; drag up / down</b> yourself for manual control: down pushes deeper, up pulls back. Full strokes please her more than shy little wiggles.</span></div>
+          <div class="row"><span class="n">2</span><span><b>Keep your rhythm in her sweet band.</b> Steady tempo builds the ×multiplier — frantic mashing just burns your stamina.</span></div>
+          <div class="row"><span class="n">3</span><span>Stroke so your <b>depth marker passes through the pink zone</b> on the right gauge — that's her spot. It drifts, so keep watching.</span></div>
+          <div class="row"><span class="n">4</span><span><b>Finish whenever you like</b> — but coming with her scores far higher, and she gets more sensitive after every orgasm.</span></div>
+        </div>
+        <button class="bigbtn" id="btnBegin">TOUCH HER</button>
+        <div class="keysline"><kbd>SPACE</kbd> thrust (hold) &nbsp; <kbd>E</kbd> embrace &nbsp; <kbd>C</kbd> rub her &nbsp; <kbd>X</kbd> climax &nbsp; <kbd>V</kbd> first-person &nbsp; <kbd>M</kbd> mute &nbsp; <kbd>F</kbd> fullscreen — best with sound on 🔊<span style="opacity:.0">.</span></div>
+      </div>
+    </div>
+
+    <!-- end stats -->
+    <div class="ov hide" id="endOv">
+      <div class="card">
+        <div class="chip18">18+</div>
+        <div id="endHead">
+          <div><h1 style="font-size:2.4em">Sweet ending…</h1>
+          <div id="gradeNote"><!-- grade note --></div>
+          <div id="syncBadge">YOU CAME TOGETHER ♥</div></div>
+          <div id="grade">S</div>
+        </div>
+        <div id="endGrid">
+          <div class="k">SESSION</div><div class="v" id="stTime">—</div>
+          <div class="k">STROKES</div><div class="v" id="stStrokes">—</div>
+          <div class="k">HER ORGASMS</div><div class="v" id="stOrg">—</div>
+          <div class="k">BEST COMBO</div><div class="v" id="stCombo">—</div>
+          <div class="k">RHYTHM ACCURACY</div><div class="v" id="stAcc">—</div>
+          <div class="k">FINISH</div><div class="v" id="stFin">—</div>
+        </div>
+        <div class="btnRow">
+          <button class="bigbtn" id="btnKeep">KEEP GOING ♥</button>
+          <button class="bigbtn ghost" id="btnAgain">START OVER</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+  <script src="js/core.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/mechanics.js"></script>
+  <script src="js/gfx.js"></script>
+  <script src="js/side.js"></script>
+  <script src="js/fpv.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
