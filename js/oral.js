@@ -4,14 +4,30 @@
 /* ---------------- oral mode interactions ---------------- */
 function toggleOral(){
   if(G.state!=='play'||G.tired) return;
-  G.oralT=G.oralT?0:1; G.nod=1;
-  if(G.oralT){
+  G.nod = 1;
+  if(!G.oralT || G.oralT === 0){
+    G.oralT = 1; G.oralMode = 'lick';
+    say(pick(['taste me… ♥','eat me… I need you down there… ♥','please, lick me… ♥','right there… ♥']),2.0);
+    playMoan(.42,{dur:.50,pmul:1.3,vol:.90});
+  } else if(G.oralT === 1){
+    G.oralT = 2; G.oralMode = 'blow';
     say(pick(['let me taste you… ♥','mmh… I want you in my mouth… ♥','relax… let me use my lips… ♥','I need this…']),2.0);
     playMoan(.38,{dur:.45,pmul:1.2,vol:.85});
   } else {
+    G.oralT = 0; G.oralMode = '';
     say('mmh… want me to ride you instead…? ♥',1.8);
     playLipPop();
   }
+  syncOralUI();
+}
+
+function syncOralUI(){
+  const btn = document.getElementById('btnOral');
+  if(!btn) return;
+  btn.classList.toggle('on', (G.oralT || 0) > 0);
+  if(G.oralT === 2) btn.innerHTML = 'BLOW <kbd>O</kbd>';
+  else if(G.oralT === 1) btn.innerHTML = 'LICK <kbd>O</kbd>';
+  else btn.innerHTML = 'ORAL <kbd>O</kbd>';
 }
 
 /* shared oral kinematics */

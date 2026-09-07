@@ -66,7 +66,11 @@ function hudTick3() {
   }
   if (h.btnKiss) h.btnKiss.classList.toggle('on', G.kissT > 0);
   if (h.btnRub) h.btnRub.classList.toggle('on', G.rubT > 0);
-  if (h.btnOral) h.btnOral.classList.toggle('on', G.oralT > 0);
+  if (h.btnOral) {
+    h.btnOral.classList.toggle('on', (G.oralT || 0) > 0);
+    const otxt = ((G.oralT === 2) ? 'BLOW' : ((G.oralT === 1) ? 'LICK' : 'ORAL')) + ' <kbd>O</kbd>';
+    if (h.btnOral._otxt !== otxt) { h.btnOral._otxt = otxt; h.btnOral.innerHTML = otxt; }
+  }
   if (h.btnSolo) h.btnSolo.classList.toggle('on', !!G.solo);
 
   const bRl = h.btnRub;

@@ -37,7 +37,7 @@ function initChars3() {
   scene3d.add(him3.root);
   _prevPose3 = currentPose3();
   _lastPosIdx3 = G.pos | 0;
-  _lastOral3 = (G.oral || 0) > 0.03 ? 1 : 0;
+  _lastOral3 = (G.oral || 0) > 0.03 ? ((G.oralMode === 'blow' || G.oralT === 2) ? 2 : 1) : 0;
   applyRig3(her3, _prevPose3.her, 0.016, 1);
   applyRig3(him3, _prevPose3.him, 0.016, 1);
   return { her: her3, him: him3 };
@@ -461,7 +461,7 @@ function updateAnim3(dt) {
 
   /* ---- detect pose change and start a blend ---- */
   const posIdx = (G.pos | 0);
-  const oralNow = oral > 0.03 ? 1 : 0;
+  const oralNow = oral > 0.03 ? ((G.oralMode === 'blow' || G.oralT === 2) ? 2 : 1) : 0;
   if (posIdx !== _lastPosIdx3 || oralNow !== _lastOral3) {
     _prevPose3 = _prevPose3 || currentPose3();
     _lastPosIdx3 = posIdx; _lastOral3 = oralNow;
@@ -650,13 +650,28 @@ function updateAnim3(dt) {
   /* ---- pose hand-IK: plant free hands on bodies/bedding ---- */
   solveHands3(pose, rubArms, dt);
 
-  /* ---- oral: his head bobs at her vulva ---- */
+  /* ---- oral: dual mode (lick vs blowjob) ---- */
   if (oral > 0.03) {
-    const bob = Math.sin(t * 5.2) * 0.055 * (0.4 + (G.oralDepth || 0) * 0.6);
-    him3.neck.rotation.x += bob;
-    him3.root.position.y += Math.sin(t * 5.2) * 0.012;
-    if ((G.oralGag || 0) > 0) {
-      her3.hips.rotation.x += Math.sin(t * 22) * 0.01 * G.oralGag;
+    const isBlow = (G.oralMode === 'blow' || G.oralT === 2);
+    if (isBlow) {
+      // Fellatio / Blowjob: HER head bobs rhythmically along his shaft axis
+      const sp = 6.2 + (G.vel ? Math.abs(G.vel) * 4.5 : 0);
+      const bob = Math.sin(t * sp) * 0.062 * (0.5 + depth * 0.5);
+      her3.neck.rotation.x += bob * 0.45;
+      her3.head.rotation.x += bob * 0.55;
+      her3.root.position.z += bob * 0.042;
+      her3.root.position.y += Math.abs(bob) * 0.012;
+      if (him3 && him3.hips) {
+        him3.hips.rotation.x += Math.sin(t * sp) * 0.018 * depth;
+      }
+    } else {
+      // Cunnilingus: HIS head bobs at her vulva
+      const bob = Math.sin(t * 5.2) * 0.055 * (0.4 + (G.oralDepth || 0) * 0.6);
+      him3.neck.rotation.x += bob;
+      him3.root.position.y += Math.sin(t * 5.2) * 0.012;
+      if ((G.oralGag || 0) > 0) {
+        her3.hips.rotation.x += Math.sin(t * 22) * 0.01 * G.oralGag;
+      }
     }
   }
 

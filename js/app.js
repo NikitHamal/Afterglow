@@ -90,7 +90,12 @@ function hudTick(){
   if(bRl._zl!==zl){ bRl._zl=zl; bRl.innerHTML=zl; }
   const bPl=$('btnPos'), pl='POS · '+posName()+' <kbd>Tab</kbd>';
   if(bPl._pl!==pl){ bPl._pl=pl; bPl.innerHTML=pl; }
-  $('btnOral').classList.toggle('on',G.oralT>0);
+  const bOr = $('btnOral');
+  if(bOr){
+    bOr.classList.toggle('on', (G.oralT || 0) > 0);
+    const ot = ((G.oralT === 2) ? 'BLOW' : ((G.oralT === 1) ? 'LICK' : 'ORAL')) + ' <kbd>O</kbd>';
+    if(bOr._ot !== ot){ bOr._ot = ot; bOr.innerHTML = ot; }
+  }
   const bSl=$('btnSolo'); if(bSl) bSl.classList.toggle('on',!!G.solo);
   const bz=$('btnZoom'); if(bz) bz.classList.toggle('on', G.view==='fpv' && G.fpvFocus!=='full');
   // speech bubble
