@@ -526,12 +526,14 @@ function buildHair3(headR, hairMat, style) {
 
   // Temple wisps & forehead baby-hairs breaking the wig hairline
   const wisp = (x0, z0, dx, len) => {
-    g.add(taperTube3(
+    const wsp = taperTube3(
       [[x0, headR * 0.42, z0],
        [x0 + dx, headR * 0.10, z0 + headR * 0.06],
        [x0 + dx * 1.4, -headR * 0.18, z0 + headR * 0.10],
        [x0 + dx * 1.2, -headR * 0.18 - len, z0 + headR * 0.08]],
-      headR * 0.020, headR * 0.006, hairMat, 10, 6));
+      headR * 0.020, headR * 0.006, hairMat, 10, 6);
+    wsp.userData.noInk = true;
+    g.add(wsp);
   };
   [-1, 1].forEach(s => {
     wisp(s * headR * 0.72, headR * 0.62, s * headR * 0.10, headR * 0.22);
@@ -541,11 +543,13 @@ function buildHair3(headR, hairMat, style) {
   // Crown flyaways catching the key light
   for (let i = 0; i < 5; i++) {
     const a = (i / 4 - 0.5) * 1.6;
-    g.add(taperTube3(
+    const fly = taperTube3(
       [[Math.sin(a) * headR * 0.5, headR * 0.95, -Math.cos(a) * headR * 0.5],
        [Math.sin(a) * headR * 0.8, headR * 1.15, -Math.cos(a) * headR * 0.8],
        [Math.sin(a) * headR * 1.0, headR * 1.18, -Math.cos(a) * headR * 1.0]],
-      headR * 0.012, headR * 0.004, hairMat, 8, 6));
+      headR * 0.012, headR * 0.004, hairMat, 8, 6);
+    fly.userData.noInk = true;
+    g.add(fly);
   }
 
   // Layered flowing tresses
@@ -575,7 +579,9 @@ function buildHair3(headR, hairMat, style) {
             [x0 * 1.62, -headR * 0.02, -headR * 1.08 - len * headR * 0.08]
           ];
         }
-        g.add(taperTube3(pts, rRoot * (1 - (i % 3) * 0.12), rTip, hairMat, 16, 8));
+        const tr = taperTube3(pts, rRoot * (1 - (i % 3) * 0.12), rTip, hairMat, 16, 8);
+        tr.userData.noInk = true; // thin strands must never get fat outline shells
+        g.add(tr);
       }
     };
     if (long) { fan(10, false); fan(8, true); }
@@ -1078,6 +1084,7 @@ function buildHer3() {
     const heel = ballMesh(0.034, skinMat, 0.85);
     heel.position.set(0, -0.012, -0.028);
     heel.scale.set(0.72, 0.80, 0.85);
+    heel.userData.noInk = true;
     ft.add(heel);
     const fm = ballMesh(0.041, skinMat, 0.68);
     fm.scale.set(0.58, 0.52, 2.05);
