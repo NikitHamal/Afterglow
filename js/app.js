@@ -3,8 +3,9 @@
 function draw(){
   X.setTransform(CV.width/W,0,0,CV.height/H,0,0);
   X.clearRect(0,0,W,H);
-  const sx=(R()-.5)*2*G.shake+chaos(5)*.6, sy=(R()-.5)*2*G.shake;
-  X.save(); X.translate(sx,sy);
+  // GROUNDED CAMERA: impact motion lives in the bodies (breast bounce, flesh
+  // jiggle, thrust depth) — never in the world. No scene shake on insertion.
+  X.save();
   if(G.view==='fpv'){
     if(G.oral>.03) drawOralFPV();
     else if((G.pos|0)!==0) drawPoseFPV();

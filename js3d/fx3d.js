@@ -267,7 +267,9 @@ function updateFX3(dt) {
     const target = bloom * 0.45;
     flashEl3.style.opacity = String(clamp(target, 0, 0.8));
   }
-  if ((G.shake || 0) > 0.001) CAM3.shake = Math.max(CAM3.shake, G.shake * 0.035);
+  // GROUNDED CAMERA: thrust shake never reaches the lens — flesh bounce and
+  // fluid motion carry the impact. Only the single climax kick (above) may
+  // nudge the camera, and it decays out in engine3d.js.
 }
 
 /* one-shot white flash */

@@ -856,7 +856,7 @@ function drawFPVHands(br){
    ============================================================ */
 function drawFPVShaft(){
   const d = G.depth || 0;
-  const sway = Math.sin(G.t * 1.7) * 3.2 + chaos(3) * 0.35;
+  const sway = Math.sin(G.t * 1.7) * 3.2;
   let tipY, tipX = 640 + sway;
 
   if(G.state === 'climax' || G.state === 'finish'){
