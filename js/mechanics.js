@@ -188,6 +188,7 @@ function beginOrgasm(){
   if(typeof say === 'function' && Array.isArray(LINES.org)) {
     say(pick(LINES.org), 2.8);
   }
+  if(R()<0.18 && typeof sfxVoice === 'function') sfxVoice('love');
   tierHearts();
 
   // Multi-phase syncopated ecstatic vocal cascade
@@ -250,6 +251,7 @@ function spurt(){
   G.climaxT = 0;
 
   if(typeof playSquelch === 'function') playSquelch(1.35);
+  if(typeof playCum === 'function') playCum(); // cum in/out foley (swallow if oral)
   if(typeof playGrunt === 'function') playGrunt();
   if(typeof playMoan === 'function'){
     playMoan(0.92, { dur: 0.58, pmul: 1.20 + G.spurts * 0.03 });
@@ -297,6 +299,7 @@ function spurt(){
     } else {
       if(typeof say === 'function' && Array.isArray(LINES.cream)) say(pick(LINES.cream), 2.8);
     }
+    if(R()<0.15 && typeof sfxVoice === 'function') sfxVoice('love');
   }
 }
 
@@ -467,7 +470,9 @@ function update(dt){
       if(G.oral > 0.5){
         if(typeof playLipPop === 'function') playLipPop();
       } else {
-        if(typeof playSlide === 'function' && G.depth > 0.30){
+        if((G.depth||1) <= 0.15 && typeof playPullout === 'function'){
+          playPullout(); // near-full withdrawal pop
+        } else if(typeof playSlide === 'function' && G.depth > 0.30){
           playSlide(clamp(-sv * 0.35 * (G.lube || 0.8), 0.32, 1.15));
         }
       }

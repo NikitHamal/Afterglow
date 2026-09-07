@@ -164,18 +164,24 @@
   #coPlayer + #btnClimax.ready{}
 
   /* ---------- character selector ---------- */
-  .charCard{width:54em; max-width:94%; background:rgba(18,9,13,.94); border:1px solid var(--line);
-            border-radius:1.6em; padding:3em 3.4em; position:relative; box-shadow:0 30px 80px rgba(0,0,0,.7); text-align:center}
-  #charRow{display:flex; gap:2em; justify-content:center; margin:2em 0 1.6em; flex-wrap:wrap}
-  #charQuote{font-family:'Cormorant Garamond',serif; font-style:italic; font-size:1.55em; color:#f2c7cf;
+  .charCard{width:min(76em,96%); max-height:94%; max-height:94dvh; overflow-y:auto;
+            background:rgba(18,9,13,.94); border:1px solid var(--line);
+            border-radius:1.6em; padding:clamp(1.2em,3vw,3em) clamp(1em,3vw,3.4em);
+            position:relative; box-shadow:0 30px 80px rgba(0,0,0,.7); text-align:center}
+  #charRow{display:flex; gap:clamp(.6em,1.5vw,1.2em); justify-content:center; margin:1.2em 0 1em; flex-wrap:wrap}
+  #charQuote{font-family:'Cormorant Garamond',serif; font-style:italic; font-size:clamp(1.05em,2.5vw,1.55em); color:#f2c7cf;
              border-left:2px solid rgba(255,109,138,.5); padding-left:1.2em; text-align:left; line-height:1.5; max-width:36em; margin:0 auto}
-  .cCard{display:flex; flex-direction:column; align-items:center; gap:.7em; cursor:pointer;
-         border:2px solid var(--line); border-radius:1.2em; padding:1em 1em .8em; transition:border-color .25s, box-shadow .25s;
+  .cCard{display:flex; flex-direction:column; align-items:center; gap:.7em; cursor:pointer; min-width:0;
+         border:2px solid var(--line); border-radius:1.2em; padding:.8em .8em .7em; transition:border-color .25s, box-shadow .25s;
          background:rgba(0,0,0,.25)}
   .cCard:hover{border-color:var(--rose-soft); box-shadow:0 0 20px rgba(255,109,138,.18)}
   .cCard.selected{border-color:var(--rose); box-shadow:0 0 28px rgba(255,109,138,.35)}
-  .cPortrait{border-radius:.8em; display:block}
+  .cPortrait{border-radius:.8em; display:block; width:100%; max-width:10.4em; height:auto}
   .cName{font-family:'Cormorant Garamond',serif; font-style:italic; font-size:1.5em; color:var(--cream); letter-spacing:.18em}
+  .charBtnRow{display:flex; gap:.8em; justify-content:center; flex-wrap:wrap; margin-top:1.2em}
+  .linkbtn{background:none; border:none; cursor:pointer; font-family:'Sora',sans-serif;
+           font-size:.85em; letter-spacing:.14em; color:var(--muted); padding:.6em 1em}
+  .linkbtn:hover{color:#ffd7e0}
 
   /* ---------- customization panel ---------- */
   #custPanel{position:absolute; right:-30em; top:0; bottom:0; width:28em; z-index:30;

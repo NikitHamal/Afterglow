@@ -16,7 +16,8 @@ function draw(){
   else {
     drawRoom(); drawBed();
     if(G.state!=='intro'){
-      if(G.oral>.03) drawOralSide();
+      if(G.solo) drawSoloSide();
+      else if(G.oral>.03) drawOralSide();
       else if((G.pos|0)!==0) drawPoseSide();
       else {
         const out=drawHer();
@@ -34,6 +35,21 @@ function draw(){
   }
   if(G.viewFade>0){ X.fillStyle=`rgba(5,2,4,${clamp(G.viewFade,0,1)})`; X.fillRect(0,0,W,H); }
   hudTick();
+}
+
+/* SOLO SHOWCASE (2D): her alone, full body, slow alluring roll.
+   His parts (shaft, him) are skipped; a gentle sway + roll replaces thrust. */
+function drawSoloSide(){
+  const t=G.t||0;
+  X.save();
+  X.translate(Math.sin(t*1.1)*10, -Math.abs(Math.sin(t*1.1))*6);
+  X.translate(W/2,H/2); X.rotate(Math.sin(t*1.1)*0.012); X.translate(-W/2,-H/2);
+  const out=drawHer();
+  drawHerHead(out.E);
+  drawBreast(out.E,out.br);
+  drawHerNear(out.E,out);
+  drawRubFX(out.br);
+  X.restore();
 }
 
 /* ---------------- HUD DOM sync ---------------- */
@@ -75,6 +91,7 @@ function hudTick(){
   const bPl=$('btnPos'), pl='POS · '+posName()+' <kbd>Tab</kbd>';
   if(bPl._pl!==pl){ bPl._pl=pl; bPl.innerHTML=pl; }
   $('btnOral').classList.toggle('on',G.oralT>0);
+  const bSl=$('btnSolo'); if(bSl) bSl.classList.toggle('on',!!G.solo);
   const bz=$('btnZoom'); if(bz) bz.classList.toggle('on', G.view==='fpv' && G.fpvFocus!=='full');
   // speech bubble
   if(G.speech){ bub.textContent=G.speech.txt; bub.classList.add('show');

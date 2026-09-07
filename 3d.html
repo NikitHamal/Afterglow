@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Afterglow 3D — an intimate night with Yuki</title>
+<!-- Sound credits: lewd foley by Shinlalala (CC BY-SA 4.0); vox demos by Philly Original / KentoGames -->
 <link rel="icon" href="data:,">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Sora:wght@300;400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/app.css">
@@ -64,6 +65,7 @@
       <button class="abtn" id="btnRub" title="rub her (C): tap = next spot, double-tap = stop · 1-4 pick spot">RUB HER <kbd>C</kbd></button>
       <button class="abtn" id="btnPos" title="change position (Tab)">MISSIONARY <kbd>Tab</kbd></button>
       <button class="abtn" id="btnOral" title="oral (O)">ORAL <kbd>O</kbd></button>
+      <button class="abtn" id="btnSolo" title="solo showcase (S): just her, no male">SOLO <kbd>S</kbd></button>
       <button class="abtn" id="btnClimax">CLIMAX <kbd>X</kbd></button>
     </div>
 
@@ -111,7 +113,7 @@
           <div class="row"><span class="n">4</span><span><b>Camera:</b> <b>right-drag</b> or <b>shift+drag</b> to orbit, <b>wheel</b> to zoom, <b>V</b> first-person, <b>Z</b> closeup. Or use the ORB / SIDE / TOP buttons.</span></div>
         </div>
         <button class="bigbtn" id="btnBegin">TOUCH HER</button>
-        <div class="keysline"><kbd>SPACE</kbd> thrust (hold) &nbsp; <kbd>E</kbd> embrace &nbsp; <kbd>C</kbd> rub &nbsp; <kbd>1</kbd>–<kbd>4</kbd> spot &nbsp; <kbd>Tab</kbd> position &nbsp; <kbd>O</kbd> oral &nbsp; <kbd>X</kbd> climax &nbsp; <kbd>V</kbd> first-person &nbsp; <kbd>Z</kbd> zoom &nbsp; <kbd>P</kbd> customize &nbsp; <kbd>M</kbd> mute &nbsp; <kbd>F</kbd> fullscreen — best with sound on 🔊<span style="opacity:.0">.</span></div>
+        <div class="keysline"><kbd>SPACE</kbd> thrust (hold) &nbsp; <kbd>E</kbd> embrace &nbsp; <kbd>C</kbd> rub &nbsp; <kbd>1</kbd>–<kbd>4</kbd> spot &nbsp; <kbd>Tab</kbd> position &nbsp; <kbd>O</kbd> oral &nbsp; <kbd>S</kbd> solo &nbsp; <kbd>X</kbd> climax &nbsp; <kbd>V</kbd> first-person &nbsp; <kbd>Z</kbd> zoom &nbsp; <kbd>P</kbd> customize &nbsp; <kbd>M</kbd> mute &nbsp; <kbd>F</kbd> fullscreen — best with sound on 🔊<span style="opacity:.0">.</span></div>
       </div>
     </div>
 
@@ -142,7 +144,21 @@
   </div>
 </div>
   <!-- shared game logic (unchanged) -->
+  <script>
+  // Afterglow is pinned to the vendored THREE r150 global build on purpose
+  // (the whole codebase uses the global THREE namespace). r150+ prints a
+  // "deprecated, use ES modules" notice — harmless here, so mute exactly
+  // that message and keep every other warning intact.
+  (function(){
+    var origWarn = console.warn.bind(console);
+    console.warn = function(msg){
+      if (typeof msg === 'string' && msg.indexOf('are deprecated with r150') >= 0) return;
+      return origWarn.apply(console, arguments);
+    };
+  })();
+  </script>
   <script src="vendor/three.min.js"></script>
+  <script src="vendor/GLTFLoader.js"></script>
   <script src="js/core.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/chars.js"></script>
@@ -164,6 +180,7 @@
   <script src="js3d/poses3d.js"></script>
   <script src="js3d/anim3d.js"></script>
   <script src="js3d/fx3d.js"></script>
+  <script src="js3d/glbModel.js"></script>
   <script src="js3d/app3d.js"></script>
 </body>
 </html>

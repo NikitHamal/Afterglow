@@ -57,7 +57,7 @@ function segMesh(rTop, rBot, len, mat, rMid, midT) {
 function blush3(mesh, fn) {
   if (!mesh) return;
   const mat = mesh.material;
-  if (mat && mat.isMeshToonMaterial && !mat.vertexColors) {
+  if (mat && (mat.isMeshToonMaterial || mat.isMeshPhysicalMaterial || mat.isMeshStandardMaterial) && !mat.vertexColors) {
     mesh.material = mat.clone();
     mesh.material.vertexColors = true;
   }
@@ -226,31 +226,45 @@ function makeSculptedTorsoGeo(cR, wR, hR, height) {
   return geo;
 }
 
-/* Anatomically sculpted voluptuous gluteal cheek with heart-shelf and crease */
+/* Anatomically sculpted voluptuous gluteal cheek with organic peach curvature and natal cleft */
 function makeGluteCheekGeo(radius, side) {
-  const geo = new THREE.SphereGeometry(radius, 24, 20);
+  const geo = new THREE.SphereGeometry(radius, 32, 28);
   const pos = geo.attributes.position;
 
   for (let i = 0; i < pos.count; i++) {
     let x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
 
-    // Posterior projection (buttock shelf)
+    // Posterior voluptuous projection (maximal fullness in lower-posterior peach zone)
     if (z < 0) {
       const pT = -z / radius;
-      z *= (1.0 + pT * 0.28);
-      y *= (1.0 + pT * 0.14);
-      x *= (1.0 + pT * 0.18);
+      // Heart/peach contour: maximum projection at lower quadrant (y < 0)
+      const lowerWeight = clamp(0.5 - (y / radius) * 0.7, 0.4, 1.35);
+      z *= (1.0 + pT * 0.36 * lowerWeight);
+      y *= (1.0 + pT * 0.12);
+      x *= (1.0 + pT * 0.16 * lowerWeight);
     }
 
-    // Infragluteal under-crease flattening
-    if (y < -radius * 0.35 && z < 0) {
-      const foldT = (-y - radius * 0.35) / (radius * 0.65);
-      y += foldT * 0.028 * Math.abs(z / radius);
+    // Infragluteal crease (smooth transition into upper posterior thigh)
+    if (y < -radius * 0.40 && z < 0) {
+      const foldT = (-y - radius * 0.40) / (radius * 0.60);
+      z += foldT * 0.038 * Math.abs(y / radius);
+      y += foldT * 0.022 * Math.abs(z / radius);
     }
 
-    // Medial cleft flattening toward midline
+    // Upper sacral transition: slope softly into lower back without disjointed ledge
+    if (y > radius * 0.25 && z < 0) {
+      const topT = (y - radius * 0.25) / (radius * 0.75);
+      z *= (1.0 - topT * 0.26);
+    }
+
+    // Natural intergluteal cleft: medial boundary meets midline snugly and compresses softly
+    // In cheek coords, midline is at -side * 0.070. Inner face is where side * x < 0.
     if (side * x < 0) {
-      x *= 0.78;
+      const medDist = Math.abs(x);
+      // Soft compression along midline contact plane: prevent empty canyon gap
+      if (medDist > 0.070) {
+        x = -side * (0.070 + (medDist - 0.070) * 0.25);
+      }
     }
 
     pos.setXYZ(i, x, y, z);
@@ -560,23 +574,40 @@ function buildHair3(headR, hairMat, style) {
 
     const fan = (count, pool) => {
       for (let i = 0; i < count; i++) {
-        const a = (count === 1 ? 0.5 : i / (count - 1) - 0.5) * Math.PI * 1.34;
+        const tFrac = count === 1 ? 0.5 : i / (count - 1);
+        const a = (tFrac - 0.5) * Math.PI * 1.22;
+        const isSide = Math.abs(tFrac - 0.5) > 0.32;
         const r0 = headR * 0.96;
-        const x0 = Math.sin(a) * r0, z0 = -Math.cos(a) * r0 * 0.88;
+        const x0 = Math.sin(a) * r0;
+        // Keep hair behind neck/torso or sweeping wide past shoulders — never through breasts
+        const zBack = -Math.max(headR * 0.28, Math.cos(a) * r0 * 0.82);
         let pts;
         if (!pool) {
-          pts = [
-            [x0, headR * 0.25, z0],
-            [x0 * 1.32, -headR * 0.70, z0 * 1.16],
-            [x0 * 1.42, -headR * 1.32 - len * 0.12, z0 * 1.22],
-            [x0 * 1.28, -headR * 1.74 - len * 0.22, z0 * 1.16]
-          ];
+          if (isSide) {
+            // Side tresses: flare wide over shoulders down outside of arms, clear of chest
+            const sideSign = Math.sign(x0) || 1;
+            pts = [
+              [x0, headR * 0.22, zBack],
+              [sideSign * headR * 1.52, -headR * 0.55, zBack * 0.75],
+              [sideSign * headR * 1.82, -headR * 1.15 - len * 0.10, zBack * 0.55],
+              [sideSign * headR * 1.72, -headR * 1.60 - len * 0.20, zBack * 0.35]
+            ];
+          } else {
+            // Back tresses: cascade cleanly down the spine and pillows behind the torso
+            pts = [
+              [x0, headR * 0.22, zBack],
+              [x0 * 1.15, -headR * 0.65, zBack - headR * 0.15],
+              [x0 * 1.22, -headR * 1.25 - len * 0.12, zBack - headR * 0.22],
+              [x0 * 1.12, -headR * 1.70 - len * 0.22, zBack - headR * 0.28]
+            ];
+          }
         } else {
+          // Hair pooling on pillow / bed behind her head (fans wide laterally, shallow in Z so it never sinks into mattress)
           pts = [
-            [x0, headR * 0.12, -headR * 0.65],
-            [x0 * 1.62, -headR * 0.02, -headR * 0.86 - len * headR * 0.03],
-            [x0 * 1.84, -headR * 0.06, -headR * 1.02 - len * headR * 0.05],
-            [x0 * 1.62, -headR * 0.02, -headR * 1.08 - len * headR * 0.08]
+            [x0, headR * 0.10, -headR * 0.55],
+            [x0 * 1.65, headR * 0.02, -headR * 0.72],
+            [x0 * 2.10, -headR * 0.02, -headR * 0.82],
+            [x0 * 2.45, headR * 0.04, -headR * 0.86]
           ];
         }
         const tr = taperTube3(pts, rRoot * (1 - (i % 3) * 0.12), rTip, hairMat, 16, 8);
@@ -602,15 +633,31 @@ function buildHer3() {
   const breastScale = 0.64 + (ch.breastSize == null ? 0.45 : ch.breastSize) * 0.88;
 
   const root = new THREE.Group();
-  // ~7-head realistic canon: smaller head, longer legs, hips a touch wider than shoulders
+  // ---- SINGLE BODY PROFILE: every measurement derives from one canon ----
+  // 7.25-head figure (H=1.70). Shoulders narrower than hips; hand ≈ 0.75 HU,
+  // foot ≈ 0.96 HU. Change values here and the whole figure follows.
+  const BODY = {
+    H: 1.70, heads: 7.25,
+    headR: 0.115,            // skull sphere radius (head height ≈ 2.04 × headR)
+    neckTopR: 0.042, neckBaseR: 0.052, neckLen: 0.082,
+    shoulderX: 0.148,        // glenohumeral joint |x|
+    chestW: 0.150, waistW: 0.118, hipW: 0.158,
+    thighLen: 0.430, shinLen: 0.410,
+    thighTopR: 0.084, kneeR: 0.052, ankleR: 0.030,
+    upperArmLen: 0.250, foreArmLen: 0.232,
+    armTopR: 0.047, elbowR: 0.039, wristR: 0.027,
+    deltR: 0.050,
+    palmR: 0.046, fingerLen: 0.052,
+    footFrontZ: 0.052, toeZ: 0.138
+  };
   const R = {
-    headR: 0.134,
+    headR: BODY.headR,
     neck: 0.072,
-    chestR: 0.156,
-    waistR: 0.112,
-    hipR: 0.160,
-    upperArm: 0.250, foreArm: 0.232,
-    thigh: 0.430, shin: 0.410
+    chestR: BODY.chestW,
+    waistR: BODY.waistW,
+    hipR: BODY.hipW,
+    upperArm: BODY.upperArmLen, foreArm: BODY.foreArmLen,
+    thigh: BODY.thighLen, shin: BODY.shinLen
   };
 
   // ---- HIPS & PELVIS ----
@@ -626,11 +673,18 @@ function buildHer3() {
   mons.position.set(0, -0.046, 0.118);
   hips.add(mons);
 
-  // Voluptuous anatomical buttocks with distinct intergluteal cleft
+  // Voluptuous anatomical buttocks with seamless intergluteal cleft
+  const sacralFill = ballMesh(0.092, skinMat, 0.88);
+  sacralFill.position.set(0, -0.042, -0.088);
+  sacralFill.scale.set(0.72, 0.95, 0.95);
+  hips.add(sacralFill);
+
   [-1, 1].forEach(s => {
-    const cheekGeo = makeGluteCheekGeo(0.114, s);
+    const cheekGeo = makeGluteCheekGeo(0.124, s);
     const chx = new THREE.Mesh(cheekGeo, skinMat);
-    chx.position.set(s * 0.106, -0.052, -0.096);
+    chx.position.set(s * 0.070, -0.048, -0.092);
+    chx.rotation.y = -s * 0.08;
+    chx.rotation.z = -s * 0.04;
     hips.add(chx);
 
     // Warm airbrushed peach-red flush on gluteal fullness
@@ -638,28 +692,7 @@ function buildHer3() {
       const w = clamp(0.38 - y * 3.4, 0, 1) * 0.72 + clamp((Math.abs(x) - 0.03) * 5.2, 0, 1) * 0.28;
       return [1, 1 - 0.15 * w, 1 - 0.24 * w];
     });
-    addGloss3(chx, s * 0.052, 0.048, -0.052, 0.090, 0.44);
-  });
-
-  // Intergluteal cleft (crack shadow)
-  const cleft = new THREE.Mesh(
-    new THREE.BoxGeometry(0.016, 0.19, 0.026),
-    toonMat('#561e1b', { soft: false })
-  );
-  cleft.position.set(0, -0.018, -0.156);
-  cleft.userData.noInk = true;
-  hips.add(cleft);
-
-  // Infragluteal crease lines (banana roll folds)
-  [-1, 1].forEach(s => {
-    const f = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.007, 0.007, 0.135, 10),
-      toonMat('#863e32', { soft: false })
-    );
-    f.rotation.z = Math.PI / 2;
-    f.position.set(s * 0.090, -0.102, -0.058);
-    f.userData.noInk = true;
-    hips.add(f);
+    addGloss3(chx, s * 0.048, 0.042, -0.052, 0.090, 0.44);
   });
 
   // Pubic hair options: 'bare', 'trim', 'full'
@@ -700,15 +733,6 @@ function buildHer3() {
     mn.userData.noInk = true;
     vulva.add(mn);
   });
-
-  // Pudendal cleft interior shadow
-  const vcl = new THREE.Mesh(
-    new THREE.BoxGeometry(0.011, 0.090, 0.022),
-    toonMat('#52181a', { soft: false })
-  );
-  vcl.position.set(0, -0.042, 0.022);
-  vcl.userData.noInk = true;
-  vulva.add(vcl);
 
   // Clitoral hood & sensitive swollen glans
   const hood = ballMesh(0.015, skinMat, 0.88);
@@ -755,7 +779,7 @@ function buildHer3() {
 
   // ---- SCULPTED HOURGLASS TORSO & ABDOMEN ----
   const torso = new THREE.Group();
-  torso.position.y = 0.08;
+  torso.position.y = 0.02; // sunk into the pelvis so the waist grows out of the hips
   hips.add(torso);
 
   const torsoGeo = makeSculptedTorsoGeo(R.chestR, R.waistR, R.hipR * 0.96, 0.48);
@@ -790,17 +814,25 @@ function buildHer3() {
   });
 
   const chest = new THREE.Group();
-  chest.position.y = 0.36;
+  chest.position.y = 0.42;
   torso.add(chest);
+
+  // Ribcage mass: fills the hollow upper chest so clavicles, breasts and
+  // neck all socket into one continuous torso (no floating parts)
+  const ribcage = ballMesh(0.146, skinMat, 0.78);
+  ribcage.position.set(0, 0.055, 0.008);
+  ribcage.scale.set(1.0, 0.78, 0.82);
+  ribcage.receiveShadow = true;
+  chest.add(ribcage);
 
   // ---- VOLUMETRIC TEARDROP BREASTS ----
   const bMat = toonMat(S.base);
-  const nipMat = toonMat(ch.nippleColor || '#c25f63');
-  const areolaMat = toonMat('#c98676');
+  const nipMat = toonMat(ch.nippleColor || '#d45663');
+  const areolaMat = toonMat('#cf7570');
 
   const breastL = new THREE.Group(), breastR = new THREE.Group();
-  breastL.position.set(-0.088, 0.048, 0.096);
-  breastR.position.set(0.088, 0.048, 0.096);
+  breastL.position.set(-0.088, 0.048, 0.088);
+  breastR.position.set(0.088, 0.048, 0.088);
 
   [breastL, breastR].forEach((bg, idx) => {
     const s = idx === 0 ? -1 : 1;
@@ -817,12 +849,12 @@ function buildHer3() {
     addGloss3(bg, s * 0.015, 0.032, 0.048, 0.070, 0.40);
 
     // Areola with soft feathering
-    const arR = 0.028 * breastScale;
-    const arGeo = new THREE.CircleGeometry(arR, 22);
+    const arR = 0.034 * breastScale;
+    const arGeo = new THREE.CircleGeometry(arR, 24);
     const arM = areolaMat.clone();
     arM.vertexColors = true;
     {
-      const skRGB = hexToRgb(S.base), an = [201, 134, 118];
+      const skRGB = hexToRgb(S.base), an = [207, 117, 112];
       const p = arGeo.getAttribute('position'), n2 = p.count;
       const col = new Float32Array(n2 * 3);
       for (let vi = 0; vi < n2; vi++) {
@@ -836,18 +868,28 @@ function buildHer3() {
       arGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
     }
 
+    const npZ = 0.114 * breastScale;
+    const npY = -0.046;
+    const npX = s * 0.012;
+
     const ar = new THREE.Mesh(arGeo, arM);
-    ar.position.set(s * 0.012, -0.050, 0.076 * breastScale);
-    ar.rotation.x = -0.32;
-    ar.rotation.y = s * 0.14;
+    ar.position.set(npX, npY, npZ - 0.003);
+    ar.rotation.x = -0.24;
+    ar.rotation.y = s * 0.12;
     ar.userData.noInk = true;
     bg.add(ar);
 
     // Protruding erect nipple with tip catchlight
-    const np = ballMesh(0.0118, nipMat, 0.72);
-    np.position.set(s * 0.012, -0.050, 0.082 * breastScale);
+    const np = ballMesh(0.015 * Math.max(0.85, breastScale), nipMat, 0.94);
+    np.position.set(npX, npY, npZ + 0.006 * breastScale);
     np.userData.noInk = true;
     bg.add(np);
+
+    // Glossy catchlight on nipple tip
+    const npTip = ballMesh(0.0055 * breastScale, toonMat('#ffccd4', { soft: false }));
+    npTip.position.set(npX, npY + 0.003, npZ + 0.015 * breastScale);
+    npTip.userData.noInk = true;
+    bg.add(npTip);
 
     chest.add(bg);
   });
@@ -888,19 +930,12 @@ function buildHer3() {
   // Trapezius slopes blending neck into shoulders (kills the pipe-on-ball joint)
   [-1, 1].forEach(s => {
     const trap = ballMesh(0.052, skinMat, 0.62);
-    trap.position.set(s * 0.100, -0.048, -0.005);
-    trap.scale.set(1.6, 0.5, 1.0);
+    trap.position.set(s * 0.112, -0.048, -0.005);
+    trap.scale.set(1.8, 0.5, 1.0);
     trap.rotation.z = s * -0.35;
     trap.userData.noInk = true;
     neck.add(trap);
   });
-
-  // Suprasternal notch dip between the collarbones
-  const notch = ballMesh(0.014, skinShade, 0.6);
-  notch.position.set(0, -0.012, 0.050);
-  notch.scale.set(1.2, 0.6, 0.5);
-  notch.userData.noInk = true;
-  neck.add(notch);
 
   const head = new THREE.Group();
   head.position.y = 0.090;
@@ -938,15 +973,21 @@ function buildHer3() {
 
   // High-res facial texture decal
   const face = makeFaceTexture3();
+  // Pre-paint a neutral expression at build so the face exists from frame
+  // one in every context (the first anim-loop repaint otherwise owns it)
+  try {
+    paintFace3(face.ctx, { eye: 0.7, rolled: 0, mouth: 0.1, blush: 0.2, brow: 0.3, tilt: 0.2 }, ch);
+    face.tex.needsUpdate = true;
+  } catch (e) { try { document.title = 'FACE-BUILD-ERR: ' + (e && e.message); } catch (_) {} }
   const faceGeo = new THREE.SphereGeometry(
     R.headR * 1.014, 32, 26,
     Math.PI * 0.72, Math.PI * 1.56,
     Math.PI * 0.18, Math.PI * 0.52
   );
   const faceMesh = new THREE.Mesh(faceGeo, new THREE.MeshBasicMaterial({
-    map: face.tex, transparent: true, depthWrite: false
+    map: face.tex, transparent: true, depthWrite: false, alphaTest: 0.02
   }));
-  faceMesh.rotation.y = Math.PI;
+  faceMesh.rotation.y = 0;
   faceMesh.userData.noInk = true;
   head.add(faceMesh);
 
@@ -966,41 +1007,46 @@ function buildHer3() {
   // ---- ARMS & DELICATE HANDS ----
   function makeArm(side) {
     const sh = new THREE.Group();
-    sh.position.set(side * R.chestR * 1.04, 0.138, 0);
+    sh.position.set(side * BODY.shoulderX, 0.138, 0);
     chest.add(sh);
 
-    // Deltoid cap
-    sh.add(ballMesh(0.054, skinMat));
-    const up = segMesh(0.049, 0.040, R.upperArm, skinMat, 0.051, 0.40);
+    // Deltoid cap matched to the upper-arm radius (no ball-on-stick crease)
+    sh.add(ballMesh(BODY.deltR, skinMat));
+    const up = segMesh(BODY.armTopR, 0.038, R.upperArm, skinMat, 0.049, 0.40);
     sh.add(up);
 
     const el = new THREE.Group();
     el.position.y = -R.upperArm;
     sh.add(el);
-    el.add(ballMesh(0.041, skinMat));
+    // Elbow condyle: squashed along the arm so it reads as a joint, not a bead
+    const elB = ballMesh(BODY.elbowR, skinMat);
+    elB.scale.set(0.95, 0.82, 0.95);
+    el.add(elB);
 
     // Forearm with brachioradialis fullness
-    const fo = sculptedSegMesh(0.039, 0.029, R.foreArm, skinMat, 0.042, 0.32, side * 0.006, 0.005);
+    const fo = sculptedSegMesh(0.039, BODY.wristR, R.foreArm, skinMat, 0.042, 0.32, side * 0.006, 0.005);
     el.add(fo);
 
     const hand = new THREE.Group();
     hand.position.y = -R.foreArm;
     el.add(hand);
 
-    // Palm (lifelike volume — fingers anchor along its base edge)
-    const hm = ballMesh(0.042, skinMat, 1.28);
-    hm.scale.set(0.62, 1.30, 0.52);
+    // Palm (slim lifelike volume — fingers anchor along its base edge)
+    const hm = ballMesh(BODY.palmR, skinMat, 1.28);
+    hm.scale.set(0.55, 1.15, 0.45);
     hand.add(hm);
 
-    // Four articulated fingers with knuckle joints and a natural relaxed curl
+    // Four articulated fingers with knuckle joints, gentle fan and a natural
+    // relaxed curl — long and slim like the GLB girls' hands, not stubby
     for (let f = 0; f < 4; f++) {
-      const fx = (f - 1.5) * 0.016;
-      const fl = 0.034 - Math.abs(f - 1.5) * 0.004;
+      const fx = (f - 1.5) * 0.015;
+      const fl = BODY.fingerLen - Math.abs(f - 1.5) * 0.004;
       const fg = new THREE.Group();
-      fg.position.set(fx, -0.042, 0.004);
+      fg.position.set(fx, -0.048, 0.004);
       fg.rotation.x = 0.18 + f * 0.02;
+      fg.rotation.z = (f - 1.5) * -0.035;
       hand.add(fg);
-      const seg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.0062, 0.0054, fl, 8), skinMat);
+      const seg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.0050, 0.0044, fl, 8), skinMat);
       seg1.geometry.translate(0, -fl / 2, 0);
       seg1.castShadow = true;
       seg1.userData.noInk = true;
@@ -1009,7 +1055,7 @@ function buildHer3() {
       tip.position.y = -fl;
       tip.rotation.x = 0.38;
       fg.add(tip);
-      const seg2 = new THREE.Mesh(new THREE.CylinderGeometry(0.0052, 0.0042, fl * 0.8, 8), skinMat);
+      const seg2 = new THREE.Mesh(new THREE.CylinderGeometry(0.0042, 0.0034, fl * 0.8, 8), skinMat);
       seg2.geometry.translate(0, -fl * 0.4, 0);
       seg2.castShadow = true;
       seg2.userData.noInk = true;
@@ -1018,14 +1064,23 @@ function buildHer3() {
 
     // Opposable thumb with two segments
     const thumbG = new THREE.Group();
-    thumbG.position.set(-side * 0.024, -0.008, 0.008);
+    thumbG.position.set(-side * 0.022, -0.008, 0.008);
     thumbG.rotation.set(0.5, 0, side * 0.7);
     hand.add(thumbG);
-    const th1 = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.006, 0.030, 8), skinMat);
+    const th1 = new THREE.Mesh(new THREE.CylinderGeometry(0.0058, 0.0050, 0.030, 8), skinMat);
     th1.geometry.translate(0, -0.015, 0);
     th1.castShadow = true;
     th1.userData.noInk = true;
     thumbG.add(th1);
+    const thTip = new THREE.Group();
+    thTip.position.y = -0.030;
+    thTip.rotation.x = 0.35;
+    thumbG.add(thTip);
+    const th2 = new THREE.Mesh(new THREE.CylinderGeometry(0.0050, 0.0040, 0.024, 8), skinMat);
+    th2.geometry.translate(0, -0.012, 0);
+    th2.castShadow = true;
+    th2.userData.noInk = true;
+    thTip.add(th2);
 
     return { shoulder: sh, elbow: el, hand: hand };
   }
@@ -1036,11 +1091,11 @@ function buildHer3() {
     const hp = new THREE.Group();
     hp.position.set(side * R.hipR * 0.58, -0.044, 0);
     hips.add(hp);
-    hp.add(ballMesh(0.076, skinMat));
+    hp.add(ballMesh(0.084, skinMat)); // buried in the thigh head — no waist gap
 
     // Thigh with vastus medialis & lateralis contours
     const th = sculptedSegMesh(
-      0.082, 0.057, R.thigh, skinMat,
+      BODY.thighTopR, 0.057, R.thigh, skinMat,
       0.086, 0.38,
       side * 0.014, // lateral sweep
       0.010         // hamstring curve
@@ -1052,12 +1107,8 @@ function buildHer3() {
     kn.position.y = -R.thigh;
     hp.add(kn);
 
-    // Sculpted knee joint with patella prominence
+    // Clean smooth anime knee joint
     kn.add(ballMesh(0.054, skinMat));
-    const patella = ballMesh(0.024, skinShade, 1.2);
-    patella.position.set(0, 0.004, 0.048);
-    patella.userData.noInk = true;
-    kn.add(patella);
 
     // Calf with gastrocnemius & slender Achilles tendon
     const shn = sculptedSegMesh(
@@ -1067,14 +1118,6 @@ function buildHer3() {
       -0.016        // posterior calf belly bulge
     );
     kn.add(shn);
-
-    // Medial & lateral malleoli (ankle bones grounding the shin into the foot)
-    [-1, 1].forEach(s => {
-      const mal = ballMesh(0.013, skinShade, 1.0);
-      mal.position.set(s * 0.030, -R.shin + 0.045, 0.004);
-      mal.userData.noInk = true;
-      kn.add(mal);
-    });
 
     const ft = new THREE.Group();
     ft.position.y = -R.shin;
@@ -1087,15 +1130,15 @@ function buildHer3() {
     heel.userData.noInk = true;
     ft.add(heel);
     const fm = ballMesh(0.041, skinMat, 0.68);
-    fm.scale.set(0.58, 0.52, 2.05);
-    fm.position.set(0, -0.004, 0.045);
+    fm.scale.set(0.58, 0.52, 2.35);
+    fm.position.set(0, -0.004, BODY.footFrontZ);
     ft.add(fm);
 
     // Five articulated toes with natural fan and glossy nail polish
     for (let t = -2; t <= 2; t++) {
       const toeR = 0.0135 - Math.abs(t) * 0.0016;
       const toe = ballMesh(toeR, skinMat, 0.82);
-      const tz = 0.122 - Math.abs(t) * 0.007;
+      const tz = BODY.toeZ - Math.abs(t) * 0.007;
       toe.position.set(t * 0.0165 + (side > 0 ? 0.004 : -0.004), -0.012, tz);
       toe.userData.noInk = true;
       ft.add(toe);
@@ -1163,14 +1206,6 @@ function buildHim3() {
     hips.add(chx);
     addGloss3(chx, s * 0.046, 0.036, -0.046, 0.072, 0.32);
   });
-
-  const cleftH = new THREE.Mesh(
-    new THREE.BoxGeometry(0.014, 0.15, 0.025),
-    toonMat('#521f1c', { soft: false })
-  );
-  cleftH.position.set(0, -0.015, -0.134);
-  cleftH.userData.noInk = true;
-  hips.add(cleftH);
 
   const torso = new THREE.Group();
   torso.position.y = 0.10;
@@ -1299,14 +1334,6 @@ function buildHim3() {
     sc.position.set(s * 0.039, -0.108, 0.076);
     hips.add(sc);
   });
-
-  const seam = new THREE.Mesh(
-    new THREE.BoxGeometry(0.006, 0.072, 0.010),
-    toonMat('#8a4a40', { soft: false })
-  );
-  seam.position.set(0, -0.122, 0.096);
-  seam.userData.noInk = true;
-  hips.add(seam);
 
   function makeArm(side) {
     const sh = new THREE.Group();

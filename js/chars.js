@@ -48,6 +48,30 @@ const CHARS={
     bodyScale:.58, breastSize:.55,
     nippleColor:'#6a2828', blushColor:'#883040', lipColor:'#6a2435', eyeColor:'#2a1208',
     pubicHair:'full'
+  },
+  goatchan:{
+    preset:'goatchan', name:'Goat-chan',
+    quote:'\u201cMmh\u2026 are you ready for something wild? Don\u2019t hold back\u2026 \u2665\u201d',
+    skinTone:.15, hairColor:'#961e32', hairStyle:'horns',
+    bodyScale:.50, breastSize:.85,
+    nippleColor:'#f090a0', blushColor:'#f05068', lipColor:'#d04050', eyeColor:'#cc1030',
+    pubicHair:'trim', isGLB:true, glbPath:'assets/goatchan/goatchan.glb'
+  },
+  kiyoko:{
+    preset:'kiyoko', name:'Kiyoko',
+    quote:'\u201cMmm\u2026 start with my ears? Then don\u2019t you dare stop\u2026 \u2665\u201d',
+    skinTone:.30, hairColor:'#e85a10', hairStyle:'long',
+    bodyScale:.48, breastSize:.62,
+    nippleColor:'#b05050', blushColor:'#e86070', lipColor:'#b3555f', eyeColor:'#5a3018',
+    pubicHair:'trim', isGLB:true, glbPath:'assets/kiyoko.005.glb'
+  },
+  anime:{
+    preset:'anime', name:'Anime',
+    quote:'\u201cEhehe\u2026 senpai finally picked me! Be gentle\u2026 maybe\u2665\u201d',
+    skinTone:.18, hairColor:'#ff7ab0', hairStyle:'long',
+    bodyScale:.47, breastSize:.60,
+    nippleColor:'#c06070', blushColor:'#f08090', lipColor:'#d06080', eyeColor:'#6a3050',
+    pubicHair:'trim', isGLB:true, glbPath:'assets/free_download_female_anime.glb'
   }
 };
 
@@ -74,6 +98,7 @@ function getSkin(){
 const CHAR_KEY='ag_char';
 function applyPreset(key){
   const p=CHARS[key]||CHARS.yuki;
+  for(const k in G.char) delete G.char[k];
   Object.assign(G.char, JSON.parse(JSON.stringify(p)));
   lsSaveChar();
   if(typeof updatePlName==='function') updatePlName();

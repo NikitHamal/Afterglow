@@ -13,7 +13,7 @@ let lastOrg3 = -1, lastRound3 = 1;
 function cacheHUD3() {
   ['plFill', 'plBar', 'plMood', 'dpFill', 'hotZone', 'dpMark', 'stamFill', 'stamBox',
     'stamVal', 'stamLbl', 'tBand', 'tMark', 'comboChip', 'clock', 'strk', 'btnClimax',
-    'btnKiss', 'btnRub', 'btnPos', 'btnOral', 'btnZoom', 'btnMute', 'icoSnd'
+    'btnKiss', 'btnRub', 'btnPos', 'btnOral', 'btnSolo', 'btnZoom', 'btnMute', 'icoSnd'
   ].forEach(id => { HUD3[id] = $3(id); });
 }
 
@@ -67,6 +67,7 @@ function hudTick3() {
   if (h.btnKiss) h.btnKiss.classList.toggle('on', G.kissT > 0);
   if (h.btnRub) h.btnRub.classList.toggle('on', G.rubT > 0);
   if (h.btnOral) h.btnOral.classList.toggle('on', G.oralT > 0);
+  if (h.btnSolo) h.btnSolo.classList.toggle('on', !!G.solo);
 
   const bRl = h.btnRub;
   if (bRl) {
@@ -108,6 +109,10 @@ function syncCharLook3() {
   const key = [c.preset, c.hairColor, c.skinTone, c.breastSize, c.hairStyle, c.eyeColor, c.nippleColor].join('|');
   if (key === _lookKey) return;
   _lookKey = key;
+  const isGLB = !!(c && c.isGLB);
+  if (typeof setGLBActive === 'function') {
+    setGLBActive(isGLB, c.preset);
+  }
   if (!her3) return;
 
   // skin + hair + breast scale can be retinted live
@@ -160,6 +165,10 @@ function shotBoot3() {
   if (!q || (!q.has('pose') && !q.has('shot'))) return;
   SHOT3.on = true;
   if (q.has('pose')) G.pos = clamp(parseInt(q.get('pose'), 10) | 0, 0, 6);
+  // dev only: ?char=kiyoko previews a GLB girl headless (also handy for Goat-chan)
+  if (q.get('char') && typeof applyPreset === 'function') { try { applyPreset(q.get('char')); } catch (e) {} }
+  // dev only: ?play=1 skips charSel/intro so headless shots start the night
+  if (q.get('play') === '1' && typeof startNight === 'function') { try { startNight(); } catch (e) {} }
   if (q.get('oral') === '1') SHOT3.oral = true;
   if (q.get('depth') != null && q.get('depth') !== '') SHOT3.depth = clamp(parseFloat(q.get('depth')), 0, 1);
   if (typeof G !== 'undefined') {
@@ -169,6 +178,8 @@ function shotBoot3() {
     G.rub = 0; G.kissT = 0;
     if (q.get('view') === 'fpv') G.view = 'fpv';
     if (q.has('focus')) { G.fpvFocus = q.get('focus'); SHOT3.focus = q.get('focus'); }
+    // dev only: ?solo=1 previews the solo showcase headless (S key equivalent)
+    if (q.get('solo') === '1' && typeof toggleSolo === 'function') { try { if (!G.solo) toggleSolo(); } catch (e) {} }
   }
   // stored and re-asserted every frame — pose auto-cam must never win
   SHOT3.cam = {};
@@ -226,6 +237,7 @@ function tick3(ts) {
   updateCamera3(dt, G);
   hudTick3();
 
+  if (typeof updateGLBModel === 'function') updateGLBModel(dt);
   if (renderer3d) renderer3d.render(scene3d, camera3d);
   requestAnimationFrame(tick3);
 }
@@ -238,6 +250,7 @@ function boot3() {
   initChars3();
   initFX3();
   cacheHUD3();
+  if (typeof initGLBModel === 'function') initGLBModel();
 
   if (typeof loadCharState === 'function') loadCharState();
   if (typeof initCharUI === 'function') initCharUI();

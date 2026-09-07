@@ -47,6 +47,7 @@ const G={
   stamina:100, tired:false, tiredT:0,
   kiss:0, rub:0, kissT:0, rubT:0, rubZone:0,
   oral:0, oralT:0, oralDepth:0, oralGag:0, pos:0,
+  solo:false, soloPh:0, soloMoanT:3,
   jets:[], shaftPulse:0,
   orgasms:0, orgT:0, after:0,
   climax:false, spurts:0, climaxT:0, finishT:0, sync:false, endedShown:false,

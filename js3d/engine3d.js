@@ -21,7 +21,7 @@ if (renderer3d) {
   renderer3d.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer3d.outputEncoding = THREE.sRGBEncoding;
   renderer3d.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer3d.toneMappingExposure = 0.95;
+  renderer3d.toneMappingExposure = 1.0;
 
   scene3d = new THREE.Scene();
   scene3d.background = new THREE.Color(0x0d0709);
@@ -144,8 +144,11 @@ function makeSheenMat3(color, power, strength) {
    SKIN MATERIAL — toon bands + pore texture + glossy sheen shell
    ============================================================ */
 function skinMat3(color) {
-  const m = toonMat(color);
-  try { m.map = makeSkinTex3(); } catch (e) { /* canvas unavailable */ }
+  const m = toonMat(color, { skin: true });
+  try {
+    m.map = makeSkinTex3();
+    m.roughnessMap = m.map;   // pore-level gloss variation doubles as micro-normal feel
+  } catch (e) { /* canvas unavailable */ }
   // warmer + a touch deeper than the flat picker color (painted skin, not clay)
   m.color.offsetHSL(0.004, 0.03, -0.035);
   // subsurface warmth: shadows glow faintly red instead of going dead grey
@@ -163,15 +166,30 @@ function addSheen3(mesh, color, power, strength) {
   return s;
 }
 
-/* skin reads best with a slightly softer ramp than props */
+/* stylized PBR surface — keeps the anime linework (ink shells, face decal) but
+   shades like a real surface: smooth gradients, clearcoat speculars, sheen
+   fuzz on skin. `soft:false` props go matte; very dark colors (hair, deep
+   moist cavities) automatically get a glossy clearcoat. */
 function toonMat(color, opts) {
   opts = opts || {};
-  const m = new THREE.MeshToonMaterial({
-    color: new THREE.Color(color),
-    gradientMap: opts.soft === false ? RAMP3 : RAMP5,
+  const c = new THREE.Color(color);
+  const lum = (c.r + c.g + c.b) / 3;
+  const darkGloss = lum < 0.16;
+  const skin = opts.skin === true;
+  const m = new THREE.MeshPhysicalMaterial({
+    color: c,
+    roughness: skin ? 0.52 : (darkGloss ? 0.38 : (opts.soft === false ? 0.85 : 0.6)),
+    metalness: 0.0,
+    clearcoat: skin ? 0.35 : (darkGloss ? 0.65 : 0.08),
+    clearcoatRoughness: skin ? 0.55 : 0.32,
     emissive: new THREE.Color(opts.emissive || 0x000000),
     emissiveIntensity: opts.emissiveIntensity == null ? 1 : opts.emissiveIntensity
   });
+  if (skin) {
+    m.sheen = 0.5;
+    m.sheenColor = new THREE.Color(0xffc9bd);
+    m.sheenRoughness = 0.6;
+  }
   if (opts.transparent) { m.transparent = true; m.opacity = opts.opacity == null ? 1 : opts.opacity; }
   return m;
 }
@@ -215,14 +233,23 @@ function updateInk3() {
   for (const r of INKSHELLS3) r.mat.uniforms.uThick.value = r.base * f;
 }
 
-/* ink the whole rig: thin dark shells on every toon mass = printed lineart.
-   (skips glow shells, outline shells, the painted face and flat decals) */
+/* ink the whole rig: thin dark shells on every physical mass = printed lineart.
+   (skips glow shells, outline shells, the painted face and flat decals)
+   Thickness scales with mesh size so toes and fingers get hairlines while
+   torso and thighs keep bold readable contours. */
 function inkRig3(root, thick) {
   const jobs = [];
   root.traverse(o => {
-    if (o.isMesh && !o.userData.noInk && o.material && o.material.isMeshToonMaterial) jobs.push(o);
+    if (o.isMesh && !o.userData.noInk && o.material && (o.material.isMeshToonMaterial || o.material.isMeshPhysicalMaterial || o.material.isMeshStandardMaterial)) jobs.push(o);
   });
-  for (const m of jobs) inkOutline(m, thick);
+  for (const m of jobs) {
+    let r = 0.09;
+    try {
+      if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere();
+      r = m.geometry.boundingSphere.radius || 0.09;
+    } catch (e) { /* keep default */ }
+    inkOutline(m, thick * clamp(r / 0.09, 0.35, 1.15));
+  }
 }
 
 /* ============================================================
@@ -248,19 +275,9 @@ function glossTex3() {
   return t;
 }
 function addGloss3(parent, x, y, z, s, op) {
-  let sp = null;
-  try {
-    sp = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: glossTex3(), transparent: true,
-      opacity: op == null ? 0.35 : op,
-      blending: THREE.AdditiveBlending, depthWrite: false
-    }));
-  } catch (e) { return null; }
-  sp.position.set(x, y, z);
-  sp.scale.set(s, s * 0.7, 1);
-  sp.userData.noInk = true;
-  parent.add(sp);
-  return sp;
+  // Retired: physical clearcoat + rim light now produce real specular
+  // highlights. Kept as a no-op so existing call sites don't need edits.
+  return null;
 }
 
 /* ============================================================
@@ -273,11 +290,11 @@ function buildLights() {
   scene3d.add(new THREE.AmbientLight(0x3a2030, 0.22));
 
   // soft sky/ground bounce so skin gradients stay creamy, never chalky
-  scene3d.add(new THREE.HemisphereLight(0xffd9c8, 0x2a1218, 0.25));
+  scene3d.add(new THREE.HemisphereLight(0xffd9c8, 0x2a1218, 0.35));
 
   // warm bedside lamp — low side key so it rakes across curves (buttocks,
   // thighs, ribs) instead of flattening everything from the camera side
-  keyLight3 = new THREE.DirectionalLight(0xffb072, 0.90);
+  keyLight3 = new THREE.DirectionalLight(0xffb072, 1.15);
   keyLight3.position.set(-5.0, 3.4, 0.8);
   keyLight3.castShadow = true;
   keyLight3.shadow.mapSize.set(1024, 1024);
@@ -299,7 +316,7 @@ function buildLights() {
   scene3d.add(counterRim);
 
   // gentle fill so shadows don't go pure black
-  fillLight3 = new THREE.DirectionalLight(0xff8fa8, 0.15);
+  fillLight3 = new THREE.DirectionalLight(0xff8fa8, 0.25);
   fillLight3.position.set(2.0, 1.4, 5.0);
   scene3d.add(fillLight3);
 
@@ -671,11 +688,13 @@ function initCamControls3() {
 
   CV3.addEventListener('wheel', e => {
     e.preventDefault();
-    if (CAM3.mode === 'fpv') CAM3.fpvDist = clamp((CAM3.fpvDist || 1) + Math.sign(e.deltaY) * 0.12, 0.15, 3.2);
-    else {
-      // fine steps up close for macro inspection, coarse steps far away
-      const st = CAM3.dist > 3 ? 0.42 : 0.13;
-      CAM3.dist = clamp(CAM3.dist + Math.sign(e.deltaY) * st, 0.6, 11);
+    if (CAM3.mode === 'fpv') {
+      CAM3.fpvDist = clamp((CAM3.fpvDist || 1) + Math.sign(e.deltaY) * 0.08, 0.08, 4.2);
+    } else {
+      // Adaptive zoom: ultra-fine macro steps up close (0.035), responsive mid-range (0.10), fast wide (0.45)
+      const dir = Math.sign(e.deltaY);
+      const st = CAM3.dist < 0.8 ? 0.035 : (CAM3.dist < 2.2 ? 0.10 : (CAM3.dist < 4.5 ? 0.25 : 0.45));
+      CAM3.dist = clamp(CAM3.dist + dir * st, 0.12, 16);
     }
   }, { passive: false });
 
@@ -692,6 +711,12 @@ function initCamControls3() {
       case 'ArrowRight': CAMKEY3.yr = v; break;
       case 'ArrowUp':    CAMKEY3.pu = v; break;
       case 'ArrowDown':  CAMKEY3.pd = v; break;
+      case 'Equal':
+      case 'NumpadAdd':
+        if (v) CAM3.dist = clamp(CAM3.dist - (CAM3.dist < 1 ? 0.05 : 0.20), 0.12, 16); break;
+      case 'Minus':
+      case 'NumpadSubtract':
+        if (v) CAM3.dist = clamp(CAM3.dist + (CAM3.dist < 1 ? 0.05 : 0.20), 0.12, 16); break;
       default: return;
     }
     if (ev && v) ev.preventDefault();

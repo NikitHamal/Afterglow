@@ -79,18 +79,18 @@ function getBiomechanicalState() {
    ============================================================ */
 
 const POSES3 = [
-  { // 0 — MISSIONARY: Intimate supine coitus; elevated pelvis, legs hooked over his hips
+  { // 0 — MISSIONARY: Intimate supine coitus; grounded back and glutes, legs hooked over his hips
     name: 'MISSIONARY',
     her: {
-      pos: [0, 0.19, -0.52], up: [0, 0.12, -0.99], fwd: [0, 0.99, 0.12],
-      spine: [-0.08, 0, 0], chest: [0.06, 0, 0], head: [-0.34, 0, 0],
+      pos: [0, 0.31, -0.52], up: [0, -0.06, -0.998], fwd: [0, 0.998, -0.06],
+      spine: [-0.02, 0, 0], chest: [0.04, 0, 0], head: [-0.22, 0, 0],
       hip: [-1.22, -1.14], hipRot: [0.38, -0.38],
       knee: [1.96, 1.88], ankle: [0.42, 0.38], toes: [0.55, 0.50],
       spread: 0.58,
       arm: [0.18, 0.18], armZ: [0.72, -0.72], elbow: [-0.22, -0.22], wrist: [0.15, -0.15]
     },
     him: {
-      pos: [0, 0.48, -0.21], up: [0, -0.10, -0.99], fwd: [0, -0.99, 0.10],
+      pos: [0, 0.50, -0.21], up: [0, -0.10, -0.99], fwd: [0, -0.99, 0.10],
       spine: [0.12, 0, 0], chest: [0.08, 0, 0], head: [-0.46, 0, 0],
       hip: [-1.58, -1.58], hipRot: [0.22, -0.22],
       knee: [1.84, 1.84], ankle: [0.28, 0.28], toes: [0.10, 0.10],
@@ -107,11 +107,11 @@ const POSES3 = [
     cam: { yaw: 0.45, pitch: 0.32, dist: 4.2, fov: 42, target: [0, 0.36, -0.42] }
   },
 
-  { // 1 — LEGS-UP / DEEP FORNIX: Thighs hyperflexed to chest, elevated sacrum, maximum depth
+  { // 1 — LEGS-UP / DEEP FORNIX: Thighs hyperflexed to chest, grounded sacrum, maximum depth
     name: 'LEGS-UP / DEEP',
     her: {
-      pos: [0, 0.21, -0.60], up: [0, 0.25, -0.97], fwd: [0, 0.97, 0.25],
-      spine: [-0.14, 0, 0], chest: [0.10, 0, 0], head: [-0.16, 0, 0],
+      pos: [0, 0.31, -0.60], up: [0, 0.05, -0.998], fwd: [0, 0.998, 0.05],
+      spine: [-0.08, 0, 0], chest: [0.06, 0, 0], head: [-0.16, 0, 0],
       hip: [-2.42, -2.34], hipRot: [0.24, -0.24],
       knee: [0.62, 0.56], ankle: [0.72, 0.68], toes: [0.85, 0.80],
       spread: 0.36,
@@ -193,7 +193,7 @@ const POSES3 = [
   { // 4 — COWGIRL: Upright straddle riding, arched spine, rhythmic vertical bouncing
     name: 'COWGIRL (RIDING)',
     her: {
-      pos: [0, 0.38, 0.02], up: [0, 0.98, -0.18], fwd: [0, 0.18, 0.98],
+      pos: [0, 0.30, 0.02], up: [0, 0.98, -0.18], fwd: [0, 0.18, 0.98],
       spine: [-0.16, 0, 0], chest: [0.12, 0, 0], head: [-0.22, 0, 0],
       hip: [-1.12, -1.12], hipRot: [0.48, -0.48],
       knee: [2.54, 2.54], ankle: [0.82, 0.82], toes: [0.45, 0.45],
@@ -201,19 +201,23 @@ const POSES3 = [
       arm: [-0.34, -0.34], armZ: [0.46, -0.46], elbow: [-0.30, -0.30], wrist: [0.10, -0.10]
     },
     him: {
-      pos: [0, 0.17, -0.14], up: [0, 0.05, -0.99], fwd: [0, 0.99, 0.05],
+      pos: [0, 0.17, -0.12], up: [0, 0.05, -0.99], fwd: [0, 0.99, 0.05],
       spine: [0.08, 0, 0], chest: [0.06, 0, 0], head: [0.26, 0, 0],
       hip: [-0.26, -0.26], hipRot: [0.24, -0.24],
       knee: [0.38, 0.38], ankle: [0.25, 0.25], toes: [0.10, 0.10],
       spread: 0.46,
       arm: [-0.88, -0.88], armZ: [0.92, -0.92], elbow: [-0.65, -0.65], wrist: [-0.12, 0.12],
-      shaft: -1.40
+      shaft: 0.15
     },
     hands: {
-      himL: { k: 'herHips', x: 0.14, y: 0.04, z: -0.04 },
-      himR: { k: 'herHips', x: -0.14, y: 0.04, z: -0.04 },
-      herL: { k: 'himChest', x: 0.12, y: 0.08, z: 0.04 },
-      herR: { k: 'himChest', x: -0.12, y: 0.08, z: 0.04 }
+      // he braces on the mattress beside his own shoulders (her body is
+      // genuinely out of his reach while she rides high — verified by probe)
+      himL: { k: 'himShoulderL', x: -0.25, y: -0.05, z: -0.12, floor: 0.12 },
+      himR: { k: 'himShoulderR', x: 0.25, y: -0.05, z: -0.12, floor: 0.12 },
+      // she plays with her own hair while riding (his chest is a full
+      // arm-span below her hands — verified by probe)
+      herL: { k: 'herHead', x: -0.10, y: 0.02, z: 0.06 },
+      herR: { k: 'herHead', x: 0.10, y: 0.02, z: 0.06 }
     },
     cam: { yaw: 0.22, pitch: 0.24, dist: 3.8, fov: 42, target: [0, 0.58, -0.02] }
   },
@@ -275,21 +279,21 @@ const POSES3 = [
 ];
 
 /* ============================================================
-   ORAL 3D RIG: Cunnilingus & Fellatio Precision Alignments
+   ORAL 3D RIG: Cunnilingus (Lick) & Fellatio (Blowjob) Precision Alignments
    ============================================================ */
-const ORAL3 = {
-  name: 'ORAL',
+const ORAL_LICK3 = {
+  name: 'ORAL (LICK)',
   her: {
-    pos: [0, 0.19, -0.48], up: [0, 0.08, -0.99], fwd: [0, 0.99, 0.08],
-    spine: [-0.06, 0, 0], chest: [0.08, 0, 0], head: [-0.44, 0, 0],
+    pos: [0, 0.30, -0.48], up: [0, -0.06, -0.998], fwd: [0, 0.998, -0.06],
+    spine: [-0.02, 0, 0], chest: [0.06, 0, 0], head: [-0.34, 0, 0],
     hip: [-1.34, -1.22], hipRot: [0.55, -0.55],
     knee: [2.10, 2.00], ankle: [0.55, 0.50], toes: [0.72, 0.68],
     spread: 0.82,
     arm: [-0.68, -0.68], armZ: [1.08, -1.08], elbow: [-0.98, -0.98], wrist: [0.20, -0.20]
   },
   him: {
-    pos: [0, 0.42, 0.28], up: [0, -0.18, -0.98], fwd: [0, -0.98, 0.18],
-    spine: [0.22, 0, 0], chest: [0.16, 0, 0], head: [-0.62, 0, 0],
+    pos: [0, 0.53, 0.24], up: [0, -0.18, -0.98], fwd: [0, -0.98, 0.18],
+    spine: [0.10, 0, 0], chest: [0.16, 0, 0], head: [-0.45, 0, 0],
     hip: [-0.64, -0.64], hipRot: [0.32, -0.32],
     knee: [1.22, 1.22], ankle: [0.38, 0.38], toes: [0.15, 0.15],
     spread: 0.56,
@@ -299,11 +303,41 @@ const ORAL3 = {
   hands: {
     himL: { k: 'herThighL', x: 0.06, y: 0.04, z: 0.06 },
     himR: { k: 'herThighR', x: -0.06, y: 0.04, z: 0.06 },
-    herL: { k: 'himHead', x: -0.10, y: 0.04, z: 0.02 },
-    herR: { k: 'himHead', x: 0.10, y: 0.04, z: 0.02 }
+    herL: { k: 'herHead', x: -0.10, y: 0.04, z: 0.02 },
+    herR: { k: 'herHead', x: 0.10, y: 0.04, z: 0.02 }
   },
   cam: { yaw: 0.15, pitch: 0.36, dist: 3.6, fov: 38, target: [0, 0.36, -0.08] }
 };
+
+const ORAL_BLOW3 = {
+  name: 'ORAL (BLOW)',
+  him: {
+    pos: [0, 0.44, -0.26], up: [0, 0.45, -0.89], fwd: [0, 0.89, 0.45],
+    spine: [0.08, 0, 0], chest: [0.06, 0, 0], head: [-0.30, 0, 0],
+    hip: [-1.45, -1.45], hipRot: [0.42, -0.42],
+    knee: [1.70, 1.70], ankle: [0.32, 0.32], toes: [0.10, 0.10],
+    spread: 0.62,
+    arm: [-0.95, -0.95], armZ: [0.72, -0.72], elbow: [-0.35, -0.35], wrist: [0.10, -0.10],
+    shaft: -1.25
+  },
+  her: {
+    pos: [0, 0.30, 0.18], up: [0, 0.58, -0.81], fwd: [0, -0.81, -0.58],
+    spine: [0.18, 0, 0], chest: [0.14, 0, 0], head: [-0.22, 0, 0],
+    hip: [-1.88, -1.88], hipRot: [0.22, -0.22],
+    knee: [2.35, 2.35], ankle: [0.55, 0.55], toes: [0.45, 0.45],
+    spread: 0.34,
+    arm: [-0.85, -0.85], armZ: [0.38, -0.38], elbow: [-0.55, -0.55], wrist: [0.15, -0.15]
+  },
+  hands: {
+    herL: { k: 'himThighL', x: 0.08, y: 0.06, z: 0.06 },
+    herR: { k: 'himThighR', x: -0.08, y: 0.06, z: 0.06 },
+    himL: { k: 'herHead', x: 0.12, y: 0.06, z: 0.04 },
+    himR: { k: 'herShoulderR', x: 0.04, y: 0.02, z: 0.04 }
+  },
+  cam: { yaw: 0.65, pitch: 0.28, dist: 2.3, fov: 38, target: [0, 0.38, -0.06] }
+};
+
+const ORAL3 = ORAL_LICK3;
 
 /* ============================================================
    ACTIVE POSE EVALUATION & BLENDING
@@ -311,7 +345,9 @@ const ORAL3 = {
    tremors) and slerp-smooth transitions between positions.
    ============================================================ */
 function currentPose3() {
-  if ((G.oral || 0) > 0.03) return ORAL3;
+  if ((G.oral || 0) > 0.03) {
+    return (G.oralMode === 'blow' || G.oralT === 2) ? ORAL_BLOW3 : ORAL_LICK3;
+  }
   return POSES3[(G.pos | 0) % POSES3.length];
 }
 

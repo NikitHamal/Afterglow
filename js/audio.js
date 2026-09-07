@@ -1,10 +1,11 @@
 // Afterglow — module: audio (loaded by index.html)
 'use strict';
 /* ---------------- audio (organic audio engine: glottal voice + room IR + stereo) ----------------
-   OPTIONAL REAL SAMPLES: drop your own licensed files in audio/sfx/<key>N.mp3|.ogg
-   (or provide audio/sfx.json as {"key":["audio/sfx/x.mp3",...]}) and the engine plays
-   them instead of synthesis. Missing files = pure synthesis, everything still works.
-   Keys: moan grunt slap lip hum gag heart breath                                               */
+    REAL SAMPLES: audio/sfx.json maps key -> [files] and the engine plays them
+    instead of synthesis (synthesis stays as automatic fallback per key).
+    Foley: "Lewd sounds by Shinlalala" (CC BY-SA 4.0) — slap/slapdry/wet/stroke/
+    pullout/cumin/cumout. Vox: Philly Original / KentoGames demo — moan/slurp/
+    swallow/takeme/loveyou. Synth-only keys: grunt lip hum gag heart breath. */
 function lsGet(k){ try{ return localStorage.getItem(k); }catch(_){ return null; } }
 function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(_){} }
 let AC=null, master=null, bus=null, revIn=null, muted=lsGet('ag_mute')==='1';
@@ -70,36 +71,69 @@ function route(node,p){
   else node.connect(bus);
 }
 
-/* ---- optional real-sample layer (synthesis stays as automatic fallback) ---- */
-const SFXDEF={ moan:['audio/sfx/moan1.mp3','audio/sfx/moan1.ogg'],
-  grunt:['audio/sfx/grunt1.mp3','audio/sfx/grunt1.ogg'],
-  slap:['audio/sfx/slap1.mp3','audio/sfx/slap1.ogg'],
-  lip:['audio/sfx/lip1.mp3','audio/sfx/lip1.ogg'],
-  hum:['audio/sfx/hum1.mp3','audio/sfx/hum1.ogg'],
-  gag:['audio/sfx/gag1.mp3','audio/sfx/gag1.ogg'],
-  heart:['audio/sfx/heart1.mp3','audio/sfx/heart1.ogg'],
-  breath:['audio/sfx/breath1.mp3','audio/sfx/breath1.ogg'] };
+/* ---- real-sample layer (pack foley + vox, synthesis = per-key fallback) ----
+   Lazy by design: no Audio element is created (and no HTTP request is made)
+   until audio init runs and audio/sfx.json lists files for a key.
+   Each key gets a 3-element Audio pool (rapid thrusts overlap instead of
+   cutting each other) and a random file per hit for variety. */
+const SFXDEF={};
 const _sfx={};
 function sfxReg(k,files){
-  const a=new Audio(); let i=0;
-  a.oncanplaythrough=()=>{ _sfx[k]={a,ready:true}; };
-  a.onerror=()=>{ if(i<files.length-1){ i++; a.src=files[i]; a.load(); } };
-  a.src=files[i]; a.load();
+  if(!files || !files.length) return;
+  const pool=[];
+  for(let n=0;n<3;n++){ try{ const a=new Audio(); a.preload='auto'; pool.push(a); }catch(_){} }
+  if(!pool.length) return;
+  const S=_sfx[k]={files:files.slice(),pool,next:0,ready:false,fi:0};
+  pool.forEach(a=>{
+    a.oncanplaythrough=()=>{ S.ready=true; };
+    a.onerror=()=>{ // skip a dead file, try the next one in the list
+      S.fi++;
+      if(S.fi<S.files.length && a===S.pool[0]){ try{ a.src=S.files[S.fi]; a.load(); }catch(_){} }
+    };
+  });
+  try{ pool[0].src=files[0]; pool[0].load(); }catch(_){}
 }
 function sfxInit(){
-  for(const k in SFXDEF) sfxReg(k,SFXDEF[k]);
-  if(location.protocol==='http:'||location.protocol==='https:'){
-    fetch('audio/sfx.json').then(r=>r.ok?r.json():null).then(m=>{
-      if(!m) return; for(const k in m) sfxReg(k,m[k]);
-    }).catch(()=>{});
-  }
+  if(location.protocol!=='http:'&&location.protocol!=='https:') return;
+  fetch('audio/sfx.json').then(r=>r.ok?r.json():null).then(m=>{
+    if(!m) return; for(const k in m) sfxReg(k,m[k]);
+  }).catch(()=>{});
+}
+function sfxPick(k){
+  const S=_sfx[k];
+  if(!S||!S.ready) return null;
+  const f=S.files[(Math.random()*S.files.length)|0];
+  const a=S.pool[S.next=(S.next+1)%S.pool.length];
+  try{ if(a.getAttribute('src')!==f){ a.src=f; a.load(); } }catch(_){}
+  return a;
 }
 function sfxHit(k,vol,rate){
-  const s=_sfx[k];
-  if(!s||!s.ready) return false;
-  try{ s.a.volume=vol; s.a.playbackRate=rate||1; s.a.currentTime=0;
-    const p=s.a.play(); if(p&&p.catch) p.catch(()=>{}); return true; }
+  const a=sfxPick(k);
+  if(!a) return false;
+  try{ a.volume=clamp(vol,0,1); a.playbackRate=rate||1; a.currentTime=0;
+    const p=a.play(); if(p&&p.catch) p.catch(()=>{}); return true; }
   catch(_){ return false; }
+}
+// Rare spoken vox lines (Take me / I love you). Fire-and-forget.
+function sfxVoice(kind){
+  if(!AC||muted) return;
+  sfxHit(kind==='love'?'loveyou':'takeme',.8,rr(.97,1.04));
+}
+// Ejaculation foley: inside (cumin) vs outside (cumout); swallow when oral.
+// Falls back to a heavy squelch when the pack is missing.
+function playCum(){
+  if(!AC||muted) return;
+  if((G.oral||0)>0.5){
+    setTimeout(()=>{ if(!muted) sfxHit('swallow',.75,rr(.95,1.05)); },550);
+    return;
+  }
+  const inside=(G.depth||0)>0.5;
+  if(!sfxHit(inside?'cumin':'cumout',.8,rr(.94,1.06))) playSquelch(1.35);
+}
+// Near-full withdrawal pop (falls back to a slide when the pack is missing).
+function playPullout(){
+  if(!AC||muted) return;
+  if(!sfxHit('pullout',.7,rr(.92,1.08))) playSlide(.6);
 }
 
 // Natural formant filter for female vocal tract: F0 chest resonance + vowel formants
@@ -143,7 +177,8 @@ function playMoan(i,o={}){
   const f0=(o.f0??(225+R()*35))*(o.pmul??(0.94+i*.28));
   const vol=clamp(.44+i*.50,.36,.98)*(o.vol??1);
 
-  if(sfxHit('moan',vol,rr(.94,1.07))){
+  // Real moan sample only sometimes (single file = monotonous); synth varies the rest
+  if(R()<0.45 && sfxHit('moan',vol,rr(.9,1.12))){
     if(!o.silent) G.mouths.push({t0:G.t,dur:Math.min(dur,1.1),i});
     return;
   }
@@ -238,7 +273,9 @@ function playSlap(v=1){
   if(!AC||muted)return;
   const t=AC.currentTime+.008;
   const vol=clamp(.38+v*.55,.32,.98);
-  if(sfxHit('slap',vol,rr(.94,1.06))) return;
+  // Dry skin clap when she's dry, wet plap otherwise
+  const pk=((G.lube??0.8)<0.45)?'slapdry':'slap';
+  if(sfxHit(pk,vol,rr(.94,1.06))) return;
   const pan=rr(-.4,.4);
   // Punchy body thump: 135Hz -> 62Hz kick (audible on phones, laptop speakers, and headphones)
   const o=AC.createOscillator(); o.type='sine';
@@ -262,6 +299,7 @@ function playSquelch(v=1,o={}){
   const t=AC.currentTime+.008;
   const vol=clamp(.38+v*.52,.32,.95);
   const dir=o.dir||0, wet=o.wet??1, pan=rr(-.45,.45);
+  if(sfxHit('wet',vol,dir<0?rr(1.02,1.12):dir>0?rr(.9,1.0):rr(.94,1.06))) return;
   // Low wet suction body
   const f1=AC.createBiquadFilter(); f1.type='lowpass'; f1.frequency.value=340; f1.Q.value=.9;
   const g1=AC.createGain(); env(g1,t,.01,vol*(.6+.5*wet),.16);
@@ -305,6 +343,7 @@ function playSlide(v=1){
   if(!AC||muted)return;
   const vol=clamp(.32+v*.48,.28,.85);
   const pan=rr(-.5,.5);
+  if(sfxHit('stroke',vol,rr(.92,1.08))) return;
   bust(.17, 360+R()*60, vol*1.0, 'lowpass', .85, .004, pan);
   bust(.12, 820+R()*150, vol*.55, 'bandpass', 1.4, .015, pan*.7);
   // Skin-gloss friction chirp
@@ -354,6 +393,8 @@ function playOralSlurp(v=1){
   if(!AC||muted)return;
   const t=AC.currentTime+.008;
   const vol=clamp(.36+v*.54,.30,.96), pan=rr(-.4,.4);
+  // Same deal: single suck file, so let the synth breathe half the time
+  if(R()<0.5 && sfxHit('slurp',vol,rr(.9,1.1))) return;
   // Oral cavity suction — resonance droops as the mouth closes around
   const f1=AC.createBiquadFilter(); f1.type='bandpass';
   f1.frequency.setValueAtTime(560+R()*140,t);
@@ -448,4 +489,5 @@ function tierLine(){
   const a=G.pleasure;
   let arr = a<25?LINES.idle : a<48?LINES.warm : a<72?LINES.mid : LINES.high;
   say(pick(arr));
+  if(a>=72 && R()<0.12) sfxVoice('take'); // rare spoken "take me" at high arousal
 }

@@ -14,41 +14,48 @@ function buildCharSelector(){
 <div class="charCard">
   <div class="chip18">18+</div>
   <h1>Afterglow</h1>
-  <div class="sub">choose your companion</div>
+  <div class="sub">choose your companion — tap her to begin</div>
   <div id="charRow"></div>
   <div id="charQuote" class="quote"></div>
-  <div style="display:flex;gap:1em;justify-content:center;flex-wrap:wrap;margin-top:2em">
-    <button class="bigbtn" id="btnCharBegin">CONTINUE \u2192</button>
-    <button class="bigbtn ghost" id="btnCharCustom">\u2726 CUSTOMIZE</button>
+  <div class="charBtnRow">
+    <button class="linkbtn" id="btnCharCustom">\u2726 customize before starting</button>
   </div>
 </div>`;
   document.getElementById('stage').prepend(el);
 
-  // build portrait cards
+  // build portrait cards — tapping one selects AND starts the night directly
   const row=el.querySelector('#charRow');
   Object.values(CHARS).forEach(c=>{
     const card=document.createElement('div');
     card.className='cCard'; card.dataset.preset=c.preset;
     card.innerHTML=`<canvas class="cPortrait" width="140" height="180"></canvas>
       <div class="cName">${c.name}</div>`;
-    card.addEventListener('click',()=>selectChar(c.preset));
+    card.addEventListener('click',()=>{
+      selectChar(c.preset);
+      if(G.state==='intro') startNight();
+    });
     row.appendChild(card);
     // draw mini portrait
     setTimeout(()=>renderPortrait(card.querySelector('.cPortrait'),c),0);
   });
 
-  document.getElementById('btnCharBegin').onclick=()=>{
-    document.getElementById('charSel').classList.add('hide');
-    document.getElementById('intro').classList.remove('hide');
-  };
   document.getElementById('btnCharCustom').onclick=()=>{
-    document.getElementById('charSel').classList.add('hide');
-    document.getElementById('intro').classList.remove('hide');
+    if(G.state==='intro') startNight();
     setTimeout(()=>openCustomPanel(),200);
   };
 
   // restore selection
   selectChar(G.char.preset,true);
+}
+
+/* shared start: skip the intro screen, go straight to play.
+   Same unlock + state flip the old CONTINUE → TOUCH HER chain did. */
+function startNight(){
+  if(typeof ai==='function') ai();
+  try{ if(typeof AC!=='undefined'&&AC&&AC.resume) AC.resume(); }catch(_){}
+  const cs=document.getElementById('charSel'); if(cs) cs.classList.add('hide');
+  const intro=document.getElementById('intro'); if(intro) intro.classList.add('hide');
+  G.state='play'; G.sesT=0;
 }
 
 function selectChar(key, silent){
@@ -77,6 +84,22 @@ function renderPortrait(cv,c){
   // hair spill
   cx.fillStyle=c.hairColor;
   cx.beginPath(); cx.ellipse(70,80,42,50,0,0,Math.PI*2); cx.fill();
+  // horns (for goatchan)
+  if(c.preset==='goatchan'||c.hairStyle==='horns'){
+    cx.fillStyle='#f5eee8';
+    cx.beginPath(); cx.moveTo(48,64); cx.quadraticCurveTo(24,40,28,26); cx.quadraticCurveTo(38,36,54,54); cx.fill();
+    cx.beginPath(); cx.moveTo(92,64); cx.quadraticCurveTo(116,40,112,26); cx.quadraticCurveTo(102,36,86,54); cx.fill();
+  }
+  // beast ears (for kiyoko) — tall triangles with pink inner ear
+  if(c.preset==='kiyoko'){
+    cx.fillStyle=c.hairColor;
+    cx.beginPath(); cx.moveTo(44,62); cx.lineTo(34,20); cx.lineTo(66,50); cx.closePath(); cx.fill();
+    cx.beginPath(); cx.moveTo(96,62); cx.lineTo(106,20); cx.lineTo(74,50); cx.closePath(); cx.fill();
+    cx.fillStyle='rgba(244,160,150,.9)';
+    cx.beginPath(); cx.moveTo(46,56); cx.lineTo(40,30); cx.lineTo(60,50); cx.closePath(); cx.fill();
+    cx.beginPath(); cx.moveTo(94,56); cx.lineTo(100,30); cx.lineTo(80,50); cx.closePath(); cx.fill();
+  }
+  // (removed presets leave no portrait extras — generic hair/face covers the rest)
   // face oval
   cx.fillStyle=skinC;
   cx.beginPath(); cx.ellipse(70,78,30,36,0,0,Math.PI*2); cx.fill();
@@ -109,12 +132,6 @@ function renderPortrait(cv,c){
   // lips
   cx.fillStyle=c.lipColor;
   cx.beginPath(); cx.ellipse(70,100,8,3.5,0,0,Math.PI*2); cx.fill();
-  // name label bg
-  cx.fillStyle='rgba(18,9,13,.65)';
-  cx.fillRect(0,150,W,30);
-  cx.fillStyle='#ffe9ef';
-  cx.font='700 13px Sora,sans-serif';
-  cx.textAlign='center'; cx.fillText(c.name,70,170);
 }
 
 /* ---------- customization panel ---------- */
