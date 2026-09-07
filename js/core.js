@@ -23,6 +23,10 @@ const CFG={
   climaxAt:10,           // sec before CLIMAX unlocks
   spurtNeed:7
 };
+/* rub zones: 0 both breasts · 1 left · 2 right · 3 low — full user control via C/Q/1-4 */
+const RUBZONES=['both','left','right','low'];
+const RUBLBL={both:'BOTH',left:'LEFT',right:'RIGHT',low:'LOW'};
+const RUBGAIN={both:1,left:.85,right:.85,low:1.4};
 const CV=document.getElementById('scene'), X=CV.getContext('2d');
 const stage=document.getElementById('stage');
 const W=1280,H=720; let SC=1;
@@ -41,7 +45,9 @@ const G={
   rate:0, combo:1, comboBest:1,
   pleasure:12, floor:2, sens:1,
   stamina:100, tired:false, tiredT:0,
-  kiss:0, rub:0, kissT:0, rubT:0,
+  kiss:0, rub:0, kissT:0, rubT:0, rubZone:0,
+  oral:0, oralT:0, oralDepth:0, oralGag:0, pos:0,
+  jets:[], shaftPulse:0,
   orgasms:0, orgT:0, after:0,
   climax:false, spurts:0, climaxT:0, finishT:0, sync:false, endedShown:false,
   ar:0, round:1,
@@ -53,5 +59,15 @@ const G={
   sweat:[], hearts:[], drips:[], glisten:[],
   strokeFlash:0, hotFlash:0, dragOn:false, nod:0,
   spaceHeld:false, autoPh:-Math.PI/2,
-  view:'side', viewFade:0
+  view:'side', viewFade:0,
+  faceSide:'profile', faceBlend:0,
+  fpvFocus:'full', fpvZoom:1, fpvPanX:640, fpvPanY:360,
+  char:{
+    preset:'yuki', name:'Yuki',
+    quote:'“Mm… finally we’re alone. You remember how I like it… right?”',
+    skinTone:.18, hairColor:'#231318', hairStyle:'long',
+    bodyScale:.45, breastSize:.45,
+    nippleColor:'#c25f63', blushColor:'#e86070', lipColor:'#b3555f', eyeColor:'#4a2c33',
+    pubicHair:'trim'
+  }
 };

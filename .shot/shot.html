@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Afterglow — dev shot</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../css/app.css">
+<style>
+  /* hide all HUD/overlays so we see pure canvas art */
+  .hud,#bubble,#hint,#intro,#endOv,#mashTip,#charSel,#custPanel{display:none!important}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="scene"></canvas>
+    <div class="hud" id="plWrap"><div id="plName">Y</div><div id="plMood">x</div>
+      <div id="plBar"><div id="plFill"></div><div id="plMoodPulse"></div><div id="plTicks"><i></i></div></div>
+      <div id="orgHearts"></div></div>
+    <div class="hud" id="dpWrap"><div class="lbl">depth</div>
+      <div id="dpBar"><div id="dpFill"></div><div id="hotZone"></div><div id="dpMark"></div></div><div id="spotFx">x</div></div>
+    <div class="hud" id="slWrap"><div id="stamBox"><div id="stamRow"><span class="lbl" id="stamLbl">s</span><span class="val" id="stamVal">1</span></div>
+      <div id="stamBar"><div id="stamFill"></div></div></div>
+      <div id="tempoBox"><div id="tempoRow"><span class="lbl">r</span><span id="comboChip">x<b>1</b></span></div>
+      <div id="tempoStrip"><div id="tBand"></div><div id="tMark"></div></div></div></div>
+    <div class="hud" id="topBar"><span id="clock">0</span><span id="strk">0</span></div>
+    <div class="hud" id="actWrap">
+      <button class="abtn" id="btnKiss">E</button><button class="abtn" id="btnRub">C</button>
+      <button class="abtn" id="btnPos">T</button><button class="abtn" id="btnOral">O</button>
+      <button class="abtn" id="btnClimax">X</button></div>
+    <div class="hud" id="util">
+      <button class="ubtn" id="btnMute">m</button><button class="ubtn" id="btnFull">f</button>
+      <button class="ubtn" id="btnView">v</button><button class="ubtn" id="btnZoom">z</button>
+      <button class="ubtn" id="btnCustom">p</button><button class="ubtn" id="btnRestart">r</button></div>
+    <div id="bubble"></div>
+    <div class="hud" id="hint"><div class="h1">h</div><div class="hand"></div><div class="h2">h</div></div>
+    <div class="hud" id="mashTip">m</div>
+    <div class="ov hide" id="intro"><div class="card"><div class="chip18">18</div><h1>i</h1>
+      <div class="sub">s</div><div class="quote">q</div><div class="how"></div>
+      <button class="bigbtn" id="btnBegin">b</button><div class="keysline">k</div></div></div>
+    <div class="ov hide" id="endOv"><div class="card"><div class="chip18">18</div>
+      <div id="endHead"><div><h1>e</h1><div id="gradeNote"></div><div id="syncBadge"></div></div><div id="grade">S</div></div>
+      <div id="endGrid"></div><div class="btnRow">
+      <button class="bigbtn" id="btnKeep">k</button><button class="bigbtn ghost" id="btnAgain">a</button></div></div></div>
+  </div>
+</div>
+  <script src="../js/core.js"></script>
+  <script src="../js/audio.js"></script>
+  <script src="../js/chars.js"></script>
+  <script src="../js/input.js"></script>
+  <script src="../js/mechanics.js"></script>
+  <script src="../js/gfx.js"></script>
+  <script src="../js/skin.js"></script>
+  <script src="../js/side.js"></script>
+  <script src="../js/fpv.js"></script>
+  <script src="../js/poses.js"></script>
+  <script src="../js/oral.js"></script>
+  <script src="../js/charui.js"></script>
+  <script src="../js/app.js"></script>
+  <script>
+  // dev-shot state injection (query params)
+  (function(){
+    var q=new URLSearchParams(location.search);
+    G.state=q.get('state')||'play';
+    G.pleasure=+(q.get('pleasure')||62);
+    G.ar=+(q.get('ar')||55);
+    var d=+(q.get('depth')||0.55); G.depth=G.target=G.pDepth=d;
+    G.view=q.get('view')||'side';
+    G.fpvFocus=q.get('focus')||'full';
+    if(q.get('focus')==='breasts'){ G.fpvZoom=1.65; G.fpvPanX=640; G.fpvPanY=348; }
+    else if(q.get('focus')==='hips'){ G.fpvZoom=1.78; G.fpvPanX=640; G.fpvPanY=548; }
+    else if(q.get('focus')==='face'){ G.fpvZoom=1.85; G.fpvPanX=640; G.fpvPanY=172; }
+    G.pos=+(q.get('pos')||0);
+    G.oral=+(q.get('oral')||0);
+    G.sesT=+(q.get('t')||25);
+    G.rub=+(q.get('rub')||0); G.rubZone=+(q.get('zone')||0);
+    if(q.get('freeze')==='1'){ G.spaceHeld=false; }
+  })();
+  </script>
+</body>
+</html>

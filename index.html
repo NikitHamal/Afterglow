@@ -44,7 +44,9 @@
 
     <div class="hud" id="actWrap">
       <button class="abtn" id="btnKiss">EMBRACE <kbd>E</kbd></button>
-      <button class="abtn" id="btnRub">RUB HER <kbd>C</kbd></button>
+      <button class="abtn" id="btnRub" title="rub her (C): tap = next spot, double-tap = stop · 1-4 pick spot">RUB HER <kbd>C</kbd></button>
+      <button class="abtn" id="btnPos" title="change position (Tab)">MISSIONARY <kbd>Tab</kbd></button>
+      <button class="abtn" id="btnOral" title="oral (O)">ORAL <kbd>O</kbd></button>
       <button class="abtn" id="btnClimax">CLIMAX <kbd>X</kbd></button>
     </div>
 
@@ -52,6 +54,8 @@
       <button class="ubtn" id="btnMute" title="sound"><svg id="icoSnd" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
       <button class="ubtn" id="btnFull" title="fullscreen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button>
       <button class="ubtn" id="btnView" title="first-person view (V)"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg></button>
+      <button class="ubtn" id="btnZoom" title="FPV closeup / zoom (Z)"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
+      <button class="ubtn" id="btnCustom" title="customize (P)">✦</button>
       <button class="ubtn" id="btnRestart" title="restart"><svg viewBox="0 0 24 24"><path d="M4.5 8A8 8 0 1 1 3 13.5"/><path d="M4 3v5h5"/></svg></button>
     </div>
 
@@ -66,7 +70,7 @@
     <div class="hud" id="mashTip">CLIMAXING — <b>MASH CLICK</b></div>
 
     <!-- intro -->
-    <div class="ov" id="intro">
+    <div class="ov hide" id="intro">
       <div class="card">
         <div class="chip18">18+</div>
         <h1>Afterglow</h1>
@@ -76,10 +80,11 @@
           <div class="row"><span class="n">1</span><span><b>Hold SPACE to thrust</b> — he strokes at her favourite tempo automatically. Or <b>hold &amp; drag up / down</b> yourself for manual control: down pushes deeper, up pulls back. Full strokes please her more than shy little wiggles.</span></div>
           <div class="row"><span class="n">2</span><span><b>Keep your rhythm in her sweet band.</b> Steady tempo builds the ×multiplier — frantic mashing just burns your stamina.</span></div>
           <div class="row"><span class="n">3</span><span>Stroke so your <b>depth marker passes through the pink zone</b> on the right gauge — that's her spot. It drifts, so keep watching.</span></div>
-          <div class="row"><span class="n">4</span><span><b>Finish whenever you like</b> — but coming with her scores far higher, and she gets more sensitive after every orgasm.</span></div>
+          <div class="row"><span class="n">4</span><span><b>Finish whenever you like</b> — but coming with her scores far higher, and she gets more sensitive after every orgasm. No menus interrupt you: the night just keeps going.</span></div>
+          <div class="row"><span class="n">5</span><span><b>Change it up:</b> <b>Tab</b> switches position — missionary, legs-up, doggy, prone bone, cowgirl, rev cowgirl, spoon. <b>O</b> fellatio / oral mode.</span></div>
         </div>
         <button class="bigbtn" id="btnBegin">TOUCH HER</button>
-        <div class="keysline"><kbd>SPACE</kbd> thrust (hold) &nbsp; <kbd>E</kbd> embrace &nbsp; <kbd>C</kbd> rub her &nbsp; <kbd>X</kbd> climax &nbsp; <kbd>V</kbd> first-person &nbsp; <kbd>M</kbd> mute &nbsp; <kbd>F</kbd> fullscreen — best with sound on 🔊<span style="opacity:.0">.</span></div>
+        <div class="keysline"><kbd>SPACE</kbd> thrust (hold) &nbsp; <kbd>E</kbd> embrace &nbsp; <kbd>C</kbd> rub — tap = next spot, double-tap = stop &nbsp; <kbd>1</kbd>–<kbd>4</kbd> pick spot &nbsp; <kbd>Q</kbd> cycle spot &nbsp; <kbd>Tab</kbd> position &nbsp; <kbd>O</kbd> oral &nbsp; <kbd>T</kbd> turn head &nbsp; <kbd>X</kbd> climax &nbsp; <kbd>V</kbd> first-person &nbsp; <kbd>Z</kbd> zoom &nbsp; <kbd>P</kbd> customize &nbsp; <kbd>M</kbd> mute &nbsp; <kbd>F</kbd> fullscreen — best with sound on 🔊<span style="opacity:.0">.</span></div>
       </div>
     </div>
 
@@ -111,11 +116,16 @@
 </div>
   <script src="js/core.js"></script>
   <script src="js/audio.js"></script>
+  <script src="js/chars.js"></script>
   <script src="js/input.js"></script>
   <script src="js/mechanics.js"></script>
   <script src="js/gfx.js"></script>
+  <script src="js/skin.js"></script>
   <script src="js/side.js"></script>
   <script src="js/fpv.js"></script>
+  <script src="js/poses.js"></script>
+  <script src="js/oral.js"></script>
+  <script src="js/charui.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

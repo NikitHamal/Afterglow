@@ -88,9 +88,11 @@
   #btnClimax:disabled{opacity:.35; cursor:default; animation:none}
 
   /* top-right utility */
-  #util{right:1.6em; top:1.2em; display:flex; gap:.7em; pointer-events:auto}
+  #util{right:1.6em; top:1.2em; display:flex; gap:.7em; z-index:50; pointer-events:auto}
   .ubtn{width:2.7em; height:2.7em; border-radius:50%; background:var(--chip); border:1px solid var(--line);
-        cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px)}
+        cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px); pointer-events:auto;
+        user-select:none; -webkit-user-select:none; touch-action:manipulation}
+  .ubtn *{pointer-events:none}
   .ubtn svg{width:1.3em; height:1.3em; stroke:var(--cream); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
   .ubtn:hover svg{stroke:#ffd7e0}
   .ubtn.on{border-color:rgba(255,109,138,.8)}
@@ -160,3 +162,57 @@
   .btnRow{display:flex; gap:1em}
   #endHead{display:flex; align-items:center; gap:1.8em}
   #coPlayer + #btnClimax.ready{}
+
+  /* ---------- character selector ---------- */
+  .charCard{width:54em; max-width:94%; background:rgba(18,9,13,.94); border:1px solid var(--line);
+            border-radius:1.6em; padding:3em 3.4em; position:relative; box-shadow:0 30px 80px rgba(0,0,0,.7); text-align:center}
+  #charRow{display:flex; gap:2em; justify-content:center; margin:2em 0 1.6em; flex-wrap:wrap}
+  #charQuote{font-family:'Cormorant Garamond',serif; font-style:italic; font-size:1.55em; color:#f2c7cf;
+             border-left:2px solid rgba(255,109,138,.5); padding-left:1.2em; text-align:left; line-height:1.5; max-width:36em; margin:0 auto}
+  .cCard{display:flex; flex-direction:column; align-items:center; gap:.7em; cursor:pointer;
+         border:2px solid var(--line); border-radius:1.2em; padding:1em 1em .8em; transition:border-color .25s, box-shadow .25s;
+         background:rgba(0,0,0,.25)}
+  .cCard:hover{border-color:var(--rose-soft); box-shadow:0 0 20px rgba(255,109,138,.18)}
+  .cCard.selected{border-color:var(--rose); box-shadow:0 0 28px rgba(255,109,138,.35)}
+  .cPortrait{border-radius:.8em; display:block}
+  .cName{font-family:'Cormorant Garamond',serif; font-style:italic; font-size:1.5em; color:var(--cream); letter-spacing:.18em}
+
+  /* ---------- customization panel ---------- */
+  #custPanel{position:absolute; right:-30em; top:0; bottom:0; width:28em; z-index:30;
+             background:rgba(14,7,11,.94); border-left:1px solid var(--line);
+             display:flex; flex-direction:column; transition:right .35s cubic-bezier(.22,.6,.36,1);
+             backdrop-filter:blur(12px); overflow:hidden}
+  #custPanel.open{right:0}
+  .cpHead{display:flex; justify-content:space-between; align-items:center;
+          padding:1.4em 1.6em 1em; border-bottom:1px solid var(--line);
+          font-size:1.15em; color:var(--cream); letter-spacing:.18em; font-weight:600; flex-shrink:0}
+  #cpClose{background:none; border:none; color:var(--muted); font-size:1.3em; cursor:pointer; line-height:1}
+  #cpClose:hover{color:#ffd7e0}
+  .cpBody{overflow-y:auto; padding:1.2em 1.6em 2em; display:flex; flex-direction:column; gap:1.2em; flex:1}
+  .cpSection{display:flex; flex-direction:column; gap:.5em}
+  .cpLabel{font-size:.72em; letter-spacing:.22em; color:var(--muted); text-transform:uppercase}
+  .cpPresets{display:flex; gap:.5em; flex-wrap:wrap}
+  .cpPre{font-family:'Sora',sans-serif; font-size:.92em; padding:.5em 1.1em; border-radius:2em;
+         background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--cream); cursor:pointer;
+         transition:border-color .2s, color .2s}
+  .cpPre:hover,.cpPre.on{border-color:var(--rose); color:#ffd7e0}
+  .cpInput{width:100%; background:rgba(0,0,0,.4); border:1px solid var(--line); border-radius:.6em;
+           color:var(--cream); font-family:'Sora',sans-serif; font-size:1em; padding:.55em .9em; outline:none}
+  .cpInput:focus{border-color:var(--rose-soft)}
+  .cpSkinTrack{height:1.4em; border-radius:.7em; border:1px solid var(--line);
+               background:linear-gradient(to right,#f4cba8,#d4936a,#7a4028); position:relative; overflow:hidden}
+  .cpSlider{width:100%; accent-color:var(--rose); cursor:pointer; height:1.3em}
+  .cpSkinTrack .cpSlider{position:absolute; inset:0; width:100%; height:100%; opacity:.85; background:transparent}
+  .cpSwatches{display:flex; gap:.5em; align-items:center; flex-wrap:wrap}
+  .cpSw{width:2em; height:2em; border-radius:50%; border:2px solid rgba(255,255,255,.15); cursor:pointer;
+        transition:border-color .2s, transform .15s}
+  .cpSw:hover,.cpSw.on{border-color:var(--rose); transform:scale(1.15)}
+  .cpColor{width:2em; height:2em; border-radius:50%; border:1px solid var(--line); cursor:pointer;
+           padding:0; background:none; overflow:hidden}
+  .cpToggle{display:flex; gap:.4em}
+  .cpTog{font-family:'Sora',sans-serif; font-size:.88em; padding:.45em 1em; border-radius:2em;
+         background:rgba(255,255,255,.04); border:1px solid var(--line); color:var(--muted); cursor:pointer;
+         transition:border-color .2s, color .2s}
+  .cpTog:hover,.cpTog.on{border-color:var(--rose); color:var(--cream)}
+  #btnCustom{font-size:1.2em; color:var(--cream)}
+  #btnCustom:hover{color:#ffd7e0}

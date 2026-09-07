@@ -1,0 +1,471 @@
+// Afterglow — module: poses (realistic positions, anatomy, and camera perspectives)
+'use strict';
+
+/* ---------------- 7 realistic positions ---------------- */
+const POSES=[
+  {name:'MISSIONARY',line:'like this… look into my eyes… ♥'},
+  {name:'LEGS-UP / DEEP',line:'wrap my legs high… put it all in… ♥'},
+  {name:'DOGGY (ARCHED)',line:'take me from behind… arch my back… ♥'},
+  {name:'PRONE BONE (FLAT)',line:'push me flat into the sheets… so deep… ♥'},
+  {name:'COWGIRL (RIDING)',line:'my turn on top… I’m going to ride you… ♥'},
+  {name:'REV COWGIRL',line:'watch me bounce for you… don’t stop… ♥'},
+  {name:'SPOONING',line:'hold me tight from behind… slow and warm… ♥'}
+];
+
+function posName(){ return (POSES[G.pos|0]||POSES[0]).name; }
+function cyclePose(){
+  if(G.state!=='play'||G.tired) return;
+  G.pos=((G.pos|0)+1)%POSES.length; G.nod=1;
+  say(POSES[G.pos].line,1.8);
+  playMoan(.38,{dur:.42,pmul:1.16,vol:.85});
+}
+
+/* Fluid origins per position for ejaculation jets & climax */
+function poseJetOrigins(){
+  if(G.oral>.5) return {s:[745,460],f:[640,520]};
+  switch(G.pos|0){
+    case 1: return {s:[655,482],f:[640,530]}; // legs up
+    case 2: return {s:[668,442],f:[640,582]}; // doggy
+    case 3: return {s:[650,490],f:[640,575]}; // prone bone
+    case 4: return {s:[706,478],f:[640,555]}; // cowgirl
+    case 5: return {s:[706,475],f:[640,560]}; // rev cowgirl
+    case 6: return {s:[646,522],f:[560,598]}; // spoon
+    default: return {s:[648,498],f:[640,546]}; // missionary
+  }
+}
+function poseFluidOrigin(){ return poseJetOrigins().s; }
+function spawnJets(){
+  const o=poseJetOrigins();
+  for(let i=0;i<8;i++) G.jets.push({view:'side',x:o.s[0]+rr(-4,4),y:o.s[1]+rr(-3,3),
+    vx:rr(-75,15),vy:rr(-195,-55),life:rr(.55,.98)});
+  for(let i=0;i<7;i++) G.jets.push({view:'fpv',x:o.f[0]+rr(-5,5),y:o.f[1]+rr(-4,4),
+    vx:rr(-32,32),vy:rr(-175,-45),life:rr(.55,.95)});
+}
+
+/* ---------------- shared anatomical drawing helpers ---------------- */
+function poseHead(x,y,dir,E,s=1){
+  const hc=G.char?G.char.hairColor:'#231318';
+  // Hair volume behind
+  X.fillStyle=hc;
+  X.beginPath(); X.ellipse(x-dir*14*s,y-8*s,21*s,25*s,dir*.22,0,TAU); X.fill();
+  const sk=getSkin();
+  // Face profile
+  X.fillStyle=sg(y-35*s,y+25*s,sk.her,sk.herSh);
+  X.beginPath(); X.ellipse(x,y,16*s,20*s,0,0,TAU); X.fill();
+  // Eyelashes / bedroom eyes
+  X.strokeStyle='rgba(65,35,42,.95)'; X.lineWidth=2.2*s; X.beginPath();
+  X.moveTo(x+dir*2*s,y-4*s); X.quadraticCurveTo(x+dir*7*s,y-2*s,x+dir*12*s,y-4*s); X.stroke();
+  // Cheeks blush
+  const [bR,bG,bB]=hexToRgb(G.char?G.char.blushColor:'#e86070');
+  X.fillStyle=`rgba(${bR},${bG},${bB},${.15+E.blush*.38})`;
+  X.beginPath(); X.ellipse(x+dir*5*s,y+4*s,7*s,4.5*s,0,0,TAU); X.fill();
+  // Parted luscious lips
+  const mo=E.mouth;
+  X.fillStyle=G.char?G.char.lipColor:'#b3555f';
+  X.beginPath(); X.ellipse(x+dir*11*s,y+8*s,3+mo*3.2*s,2+mo*5*s,0,0,TAU); X.fill();
+  if(mo>.2){
+    X.fillStyle='#5a1622';
+    X.beginPath(); X.ellipse(x+dir*11*s,y+8*s,1.8+mo*1.8*s,1.2+mo*3.2*s,0,0,TAU); X.fill();
+  }
+  // Hair strands falling
+  X.strokeStyle=hc; X.lineWidth=2.6*s; X.beginPath();
+  X.moveTo(x-dir*8*s,y-18*s); X.quadraticCurveTo(x+dir*6*s,y+4*s,x-dir*2*s,y+32*s); X.stroke();
+}
+
+function himHead(x,y,dir){
+  X.fillStyle=sg(y-30,y+20,'#dba06f','#a96c44');
+  X.beginPath(); X.ellipse(x,y,18,20,0,0,TAU); X.fill();
+  X.fillStyle='#22150d'; X.beginPath();
+  X.moveTo(x-dir*18,y-12); X.quadraticCurveTo(x,y-32,x+dir*18,y-12);
+  X.quadraticCurveTo(x+dir*10,y-16,x,y-14); X.quadraticCurveTo(x-dir*10,y-12,x-dir*18,y-12); X.fill();
+  X.strokeStyle='rgba(74,44,47,.9)'; X.lineWidth=2; X.beginPath();
+  X.moveTo(x+dir*3,y-1); X.lineTo(x+dir*11,y-1); X.stroke();
+}
+
+function poseBreast(x,y,r,E){
+  if(!Number.isFinite(r)||r<=0) r=18;
+  const er=clamp(G.ar/100,0,1), sk=getSkin();
+  X.fillStyle=sg(y-r*1.6,y+r,sk.her,sk.herSh);
+  X.beginPath(); X.ellipse(x,y,r*.95,r*1.15,0,0,TAU); X.fill();
+  X.fillStyle='rgba(214,140,120,.85)'; X.beginPath(); X.arc(x,y+r*.52,4.6+er*1.6,0,TAU); X.fill();
+  X.fillStyle=G.char?G.char.nippleColor:'#c25f63';
+  X.beginPath(); X.arc(x,y+r*.52+1,2.5+1.8*er,0,TAU); X.fill();
+}
+
+function poseVulva(x,y,open,angle=0){
+  const eng=clamp(G.ar/100,0,1);
+  X.save(); X.translate(x,y); X.rotate(angle);
+  // Outer labia majora
+  X.strokeStyle='rgba(195,122,108,.75)'; X.lineWidth=3.2;
+  X.beginPath(); X.ellipse(-5,0,4.5,12,.1,0,TAU); X.stroke();
+  X.beginPath(); X.ellipse(5,0,4.5,12,-.1,0,TAU); X.stroke();
+  // Inner labia minora & introitus
+  X.fillStyle='rgba(110,32,44,.75)';
+  X.beginPath(); X.ellipse(0,2,3.5,open*.65,0,0,TAU); X.fill();
+  // Erect clitoral glans
+  X.fillStyle=`rgba(${210+25*eng|0},110,120,.95)`;
+  X.beginPath(); X.arc(0,-10,1.8+1.4*eng,0,TAU); X.fill();
+  // Moisture gloss
+  X.fillStyle='rgba(255,255,255,.42)';
+  X.beginPath(); X.ellipse(1,-2,1.6,3.5,0,0,TAU); X.fill();
+  X.restore();
+}
+
+function poseShaft(base,tip,pu=1){
+  capsule(base,tip,12*pu,10*pu,'#d8a082');
+  // Vein
+  X.strokeStyle='rgba(150,85,65,.32)'; X.lineWidth=2; X.beginPath();
+  X.moveTo(base[0],base[1]-4);
+  X.quadraticCurveTo(lerp(base[0],tip[0],.5)+2,lerp(base[1],tip[1],.5)-5,tip[0]-6,tip[1]); X.stroke();
+  // Glans
+  X.fillStyle='#db9a86';
+  X.beginPath(); X.ellipse(tip[0],tip[1],9.5*pu,10.5*pu,0,0,TAU); X.fill();
+}
+
+/* ---------------- side-view positions ---------------- */
+function drawPoseSide(){
+  const E=herExpression(), br=Math.sin(G.t*TAU*(0.16+G.pleasure*.004))*2.2;
+  const p=G.pos|0;
+  if(p===1) drawLegsUpSide(E,br);
+  else if(p===2) drawDoggySide(E,br);
+  else if(p===3) drawProneBoneSide(E,br);
+  else if(p===4) drawCowgirlSide(E,br);
+  else if(p===5) drawRevCowgirlSide(E,br);
+  else drawSpoonSide(E,br);
+}
+
+// POS 1: LEGS-UP / DEEP MISSIONARY (pelvis propped high, legs back over his shoulders)
+function drawLegsUpSide(E,br){
+  const sk=getSkin(), D=G.depth, jig=G.breast.p*.85, HIS=['#dba06f','#a96c44'];
+  // Far leg held high
+  capsule([620,490],[680,360],28,20,sk.herDk);
+  capsule([680,360],[770,330],18,12,sk.herDk);
+  // Her back arched on bed, pelvis tilted upward towards him
+  capsule([365,520],[600,480],36,32,sg(380,530,sk.her,sk.herSh));
+  X.fillStyle=sg(420,530,sk.her,sk.herSh);
+  X.beginPath(); X.ellipse(620,485,42,36,-.25,0,TAU); X.fill();
+  // Elevated vulva
+  const open=4+9*D, V=[655,482];
+  poseVulva(V[0],V[1],open,.3);
+  // Bouncing breasts
+  poseBreast(450,470+jig*.5,18,E);
+  poseBreast(485,465+jig*.5,17,E);
+  // Near leg pulled back over his shoulder
+  capsule([625,485],[710,380],30,22,sg(380,530,sk.her,sk.herSh));
+  capsule([710,380],[805,355],20,13,sg(380,530,sk.herSh,sk.herDk));
+  // Her head on pillow
+  poseHead(295,518,-1,E);
+  // Him leaning forward over her
+  capsule([810,560],[760,460],40,34,sg(360,580,HIS[0],HIS[1]));
+  capsule([760,460],[695,385],44,38,sg(340,520,HIS[0],HIS[1]));
+  himHead(678,350,-1);
+  // His hands gripping her lifted thighs/hips
+  capsule([720,410],[685,445],18,14,sg(340,520,HIS[0],HIS[1]));
+  X.fillStyle='#c08f60'; X.beginPath(); X.ellipse(682,448,13,9,-.2,0,TAU); X.fill();
+  // Deep thrusting shaft
+  const B=[765,510], pu=1+.28*(G.shaftPulse||0);
+  const tip=[lerp(B[0],V[0],.3+.68*D),lerp(B[1],V[1],.3+.68*D)];
+  poseShaft(B,tip,pu);
+}
+
+// POS 2: DOGGY STYLE (arched spine, lifted rounded buttocks, hands gripping her hips)
+function drawDoggySide(E,br){
+  const sk=getSkin(), D=G.depth, jig=G.breast.p*.9, HIS=['#dba06f','#a96c44'];
+  // Her arms kneeling on bed, facing left
+  capsule([365,475],[345,540],17,14,sg(380,560,sk.her,sk.herSh));
+  capsule([345,540],[360,578],13,10,sg(380,560,sk.herSh,sk.herDk));
+  // Arched back & waist sloping down then rising to ass
+  capsule([368,460],[595,425],35,30,sg(380,520,sk.her,sk.herSh));
+  X.save(); X.globalCompositeOperation='soft-light';
+  shade(480,432,68,22,'rgba(255,230,205,.30)',-.1); X.restore();
+  // Rounded buttocks & gluteal curve
+  X.fillStyle=sg(360,480,sk.her,sk.herSh);
+  X.beginPath(); X.ellipse(625,420,42,46,0,0,TAU); X.fill();
+  X.strokeStyle='rgba(140,75,60,.45)'; X.lineWidth=2.2; X.beginPath();
+  X.moveTo(642,382); X.quadraticCurveTo(652,416,642,450); X.stroke();
+  // Rear entry vulva
+  const open=4+9*D, V=[668,442];
+  poseVulva(V[0],V[1],open,.15);
+  // Hanging breasts
+  poseBreast(442,504+jig*.5,18,E);
+  poseBreast(484,498+jig*.5,17,E);
+  // Her kneeling thighs
+  capsule([608,445],[582,560],32,24,sg(400,580,sk.her,sk.herSh));
+  capsule([582,560],[638,575],22,14,sg(400,580,sk.herSh,sk.herDk));
+  // Head turned, looking back over shoulder with bedroom eyes
+  poseHead(296,505,-1,E);
+  // Him kneeling upright behind her
+  capsule([835,565],[798,465],36,32,sg(380,600,HIS[0],HIS[1]));
+  capsule([798,465],[740,360],42,36,sg(340,520,HIS[0],HIS[1]));
+  himHead(724,324,-1);
+  // His hands holding her waist/hips
+  capsule([750,380],[698,412],20,16,sg(340,520,HIS[0],HIS[1]));
+  capsule([698,412],[660,426],15,12,sg(340,520,HIS[0],HIS[1]));
+  X.fillStyle='#c08f60'; X.beginPath(); X.ellipse(658,427,13,9,-.3,0,TAU); X.fill();
+  // Shaft entering along rear axis
+  const B=[788,455], pu=1+.28*(G.shaftPulse||0);
+  const tip=[lerp(B[0],V[0],.3+.68*D),lerp(B[1],V[1],.3+.68*D)];
+  poseShaft(B,tip,pu);
+}
+
+// POS 3: PRONE BONE (flat on stomach, thighs tight, heavy rear embrace)
+function drawProneBoneSide(E,br){
+  const sk=getSkin(), D=G.depth, HIS=['#dba06f','#a96c44'];
+  // Her lying flat on bed, head turned on pillow
+  poseHead(290,526,-1,E);
+  // Flat slender back and tight buttocks
+  capsule([330,528],[610,505],32,28,sg(460,540,sk.her,sk.herSh));
+  X.fillStyle=sg(450,540,sk.her,sk.herSh);
+  X.beginPath(); X.ellipse(628,495,38,36,0,0,TAU); X.fill();
+  // Legs pressed straight together on bed
+  capsule([628,505],[790,535],28,18,sg(460,560,sk.her,sk.herSh));
+  capsule([790,535],[910,545],18,12,sg(460,560,sk.herSh,sk.herDk));
+  // Entry angle
+  const open=3+8*D, V=[650,490];
+  poseVulva(V[0],V[1],open,.25);
+  // Him lying right on top of her, pressing her flat
+  capsule([420,495],[680,470],42,36,sg(420,530,HIS[0],HIS[1]));
+  capsule([680,470],[830,510],36,26,sg(440,560,HIS[0],HIS[1]));
+  himHead(400,470,-1);
+  // His arm reaching around her ribs
+  capsule([480,485],[530,515],20,16,sg(440,540,HIS[0],HIS[1]));
+  capsule([530,515],[575,525],15,12,sg(440,540,HIS[0],HIS[1]));
+  X.fillStyle='#c08f60'; X.beginPath(); X.ellipse(576,525,12,8,-.2,0,TAU); X.fill();
+  // Shaft gliding between her tight thighs
+  const B=[720,495], pu=1+.28*(G.shaftPulse||0);
+  const tip=[lerp(B[0],V[0],.3+.68*D),lerp(B[1],V[1],.3+.68*D)];
+  poseShaft(B,tip,pu);
+}
+
+// POS 4: COWGIRL (her on top straddling his waist, riding up and down)
+function drawCowgirlSide(E,br){
+  const sk=getSkin(), D=G.depth, jig=G.breast.p*.95, HIS=['#dba06f','#a96c44'];
+  const hipsY=510-42*D;
+  // Him lying flat on bed
+  X.fillStyle=sg(500,580,HIS[0],HIS[1]);
+  X.beginPath(); X.ellipse(950,548,24,20,0,0,TAU); X.fill();
+  X.fillStyle='#22150d'; X.beginPath(); X.ellipse(956,540,24,12,0,Math.PI,TAU); X.fill();
+  capsule([928,545],[710,540],40,35,sg(500,580,HIS[0],HIS[1]));
+  capsule([710,540],[555,556],32,24,sg(500,590,HIS[0],HIS[1]));
+  // Shaft pointing straight up into her
+  const pu=1+.28*(G.shaftPulse||0);
+  capsule([706,535],[706,hipsY+8],12*pu,10*pu,'#d8a082');
+  // Her hips & torso rising and falling
+  X.fillStyle=sg(hipsY-180,hipsY+20,sk.her,sk.herSh);
+  X.beginPath(); X.ellipse(700,hipsY,36,28,0,0,TAU); X.fill();
+  capsule([700,hipsY-10],[688,hipsY-170],35,28,sg(hipsY-200,hipsY,sk.her,sk.herSh));
+  // Bouncing breasts as she rides
+  poseBreast(668,hipsY-135+jig*.6,18,E);
+  poseBreast(708,hipsY-133+jig*.6,17,E);
+  // Her arms planted on his chest
+  capsule([688,hipsY-158],[658,hipsY-68],17,14,sg(hipsY-200,hipsY,sk.her,sk.herSh));
+  capsule([658,hipsY-68],[638,hipsY-36],13,10,sg(hipsY-200,hipsY,sk.herSh,sk.herDk));
+  capsule([692,hipsY-158],[732,hipsY-68],17,14,sg(hipsY-200,hipsY,sk.her,sk.herSh));
+  capsule([732,hipsY-68],[750,hipsY-36],13,10,sg(hipsY-200,hipsY,sk.herSh,sk.herDk));
+  X.fillStyle=sk.herSh; X.beginPath(); X.ellipse(636,hipsY-34,10,7,-.4,0,TAU); X.fill();
+  X.fillStyle=sk.herSh; X.beginPath(); X.ellipse(752,hipsY-34,10,7,.4,0,TAU); X.fill();
+  // Straddling legs
+  capsule([700,hipsY],[590,560],28,22,sg(hipsY-60,580,sk.her,sk.herSh));
+  capsule([700,hipsY],[810,560],28,22,sg(hipsY-60,580,sk.her,sk.herSh));
+  // Her head tilted in pleasure
+  poseHead(686,hipsY-208,-1,E);
+}
+
+// POS 5: REVERSE COWGIRL (her facing away, back arched, buttocks front-and-center)
+function drawRevCowgirlSide(E,br){
+  const sk=getSkin(), D=G.depth, jig=G.breast.p*.9, HIS=['#dba06f','#a96c44'];
+  const hipsY=510-42*D;
+  // Him lying flat, head left
+  himHead(450,545,-1);
+  capsule([480,545],[710,540],40,35,sg(500,580,HIS[0],HIS[1]));
+  capsule([710,540],[880,555],34,26,sg(500,590,HIS[0],HIS[1]));
+  // Shaft up
+  const pu=1+.28*(G.shaftPulse||0);
+  capsule([706,535],[706,hipsY+8],12*pu,10*pu,'#d8a082');
+  // Her arched back facing away (looking right)
+  X.fillStyle=sg(hipsY-180,hipsY+20,sk.her,sk.herSh);
+  X.beginPath(); X.ellipse(705,hipsY,38,30,0,0,TAU); X.fill();
+  capsule([705,hipsY-10],[718,hipsY-170],36,28,sg(hipsY-200,hipsY,sk.her,sk.herSh));
+  // Buttocks curve
+  X.fillStyle=sg(hipsY-50,hipsY+30,sk.her,sk.herSh);
+  X.beginPath(); X.ellipse(688,hipsY+4,28,32,-.2,0,TAU); X.fill();
+  // Arms reaching down to his knees
+  capsule([715,hipsY-155],[760,hipsY-65],17,14,sg(hipsY-200,hipsY,sk.her,sk.herSh));
+  capsule([760,hipsY-65],[800,hipsY-30],13,10,sg(hipsY-200,hipsY,sk.herSh,sk.herDk));
+  X.fillStyle=sk.herSh; X.beginPath(); X.ellipse(802,hipsY-28,11,8,.3,0,TAU); X.fill();
+  // Her head arched back
+  poseHead(724,hipsY-205,1,E);
+}
+
+// POS 6: SPOONING (side-by-side embrace, his chest pressed to her back)
+function drawSpoonSide(E,br){
+  const sk=getSkin(), D=G.depth, HIS=['#b57c53','#96613e'];
+  // Him behind
+  himHead(405,496,-1);
+  capsule([440,502],[680,506],38,34,sg(470,560,HIS[0],HIS[1]));
+  capsule([680,510],[535,562],34,26,sg(470,590,HIS[0],HIS[1]));
+  // His arm wrapped around her waist
+  capsule([518,498],[560,516],20,16,sg(470,560,HIS[0],HIS[1]));
+  capsule([560,516],[602,522],15,12,sg(470,560,HIS[0],HIS[1]));
+  X.fillStyle='#c08f60'; X.beginPath(); X.ellipse(604,522,12,8,-.2,0,TAU); X.fill();
+  // Her body in front, head on pillow
+  poseHead(295,520,-1,E);
+  capsule([330,524],[605,526],34,28,sg(480,570,sk.her,sk.herSh));
+  X.fillStyle=sg(480,570,sk.her,sk.herSh);
+  X.beginPath(); X.ellipse(620,522,34,36,0,0,TAU); X.fill();
+  // Bent legs
+  capsule([605,528],[470,548],28,22,sg(480,580,sk.her,sk.herSh));
+  capsule([470,548],[560,564],20,14,sg(480,580,sk.herSh,sk.herDk));
+  // Entry vulva
+  const open=3+8*D, V=[646,522];
+  poseVulva(V[0],V[1],open,.2);
+  // Shaft entering from behind
+  const B=[670,508], pu=1+.28*(G.shaftPulse||0);
+  const tip=[lerp(B[0],V[0],.3+.68*D),lerp(B[1],V[1],.3+.68*D)];
+  poseShaft(B,tip,pu);
+}
+
+/* ---------------- first-person view positions ---------------- */
+function drawPoseFPV(){
+  drawFPVRoom();
+  const E=herExpression(), br=Math.sin(G.t*TAU*(0.16+G.pleasure*.004))*2;
+  const p=G.pos|0;
+  if(p===1) drawLegsUpFPV(E,br);
+  else if(p===2) drawDoggyFPV(E,br);
+  else if(p===3) drawProneBoneFPV(E,br);
+  else if(p===4) drawCowgirlFPV(E,br);
+  else if(p===5) drawRevCowgirlFPV(E,br);
+  else drawSpoonFPV(E,br);
+  drawFPVFluids();
+}
+
+// FPV 1: LEGS-UP / DEEP MISSIONARY (her thighs pinned back beside your chest)
+function drawLegsUpFPV(E,br){
+  const sk=getSkin(), D=G.depth, pu=1+.28*(G.shaftPulse||0);
+  // Her arched back and pelvis elevated high towards you
+  capsule([640,680],[640,430],95,72,sg(380,680,sk.her,sk.herSh));
+  // Elevated glistening buttocks & vulva
+  X.fillStyle=sg(500,640,sk.her,sk.herSh);
+  X.beginPath(); X.ellipse(640,570,72,48,0,0,TAU); X.fill();
+  const open=5+10*D;
+  poseVulva(640,545,open,0);
+  // Her thighs held high beside your shoulders
+  for(const s of [-1,1]){
+    capsule([640+s*65,570],[640+s*180,360],44,32,sg(340,600,sk.her,sk.herSh));
+    capsule([640+s*180,360],[640+s*120,220],30,20,sg(220,400,sk.herSh,sk.herDk));
+  }
+  // Shaft driving straight in from below
+  const tipY=lerp(650,548,D);
+  capsule([640,795],[640,tipY],26*pu,17*pu,sg(620,800,'#d99a6d','#96613e'));
+  X.fillStyle='#c98873'; X.beginPath(); X.ellipse(640,tipY,17*pu,12*pu,0,0,TAU); X.fill();
+}
+
+// FPV 2: DOGGY STYLE (sculpted ass right in front of you, hands gripping her hips)
+function drawDoggyFPV(E,br){
+  const sk=getSkin(), D=G.depth, pu=1+.28*(G.shaftPulse||0);
+  // Her arched back sloping away
+  capsule([640,710],[640,390],92,68,sg(320,700,sk.her,sk.herSh));
+  X.save(); X.globalCompositeOperation='soft-light';
+  shade(640,510,32,110,'rgba(255,230,205,.28)',0); X.restore();
+  // Sculpted, rounded buttocks with gluteal crease
+  X.fillStyle=sg(490,650,sk.her,sk.herSh);
+  X.beginPath(); X.ellipse(592,560,50,62,0,0,TAU); X.fill();
+  X.beginPath(); X.ellipse(688,560,50,62,0,0,TAU); X.fill();
+  X.strokeStyle='rgba(135,70,55,.5)'; X.lineWidth=3.2; X.beginPath();
+  X.moveTo(640,502); X.quadraticCurveTo(646,552,640,604); X.stroke();
+  // Rear entry vulva parting
+  const open=5+10*D;
+  poseVulva(640,586,open,0);
+  // Your hands firmly gripping her hips
+  for(const s of [-1,1]){
+    capsule([640+s*230,770],[640+s*86,615],32,25,sg(600,770,'#d5a071','#a96c44'));
+    X.fillStyle='#c08f60'; X.beginPath(); X.ellipse(640+s*82,612,20,14,s*.4,0,TAU); X.fill();
+  }
+  // Shaft rising from below into her
+  const tipY=lerp(695,592,D);
+  capsule([640,805],[640,tipY],26*pu,17*pu,sg(640,805,'#d99a6d','#96613e'));
+  if(D<.55){ X.fillStyle='#c98873'; X.beginPath(); X.ellipse(640,tipY-5,17*pu,12*pu,0,0,TAU); X.fill(); }
+}
+
+// FPV 3: PRONE BONE (flat on stomach, tight thighs, deep friction)
+function drawProneBoneFPV(E,br){
+  const sk=getSkin(), D=G.depth, pu=1+.28*(G.shaftPulse||0);
+  // Flat back extending forward
+  capsule([640,710],[640,360],88,64,sg(320,700,sk.her,sk.herSh));
+  // Buttocks pressed flat
+  X.fillStyle=sg(500,640,sk.her,sk.herSh);
+  X.beginPath(); X.ellipse(640,580,70,54,0,0,TAU); X.fill();
+  // Tightly pressed thighs
+  for(const s of [-1,1])
+    capsule([640+s*38,600],[640+s*32,740],34,26,sg(580,740,sk.herSh,sk.herDk));
+  // Stretched vulva
+  const open=4+9*D;
+  poseVulva(640,580,open,0);
+  // Shaft
+  const tipY=lerp(680,582,D);
+  capsule([640,795],[640,tipY],25*pu,16*pu,sg(640,800,'#d99a6d','#96613e'));
+}
+
+// FPV 4: COWGIRL (her riding on top, straddling you, bouncing breasts above)
+function drawCowgirlFPV(E,br){
+  const sk=getSkin(), D=G.depth, jig=G.breast.p*.95, bsz=.7+(G.char?G.char.breastSize:.45)*.6;
+  const hipsY=600-60*D;
+  // Your abdomen in foreground
+  X.fillStyle=sg(700,810,'#d99a6d','#96613e');
+  X.beginPath(); X.ellipse(640,812,220,95,0,0,TAU); X.fill();
+  // Shaft up into her
+  const pu=1+.28*(G.shaftPulse||0);
+  capsule([640,790],[640,hipsY+6],24*pu,16*pu,sg(650,800,'#d99a6d','#96613e'));
+  // Her straddling thighs & hips
+  for(const s of [-1,1])
+    capsule([640+s*65,hipsY],[s<0?515:765,725],46,36,sg(hipsY-40,725,sk.her,sk.herSh));
+  X.fillStyle=sg(hipsY-60,hipsY+30,sk.her,sk.herSh);
+  X.beginPath(); X.ellipse(640,hipsY,74,42,0,0,TAU); X.fill();
+  // Torso rising to chest
+  capsule([640,hipsY-10],[640,360],62,48,sg(300,640,sk.her,sk.herSh));
+  // Bouncing breasts above
+  for(const s of [-1,1]){
+    const bx=640+s*66, by=330+jig*.7+br*.5;
+    X.fillStyle=sg(by-40,by+40,sk.her,sk.herSh);
+    X.beginPath(); X.ellipse(bx,by,32*bsz,38*bsz,s*.1,0,TAU); X.fill();
+    const aer=8.5+2*clamp(G.ar/100,0,1);
+    X.fillStyle='rgba(214,140,120,.85)'; X.beginPath(); X.ellipse(bx,by+4,aer,aer*.85,0,0,TAU); X.fill();
+    X.fillStyle=G.char?G.char.nippleColor:'#c25f63';
+    X.beginPath(); X.arc(bx,by+5,3.2+2*clamp(G.ar/100,0,1),0,TAU); X.fill();
+  }
+  // Face above looking down at you
+  X.fillStyle=sg(180,260,sk.her,sk.herSh);
+  X.beginPath(); X.ellipse(640,232,32,36,0,0,TAU); X.fill();
+  X.fillStyle=G.char?G.char.hairColor:'#231318';
+  X.beginPath(); X.ellipse(640,206,38,28,0,0,TAU); X.fill();
+  for(const s of [-1,1]) X.beginPath(), X.ellipse(640+s*35,300,15,72,s*.08,0,TAU), X.fill();
+}
+
+// FPV 5: REVERSE COWGIRL (her on top facing away, ass bouncing in your face)
+function drawRevCowgirlFPV(E,br){
+  const sk=getSkin(), D=G.depth, pu=1+.28*(G.shaftPulse||0);
+  const hipsY=580-55*D;
+  // Torso rising away
+  capsule([640,hipsY-10],[640,330],64,48,sg(280,600,sk.her,sk.herSh));
+  // Round buttocks bouncing right in front of the camera
+  X.fillStyle=sg(hipsY-50,hipsY+40,sk.her,sk.herSh);
+  X.beginPath(); X.ellipse(588,hipsY,54,64,0,0,TAU); X.fill();
+  X.beginPath(); X.ellipse(692,hipsY,54,64,0,0,TAU); X.fill();
+  X.strokeStyle='rgba(135,70,55,.5)'; X.lineWidth=3.2; X.beginPath();
+  X.moveTo(640,hipsY-50); X.quadraticCurveTo(646,hipsY,640,hipsY+50); X.stroke();
+  // Entry
+  const open=5+9*D;
+  poseVulva(640,hipsY+15,open,0);
+}
+
+// FPV 6: SPOONING (side-by-side rear angle)
+function drawSpoonFPV(E,br){
+  const sk=getSkin(), D=G.depth, pu=1+.28*(G.shaftPulse||0);
+  capsule([420,730],[700,300],86,60,sg(300,700,sk.her,sk.herSh));
+  X.fillStyle=sg(520,680,sk.her,sk.herSh);
+  X.beginPath(); X.ellipse(500,622,56,72,.2,0,TAU); X.fill();
+  const open=4+8*D;
+  poseVulva(558,602,open,.2);
+  const tip=[lerp(560,560,.3+.68*D),lerp(700,602,.3+.68*D)];
+  capsule([560,700],tip,20*pu,15*pu,sg(600,720,'#d99a6d','#96613e'));
+}

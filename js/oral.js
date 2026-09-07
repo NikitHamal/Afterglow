@@ -1,0 +1,674 @@
+// Afterglow — module: oral (cinematic fellatio — FPV + side)
+'use strict';
+
+/* ---------------- oral mode interactions ---------------- */
+function toggleOral(){
+  if(G.state!=='play'||G.tired) return;
+  G.oralT=G.oralT?0:1; G.nod=1;
+  if(G.oralT){
+    say(pick(['let me taste you… ♥','mmh… I want you in my mouth… ♥','relax… let me use my lips… ♥','I need this…']),2.0);
+    playMoan(.38,{dur:.45,pmul:1.2,vol:.85});
+  } else {
+    say('mmh… want me to ride you instead…? ♥',1.8);
+    playLipPop();
+  }
+}
+
+/* shared oral kinematics */
+function oralK(){
+  const D=clamp(G.depth,0,1);
+  const vel=G.vel||0;
+  const pu=1+.30*(G.shaftPulse||0);
+  const wet=clamp(.18+D*.55+Math.abs(vel)*.45+(G.ar||0)/180,0,1);
+  const bob=Math.sin(G.t*7.4)*Math.min(Math.abs(vel)*9,7);
+  const suck=clamp(Math.abs(vel)*1.1+D*.55,0,1);
+  const swallow=D>.52?Math.max(0,Math.sin(G.t*2.6)*.55+.45)*((D-.52)/.48):0;
+  return {D,vel,pu,wet,bob,suck,swallow,E:herExpression(),sk:getSkin()};
+}
+function oralCol(){
+  return {
+    hair:G.char?G.char.hairColor:'#231318',
+    eye:G.char?G.char.eyeColor:'#4a2c33',
+    lip:G.char?G.char.lipColor:'#b3555f',
+    blush:G.char?G.char.blushColor:'#e86070',
+    nip:G.char?G.char.nippleColor:'#c25f63'
+  };
+}
+
+/* lip ring that the shaft actually passes through */
+function lipRing(cx,cy,rx,ry,holeX,holeY,ang,lip){
+  X.beginPath();
+  X.ellipse(cx,cy,rx,ry,ang,0,TAU);
+  X.ellipse(cx,cy,holeX,holeY,ang,0,TAU,true);
+  X.fillStyle=lip; X.fill('evenodd');
+}
+
+function oralSaliva(ax,ay,bx,by,cpx,cpy,a){
+  X.strokeStyle=`rgba(255,248,242,${a})`;
+  X.lineWidth=1.7; X.lineCap='round';
+  X.beginPath(); X.moveTo(ax,ay); X.quadraticCurveTo(cpx,cpy,bx,by); X.stroke();
+}
+
+function oralCatch(x,y,r){
+  X.fillStyle='rgba(255,255,255,.93)';
+  X.beginPath(); X.arc(x,y,r,0,TAU); X.fill();
+  X.fillStyle='rgba(255,255,255,.45)';
+  X.beginPath(); X.arc(x+r*.9,y+r*.8,r*.42,0,TAU); X.fill();
+}
+
+/* ============================================================
+   SIDE VIEW — him reclined, her kneeling, shaft entering mouth
+   ============================================================ */
+function drawOralSide(){
+  const K=oralK(), C=oralCol(), {D,vel,pu,wet,bob,suck,swallow,E,sk}=K;
+  const HIS=['#dba06f','#a96c44'];
+
+  /* ---- him reclined ---- */
+  himHead(286,540,-1);
+  capsule([332,534],[692,528],46,36,himT());
+  X.save(); X.globalCompositeOperation='multiply';
+  shade(478,526,96,24,'rgba(110,60,40,.20)',0);
+  shade(560,532,64,16,'rgba(90,48,32,.14)',0);
+  X.restore();
+  X.save(); X.globalCompositeOperation='soft-light';
+  shade(508,520,84,32,'rgba(255,214,172,.40)',0);
+  X.restore();
+  /* legs */
+  capsule([692,534],[566,446],38,28,himT());
+  capsule([566,446],[444,560],28,18,himT());
+  capsule([692,538],[506,568],34,22,himT());
+  footS(500,566,2.98,1.15,himT());
+  X.save(); X.globalCompositeOperation='multiply';
+  shade(618,498,44,54,'rgba(70,36,22,.24)',-.28);
+  X.restore();
+
+  /* ---- shaft axis: base → tip, mouth slides along it ---- */
+  const base=[708,522], ang=-0.56;
+  const len=96;
+  const tip=[base[0]+Math.cos(ang)*len, base[1]+Math.sin(ang)*len];
+  const mouthX=lerp(tip[0]+10, base[0]+22, D)+bob*.15;
+  const mouthY=lerp(tip[1]-8,  base[1]-18, D)+bob*.35;
+  const inside=lerp(10, 38, D); /* how much shaft is past the lips */
+
+  /* shaft body (full length; lips/face will cover the inner part) */
+  const sgS=X.createLinearGradient(base[0],base[1]-16,base[0],base[1]+16);
+  sgS.addColorStop(0,'#e2b494'); sgS.addColorStop(.4,'#d4a078');
+  sgS.addColorStop(.72,'#c28666'); sgS.addColorStop(1,'#a86c50');
+  capsule(base,tip,13.4*pu,11.2*pu,himT());
+  X.strokeStyle='rgba(142,72,56,.40)'; X.lineWidth=2.3; X.lineCap='round';
+  X.beginPath();
+  X.moveTo(base[0]+5,base[1]-7);
+  X.quadraticCurveTo(lerp(base[0],tip[0],.46)+3,lerp(base[1],tip[1],.46)-7,tip[0]-10,tip[1]+3);
+  X.stroke();
+  X.lineWidth=1.35;
+  X.beginPath();
+  X.moveTo(lerp(base[0],tip[0],.28),base[1]-3);
+  X.quadraticCurveTo(lerp(base[0],tip[0],.58),lerp(base[1],tip[1],.58)+3,lerp(base[0],tip[0],.8),tip[1]-1);
+  X.stroke();
+  /* glans */
+  const gg=X.createRadialGradient(tip[0]-3.4*pu,tip[1]-4*pu,1,tip[0],tip[1],12.6*pu);
+  gg.addColorStop(0,'#eaa98e'); gg.addColorStop(.58,'#d89078'); gg.addColorStop(1,'#ae6854');
+  X.fillStyle=gg;
+  X.beginPath(); X.ellipse(tip[0],tip[1],10.4*pu,11.4*pu,ang+.26,0,TAU); X.fill();
+  X.save(); X.globalCompositeOperation='multiply';
+  X.fillStyle='rgba(150,62,50,.26)';
+  X.beginPath(); X.ellipse(tip[0]-1,tip[1]+1.2,9.2*pu,4.6*pu,ang+.12,0,TAU); X.fill();
+  X.restore();
+  X.strokeStyle='rgba(176,86,70,.42)'; X.lineWidth=1.5;
+  X.beginPath(); X.moveTo(tip[0]-3,tip[1]+6); X.quadraticCurveTo(tip[0],tip[1]+9.5,tip[0]+4,tip[1]+5); X.stroke();
+  X.fillStyle='rgba(255,250,244,.40)';
+  X.beginPath(); X.ellipse(tip[0]-3,tip[1]-3,2.9,4.3,ang,0,TAU); X.fill();
+  if(wet>.12){
+    X.save(); X.globalCompositeOperation='screen';
+    X.strokeStyle=`rgba(255,242,234,${.18+wet*.30})`; X.lineWidth=2.5;
+    X.beginPath(); X.moveTo(mouthX-2,mouthY-5); X.lineTo(base[0]+14,base[1]-10); X.stroke();
+    X.restore();
+  }
+
+  /* ---- her kneeling body ---- */
+  capsule([988,578],[908,570],18,13,herFarT());
+  footS(994,576,0.12,1.0,herFarT());
+  capsule([908,570],[876,478],36,30,herT());
+  capsule([876,478],[824,368],37,30,herT());
+  X.save(); X.globalCompositeOperation='soft-light';
+  shade(848,424,28,58,'rgba(255,228,198,.36)',.08);
+  X.restore();
+  X.save(); X.globalCompositeOperation='multiply';
+  shade(862,502,20,42,'rgba(108,52,42,.22)',.14);
+  X.restore();
+  /* hip / waist */
+  skFillShape(()=>{
+    X.moveTo(824,372); X.quadraticCurveTo(858,400,872,454);
+    X.quadraticCurveTo(890,510,868,548); X.quadraticCurveTo(820,500,808,430);
+    X.quadraticCurveTo(802,390,824,372); X.closePath();
+  },herT(),[806,392,886,530]);
+  poseGlute(884,500,30,36,0);
+
+  const jig=G.breast.p*.78+Math.sin(G.t*8)*vel*1.15;
+  poseBreastSide(802,408+jig,20,E);
+  poseBreastSide(836,402+jig*.86,18,E);
+
+  /* left arm → hand on shaft base */
+  capsule([826,376],[770,450],18.5,15,herT());
+  capsule([770,450],[base[0]+8,base[1]-16],14,11,herFarT());
+  handS(base[0]+12,base[1]-14,ang+Math.PI,1.0,herT(),{curl:.78,spread:.24});
+
+  /* right arm braced on his thigh */
+  capsule([830,378],[804,456],17,14,herT());
+  capsule([804,456],[786,536],13,10,herFarT());
+  handS(784,538,3.36,.9,herT(),{curl:.3,spread:.34});
+
+  /* ---- head (profile) ---- */
+  const headAng=-0.46+0.22*D;
+  const hx=mouthX+21, hy=mouthY-6;
+
+  /* hair masses + strands (falling along her back, not over the chest) */
+  hairMassS(hx+44,hy-14,30,36,headAng+.04,C.hair);
+  hairMassS(hx+54,hy+28,22,46,-.2,C.hair);
+  hairMassS(hx+22,hy-28,22,15,headAng-.22,C.hair);
+  const hSheen='rgba(255,205,215,0.14)';
+  tressS(hx+8,hy-20,hx,hy-12,hx-3,hy-2,hx+2,hy+10,4.4,1.2,C.hair,hSheen);
+  tressS(hx+56,hy+6,hx+64,hy+22,hx+66,hy+40,hx+58,hy+56,5,1.4,C.hair,hSheen);
+  tressS(hx+36,hy-34,hx+24,hy-41,hx+12,hy-38,hx+6,hy-26,4.6,1.2,C.hair,hSheen);
+  X.save(); X.globalCompositeOperation='soft-light';
+  shade(hx+28,hy-22,20,16,'rgba(255,236,222,.24)',headAng);
+  X.restore();
+
+  /* neck + throat bulge (head hangs below the shoulders, neck rises up-right) */
+  const nkPath=()=>{
+    X.moveTo(hx+2,hy-6); X.quadraticCurveTo(hx+10,hy-28,hx+14,hy-50);
+    X.quadraticCurveTo(hx+26,hy-52,hx+26,hy-38); X.quadraticCurveTo(hx+20,hy-16,hx+16,hy+2);
+    X.closePath();
+  };
+  skFillShape(nkPath,herT(),[hx,hy-50,hx+26,hy]);
+  if(D>.56){
+    const b=(D-.56)*16+swallow*4;
+    X.fillStyle=herT().b;
+    X.beginPath(); X.ellipse(hx+6,hy-26,9+b*.42,7.2+b*.65,-.5,0,TAU); X.fill();
+    X.fillStyle='rgba(255,220,198,.16)';
+    X.beginPath(); X.ellipse(hx+4,hy-30,4.2,3.2,-.4,0,TAU); X.fill();
+  }
+
+  /* skull */
+  const FT=herT();
+  skFillRad(()=>{ X.ellipse(hx,hy,20,24,headAng,0,TAU); },FT,hx-7,hy-9,2,30);
+  X.fillStyle=FT.s;
+  X.beginPath();
+  X.moveTo(hx-10,hy+8);
+  X.quadraticCurveTo(hx-16,hy+18,hx-6,hy+24);
+  X.quadraticCurveTo(hx+6,hy+26,hx+12,hy+16);
+  X.closePath(); X.fill();
+  X.save(); X.globalCompositeOperation='multiply';
+  shade(hx-6,hy+10,12,8,'rgba(150,80,60,.18)',.2);
+  shade(hx+10,hy-4,10,12,'rgba(140,75,55,.12)',.3);
+  X.restore();
+  X.save(); X.globalCompositeOperation='soft-light';
+  shade(hx-8,hy-16,8,16,'rgba(255,236,214,.42)',-.15);
+  X.restore();
+
+  /* ear */
+  X.fillStyle=sk.herSh;
+  X.beginPath(); X.ellipse(hx+17,hy-2,5.4,8.4,headAng+.28,0,TAU); X.fill();
+  X.strokeStyle='rgba(150,90,80,.4)'; X.lineWidth=1.2;
+  X.beginPath(); X.arc(hx+17,hy-2,3.2,-1.1,1.6); X.stroke();
+
+  /* eye */
+  const eyeShut=E.eye<.16;
+  const ex=hx-7.2, ey=hy-6.2;
+  if(eyeShut){
+    X.strokeStyle='rgba(58,28,36,.96)'; X.lineWidth=2.5;
+    X.beginPath(); X.moveTo(ex-8,ey+1); X.quadraticCurveTo(ex,ey+4,ex+8,ey); X.stroke();
+    X.lineWidth=1.2;
+    for(let i=0;i<5;i++){ const lx=ex-7+i*3.2;
+      X.beginPath(); X.moveTo(lx,ey); X.lineTo(lx-1.1,ey-3.4); X.stroke(); }
+  } else {
+    X.fillStyle='#f7f3f0';
+    X.beginPath(); X.ellipse(ex,ey,5.6,3.6,.2,0,TAU); X.fill();
+    X.fillStyle='rgba(214,150,146,.38)';
+    X.beginPath(); X.ellipse(ex-3.8,ey+.2,1.7,1.4,0,0,TAU); X.fill();
+    X.fillStyle=C.eye;
+    X.beginPath(); X.arc(ex-.6,ey-.5,2.7,0,TAU); X.fill();
+    X.fillStyle='#11080a';
+    X.beginPath(); X.arc(ex-.6,ey-.55,1.4,0,TAU); X.fill();
+    oralCatch(ex-1.5,ey-1.4,1.05);
+    X.strokeStyle='rgba(48,22,28,.95)'; X.lineWidth=2.1;
+    X.beginPath(); X.moveTo(ex-9,ey-1.2); X.quadraticCurveTo(ex,ey-4.8,ex+8,ey-.4); X.stroke();
+    X.lineWidth=1.1;
+    for(let i=0;i<5;i++){ const lx=ex-8+i*3.4, ly=ey-2.2-Math.sin(i*.7)*.7;
+      X.beginPath(); X.moveTo(lx,ly); X.lineTo(lx-1.3,ly-3.4); X.stroke(); }
+  }
+  X.strokeStyle=C.hair; X.lineWidth=1.9; X.lineCap='round';
+  X.beginPath(); X.moveTo(ex-9,ey-9); X.quadraticCurveTo(ex,ey-13-E.brow*5,ex+9,ey-8-E.brow*6); X.stroke();
+
+  /* blush + suction hollow */
+  const [bR,bG,bB]=hexToRgb(C.blush);
+  X.fillStyle=`rgba(${bR},${bG},${bB},${.12+E.blush*.42})`;
+  X.beginPath(); X.ellipse(hx+1,hy+7,10,6.5,.1,0,TAU); X.fill();
+  if(suck>.2){
+    X.save(); X.globalCompositeOperation='multiply';
+    shade(hx+5,hy+9,8,6,`rgba(125,60,50,${.16+suck*.24})`,.2);
+    X.restore();
+  }
+
+  /* mouth cavity (dark, behind lips, shaft already drawn so it reads as inside) */
+  const jaw=5.8+5.4*D+swallow*1.2;
+  X.fillStyle='#3a0c14';
+  X.beginPath(); X.ellipse(mouthX-1,mouthY,6.2,jaw*.62,ang,0,TAU); X.fill();
+
+  /* tongue when not fully buried */
+  if(D<.55){
+    X.fillStyle='#c46a78';
+    X.beginPath();
+    X.ellipse(mouthX-2,mouthY+jaw*.25,5.5,3.2+ (1-D)*2,ang+.1,0,TAU); X.fill();
+    X.fillStyle='rgba(255,200,210,.28)';
+    X.beginPath(); X.ellipse(mouthX-3,mouthY+jaw*.15,2.2,1.2,ang,0,TAU); X.fill();
+  }
+
+  /* lips as a ring around the shaft */
+  const shaftR=11.5*pu;
+  lipRing(mouthX,mouthY, shaftR+7.2, jaw*.92, shaftR*.95, jaw*.48, ang, C.lip);
+  /* cupid / lip edge */
+  X.strokeStyle='rgba(130,48,58,.5)'; X.lineWidth=1.35;
+  X.beginPath();
+  X.moveTo(mouthX-7,mouthY-jaw*.48);
+  X.quadraticCurveTo(mouthX-1,mouthY-jaw*.72,mouthX+4,mouthY-jaw*.44);
+  X.stroke();
+  X.fillStyle='rgba(255,248,244,.58)';
+  X.beginPath(); X.ellipse(mouthX+1.6,mouthY+jaw*.36,3.6,2.1,-.3,0,TAU); X.fill();
+  X.fillStyle='rgba(255,255,255,.20)';
+  X.beginPath(); X.ellipse(mouthX-2.2,mouthY-jaw*.28,2.3,1.15,-.2,0,TAU); X.fill();
+  /* contact shadow where lips meet shaft */
+  X.save(); X.globalCompositeOperation='multiply';
+  X.strokeStyle='rgba(80,30,30,.28)'; X.lineWidth=1.6;
+  X.beginPath(); X.ellipse(mouthX,mouthY,shaftR*1.02,jaw*.5,ang,0,TAU); X.stroke();
+  X.restore();
+
+  /* saliva */
+  if(D>.1){
+    oralSaliva(mouthX-4,mouthY+5, mouthX-17,mouthY+4, mouthX-12,mouthY+12, .40+wet*.28);
+    if(wet>.4){
+      oralSaliva(mouthX+3,mouthY+6, mouthX+7,mouthY+22, mouthX+9,mouthY+12, .35+wet*.2);
+      X.fillStyle=`rgba(255,250,244,${.4+wet*.25})`;
+      X.beginPath(); X.ellipse(mouthX+7,mouthY+24,1.9,2.8,0,0,TAU); X.fill();
+    }
+    if(wet>.65){
+      X.fillStyle=`rgba(255,248,242,${.3+wet*.2})`;
+      X.beginPath(); X.ellipse(mouthX-2,mouthY+jaw*.7+6,2.4,3.4,0,0,TAU); X.fill();
+    }
+  }
+
+  if(R()<.032*(G.oral||1)) G.hearts.push({x:hx+rr(-16,16),y:hy-26+rr(-8,8),vy:-rr(18,34),ph:R()*TAU,life:1.25,s:rr(.38,.72)});
+}
+
+/* ============================================================
+   FIRST-PERSON ORAL — you look down; she looks up into camera
+   Shaft rises from your body; her mouth is a hole the shaft
+   actually enters. Depth pulls her face toward you.
+   ============================================================ */
+function drawOralFPV(){
+  drawFPVRoom();
+  const K=oralK(), C=oralCol(), {D,vel,pu,wet,bob,suck,swallow,E,sk}=K;
+  const trem=typeof fpvTremor==='function'?fpvTremor():0;
+  const swayX=Math.sin(G.t*.9)*2.2+trem*.3;
+  const swayY=Math.sin(G.t*TAU*.16)*1.6;
+
+  X.save();
+  X.translate(swayX, swayY+bob*.15);
+
+  /* scale: deeper = closer to camera */
+  const z=1+D*.22;
+  const mouthY=lerp(478, 668, D)+bob;
+  const hx=640, hy=mouthY-52*z;
+
+  /* ---- her hair (behind everything) ---- */
+  hairMassS(hx, hy-36*z, 86*z, 72*z, 0, C.hair);
+  for(const s of [-1,1]) hairMassS(hx+s*78*z, hy+58*z, 34*z, 96*z, s*.16, C.hair);
+  X.save(); X.globalCompositeOperation='soft-light';
+  shade(hx-10, hy-52*z, 46*z, 24*z, 'rgba(255,232,218,.22)', 0);
+  X.restore();
+  const hSheen='rgba(255,205,215,0.14)';
+  tressS(hx-78*z,hy-18*z,hx-104*z,hy+6*z,hx-110*z,hy+34*z,hx-96*z,hy+58*z,7*z,2*z,C.hair,hSheen);
+  tressS(hx+78*z,hy-16*z,hx+106*z,hy+4*z,hx+112*z,hy+32*z,hx+98*z,hy+56*z,7*z,2*z,C.hair,hSheen);
+  /* bangs */
+  X.fillStyle=C.hair;
+  X.beginPath();
+  X.moveTo(hx-70*z,hy-28*z);
+  X.quadraticCurveTo(hx, hy-78*z, hx+70*z, hy-28*z);
+  X.quadraticCurveTo(hx+40*z, hy-8*z, hx+18*z, hy-22*z);
+  X.quadraticCurveTo(hx, hy-48*z, hx-16*z, hy-20*z);
+  X.quadraticCurveTo(hx-42*z, hy-6*z, hx-70*z, hy-28*z);
+  X.fill();
+
+  /* ---- shoulders + upper chest (she's below you, looking up) ---- */
+  const shPath=()=>{
+    X.moveTo(hx-46*z, hy+38*z);
+    X.quadraticCurveTo(hx-130*z, hy+70*z, hx-160*z, hy+140*z);
+    X.quadraticCurveTo(hx, hy+168*z, hx+160*z, hy+140*z);
+    X.quadraticCurveTo(hx+130*z, hy+70*z, hx+46*z, hy+38*z);
+    X.closePath();
+  };
+  skFillShape(shPath,herT(),[hx,hy+32*z,hx,hy+166*z]);
+  skClipIn(shPath,()=>{
+    fAO(hx,hy+52*z,54*z,16*z,.20);
+    fAO(hx-120*z,hy+124*z,46*z,32*z,.16);
+    fAO(hx+120*z,hy+124*z,46*z,32*z,.16);
+  });
+  X.save(); X.globalCompositeOperation='soft-light';
+  shade(hx, hy+90*z, 40*z, 50*z, 'rgba(255,228,200,.28)', 0);
+  X.restore();
+  /* collarbones */
+  X.strokeStyle='rgba(160,95,75,.32)'; X.lineWidth=1.8;
+  X.beginPath(); X.moveTo(hx-40*z,hy+48*z); X.quadraticCurveTo(hx-8*z,hy+56*z,hx,hy+50*z); X.stroke();
+  X.beginPath(); X.moveTo(hx+40*z,hy+48*z); X.quadraticCurveTo(hx+8*z,hy+56*z,hx,hy+50*z); X.stroke();
+
+  const jig=G.breast.p*.7;
+  const bsz=.7+(G.char?G.char.breastSize:.45)*.55;
+  for(const s of [-1,1]){
+    const bx=hx+s*(54+bsz*8)*z, by=hy+(92+jig)*z;
+    poseBreast(bx,by,30*bsz*z,E);
+    shade(bx+s*24*z,by+4*z,16*z,22*z,'rgba(150,80,60,0.20)',s*.1);
+  }
+  shade(hx,hy+(98+jig)*z,10*z,28*bsz*z,'rgba(160,92,70,0.22)',0);
+
+  /* ---- neck ---- */
+  skFillRad(()=>{ X.ellipse(hx, hy+42*z, 22*z, 20*z, 0, 0, TAU); },herT(),hx,hy+30*z,2*z,30*z);
+  if(D>.58){
+    const b=(D-.58)*12+swallow*5;
+    X.fillStyle=herT().b;
+    X.beginPath(); X.ellipse(hx, hy+50*z, (16+b*.3)*z, (10+b*.5)*z, 0, 0, TAU); X.fill();
+    X.fillStyle='rgba(255,225,200,.14)';
+    X.beginPath(); X.ellipse(hx-4*z, hy+46*z, 5*z, 3.4*z, -.2, 0, TAU); X.fill();
+  }
+
+  /* ---- face disc (mouth punched as cavity) ---- */
+  const FT=herT();
+  skFillRad(()=>{ X.ellipse(hx, hy, 50*z, 46*z, 0, 0, TAU); },FT,hx-14*z,hy-16*z,4*z,64*z);
+  /* jaw drop */
+  const jawDrop=(8+10*D+swallow*3)*z;
+  X.fillStyle=FT.b;
+  X.beginPath();
+  X.moveTo(hx-28*z, hy+16*z);
+  X.quadraticCurveTo(hx-22*z, hy+28*z+jawDrop*.4, hx, hy+30*z+jawDrop*.55);
+  X.quadraticCurveTo(hx+22*z, hy+28*z+jawDrop*.4, hx+28*z, hy+16*z);
+  X.closePath(); X.fill();
+  skClipIn(()=>{ X.ellipse(hx, hy, 50*z, 46*z, 0, 0, TAU); },()=>{
+    fAO(hx+40*z,hy+6*z,20*z,30*z,.14);
+    fAO(hx,hy+36*z,32*z,14*z,.16);
+  });
+
+  X.save(); X.globalCompositeOperation='multiply';
+  shade(hx, hy-28*z, 36*z, 14*z, 'rgba(150,90,70,.08)', 0);
+  shade(hx, hy+22*z, 22*z, 10*z, 'rgba(150,80,60,.14)', 0);
+  X.restore();
+  X.save(); X.globalCompositeOperation='soft-light';
+  shade(hx-8, hy-18*z, 12*z, 28*z, 'rgba(255,236,214,.38)', 0);
+  X.restore();
+
+  /* ears + flush */
+  const [br,bg,bb]=hexToRgb(C.blush);
+  for(const s of [-1,1]){
+    X.fillStyle=FT.s;
+    X.beginPath(); X.ellipse(hx+s*48*z, hy-6*z, 7*z, 12*z, s*.12, 0, TAU); X.fill();
+    shade(hx+s*48*z, hy-4*z, 7*z, 9*z, `rgba(${br},${bg},${bb},${.08+E.blush*.18})`, 0);
+  }
+
+  /* blush */
+  for(const s of [-1,1])
+    shade(hx+s*30*z, hy+4*z, 18*z, 12*z, `rgba(${br},${bg},${bb},${.10+E.blush*.28})`, s*.14);
+  if(suck>.18){
+    X.save(); X.globalCompositeOperation='multiply';
+    for(const s of [-1,1]){
+      shade(hx+s*34*z, hy+16*z, 11*z, 8*z, `rgba(120,55,48,${.15+suck*.26})`, s*.16);
+    }
+    X.restore();
+  }
+
+  /* ---- eyes looking UP into the lens ---- */
+  const eyeShut=E.eye<.14;
+  for(const s of [-1,1]){
+    const ex=hx+s*22*z, ey=hy-16*z;
+    X.fillStyle='rgba(140,80,70,.12)';
+    X.beginPath(); X.ellipse(ex, ey+2*z, 11*z, 8*z, s*.06, 0, TAU); X.fill();
+    if(eyeShut){
+      X.strokeStyle='rgba(48,22,28,.96)'; X.lineWidth=2.4*z;
+      X.beginPath(); X.moveTo(ex-9*z,ey); X.quadraticCurveTo(ex, ey+3.5*z, ex+9*z, ey); X.stroke();
+    } else {
+      X.fillStyle='#faf7f4';
+      X.beginPath(); X.ellipse(ex, ey, 9.2*z, 6.2*z, s*.07, 0, TAU); X.fill();
+      X.fillStyle='rgba(210,140,135,.42)';
+      X.beginPath(); X.ellipse(ex-s*7.4*z, ey+.6*z, 2*z, 1.6*z, 0, 0, TAU); X.fill();
+      /* iris shifted UP (she's looking at you) */
+      X.fillStyle=C.eye;
+      X.beginPath(); X.arc(ex, ey-1.6*z, 4.6*z, 0, TAU); X.fill();
+      X.strokeStyle='rgba(0,0,0,.16)'; X.lineWidth=.7*z;
+      for(let r=0;r<7;r++){
+        const a=r/7*TAU;
+        X.beginPath(); X.moveTo(ex,ey-1.6*z);
+        X.lineTo(ex+Math.cos(a)*3.4*z, ey-1.6*z+Math.sin(a)*3.4*z); X.stroke();
+      }
+      X.fillStyle='#10080c';
+      X.beginPath(); X.arc(ex, ey-1.6*z, 2.45*z, 0, TAU); X.fill();
+      oralCatch(ex+1.7*z, ey-3.0*z, 1.55*z);
+      /* lids + lashes */
+      X.strokeStyle='rgba(46,20,26,.96)'; X.lineWidth=2.4*z;
+      X.beginPath();
+      X.moveTo(ex-s*9.5*z, ey+1.8*z);
+      X.quadraticCurveTo(ex, ey-8.2*z, ex+s*9.5*z, ey);
+      X.stroke();
+      X.lineWidth=1.15*z;
+      for(let i=0;i<7;i++){
+        const t=i/6, lx=ex+s*(-9+t*18)*z, ly=ey-(6.2-Math.sin(t*Math.PI)*1.6)*z;
+        X.beginPath(); X.moveTo(lx,ly); X.lineTo(lx+s*.3*z, ly-4.2*z); X.stroke();
+      }
+    }
+    X.strokeStyle=C.hair; X.lineWidth=2.0*z; X.lineCap='round';
+    X.beginPath();
+    X.moveTo(ex-s*11*z, ey-12*z);
+    X.quadraticCurveTo(ex, ey-15*z-E.brow*6, ex+s*11*z, ey-11*z-E.brow*5);
+    X.stroke();
+  }
+
+  /* tears when deep */
+  if(D>.60){
+    const ta=.5+(D-.60)*1.2;
+    X.fillStyle=`rgba(220,238,250,${ta})`;
+    X.beginPath(); X.arc(hx-24*z, hy-12*z, 2.5*z, 0, TAU); X.fill();
+    X.beginPath(); X.arc(hx+24*z, hy-12*z, 2.5*z, 0, TAU); X.fill();
+    if(D>.80){
+      X.beginPath(); X.ellipse(hx-25*z, hy-4*z, 1.7*z, 4.2*z, .16, 0, TAU); X.fill();
+      X.beginPath(); X.ellipse(hx+25*z, hy-4*z, 1.7*z, 4.2*z,-.16, 0, TAU); X.fill();
+    }
+  }
+
+  /* nose (foreshortened, pointing at camera) */
+  X.fillStyle='rgba(180,100,88,.40)';
+  X.beginPath(); X.ellipse(hx, hy+4*z, 4.4*z, 3.2*z, 0, 0, TAU); X.fill();
+  X.fillStyle='rgba(255,230,214,.22)';
+  X.beginPath(); X.ellipse(hx-1, hy+2.2*z, 2.2*z, 1.5*z, 0, 0, TAU); X.fill();
+  X.strokeStyle='rgba(150,90,80,.28)'; X.lineWidth=1.2*z;
+  X.beginPath(); X.moveTo(hx-3.5*z, hy+6*z); X.quadraticCurveTo(hx, hy+8.5*z, hx+3.5*z, hy+6*z); X.stroke();
+
+  /* ---- mouth CAVITY (hole in the face) ---- */
+  const lipStretch=(15+8*D)*z;
+  const lipOpen=(11+10*D+swallow*2)*z;
+  const cavity=X.createRadialGradient(hx, mouthY+4, 2, hx, mouthY, lipStretch*.78);
+  cavity.addColorStop(0,'#2a0810');
+  cavity.addColorStop(.55,'#541420');
+  cavity.addColorStop(1,'#7a2834');
+  X.fillStyle=cavity;
+  X.beginPath(); X.ellipse(hx, mouthY, lipStretch*.78, lipOpen*.70, 0, 0, TAU); X.fill();
+
+  /* tongue in the cavity, under the shaft, more visible when shallow */
+  if(D<.62){
+    const tVis=(1-D/.62);
+    X.fillStyle=`rgba(196,96,110,${.55+.4*tVis})`;
+    X.beginPath();
+    X.ellipse(hx, mouthY+lipOpen*.28, 11*z*tVis+6*z, (4+6*tVis)*z, 0, 0, TAU); X.fill();
+    X.fillStyle='rgba(255,190,200,.22)';
+    X.beginPath(); X.ellipse(hx, mouthY+lipOpen*.18, 3.5*z, 1.6*z, 0, 0, TAU); X.fill();
+  }
+
+  X.restore(); /* end camera sway for body — shaft/hands in same space */
+
+  /* ---- YOUR body in the foreground ---- */
+  const AT=himT();
+  skFillRad(()=>{ X.ellipse(640, 828, 242, 112, 0, 0, TAU); },AT,640,786,20,290);
+  skClipIn(()=>{ X.ellipse(640, 828, 242, 112, 0, 0, TAU); },()=>{
+    fAO(640,730,180,30,.22);
+    fHi(556,800,120,34,'rgba(255,238,220,0.14)');
+  });
+  for(const s of [-1,1]){
+    capsule([640+s*168, 826], [640+s*98, 642], 58, 44, himT());
+  }
+  /* pubic hair at base */
+  X.fillStyle='rgba(55,32,26,.38)';
+  for(let i=0;i<10;i++){
+    X.beginPath();
+    X.ellipse(640+(i-4.5)*7, 806+((i*3)%7)-4, 2.6, 7.5, (i%5-2)*.12, 0, TAU);
+    X.fill();
+  }
+
+  /* ---- SHAFT: from your body UP into the mouth cavity ---- */
+  const shaftBase=[640, 808];
+  const lipsY=mouthY; /* world-space, sway already applied to her; keep shaft stable-ish */
+  const visibleTip=lipsY+4; /* shaft ends at the lips; interior is the cavity we already painted */
+  const wb=26*pu, wt=17*pu;
+  const cg=X.createLinearGradient(640-wb,0,640+wb,0);
+  cg.addColorStop(0,'#a96c44'); cg.addColorStop(.28,'#d99a6d');
+  cg.addColorStop(.48,'#f0c096'); cg.addColorStop(.70,'#dd9c6f'); cg.addColorStop(1,'#96613e');
+  X.beginPath();
+  X.moveTo(640-wb, shaftBase[1]);
+  X.quadraticCurveTo(640-wb+4, (shaftBase[1]+visibleTip)/2, 640-wt, visibleTip);
+  X.quadraticCurveTo(640, visibleTip-6, 640+wt, visibleTip);
+  X.quadraticCurveTo(640+wb-4, (shaftBase[1]+visibleTip)/2, 640+wb, shaftBase[1]);
+  X.closePath(); X.fillStyle=cg; X.fill();
+  X.save(); X.globalCompositeOperation='multiply';
+  shade(624, (shaftBase[1]+visibleTip)/2, 12, Math.abs(shaftBase[1]-visibleTip)/2, 'rgba(90,50,28,.22)', 0);
+  X.restore();
+  X.save(); X.globalCompositeOperation='soft-light';
+  shade(636, (shaftBase[1]+visibleTip)/2, 14, Math.abs(shaftBase[1]-visibleTip)/2, 'rgba(255,225,195,.36)', 0);
+  X.restore();
+  X.strokeStyle='rgba(140,80,60,.36)'; X.lineWidth=2.4; X.lineCap='round';
+  X.beginPath(); X.moveTo(628, 790); X.quadraticCurveTo(622, 720, 632, visibleTip+16); X.stroke();
+  X.lineWidth=1.5;
+  X.beginPath(); X.moveTo(654, 780); X.quadraticCurveTo(658, 710, 650, visibleTip+20); X.stroke();
+
+  /* glans only when she's near the tip */
+  if(D<.38){
+    const gy=visibleTip-2;
+    const gg=X.createRadialGradient(634,gy-5,2,640,gy,20*pu);
+    gg.addColorStop(0,'#e9aa8f'); gg.addColorStop(.6,'#c88870'); gg.addColorStop(1,'#a5614e');
+    X.fillStyle=gg;
+    X.beginPath(); X.ellipse(640, gy, 17.5*pu, 13*pu, 0, 0, TAU); X.fill();
+    X.save(); X.globalCompositeOperation='multiply';
+    X.fillStyle='rgba(150,60,50,.22)';
+    X.beginPath(); X.ellipse(640, gy+3, 15*pu, 5, 0, 0, TAU); X.fill();
+    X.restore();
+    X.fillStyle='rgba(255,252,248,.38)';
+    X.beginPath(); X.ellipse(634, gy-4, 4.6, 6.6, -.18, 0, TAU); X.fill();
+    X.strokeStyle='rgba(120,60,55,.55)'; X.lineWidth=1.8;
+    X.beginPath(); X.moveTo(640, gy-12); X.lineTo(640, gy-5); X.stroke();
+  }
+
+  /* wet sheen on exposed shaft */
+  if(wet>.15){
+    X.save(); X.globalCompositeOperation='screen';
+    X.strokeStyle=`rgba(255,245,238,${.16+wet*.28})`; X.lineWidth=3.2;
+    X.beginPath(); X.moveTo(626, 760); X.quadraticCurveTo(628, (760+visibleTip)/2, 630, visibleTip+8); X.stroke();
+    X.restore();
+  }
+
+  /* shaft that is INSIDE the mouth — short segment sitting in the cavity */
+  const inLen=lerp(8, 22, D);
+  X.fillStyle=D<.38?'#c88870':'#d4a078';
+  X.beginPath();
+  X.ellipse(640, lipsY-inLen*.35, wt*.92, inLen*.45, 0, 0, TAU); X.fill();
+
+  /* ---- LIPS as a ring the shaft passes through ---- */
+  X.save();
+  X.translate(swayX, swayY+bob*.15);
+  lipRing(hx, mouthY, lipStretch, lipOpen, wt*.95, lipOpen*.42, 0, C.lip);
+  /* vermillion edges */
+  X.strokeStyle='rgba(130,48,58,.48)'; X.lineWidth=1.5*z;
+  X.beginPath();
+  X.moveTo(hx-lipStretch*.72, mouthY-lipOpen*.35);
+  X.quadraticCurveTo(hx-6*z, mouthY-lipOpen*.62, hx, mouthY-lipOpen*.38);
+  X.quadraticCurveTo(hx+6*z, mouthY-lipOpen*.62, hx+lipStretch*.72, mouthY-lipOpen*.35);
+  X.stroke();
+  /* gloss */
+  X.fillStyle='rgba(255,248,244,.62)';
+  X.beginPath(); X.ellipse(hx-6*z, mouthY-lipOpen*.40, 5*z, 2.3*z, 0, 0, TAU); X.fill();
+  X.beginPath(); X.ellipse(hx, mouthY+lipOpen*.46, 6.2*z, 2.6*z, 0, 0, TAU); X.fill();
+  X.fillStyle='rgba(255,255,255,.18)';
+  X.beginPath(); X.ellipse(hx+8*z, mouthY-lipOpen*.12, 2.8*z, 1.5*z, 0, 0, TAU); X.fill();
+  /* lip-to-shaft contact */
+  X.save(); X.globalCompositeOperation='multiply';
+  X.strokeStyle='rgba(70,24,24,.30)'; X.lineWidth=2;
+  X.beginPath(); X.ellipse(hx, mouthY, wt*1.05, lipOpen*.44, 0, 0, TAU); X.stroke();
+  X.restore();
+
+  /* saliva strands from lip corners down the shaft */
+  if(D>.08){
+    oralSaliva(hx-lipStretch*.7, mouthY+4, 632, mouthY+28+D*10, 628, mouthY+16, .48+wet*.28);
+    oralSaliva(hx+lipStretch*.7, mouthY+4, 648, mouthY+28+D*10, 652, mouthY+16, .48+wet*.28);
+    if(wet>.42){
+      X.fillStyle=`rgba(255,250,244,${.32+wet*.28})`;
+      X.beginPath(); X.ellipse(636, mouthY+34+D*8, 2.3, 3.4, 0, 0, TAU); X.fill();
+      X.beginPath(); X.ellipse(645, mouthY+30+D*8, 1.7, 2.6, 0, 0, TAU); X.fill();
+    }
+  }
+  X.restore();
+
+  /* ---- her hands on the shaft (stroking) ---- */
+  const stroke=Math.sin(G.t*8.5)*Math.min(Math.abs(vel)*14, 12);
+  for(const s of [-1,1]){
+    const hY=lerp(lipsY+86, lipsY+42, D*.55)+stroke*s*.15;
+    capsule([640+s*186, 770], [640+s*42, hY], 26, 19, herT());
+    X.fillStyle=sk.her;
+    X.beginPath(); X.ellipse(640+s*40, hY, 16, 12, s*.4, 0, TAU); X.fill();
+    X.fillStyle='rgba(255,216,196,.22)';
+    for(let k=0;k<3;k++){
+      X.beginPath(); X.ellipse(640+s*(32+k*5), hY-6+k*2.2, 2.5, 1.8, 0, 0, TAU); X.fill();
+    }
+    X.strokeStyle=sk.herSh; X.lineWidth=2.4; X.lineCap='round';
+    for(let f=0;f<4;f++){
+      X.beginPath();
+      X.arc(640+s*(28+f*3.4), hY-2+f*2.6, 4.6, s>0?0:Math.PI, s>0?Math.PI:TAU);
+      X.stroke();
+    }
+    X.fillStyle='rgba(255,228,218,.62)';
+    X.beginPath(); X.ellipse(640+s*52, hY+2, 3.6, 2.7, s*.3, 0, TAU); X.fill();
+  }
+
+  drawFPVFluids();
+  if(R()<.034*(G.oral||1)) G.hearts.push({x:640+rr(-26,26),y:hy-36+rr(-10,10),vy:-rr(18,36),ph:R()*TAU,life:1.25,s:rr(.38,.74)});
+
+  /* out-of-focus shoulder framing (same language as drawFPV) */
+  X.fillStyle='rgba(150,90,60,.18)';
+  X.beginPath(); X.ellipse(50, 770, 230, 130, .3, 0, TAU); X.fill();
+  X.beginPath(); X.ellipse(1230, 770, 230, 130,-.3, 0, TAU); X.fill();
+}
+
+/* profile breast — gravity, areola, nipple, subsurface */
+function poseBreastSide(x,y,r,E){
+  if(!Number.isFinite(r)||r<=0) r=18;
+  const er=clamp(G.ar/100,0,1), T=herT();
+  skFillRad(()=>{ X.ellipse(x, y, r*.96, r*1.16, .07, 0, TAU); },T,x-r*.3,y-r*.46,r*.1,r*1.35);
+  X.save(); X.globalCompositeOperation='multiply';
+  shade(x, y+r*.55, r*.72, r*.42, 'rgba(120,60,50,.18)', 0);
+  X.restore();
+  X.save(); X.globalCompositeOperation='soft-light';
+  shade(x-r*.28, y-r*.22, r*.3, r*.2, 'rgba(255,235,218,.40)', -.3);
+  X.restore();
+  X.fillStyle=`rgba(210,130,115,${.74+er*.22})`;
+  X.beginPath(); X.arc(x, y+r*.52, 4.9+er*1.6, 0, TAU); X.fill();
+  X.fillStyle='rgba(190,120,105,.65)';
+  for(let i=0;i<6;i++){
+    const a=i/6*TAU+.3;
+    X.beginPath(); X.arc(x+Math.cos(a)*4.2, y+r*.52+Math.sin(a)*4.2, .7, 0, TAU); X.fill();
+  }
+  X.fillStyle=G.char?G.char.nippleColor:'#c25f63';
+  X.beginPath(); X.arc(x, y+r*.52+1.2, 2.5+1.9*er, 0, TAU); X.fill();
+  X.fillStyle='rgba(255,240,236,.35)';
+  X.beginPath(); X.arc(x-1, y+r*.52, 1.1, 0, TAU); X.fill();
+}

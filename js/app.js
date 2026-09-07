@@ -5,18 +5,29 @@ function draw(){
   X.clearRect(0,0,W,H);
   const sx=(R()-.5)*2*G.shake+chaos(5)*.6, sy=(R()-.5)*2*G.shake;
   X.save(); X.translate(sx,sy);
-  if(G.view==='fpv'&&G.state!=='intro'){ drawFPV(); X.restore(); drawLight(); }
+  if(G.view==='fpv'){
+    if(G.oral>.03) drawOralFPV();
+    else if((G.pos|0)!==0) drawPoseFPV();
+    else drawFPV();
+    X.restore();
+    drawLight();
+  }
   else {
     drawRoom(); drawBed();
-    if(G.state==='intro'){ X.restore(); drawLight(); hudTick(); return; }
-    const out=drawHer();
-    drawVulva(); drawShaft();
-    drawHerHead(out.E);
-    drawBreast(out.E,out.br);
-    drawHim(out.E);
-    drawHerNear(out.E,out);
-    drawRubFX(out.br);
-    drawFluids();
+    if(G.state!=='intro'){
+      if(G.oral>.03) drawOralSide();
+      else if((G.pos|0)!==0) drawPoseSide();
+      else {
+        const out=drawHer();
+        drawVulva(); drawShaft();
+        drawHerHead(out.E);
+        drawBreast(out.E,out.br);
+        drawHim(out.E);
+        drawHerNear(out.E,out);
+        drawRubFX(out.br);
+      }
+      drawFluids();
+    }
     X.restore();
     drawLight();
   }
@@ -58,10 +69,22 @@ function hudTick(){
   btnC.classList.toggle('ready',G.pleasure>85&&G.state==='play');
   $('btnKiss').classList.toggle('on',G.kissT>0);
   $('btnRub').classList.toggle('on',G.rubT>0);
+  const bRl=$('btnRub'), zl='RUB · '+(RUBLBL[rubZoneName()]||'BOTH')+' <kbd>C</kbd>';
+  if(bRl._zl!==zl){ bRl._zl=zl; bRl.innerHTML=zl; }
+  const bPl=$('btnPos'), pl='POS · '+posName()+' <kbd>Tab</kbd>';
+  if(bPl._pl!==pl){ bPl._pl=pl; bPl.innerHTML=pl; }
+  $('btnOral').classList.toggle('on',G.oralT>0);
+  const bz=$('btnZoom'); if(bz) bz.classList.toggle('on', G.view==='fpv' && G.fpvFocus!=='full');
   // speech bubble
   if(G.speech){ bub.textContent=G.speech.txt; bub.classList.add('show');
-    if(G.view==='fpv'){ bub.style.left=(640/10-7)+'em'; bub.style.top=(150/10-6.5)+'em'; }
-    else { bub.style.left=(330/10)+'em'; bub.style.top=(408/10-2.2)+'em'; }
+    if(G.view==='fpv'){
+      const f=G.fpvFocus||'full';
+      const bTop=f==='face'?8:(f==='breasts'?18:13);
+      bub.style.left=(640/10-7)+'em'; bub.style.top=bTop+'em';
+    } else {
+      const bx = lerp(245, 285, G.faceBlend || 0);
+      bub.style.left=(bx/10)+'em'; bub.style.top=(405/10-2.2)+'em';
+    }
   } else bub.classList.remove('show');
   if(G.orgasms!==lastOrg){ lastOrg=G.orgasms; tierHearts(); }
 }
@@ -85,3 +108,6 @@ function tick(ts){
 requestAnimationFrame(tick);
 setMute(muted);
 if(lsGet('ag_view')==='fpv'){ G.view='fpv'; document.getElementById('btnView').classList.add('on'); }
+// character system — init after DOM + canvas ready
+loadCharState();
+initCharUI();
