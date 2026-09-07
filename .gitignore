@@ -1,0 +1,16 @@
+# Afterglow — oversized binaries that the game never loads.
+# Kept on local disk only; excluded so pushes to GitHub stay fast and
+# under the 100 MB/file limit. (Tracked models: goatchan.glb, kiyoko.005.glb,
+# free_download_female_anime.glb — those stay.)
+assets/blonde_woman_black_bikini_blue_eyes.glb
+assets/chun-li_street_fighter_6_nsfw.glb
+assets/veil_of_silence_a_draped_figurative_sculpture.glb
+assets/MishuZoologist1.2.unitypackage
+assets/goatchan/goatchan.blend
+assets/fashion_woman.glb
+# Release bundle + unused goatchan source textures (GLB is self-contained).
+assets/ReleaseVer.zip
+assets/goatchan/tex/
+
+# Dev verification screenshots (local only, never push).
+.shots/
