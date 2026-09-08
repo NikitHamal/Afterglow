@@ -11,6 +11,12 @@
 // frame (position + quaternion, pelvis-anchored). All 7 poses, blends,
 // thrust, breathing, recoil, tremor, oral and FPV anchors are inherited for
 // free — plus tail sway / ear flicks / breath scale on top.
+// SKELETAL DRIVE: Goat-chan's 171-joint MMD skeleton is retargeted from the
+// live her3 joints every frame (top-down FK copy, damped), so she articulates
+// through every pose instead of holding her bind stance. Kiyoko / anime have
+// no skeleton and stay root-follow only (they inherit poses via the pelvis).
+// Editable per-body-part surface: GLB_PARTS (gain per part, live-tweakable)
+// plus glbSetGain / glbSetTweak / glbSetScale / glbGetParts (see below).
 'use strict';
 
 /* Per-character tuning. fit = target height (m) after auto-scale.
@@ -66,7 +72,7 @@ function glbEntryState(key) {
       basePos: null, baseScale: 1.0, pelvisLocal: null,
       tailMeshes: [], earMeshes: [], earT: 2 + Math.random() * 3, earFlick: 0,
       prevDepth: 0, jiggleY: 0, jiggleVel: 0,
-      charLight: null
+      charLight: null, rig: null
     };
   }
   return e;
@@ -321,6 +327,7 @@ function glbFinishLoad(key, gltf) {  const e = glbEntryState(key);
   });
 
   glbPlaceEntry(key);
+  glbBuildRig(e); // resolve MMD bone handles once (no-skeleton → null)
 
   // Sanitize texture encodings/formats BEFORE first GPU upload (exotic files
   // trip texSubImage2D/mipmap GL errors otherwise), then canvas-rebake.
@@ -486,6 +493,217 @@ function setGLBActive(active, preset) {
   }
 }
 
+/* ============================================================
+   SKELETAL DRIVE — Goat-chan's MMD bones follow the live her3 rig.
+
+   Approach: top-down FK copy with damping. Each mapped bone copies the
+   matching her3 joint's LOCAL euler rotation (same semantic joint, e.g.
+   procedural shoulder → MMD 腕), damped so gameplay spikes can never snap
+   her, scaled by a per-part gain and offset by a per-part local-Euler
+   tweak. Copies run top-down (spine → limbs → extremities) so children
+   inherit their parents' new transforms within the same frame.
+
+   Why local-euler copy instead of world matching: the bind poses differ
+   (MMD A-pose vs procedural T-ish zero), so world quaternions would bake
+   a permanent offset error. Matching joints have near-parallel rest axes
+   (spine +Y, shoulder X-twist, elbow/knee X-hinge, ankle X-hinge), so a
+   damped local copy articulates correctly with zero rest-calibration.
+   Twist-heavy MMD leaves (腕捩/足捩/scale bones) are left at rest.
+
+   Models without a skeleton (Kiyoko, anime: 0 skins) never build a rig —
+   e.rig stays null and they keep root-only pose-follow (pelvis-anchored),
+   which is the most any static mesh can inherit.
+   ============================================================ */
+
+// Per-part drive config. gain scales the copied rotation (0 = locked in
+// bind pose, 1 = full articulation). tweak adds a fixed local-Euler
+// offset (radians) on top — e.g. to relax her splayed hands. Both are
+// live-tweakable via glbSetGain/glbSetTweak below (also from the browser
+// console: GLB_PARTS.arms.gain = 0.5).
+const GLB_PARTS = {
+  spine:  { gain: 1.0, tweak: [0, 0, 0] },
+  head:   { gain: 1.0, tweak: [0, 0, 0] },
+  arms:   { gain: 1.0, tweak: [0, 0, 0] },
+  hands:  { gain: 1.0, tweak: [0, 0, 0] },
+  legs:   { gain: 1.0, tweak: [0, 0, 0] },
+  feet:   { gain: 1.0, tweak: [0, 0, 0] },
+  breast: { gain: 0.35, tweak: [0, 0, 0] },
+  tail:   { gain: 0.0, tweak: [0, 0, 0] } // tail stays on glbSecondary3 sway
+};
+// Damping rate for the bone copy (1/s). Matches applyRig3's limb ease.
+const GLB_DRIVE_RATE = 18;
+
+/* Bone map: her3 joint → Goat-chan MMD node name. Plain entries copy the
+   named her3 joint's local rotation; ankle/toe entries resolve the
+   smoothed pose channels instead (see glbDriveRig) since the procedural
+   rig has no ankle/toe joints. */
+const GLB_RIG_MAP = [
+  { part: 'spine',  from: 'torso',        to: '上半身' },
+  { part: 'spine',  from: 'chest',        to: '上半身2' },
+  { part: 'head',   from: 'neck',         to: '首' },
+  { part: 'arms',   from: 'armL.shoulder', to: '腕.L' },
+  { part: 'arms',   from: 'armR.shoulder', to: '腕.R' },
+  { part: 'arms',   from: 'armL.elbow',   to: 'ひじ.L' },
+  { part: 'arms',   from: 'armR.elbow',   to: 'ひじ.R' },
+  { part: 'hands',  from: 'armL.hand',    to: '手首.L' },
+  { part: 'hands',  from: 'armR.hand',    to: '手首.R' },
+  { part: 'legs',   from: 'legL.hip',     to: '足.L' },
+  { part: 'legs',   from: 'legR.hip',     to: '足.R' },
+  { part: 'legs',   from: 'legL.knee',    to: 'ひざ.L' },
+  { part: 'legs',   from: 'legR.knee',    to: 'ひざ.R' },
+  { part: 'feet',   from: 'legL.foot',    to: '足首.L', ankle: 0 },
+  { part: 'feet',   from: 'legR.foot',    to: '足首.R', ankle: 1 },
+  // Toes: the procedural rig has no toe joints (see glbDriveRig), so they
+  // ride the same-side ankle at half rate, X-only — their rest frame is
+  // ~180° Y-twisted, full-euler copy would corkscrew.
+  { part: 'feet',   from: 'legL.foot',    to: 'つま先.L', toe: 0 },
+  { part: 'feet',   from: 'legR.foot',    to: 'つま先.R', toe: 1 },
+  { part: 'breast', from: 'breastL',      to: '乳親.L' },
+  { part: 'breast', from: 'breastR',      to: '乳親.R' }
+];
+
+// Read a her3 joint by dotted path ('armL.shoulder' → her3.armL.shoulder).
+function glbSrcJoint(path) {
+  if (typeof her3 === 'undefined' || !her3) return null;
+  let o = her3;
+  const bits = path.split('.');
+  for (let i = 0; i < bits.length; i++) {
+    o = o[bits[i]];
+    if (!o) return null;
+  }
+  return o;
+}
+
+/* Walk the loaded scene once, resolve every mapped MMD node by exact name,
+   and snapshot its bind-pose local euler. Cheap per-frame drive after that.
+   Skips IK/control leaves (腕IK/足ＩＫ/指IK/捩 bones): driving FK chains is
+   enough, the IK leaves have no skinned weight worth chasing. */
+function glbBuildRig(e) {
+  if (!e || !e.model || e.rig) return;
+  const byName = {};
+  e.model.traverse(c => { if (c.name && byName[c.name] === undefined) byName[c.name] = c; });
+  const bones = [];
+  for (let i = 0; i < GLB_RIG_MAP.length; i++) {
+    const m = GLB_RIG_MAP[i];
+    const dst = byName[m.to] || null;
+    if (!dst) continue;
+    bones.push({
+      part: m.part, path: m.from, dst,
+      ankle: m.ankle, toe: m.toe,
+      bx: dst.rotation.x, by: dst.rotation.y, bz: dst.rotation.z,
+      sx: dst.scale.x, sy: dst.scale.y, sz: dst.scale.z
+    });
+  }
+  // Finger chains: each MMD finger base lives under 手首.L/R. Curl the base
+  // segment toward a loose fist scaled by the her3 hand's roll; segments
+  // inherit via the hierarchy (no per-segment cost).
+  const fingers = [];
+  e.model.traverse(c => {
+    if (!c.name) return;
+    if (/(指０|親指０)/.test(c.name) && /\.[LR]$/.test(c.name)) {
+      fingers.push({
+        dst: c, side: /L$/.test(c.name) ? 'armL.hand' : 'armR.hand',
+        bx: c.rotation.x, by: c.rotation.y, bz: c.rotation.z
+      });
+    }
+  });
+  e.rig = (bones.length || fingers.length) ? { bones, fingers } : null;
+}
+
+/* Drive the mapped skeleton from the live her3 joints. Runs AFTER
+   glbFollowHer3 (root placement) inside updateGLBModel — which itself runs
+   after updateAnim3, so every her3 joint is final for this frame. */
+const _gdZero = [0, 0, 0];
+function glbDriveRig(e, dt) {
+  if (!e || !e.rig || (!e.rig.bones.length && !e.rig.fingers.length)) return;
+  const rate = (dt > 0) ? (1 - Math.exp(-GLB_DRIVE_RATE * dt)) : 1;
+  const rig = e.rig;
+  for (let i = 0; i < rig.bones.length; i++) {
+    const b = rig.bones[i];
+    const src = glbSrcJoint(b.path);
+    if (!src) continue;
+    const P = GLB_PARTS[b.part] || GLB_PARTS.spine;
+    const g = (P.gain == null) ? 1 : P.gain;
+    if (g === 0) continue;
+    const tw = P.tweak || _gdZero;
+    // Feet: the procedural rig has no ankle/toe joints (plantFeet3 owns the
+    // foot directly, pose ankle/toes channels are data-only) — resolve the
+    // smoothed pose channels here. Toes ride the same-side ankle at half
+    // rate, X-only (their rest frame is ~180° Y-twisted; full-euler copy
+    // corkscrews). Hands: applyRig3 writes only wrist roll (rotation.z) —
+    // copy that roll plus half the elbow hinge so wrists flex with the arm.
+    const sm = (typeof _smPose3 !== 'undefined' && _smPose3.her) || null;
+    let sx = src.rotation.x, sy = src.rotation.y, sz = src.rotation.z;
+    if (b.ankle === 0 || b.ankle === 1) {
+      sx = (sm && sm.ankle && (sm.ankle[b.ankle] || 0)) || 0; sy = 0; sz = 0;
+    } else if (b.toe === 0 || b.toe === 1) {
+      const a = (sm && sm.toes && (sm.toes[b.toe] || 0)) || 0;
+      sx = a * 0.5; sy = 0; sz = 0;
+    } else if (b.path === 'armL.hand' || b.path === 'armR.hand') {
+      const elb = (b.path === 'armL.hand') ? 'armL.elbow' : 'armR.elbow';
+      const es = glbSrcJoint(elb);
+      sx = es ? es.rotation.x * 0.5 : 0; sy = 0;
+    }
+    // Breasts: applyRig3 never rotates them (jiggle owns them) — reuse the
+    // smoothed chest pitch at low gain so cleavage rises/falls with the pose.
+    if ((b.path === 'breastL' || b.path === 'breastR') && sm && sm.chest) {
+      sx = (sm.chest[0] || 0); sy = 0; sz = 0;
+    }
+    const tx = b.bx + sx * g + (tw[0] || 0);
+    const ty = b.by + sy * g + (tw[1] || 0);
+    const tz = b.bz + sz * g + (tw[2] || 0);
+    const r = b.dst.rotation;
+    // dt<=0 (paused/headless probe) snaps — still deterministic, no NaN risk.
+    r.x = (rate >= 1) ? tx : r.x + (tx - r.x) * rate;
+    r.y = (rate >= 1) ? ty : r.y + (ty - r.y) * rate;
+    r.z = (rate >= 1) ? tz : r.z + (tz - r.z) * rate;
+    // Optional per-part bone scale (e.g. breast size); always written so
+    // resetting to 1 restores the authored bind scale instead of sticking.
+    const ps = P.scale || 1;
+    b.dst.scale.set(b.sx * ps, b.sy * ps, b.sz * ps);
+  }
+  // fingers: loose curl follows the her3 wrist roll (hands read as fists
+  // when she grips; open when the wrist is neutral). Gain-gated by hands.
+  const PH = GLB_PARTS.hands;
+  if (PH && PH.gain !== 0 && rig.fingers.length) {
+    for (let i = 0; i < rig.fingers.length; i++) {
+      const f = rig.fingers[i];
+      const src = glbSrcJoint(f.side);
+      const curl = src ? clamp(Math.abs(src.rotation.z) * 1.2, 0, 0.9) : 0;
+      const tw = PH.tweak || _gdZero;
+      const tx = f.bx + curl * PH.gain * 0.9 + (tw[0] || 0);
+      const r = f.dst.rotation;
+      r.x = (rate >= 1) ? tx : r.x + (tx - r.x) * rate;
+    }
+  }
+}
+
+/* ---- editable per-part surface (live from console or UI) ---- */
+// Set a part's drive gain (0 locks it in bind pose, 1 = full articulation).
+function glbSetGain(part, gain) {
+  if (!GLB_PARTS[part]) return false;
+  GLB_PARTS[part].gain = clamp(+gain, 0, 1.5);
+  return true;
+}
+// Add a fixed local-Euler offset (radians) on top of the copied motion.
+function glbSetTweak(part, x, y, z) {
+  if (!GLB_PARTS[part]) return false;
+  GLB_PARTS[part].tweak = [+x || 0, +y || 0, +z || 0];
+  return true;
+}
+// Scale a whole part's bones (e.g. breast size); 1 = authored.
+function glbSetScale(part, s) {
+  if (!GLB_PARTS[part]) return false;
+  GLB_PARTS[part].scale = clamp(+s, 0.3, 2.5);
+  return true;
+}
+// Snapshot the current per-part config (for UI panels / debugging).
+function glbGetParts() {
+  const out = {};
+  for (const k in GLB_PARTS) out[k] = { gain: GLB_PARTS[k].gain, tweak: GLB_PARTS[k].tweak.slice(), scale: GLB_PARTS[k].scale || 1 };
+  return out;
+}
+
 /* Pose follow: pin the girl's pelvis to the procedural her3.root (which
    carries the fully blended/damped 7-pose + thrust + breath + tremor + oral
    motion), then layer secondary life on top. Falls back to the legacy
@@ -633,6 +851,10 @@ function updateGLBModel(dt) {
   }
 
   glbFollowHer3(e, dt, key);
+  // Skeletal articulation AFTER root placement (her3 joints are final by
+  // now — updateGLBModel runs after updateAnim3 in tick3). No-skeleton
+  // models (null rig) skip silently and keep root-follow.
+  if (e.rig) glbDriveRig(e, dt);
   if (!frozen) {
     e.model.position.y += breath * calm;
     glbSecondary3(e, dt, calm);
