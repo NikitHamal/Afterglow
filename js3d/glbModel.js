@@ -131,13 +131,28 @@ function glbPlaceEntry(key) {
   );
   model.position.copy(e.basePos);
 
-  // Pelvis anchor in MODEL-LOCAL units (box was measured at scale 1):
-  // standing figures carry the pelvis ~52% up the fitted height.
-  e.pelvisLocal = new THREE.Vector3(
-    0,
-    box.min.y + (box.max.y - box.min.y) * 0.52,
-    center.z
-  );
+  // Pelvis anchor in MODEL-LOCAL units:
+  // If the model has an MMD/Mixamo pelvis bone, use its exact local anchor!
+  // Otherwise fall back to 52% up the fitted height.
+  let pelvisBone = null;
+  model.traverse(c => {
+    if (!pelvisBone && c.isBone && /^(腰|下半身|hips|pelvis)$/i.test(glbCleanKey(c.name))) {
+      pelvisBone = c;
+    }
+  });
+  if (pelvisBone) {
+    model.updateMatrixWorld(true);
+    const pLoc = new THREE.Vector3();
+    pelvisBone.getWorldPosition(pLoc);
+    model.worldToLocal(pLoc);
+    e.pelvisLocal = pLoc;
+  } else {
+    e.pelvisLocal = new THREE.Vector3(
+      0,
+      box.min.y + (box.max.y - box.min.y) * 0.52,
+      center.z
+    );
+  }
 
   // Secondary-motion parts with their authored base rotations.
   e.tailMeshes.length = 0;
@@ -328,6 +343,7 @@ function glbFinishLoad(key, gltf) {  const e = glbEntryState(key);
 
   glbPlaceEntry(key);
   glbBuildRig(e); // resolve MMD bone handles once (no-skeleton → null)
+  try { glbApplyCustom(key); } catch (_) {}
 
   // Sanitize texture encodings/formats BEFORE first GPU upload (exotic files
   // trip texSubImage2D/mipmap GL errors otherwise), then canvas-rebake.
@@ -491,6 +507,9 @@ function setGLBActive(active, preset) {
   if (typeof her3 !== 'undefined' && her3 && her3.root) {
     her3.root.visible = !(GLB_MODEL.active && glbIsPreset(want));
   }
+  if (GLB_MODEL.active && want) {
+    try { glbApplyCustom(want); } catch (_) {}
+  }
 }
 
 /* ============================================================
@@ -573,19 +592,29 @@ function glbSrcJoint(path) {
   }
   return o;
 }
+function glbCleanKey(s) {
+  return (s || '').replace(/[._]/g, '');
+}
 
-/* Walk the loaded scene once, resolve every mapped MMD node by exact name,
+/* Walk the loaded scene once, resolve every mapped MMD node by exact or
+   dot-stripped name (Three.js GLTFLoader sanitizes dots out of node names),
    and snapshot its bind-pose local euler. Cheap per-frame drive after that.
    Skips IK/control leaves (腕IK/足ＩＫ/指IK/捩 bones): driving FK chains is
    enough, the IK leaves have no skinned weight worth chasing. */
 function glbBuildRig(e) {
   if (!e || !e.model || e.rig) return;
   const byName = {};
-  e.model.traverse(c => { if (c.name && byName[c.name] === undefined) byName[c.name] = c; });
+  e.model.traverse(c => {
+    if (c.name) {
+      if (byName[c.name] === undefined) byName[c.name] = c;
+      const ck = glbCleanKey(c.name);
+      if (byName[ck] === undefined) byName[ck] = c;
+    }
+  });
   const bones = [];
   for (let i = 0; i < GLB_RIG_MAP.length; i++) {
     const m = GLB_RIG_MAP[i];
-    const dst = byName[m.to] || null;
+    const dst = byName[m.to] || byName[glbCleanKey(m.to)] || null;
     if (!dst) continue;
     bones.push({
       part: m.part, path: m.from, dst,
@@ -594,15 +623,14 @@ function glbBuildRig(e) {
       sx: dst.scale.x, sy: dst.scale.y, sz: dst.scale.z
     });
   }
-  // Finger chains: each MMD finger base lives under 手首.L/R. Curl the base
-  // segment toward a loose fist scaled by the her3 hand's roll; segments
-  // inherit via the hierarchy (no per-segment cost).
+  // Finger chains: each MMD finger base lives under 手首.L/R or 手首L/R.
+  // Curl the base segment toward a loose fist scaled by the her3 hand's roll.
   const fingers = [];
   e.model.traverse(c => {
     if (!c.name) return;
-    if (/(指０|親指０)/.test(c.name) && /\.[LR]$/.test(c.name)) {
+    if (/(指０|親指０)/.test(c.name) && /[._]?[LR]$/i.test(c.name)) {
       fingers.push({
-        dst: c, side: /L$/.test(c.name) ? 'armL.hand' : 'armR.hand',
+        dst: c, side: /L$/i.test(glbCleanKey(c.name)) ? 'armL.hand' : 'armR.hand',
         bx: c.rotation.x, by: c.rotation.y, bz: c.rotation.z
       });
     }
@@ -618,6 +646,8 @@ function glbDriveRig(e, dt) {
   if (!e || !e.rig || (!e.rig.bones.length && !e.rig.fingers.length)) return;
   const rate = (dt > 0) ? (1 - Math.exp(-GLB_DRIVE_RATE * dt)) : 1;
   const rig = e.rig;
+  const sm = (typeof _smPose3 !== 'undefined' && _smPose3.her) || null;
+
   for (let i = 0; i < rig.bones.length; i++) {
     const b = rig.bones[i];
     const src = glbSrcJoint(b.path);
@@ -626,13 +656,7 @@ function glbDriveRig(e, dt) {
     const g = (P.gain == null) ? 1 : P.gain;
     if (g === 0) continue;
     const tw = P.tweak || _gdZero;
-    // Feet: the procedural rig has no ankle/toe joints (plantFeet3 owns the
-    // foot directly, pose ankle/toes channels are data-only) — resolve the
-    // smoothed pose channels here. Toes ride the same-side ankle at half
-    // rate, X-only (their rest frame is ~180° Y-twisted; full-euler copy
-    // corkscrews). Hands: applyRig3 writes only wrist roll (rotation.z) —
-    // copy that roll plus half the elbow hinge so wrists flex with the arm.
-    const sm = (typeof _smPose3 !== 'undefined' && _smPose3.her) || null;
+
     let sx = src.rotation.x, sy = src.rotation.y, sz = src.rotation.z;
     if (b.ankle === 0 || b.ankle === 1) {
       sx = (sm && sm.ankle && (sm.ankle[b.ankle] || 0)) || 0; sy = 0; sz = 0;
@@ -643,25 +667,36 @@ function glbDriveRig(e, dt) {
       const elb = (b.path === 'armL.hand') ? 'armL.elbow' : 'armR.elbow';
       const es = glbSrcJoint(elb);
       sx = es ? es.rotation.x * 0.5 : 0; sy = 0;
+    } else if (b.path === 'armL.elbow' || b.path === 'armR.elbow') {
+      // Elbow hinge flexion
+      sx = src.rotation.x; sy = 0; sz = 0;
+    } else if (b.path === 'legL.knee' || b.path === 'legR.knee') {
+      // Knee flexion: positive X bends backward naturally in MMD
+      sx = src.rotation.x; sy = 0; sz = 0;
     }
+
     // Breasts: applyRig3 never rotates them (jiggle owns them) — reuse the
     // smoothed chest pitch at low gain so cleavage rises/falls with the pose.
     if ((b.path === 'breastL' || b.path === 'breastR') && sm && sm.chest) {
       sx = (sm.chest[0] || 0); sy = 0; sz = 0;
     }
+
     const tx = b.bx + sx * g + (tw[0] || 0);
     const ty = b.by + sy * g + (tw[1] || 0);
     const tz = b.bz + sz * g + (tw[2] || 0);
     const r = b.dst.rotation;
+
     // dt<=0 (paused/headless probe) snaps — still deterministic, no NaN risk.
     r.x = (rate >= 1) ? tx : r.x + (tx - r.x) * rate;
     r.y = (rate >= 1) ? ty : r.y + (ty - r.y) * rate;
     r.z = (rate >= 1) ? tz : r.z + (tz - r.z) * rate;
+
     // Optional per-part bone scale (e.g. breast size); always written so
     // resetting to 1 restores the authored bind scale instead of sticking.
     const ps = P.scale || 1;
     b.dst.scale.set(b.sx * ps, b.sy * ps, b.sz * ps);
   }
+
   // fingers: loose curl follows the her3 wrist roll (hands read as fists
   // when she grips; open when the wrist is neutral). Gain-gated by hands.
   const PH = GLB_PARTS.hands;
@@ -702,6 +737,131 @@ function glbGetParts() {
   const out = {};
   for (const k in GLB_PARTS) out[k] = { gain: GLB_PARTS[k].gain, tweak: GLB_PARTS[k].tweak.slice(), scale: GLB_PARTS[k].scale || 1 };
   return out;
+}
+
+/* ============================================================
+   DEEP GLB CUSTOMIZATION SYSTEM
+   Live toggling of meshes, material color tinting, and part scaling.
+   Supports Goat-chan (tail, horns, ears, socks, pasties, accessories,
+   runes, genitals, skin tone, hair color, breast scale) and other GLB models.
+   ============================================================ */
+
+const GLB_PARTS_CONFIG = {
+  goatchan: {
+    meshes: {
+      tail:        { label: 'Tail',         default: true,  match: /^tail$/i },
+      horns:       { label: 'Horns',        default: true,  match: /horn/i },
+      ears:        { label: 'Ears',         default: true,  match: /^ear$/i },
+      socks:       { label: 'Thigh Socks',  default: true,  match: /平面010_2|socks/i },
+      accessories: { label: 'Accessories',  default: true,  match: /平面010_1|acce/i },
+      nippless:    { label: 'Pasties',      default: true,  match: /nippless/i },
+      runes:       { label: 'Body Runes',   default: true,  match: /平面010_3|pattern/i },
+      genital:     { label: 'Genitals',     default: true,  match: /genital/i }
+    },
+    materials: {
+      skin:        { label: 'Skin Tint',    mats: ['body', 'face', 'face_nosp'] },
+      hair:        { label: 'Hair Color',   mats: ['hair'] },
+      runes:       { label: 'Runes Color',  mats: ['pattern'] },
+      socks:       { label: 'Socks Color',  mats: ['body_socks'] }
+    }
+  }
+};
+
+// Set mesh visibility by part key
+function glbSetPartVisible(preset, partKey, visible) {
+  const e = GLB_STORE[preset];
+  if (!e || !e.model) return false;
+  const cfg = GLB_PARTS_CONFIG[preset];
+  const meshDef = cfg && cfg.meshes && cfg.meshes[partKey];
+  const pat = meshDef ? meshDef.match : new RegExp(partKey, 'i');
+
+  e.model.traverse(c => {
+    if (c.isMesh && pat.test(c.name || '')) {
+      c.visible = !!visible;
+    }
+  });
+
+  if (typeof G !== 'undefined' && G.char) {
+    if (!G.char.glbCustom) G.char.glbCustom = {};
+    if (!G.char.glbCustom.parts) G.char.glbCustom.parts = {};
+    G.char.glbCustom.parts[partKey] = !!visible;
+    if (typeof lsSaveChar === 'function') lsSaveChar();
+  }
+  return true;
+}
+
+// Set material color tint by group
+function glbSetPartColor(preset, groupKey, hexColor) {
+  const e = GLB_STORE[preset];
+  if (!e || !e.model) return false;
+  const cfg = GLB_PARTS_CONFIG[preset];
+  const matDef = cfg && cfg.materials && cfg.materials[groupKey];
+  const targetMats = matDef ? matDef.mats : [groupKey];
+  const col = new THREE.Color(hexColor);
+
+  e.model.traverse(c => {
+    if (!c.isMesh || !c.material) return;
+    const mats = Array.isArray(c.material) ? c.material : [c.material];
+    mats.forEach(m => {
+      if (m && targetMats.some(tm => (m.name || '').toLowerCase().includes(tm.toLowerCase()))) {
+        m.color.copy(col);
+        m.needsUpdate = true;
+      }
+    });
+  });
+
+  if (typeof G !== 'undefined' && G.char) {
+    if (!G.char.glbCustom) G.char.glbCustom = {};
+    if (!G.char.glbCustom.colors) G.char.glbCustom.colors = {};
+    G.char.glbCustom.colors[groupKey] = hexColor;
+    if (typeof lsSaveChar === 'function') lsSaveChar();
+  }
+  return true;
+}
+
+// Apply full saved customizations to a GLB model
+function glbApplyCustom(preset) {
+  const e = GLB_STORE[preset];
+  if (!e || !e.model) return;
+  const custom = (G.char && G.char.glbCustom) || {};
+
+  // Apply part visibilities
+  const parts = custom.parts || {};
+  const cfg = GLB_PARTS_CONFIG[preset];
+  if (cfg && cfg.meshes) {
+    for (const pk in cfg.meshes) {
+      const vis = parts[pk] !== undefined ? parts[pk] : cfg.meshes[pk].default;
+      glbSetPartVisible(preset, pk, vis);
+    }
+  }
+
+  // Apply colors
+  const colors = custom.colors || {};
+  if (colors) {
+    for (const gk in colors) {
+      glbSetPartColor(preset, gk, colors[gk]);
+    }
+  }
+
+  // Synchronize character skin tone and hair color with GLB if not explicitly overridden
+  if (G.char) {
+    if (G.char.hairColor && (!colors || !colors.hair)) {
+      glbSetPartColor(preset, 'hair', G.char.hairColor);
+    }
+    if (G.char.skinTone !== undefined && (!colors || !colors.skin)) {
+      const sk = typeof getSkin === 'function' ? getSkin(G.char.skinTone) : null;
+      if (sk && sk.base) glbSetPartColor(preset, 'skin', sk.base);
+    }
+    if (G.char.breastSize !== undefined) {
+      glbSetScale('breast', 0.65 + G.char.breastSize * 0.9);
+    }
+    if (G.char.bodyScale !== undefined) {
+      const bs = 0.85 + G.char.bodyScale * 0.3;
+      if (GLB_REGISTRY[preset]) {
+        GLB_REGISTRY[preset].fit = 1.35 * bs;
+      }
+    }
+  }
 }
 
 /* Pose follow: pin the girl's pelvis to the procedural her3.root (which
@@ -803,8 +963,7 @@ function glbCollideBed(e) {
     // only collide over the bed slab — figures posed beside it rest on the floor
     if (Math.abs(cx) > 2.6 || cz < -3.8 || cz > 4.2) return;
     const pen = glbBedFloor(cx, cz) - _glbBedBox.min.y;
-    if (pen > 0) m.position.y += pen;          // sunk → lift
-    else if (pen < -0.03) m.position.y += pen; // floating → settle (3 cm deadband)
+    if (pen > 0) m.position.y += pen; // sunk into mattress → lift onto surface
   } catch (_) {}
 }
 

@@ -220,6 +220,24 @@ function buildCustomPanel(){
       <input class="cpColor" type="color" id="cpNipPick" title="custom">
     </div>
   </div>
+  <div class="cpSection" id="cpGlbSection" style="border-top:1px solid rgba(255,255,255,0.14);padding-top:10px;margin-top:10px;">
+    <div class="cpLabel" style="color:#ff6987">\u2726 GLB ATTIRE &amp; BODY PARTS</div>
+    <div class="cpToggle" id="cpGlbToggles" style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px">
+      <button class="cpTog on" data-glbpart="tail">Tail: ON</button>
+      <button class="cpTog on" data-glbpart="horns">Horns: ON</button>
+      <button class="cpTog on" data-glbpart="ears">Ears: ON</button>
+      <button class="cpTog on" data-glbpart="socks">Socks: ON</button>
+      <button class="cpTog on" data-glbpart="accessories">Harness: ON</button>
+      <button class="cpTog on" data-glbpart="nippless">Pasties: ON</button>
+      <button class="cpTog on" data-glbpart="runes">Runes: ON</button>
+      <button class="cpTog on" data-glbpart="genital">Genitals: ON</button>
+    </div>
+    <div style="margin-top:8px;font-size:10px;color:#aaa;letter-spacing:.05em">BODY RUNES GLOW COLOR</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+      <input class="cpColor" type="color" id="cpRunePick" value="#ff3366" title="rune color">
+      <span style="font-size:11px;color:#888">Marking tint</span>
+    </div>
+  </div>
 </div>`;
   document.getElementById('stage').appendChild(el);
   // prevent stage pointerdown dragging when interacting with sliders/inputs
@@ -239,21 +257,48 @@ function buildCustomPanel(){
   // skin slider
   el.querySelector('#cpSkin').addEventListener('input',e=>{
     G.char.skinTone=e.target.value/100; lsSaveChar();
+    if(typeof glbApplyCustom==='function') glbApplyCustom(G.char.preset);
   });
   // hair swatches
   el.querySelectorAll('[data-col]').forEach(b=>b.addEventListener('click',()=>{
     G.char.hairColor=b.dataset.col; lsSaveChar(); syncSwatches();
+    if(typeof glbSetPartColor==='function') glbSetPartColor(G.char.preset, 'hair', G.char.hairColor);
   }));
   el.querySelector('#cpHairPick').addEventListener('input',e=>{
     G.char.hairColor=e.target.value; lsSaveChar(); syncSwatches();
+    if(typeof glbSetPartColor==='function') glbSetPartColor(G.char.preset, 'hair', G.char.hairColor);
   });
   // hair style
   el.querySelectorAll('[data-hs]').forEach(b=>b.addEventListener('click',()=>{
     G.char.hairStyle=b.dataset.hs; lsSaveChar(); syncToggles();
   }));
   // body / breast
-  el.querySelector('#cpBody').addEventListener('input',e=>{ G.char.bodyScale=e.target.value/100; lsSaveChar(); });
-  el.querySelector('#cpBreast').addEventListener('input',e=>{ G.char.breastSize=e.target.value/100; lsSaveChar(); });
+  el.querySelector('#cpBody').addEventListener('input',e=>{
+    G.char.bodyScale=e.target.value/100; lsSaveChar();
+    if(typeof glbApplyCustom==='function') glbApplyCustom(G.char.preset);
+  });
+  el.querySelector('#cpBreast').addEventListener('input',e=>{
+    G.char.breastSize=e.target.value/100; lsSaveChar();
+    if(typeof glbSetScale==='function') glbSetScale('breast', 0.65 + G.char.breastSize * 0.9);
+  });
+  // GLB parts toggles
+  el.querySelectorAll('[data-glbpart]').forEach(b=>b.addEventListener('click',()=>{
+    const pk = b.dataset.glbpart;
+    const curVis = !b.classList.contains('off');
+    const newVis = !curVis;
+    b.classList.toggle('off', !newVis);
+    b.classList.toggle('on', newVis);
+    const label = pk.charAt(0).toUpperCase() + pk.slice(1);
+    b.textContent = label + ': ' + (newVis ? 'ON' : 'OFF');
+    if(typeof glbSetPartVisible==='function') glbSetPartVisible(G.char.preset, pk, newVis);
+  }));
+  // GLB rune color picker
+  const rp = el.querySelector('#cpRunePick');
+  if (rp) {
+    rp.addEventListener('input', e=>{
+      if(typeof glbSetPartColor==='function') glbSetPartColor(G.char.preset, 'runes', e.target.value);
+    });
+  }
   // fpv closeup toggles
   el.querySelectorAll('[data-fpv]').forEach(b=>b.addEventListener('click',()=>{
     G.fpvFocus=b.dataset.fpv;
@@ -301,6 +346,26 @@ function syncPanelFromChar(){
   p.querySelector('#cpHairPick').value=G.char.hairColor;
   p.querySelector('#cpLipPick').value=G.char.lipColor;
   p.querySelector('#cpNipPick').value=G.char.nippleColor;
+  const glbSec = p.querySelector('#cpGlbSection');
+  const isGLB = G.char && (G.char.isGLB || G.char.preset === 'goatchan');
+  if (glbSec) glbSec.style.display = isGLB ? 'block' : 'none';
+
+  if (isGLB) {
+    const custom = (G.char && G.char.glbCustom) || {};
+    const parts = custom.parts || {};
+    p.querySelectorAll('[data-glbpart]').forEach(b => {
+      const pk = b.dataset.glbpart;
+      const vis = parts[pk] !== undefined ? parts[pk] : true;
+      b.classList.toggle('off', !vis);
+      b.classList.toggle('on', vis);
+      const label = pk.charAt(0).toUpperCase() + pk.slice(1);
+      b.textContent = label + ': ' + (vis ? 'ON' : 'OFF');
+    });
+    const rp = p.querySelector('#cpRunePick');
+    if (rp && custom.colors && custom.colors.runes) {
+      rp.value = custom.colors.runes;
+    }
+  }
   syncSwatches(); syncToggles();
   p.querySelectorAll('.cpPre').forEach(b=>b.classList.toggle('on',b.dataset.p===G.char.preset));
 }
