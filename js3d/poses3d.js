@@ -340,11 +340,47 @@ const ORAL_BLOW3 = {
 const ORAL3 = ORAL_LICK3;
 
 /* ============================================================
+   SOLO POSE: She lies alone on her back in a relaxed, sensual repose.
+   Arms free for IK-driven solo masturbation; no partner joints needed.
+   pos/up/fwd place her supine, facing camera, centred on the duvet.
+   ============================================================ */
+const SOLO_POSE3 = {
+  name: 'SOLO',
+  her: {
+    // Supine: lying gracefully on the bed, head at -Z end
+    pos: [0, 0.20, -0.22], up: [0, -0.04, -0.999], fwd: [0, 0.999, -0.04],
+    // Natural sensual spinal relaxation
+    spine: [0.04, 0, 0], chest: [0.02, 0, 0], head: [-0.12, 0.04, 0],
+    // Legs: rest naturally on the mattress with soft relaxed knee bend
+    hip: [0.06, 0.06], hipRot: [0.10, -0.10],
+    knee: [0.20, 0.20], ankle: [0.15, 0.15], toes: [0.12, 0.12],
+    spread: 0.26,
+    // Arms: relaxed beside torso when not IK-placed
+    arm: [0.14, 0.14], armZ: [0.36, -0.36], elbow: [0.18, 0.18], wrist: [0.04, -0.04]
+  },
+  him: {
+    // Him hidden in solo; give a neutral out-of-view placement
+    pos: [0, -1.5, 0], up: [0, 1, 0], fwd: [0, 0, 1],
+    spine: [0, 0, 0], chest: [0, 0, 0], head: [0, 0, 0],
+    hip: [0, 0], hipRot: [0, 0], knee: [0, 0], ankle: [0, 0], toes: [0, 0],
+    spread: 0, arm: [0, 0], armZ: [0, 0], elbow: [0, 0], wrist: [0, 0],
+    shaft: -Math.PI / 2
+  },
+  hands: {
+    himL: null, himR: null,
+    herL: { k: 'herChest', x: -0.08, y: 0.04, z: 0.09 },
+    herR: { k: 'herHips', x: 0.04, y: -0.03, z: 0.12 }
+  },
+  cam: { yaw: 0.50, pitch: 0.30, dist: 3.4, fov: 40, target: [0, 0.35, -0.20] }
+};
+
+/* ============================================================
    ACTIVE POSE EVALUATION & BLENDING
    Applies procedural biological harmonics (respiration, recoil,
    tremors) and slerp-smooth transitions between positions.
    ============================================================ */
 function currentPose3() {
+  if (G.solo) return SOLO_POSE3;
   if ((G.oral || 0) > 0.03) {
     return (G.oralMode === 'blow' || G.oralT === 2) ? ORAL_BLOW3 : ORAL_LICK3;
   }

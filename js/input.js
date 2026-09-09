@@ -100,7 +100,10 @@ window.addEventListener('keydown',e=>{
     if(G.state==='intro') return;
     if(G.state==='play'||G.state==='orgasm'){ G.spaceHeld=true;
       if(G.tired){ G.spaceHeld=false; say(pick(LINES.tired)); }
-      else G.autoPh=Math.asin(clamp((G.target-.55)/.38,-1,1)); }}
+      else {
+        G.autoPh=Math.asin(clamp((G.target-.55)/.38,-1,1));
+        if(G.solo && !G.rubT) { G.rubZone=3; G.rubT=1; rubFeedback('low'); }
+      } } }
   else if(e.code==='KeyE')toggleKiss();
   else if(e.code==='KeyC'){ const now=performance.now();
     if(G.rubT&&now-(G._lastRubTap||0)<350){ G._lastRubTap=0; stopRub(); }
@@ -122,7 +125,12 @@ window.addEventListener('keydown',e=>{
   else if(e.code==='KeyM'){ai();setMute(!muted);}
   else if(e.code==='KeyF'){toggleFull();}
 });
-window.addEventListener('keyup',e=>{ if(e.code==='Space') G.spaceHeld=false; });
+window.addEventListener('keyup',e=>{
+  if(e.code==='Space') {
+    G.spaceHeld=false;
+    if(G.solo && G.rubT) stopRub();
+  }
+});
 const bK=document.getElementById('btnKiss'),bR=document.getElementById('btnRub'),bC=document.getElementById('btnClimax');
 if(bK) bK.onclick=e=>{e.stopPropagation();toggleKiss()};
 if(bR) bR.onclick=e=>{ e.stopPropagation(); const now=performance.now();

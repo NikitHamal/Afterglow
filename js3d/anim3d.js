@@ -222,11 +222,13 @@ function plantFeet3(dt) {
    resolve BOTH endpoint plants and glide between the POINTS (re-timed from
    the swap instant). Arms never teleport, never whip. dt<=0 snaps (harness). */
 function _soloHandTarget(cfg, isRight) {
-  if (!cfg) return null;
-  if (cfg.k && cfg.k.startsWith('him')) {
-    return { k: 'herHead', x: isRight ? 0.12 : -0.12, y: 0.04, z: 0.03 };
+  // In idle solo: right hand rests gracefully over lower pelvis/mons, left on chest.
+  // Active rub-IK takes over dynamically via rubKeys during masturbation.
+  if (isRight) {
+    return { k: 'herHips', x: 0.05, y: -0.04, z: 0.12 };
+  } else {
+    return { k: 'herChest', x: -0.08, y: 0.04, z: 0.08 };
   }
-  return cfg;
 }
 
 function solveHands3(pose, rubArms, dt) {
@@ -242,6 +244,16 @@ function solveHands3(pose, rubArms, dt) {
   for (const [cfg, arm, key] of jobs) {
     if (!cfg || !arm) continue;
     if (rubArms && rubArms.has(key)) continue;
+    // Finger task for planted (non-rub) her hands: weight-bearing palms open
+    // flat, hair touches stay gentle, body rests keep a soft natural curl.
+    const ms2 = (key === 'herL' ? 'R' : key === 'herR' ? 'L' : null);
+    if (ms2 && typeof GLB_HAND3 !== 'undefined') {
+      if (cfg.k === 'herHead') { GLB_HAND3[ms2].curl = 0.30; GLB_HAND3[ms2].spread = 0.18; GLB_HAND3[ms2].land = null; }
+      else if (cfg.floor != null) { GLB_HAND3[ms2].curl = 0.15; GLB_HAND3[ms2].spread = 0.28; GLB_HAND3[ms2].land = null; }
+      else if (cfg.k === 'herHips') { GLB_HAND3[ms2].curl = 0.42; GLB_HAND3[ms2].spread = 0.12; GLB_HAND3[ms2].land = 'mons'; }
+      else { GLB_HAND3[ms2].curl = 0.42; GLB_HAND3[ms2].spread = 0.12; GLB_HAND3[ms2].land = 'breast'; }
+      GLB_HAND3[ms2].rub = 0;
+    }
     const rig = (key === 'himL' || key === 'himR') ? him3 : her3;
     handTarget3(her3, him3, cfg, _htV);
     if (dt > 0) {
@@ -354,12 +366,17 @@ function dampSlewVec3(sm, tgt, rate, maxRate, dt) {
    2-BONE ARM AIMING (used for the rub hands)
    ============================================================ */
 const _aimQ = new THREE.Quaternion();
+const _aimQ2 = new THREE.Quaternion();
 const _downY = new THREE.Vector3(0, -1, 0);
+const _aimV1 = (typeof THREE !== 'undefined') ? new THREE.Vector3() : null;
+const _aimV2 = (typeof THREE !== 'undefined') ? new THREE.Vector3() : null;
+const _aimV3 = (typeof THREE !== 'undefined') ? new THREE.Vector3() : null;
+const _aimV4 = (typeof THREE !== 'undefined') ? new THREE.Vector3() : null;
 /* Two-bone IK with persistent joint state: slerps the LIVE shoulder
    orientation toward the aim (FK never rebases IK arms — see applyRig3 skip),
    damps the elbow toward the cosine-rule angle. Targets must arrive
    pre-slewed; the tracker itself never pops (shortest-arc slerp). */
-function aimArmAt3(arm, targetWorld, upperLen, foreLen, bendBias, rate, dt, elbRate) {
+function aimArmAt3(arm, targetWorld, upperLen, foreLen, bendBias, rate, dt, elbRate, restDir) {
   const sh = arm.shoulder;
   const parent = sh.parent;
   if (!parent) return arm.elbow.rotation.x;
@@ -372,9 +389,10 @@ function aimArmAt3(arm, targetWorld, upperLen, foreLen, bendBias, rate, dt, elbR
   const dist = clamp(dir.length(), minR, (upperLen + foreLen) * 0.995);
   dir.normalize();
 
-  _aimQ.setFromUnitVectors(_downY, dir);
-  const track = dt > 0 ? (1 - Math.exp(-(rate || 14) * dt)) : 1;
-  sh.quaternion.slerp(_aimQ, track);
+  // restDir = the limb's rest direction in shoulder space (procedural arms
+  // hang -Y; the MMD girl's run +Y — callers pass their own convention).
+  const rest = restDir || _downY;
+  _aimQ.setFromUnitVectors(rest, dir);
 
   // cosine rule → interior angle at the elbow, joint-limited so limbs never
   // lock straight or fold past flesh (also bounds the extension whip)
@@ -382,6 +400,38 @@ function aimArmAt3(arm, targetWorld, upperLen, foreLen, bendBias, rate, dt, elbR
   cosI = clamp(cosI, -1, 1);
   const interior = clamp(Math.acos(cosI), 0.18, Math.PI - 0.18);
   const ikE = Math.PI - interior + (bendBias || 0);
+
+  // Hinge-plane alignment: twist the aim about `dir` so the elbow flexes IN
+  // the shoulder→elbow→target plane. Minimal-arc aiming leaves an arbitrary
+  // twist, and deep folds amplify it into 10-20 cm wrist misses (measured).
+  // Closed-form: rotate the post-elbow forearm dir onto the desired dir.
+  if (_aimV1) {
+    // elbow position if the shoulder took the aim, in parent space
+    _aimV1.copy(rest).multiplyScalar(upperLen).applyQuaternion(_aimQ).add(sh.position);
+    // desired forearm dir: true target (= sh.position + dir*dist) minus elbow
+    _aimV2.copy(dir).multiplyScalar(dist).add(sh.position).sub(_aimV1);
+    if (_aimV2.lengthSq() > 1e-10) {
+      _aimV2.normalize();
+      // predicted forearm dir after the elbow bend: Rx(ikE)·rest, where
+      // Rx(θ)·(±Y) = ±Y·cosθ ± Z·sinθ (sign follows the rest convention)
+      _aimV4.copy(rest).applyQuaternion(_aimQ).multiplyScalar(Math.cos(ikE));
+      _aimV1.set(0, 0, 1).applyQuaternion(_aimQ);
+      _aimV4.addScaledVector(_aimV1, ((rest.y || 0) >= 0 ? 1 : -1) * Math.sin(ikE));
+      // project both onto the plane ⊥ dir, measure signed twist
+      _aimV3.copy(_aimV4).addScaledVector(dir, -_aimV4.dot(dir));
+      _aimV1.copy(_aimV2).addScaledVector(dir, -_aimV2.dot(dir));
+      if (_aimV3.lengthSq() > 1e-8 && _aimV1.lengthSq() > 1e-8) {
+        _aimV3.normalize(); _aimV1.normalize();
+        _aimV4.crossVectors(_aimV3, _aimV1);
+        const psi = Math.atan2(_aimV4.dot(dir), clamp(_aimV3.dot(_aimV1), -1, 1));
+        _aimQ2.setFromAxisAngle(dir, psi);
+        _aimQ.premultiply(_aimQ2);
+      }
+    }
+  }
+
+  const track = dt > 0 ? (1 - Math.exp(-(rate || 14) * dt)) : 1;
+  sh.quaternion.slerp(_aimQ, track);
   const useE = (dt > 0 && elbRate) ? dampNum3(arm.elbow.rotation.x, ikE, elbRate, dt) : ikE;
   arm.elbow.rotation.set(useE, 0, 0);
   return useE;
@@ -462,11 +512,15 @@ function updateAnim3(dt) {
   /* ---- detect pose change and start a blend ---- */
   const posIdx = (G.pos | 0);
   const oralNow = oral > 0.03 ? ((G.oralMode === 'blow' || G.oralT === 2) ? 2 : 1) : 0;
-  if (posIdx !== _lastPosIdx3 || oralNow !== _lastOral3) {
+  const soloNow2 = !!G.solo;
+  if (posIdx !== _lastPosIdx3 || oralNow !== _lastOral3 || soloNow2 !== _lastSolo3) {
     _prevPose3 = _prevPose3 || currentPose3();
-    _lastPosIdx3 = posIdx; _lastOral3 = oralNow;
+    _lastPosIdx3 = posIdx; _lastOral3 = oralNow; _lastSolo3 = soloNow2;
     _poseBlend3 = 0;
     applyPoseCam3();
+    // Reset hand-IK init so they start from their live position after solo toggle
+    _aimSm3.init.herL = 0; _aimSm3.init.herR = 0;
+    _aimSm3.init.himL = 0; _aimSm3.init.himR = 0;
   }
 
   const target = currentPose3();
@@ -490,32 +544,39 @@ function updateAnim3(dt) {
   /* ---- IK ownership: arms driven by IK keep continuous joint state, so FK
      application skips them entirely (a per-frame FK rebase teleports the arm
      back every frame — every takeover pop traced back to this). ---- */
+  // Finger task defaults (relaxed): the GLB hand simulation reads these.
+  // Procedural herL/herR live on -X/+X = anatomical R/L, so they map crossed.
+  if (typeof GLB_HAND3 !== 'undefined') {
+    GLB_HAND3.L.curl = 0.35; GLB_HAND3.L.spread = 0.14; GLB_HAND3.L.rub = 0; GLB_HAND3.L.land = null;
+    GLB_HAND3.R.curl = 0.35; GLB_HAND3.R.spread = 0.14; GLB_HAND3.R.rub = 0; GLB_HAND3.R.land = null;
+  }
   const rub = clamp(G.rub || 0, 0, 1);
   const zone = (G.rubZone | 0);
-  const rubActive = rub > 0.03 && G.state !== 'climax' && G.state !== 'finish';
+  const rubActive = (rub > 0.03 || (G.solo && G.spaceHeld)) && G.state !== 'climax' && G.state !== 'finish';
   const rubKeys = new Set();
   if (rubActive) {
-    // MUST mirror the zone→arm mapping in the rub block below
-    if (zone === 3 || zone === 1) rubKeys.add('himR');
-    else if (zone === 2) rubKeys.add('himL');
-    else { rubKeys.add('himR'); rubKeys.add('himL'); }
+    // In solo mode, her own hands stroke her body; in dual mode his hands rub her
+    if (G.solo) {
+      if (zone === 3) { rubKeys.add('herR'); rubKeys.add('herL'); }
+      else if (zone === 1) { rubKeys.add('herL'); }
+      else if (zone === 2) { rubKeys.add('herR'); }
+      else { rubKeys.add('herR'); rubKeys.add('herL'); }
+    } else {
+      if (zone === 3 || zone === 1) rubKeys.add('himR');
+      else if (zone === 2) rubKeys.add('himL');
+      else { rubKeys.add('himR'); rubKeys.add('himL'); }
+    }
   }
-  const soloNow = !!G.solo;
-  if (soloNow !== _lastSolo3) {
-    _lastSolo3 = soloNow;
-    _aimSm3.init.herL = 0;
-    _aimSm3.init.herR = 0;
-  }
-  const skipHim = new Set(rubKeys);
-  const skipHer = new Set();
+  const skipHim = new Set(!G.solo ? rubKeys : []);
+  const skipHer = new Set(G.solo ? rubKeys : []);
   const poseHands = pose.hands;
   if (poseHands) {
     if (!G.solo) {
       if (poseHands.himL && !rubKeys.has('himL')) skipHim.add('armL');
       if (poseHands.himR && !rubKeys.has('himR')) skipHim.add('armR');
     }
-    if (poseHands.herL) skipHer.add('armL');
-    if (poseHands.herR) skipHer.add('armR');
+    if (poseHands.herL && !skipHer.has('herL')) skipHer.add('armL');
+    if (poseHands.herR && !skipHer.has('herR')) skipHer.add('armR');
   }
 
   /* ---- base rigs through the continuous blend layer (never raw gameplay) ---- */
@@ -606,33 +667,75 @@ function updateAnim3(dt) {
 
   /* ---- rub hands: aim his arms at the selected zone (keys precomputed above) ---- */
   const rubArms = rubKeys;
+  // Procedural→MMD hand side map for the finger simulation.
+  const toMMD = k => (k === 'herL' ? 'R' : k === 'herR' ? 'L' : null);
   if (rubActive) {
     const zone = (G.rubZone | 0);
     her3.root.updateWorldMatrix(true, true);
-    const knead = Math.sin(t * 9) * 0.030 * rub;
-    const knead2 = Math.sin(t * 18) * 0.016 * rub;
+    const rubAmt = (G.solo && G.spaceHeld) ? Math.max(rub, 0.85) : rub;
+    const knead = Math.sin(t * 11) * 0.024 * rubAmt;
+    const knead2 = Math.cos(t * 11) * 0.014 * rubAmt;
 
     const targets = [];
-    if (zone === 3) {
-      const v = vulvaWorld3(her3);
-      v.y += knead2; v.x += knead;
-      targets.push([him3.armR, v, 'himR']);
-    } else if (zone === 1) {
-      const v = breastWorld3(her3, -1); v.y += knead2; v.x += knead;
-      targets.push([him3.armR, v, 'himR']);
-    } else if (zone === 2) {
-      const v = breastWorld3(her3, 1); v.y += knead2; v.x += knead;
-      targets.push([him3.armL, v, 'himL']);
+    if (G.solo) {
+      if (zone === 3) {
+        // Solo masturbation: right hand actively caresses/rubs clit and vulva
+        const v = clitorisWorld3(her3);
+        v.x += Math.sin(t * 12) * 0.016 * rubAmt;
+        v.y += Math.cos(t * 12) * 0.008 * rubAmt;
+        v.z += Math.sin(t * 6) * 0.010 * rubAmt;
+        targets.push([her3.armR, v, 'herR']);
+
+        // Left hand cups and massages left breast
+        const b = breastWorld3(her3, -1);
+        b.y += Math.sin(t * 8) * 0.014 * rubAmt;
+        b.x += Math.cos(t * 8) * 0.010 * rubAmt;
+        targets.push([her3.armL, b, 'herL']);
+      } else if (zone === 1) {
+        // Left breast
+        const b = breastWorld3(her3, -1);
+        b.y += knead2; b.x += knead;
+        targets.push([her3.armL, b, 'herL']);
+      } else if (zone === 2) {
+        // Right breast
+        const b = breastWorld3(her3, 1);
+        b.y += knead2; b.x -= knead;
+        targets.push([her3.armR, b, 'herR']);
+      } else {
+        // Both breasts: twin sensual fondle
+        const L = breastWorld3(her3, -1); L.y += knead2; L.x += knead;
+        const R = breastWorld3(her3, 1); R.y += knead2; R.x -= knead;
+        targets.push([her3.armR, R, 'herR'], [her3.armL, L, 'herL']);
+      }
     } else {
-      const L = breastWorld3(her3, -1); L.y += knead2; L.x += knead;
-      const R = breastWorld3(her3, 1); R.y += knead2; R.x -= knead;
-      targets.push([him3.armR, L, 'himR'], [him3.armL, R, 'himL']);
+      if (zone === 3) {
+        const v = vulvaWorld3(her3);
+        v.y += knead2; v.x += knead;
+        targets.push([him3.armR, v, 'himR']);
+      } else if (zone === 1) {
+        const v = breastWorld3(her3, -1); v.y += knead2; v.x += knead;
+        targets.push([him3.armR, v, 'himR']);
+      } else if (zone === 2) {
+        const v = breastWorld3(her3, 1); v.y += knead2; v.x += knead;
+        targets.push([him3.armL, v, 'himL']);
+      } else {
+        const L = breastWorld3(her3, -1); L.y += knead2; L.x += knead;
+        const R = breastWorld3(her3, 1); R.y += knead2; R.x -= knead;
+        targets.push([him3.armR, L, 'himR'], [him3.armL, R, 'himL']);
+      }
     }
+
     for (const [arm, tv, key] of targets) {
-      // (ownership already recorded in rubKeys above)
-      // damped + slew-capped hand target, and a transfer ramp: taking over an
-      // arm starts at gentle 10/s tracking and eases to full 60/s over 0.25s
-      // (fast track preserves the knead; the ramp kills the takeover pop)
+      if (!arm || !arm.hand) continue;
+      // Finger task: rubbing hand caresses (ripples), breast hand cups.
+      const ms = toMMD(key);
+      if (ms && typeof GLB_HAND3 !== 'undefined') {
+        const caress = G.solo && zone === 3 && key === 'herR';
+        GLB_HAND3[ms].curl = caress ? 0.52 : 0.65;
+        GLB_HAND3[ms].spread = caress ? 0.07 : 0.10;
+        GLB_HAND3[ms].rub = caress ? 1 : 0;
+        GLB_HAND3[ms].land = caress ? 'mons' : 'breast';
+      }
       if (!_aimSm3.init[key]) {
         arm.hand.updateWorldMatrix(true, false);
         arm.hand.getWorldPosition(_aimSm3[key]);
@@ -643,7 +746,11 @@ function updateAnim3(dt) {
       _aimSm3.age[key] += dt;
       const ramp = Math.min(1, _aimSm3.age[key] / 0.25);
       dampSlewVec3(_aimSm3[key], tv, 10, 1.5, dt);
-      aimArmAt3(arm, _aimSm3[key], him3.R.upperArm, him3.R.foreArm, -0.12, 4 + 56 * ramp, dt, 8 + 17 * ramp);
+      const isHer = key.startsWith('her');
+      const rUpper = isHer ? her3.R.upperArm : him3.R.upperArm;
+      const rFore = isHer ? her3.R.foreArm : him3.R.foreArm;
+      const bias = isHer ? (key === 'herR' ? 0.22 : -0.22) : -0.12;
+      aimArmAt3(arm, _aimSm3[key], rUpper, rFore, bias, 4 + 56 * ramp, dt, 8 + 17 * ramp);
     }
   }
 
@@ -696,6 +803,11 @@ function updateAnim3(dt) {
   /* ---- solo showcase: him hidden, she performs a slow alluring sway.
      GLB girls inherit it for free — they ride her3.root via glbFollowHer3. ---- */
   if (him3.root) him3.root.visible = !G.solo;
+  // Belt-and-suspenders: if GLB is active, always hide the procedural dummy so
+  // two bodies never overlap — setGLBActive may lag by one frame on first load.
+  if (her3.root && typeof GLB_MODEL !== 'undefined' && GLB_MODEL.active) {
+    her3.root.visible = false;
+  }
   if (G.solo) updateSolo3(dt, t);
 
   /* ---- plant the feet after every other transform has landed ---- */

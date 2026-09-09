@@ -63,6 +63,7 @@ const GLB_MODEL = {
   jiggleVel: 0
 };
 GLB_MODEL.basePos = null; // assigned once THREE is confirmed below
+if (typeof window !== 'undefined') { window.GLB_STORE = GLB_STORE; window.GLB_MODEL = GLB_MODEL; }
 
 function glbEntryState(key) {
   let e = GLB_STORE[key];
@@ -134,12 +135,17 @@ function glbPlaceEntry(key) {
   // Pelvis anchor in MODEL-LOCAL units:
   // If the model has an MMD/Mixamo pelvis bone, use its exact local anchor!
   // Otherwise fall back to 52% up the fitted height.
-  let pelvisBone = null;
+  // Priority matters: 下半身 (crotch, her3.root level) beats 腰 (waist,
+  // ~10 cm head-ward) — anchoring the waist parks the whole girl a head
+  // width toward her head, so her hands can never reach her own body.
+  let pelvisBone = null, pelvisFallback = null;
   model.traverse(c => {
-    if (!pelvisBone && c.isBone && /^(腰|下半身|hips|pelvis)$/i.test(glbCleanKey(c.name))) {
-      pelvisBone = c;
-    }
+    if (!c.isBone) return;
+    const k = glbCleanKey(c.name);
+    if (/^(下半身|hips|pelvis)$/i.test(k)) pelvisBone = pelvisBone || c;
+    else if (/^腰$/i.test(k)) pelvisFallback = pelvisFallback || c;
   });
+  pelvisBone = pelvisBone || pelvisFallback;
   if (pelvisBone) {
     model.updateMatrixWorld(true);
     const pLoc = new THREE.Vector3();
@@ -542,44 +548,74 @@ function setGLBActive(active, preset) {
 const GLB_PARTS = {
   spine:  { gain: 1.0, tweak: [0, 0, 0] },
   head:   { gain: 1.0, tweak: [0, 0, 0] },
-  arms:   { gain: 1.0, tweak: [0, 0, 0] },
-  hands:  { gain: 1.0, tweak: [0, 0, 0] },
+  arms:   { gain: 0.85, tweak: [0, 0, 0] },
+  hands:  { gain: 0.85, tweak: [0, 0, 0] },
   legs:   { gain: 1.0, tweak: [0, 0, 0] },
-  feet:   { gain: 1.0, tweak: [0, 0, 0] },
-  breast: { gain: 0.35, tweak: [0, 0, 0] },
+  feet:   { gain: 0.85, tweak: [0, 0, 0] },
+  breast: { gain: 0.0, tweak: [0, 0, 0] }, // preserve sculpted breast shape
   tail:   { gain: 0.0, tweak: [0, 0, 0] } // tail stays on glbSecondary3 sway
 };
 // Damping rate for the bone copy (1/s). Matches applyRig3's limb ease.
 const GLB_DRIVE_RATE = 18;
 
-/* Bone map: her3 joint → Goat-chan MMD node name. Plain entries copy the
-   named her3 joint's local rotation; ankle/toe entries resolve the
-   smoothed pose channels instead (see glbDriveRig) since the procedural
-   rig has no ankle/toe joints. */
+/* Foot/ankle tuning knobs. Hoisted out of glbDriveRig so headless verify
+   runs can sweep them live (window.GLB_FOOT_TUNE.ankle0 = x) instead of
+   doing a code edit + reload per candidate. Defaults reproduce the
+   previous hardcoded behaviour exactly (ankle0 -1.6 / ankleK 0.85 /
+   dangleK 0.7). toeAbs: when true the つま先 bone is driven as an
+   ABSOLUTE angle (bind replaced, not added onto) — the MMD toe bind is
+   authored flipped (~±pi on Z), so adding onto it double-counts and the
+   toe reads as folded back under the sole. */
+var GLB_FOOT_TUNE = {
+  ankle0: -1.6, ankleK: 0.85, dangleK: 0.7,
+  toeK: 0.5, toeAbs: false
+};
+
 const GLB_RIG_MAP = [
   { part: 'spine',  from: 'torso',        to: '上半身' },
   { part: 'spine',  from: 'chest',        to: '上半身2' },
   { part: 'head',   from: 'neck',         to: '首' },
-  { part: 'arms',   from: 'armL.shoulder', to: '腕.L' },
-  { part: 'arms',   from: 'armR.shoulder', to: '腕.R' },
-  { part: 'arms',   from: 'armL.elbow',   to: 'ひじ.L' },
-  { part: 'arms',   from: 'armR.elbow',   to: 'ひじ.R' },
-  { part: 'hands',  from: 'armL.hand',    to: '手首.L' },
-  { part: 'hands',  from: 'armR.hand',    to: '手首.R' },
-  { part: 'legs',   from: 'legL.hip',     to: '足.L' },
-  { part: 'legs',   from: 'legR.hip',     to: '足.R' },
-  { part: 'legs',   from: 'legL.knee',    to: 'ひざ.L' },
-  { part: 'legs',   from: 'legR.knee',    to: 'ひざ.R' },
-  { part: 'feet',   from: 'legL.foot',    to: '足首.L', ankle: 0 },
-  { part: 'feet',   from: 'legR.foot',    to: '足首.R', ankle: 1 },
-  // Toes: the procedural rig has no toe joints (see glbDriveRig), so they
-  // ride the same-side ankle at half rate, X-only — their rest frame is
-  // ~180° Y-twisted, full-euler copy would corkscrew.
-  { part: 'feet',   from: 'legL.foot',    to: 'つま先.L', toe: 0 },
-  { part: 'feet',   from: 'legR.foot',    to: 'つま先.R', toe: 1 },
+  // SIDE SWAP: the procedural rig labels its -X side "L", but the MMD/GLB
+  // girls carry anatomical left on +X (verified: GLB 足L joint sits at +X
+  // while her3 legL.hip sits at -X). Every paired joint therefore copies
+  // from the OPPOSITE her3 chain — unswapped copies rotate each limb across
+  // the midline (X-crossed shins). Spine/head are unpaired, unaffected.
+  { part: 'arms',   from: 'armR.shoulder', to: '腕.L' },
+  { part: 'arms',   from: 'armL.shoulder', to: '腕.R' },
+  { part: 'arms',   from: 'armR.elbow',   to: 'ひじ.L' },
+  { part: 'arms',   from: 'armL.elbow',   to: 'ひじ.R' },
+  { part: 'hands',  from: 'armR.hand',    to: '手首.L' },
+  { part: 'hands',  from: 'armL.hand',    to: '手首.R' },
+  { part: 'legs',   from: 'legR.hip',     to: '足.L' },
+  { part: 'legs',   from: 'legL.hip',     to: '足.R' },
+  { part: 'legs',   from: 'legR.knee',    to: 'ひざ.L' },
+  { part: 'legs',   from: 'legL.knee',    to: 'ひざ.R' },
+  // sm.ankle/toes[0] belongs to procedural legL (= anatomical R = MMD R),
+  // so the MMD L bones read index 1 and vice versa.
+  { part: 'feet',   from: 'legR.foot',    to: '足首.L', ankle: 1 },
+  { part: 'feet',   from: 'legL.foot',    to: '足首.R', ankle: 0 },
+  { part: 'feet',   from: 'legR.foot',    to: 'つま先.L', toe: 1 },
+  { part: 'feet',   from: 'legL.foot',    to: 'つま先.R', toe: 0 },
   { part: 'breast', from: 'breastL',      to: '乳親.L' },
   { part: 'breast', from: 'breastR',      to: '乳親.R' }
 ];
+
+// Per-hand task state for finger simulation, written every frame by anim3d
+// (which knows each hand's job: rubbing, cupping, weight-bearing, resting).
+// Keys are MMD/anatomical sides. curl 0 = flat open, 1 = full fist;
+// spread 0 = fingers together, 1 = fully fanned. Relaxed default has natural
+// resting curl so hands never read as flat thin paddles.
+var GLB_HAND3 = {
+  L: { curl: 0.35, spread: 0.14, land: null },
+  R: { curl: 0.35, spread: 0.14, land: null }
+};
+// Static surface offsets (world) from landmark bones to touch points.
+const GLB_LAND_OFF = {
+  breast: [0, 0.11, 0],
+  mons: [0, 0.09, 0.06]
+};
+const _glbT1 = (typeof THREE !== 'undefined' && THREE.Vector3) ? new THREE.Vector3() : null;
+const _glbT2 = (typeof THREE !== 'undefined' && THREE.Vector3) ? new THREE.Vector3() : null;
 
 // Read a her3 joint by dotted path ('armL.shoulder' → her3.armL.shoulder).
 function glbSrcJoint(path) {
@@ -612,6 +648,10 @@ function glbBuildRig(e) {
     }
   });
   const bones = [];
+  const byClean = {};
+  e.model.traverse(c => {
+    if (c.isBone && c.name) byClean[glbCleanKey(c.name)] = c;
+  });
   for (let i = 0; i < GLB_RIG_MAP.length; i++) {
     const m = GLB_RIG_MAP[i];
     const dst = byName[m.to] || byName[glbCleanKey(m.to)] || null;
@@ -623,30 +663,96 @@ function glbBuildRig(e) {
       sx: dst.scale.x, sy: dst.scale.y, sz: dst.scale.z
     });
   }
-  // Finger chains: each MMD finger base lives under 手首.L/R or 手首L/R.
-  // Curl the base segment toward a loose fist scaled by the her3 hand's roll.
+  // Finger chains: each MMD finger base (stem + ０ + side, e.g. 中指０L)
+  // parents 3 segments (stem + １２３). Resolve the full chain so curl
+  // propagates down the finger with decay instead of freezing at the base.
+  // side is the MMD/anatomical side (matches GLB_HAND3 keys); order spreads
+  // the fan from index (0) to pinky (3), thumb handled separately.
   const fingers = [];
+  const fingerOrder = { '人指': 0, '中指': 1, '薬指': 2, '小指': 3 };
   e.model.traverse(c => {
-    if (!c.name) return;
-    if (/(指０|親指０)/.test(c.name) && /[._]?[LR]$/i.test(c.name)) {
-      fingers.push({
-        dst: c, side: /L$/i.test(glbCleanKey(c.name)) ? 'armL.hand' : 'armR.hand',
-        bx: c.rotation.x, by: c.rotation.y, bz: c.rotation.z
-      });
-    }
+    if (!c.name || !c.isBone) return;
+    const m = /^(.+?)０([LR])$/i.exec(glbCleanKey(c.name));
+    if (!m) return;
+    const stem = m[1], side = m[2].toUpperCase();
+    if (!(stem in fingerOrder) && stem !== '親指') return;
+    const full = ['０', '１', '２', '３'].map(function (d) {
+      const n = byClean[stem + d + side];
+      if (!n) return null;
+      return { dst: n, bx: n.rotation.x, by: n.rotation.y, bz: n.rotation.z };
+    });
+    if (!full[0]) return;
+    fingers.push({
+      base: full[0], segs: full.slice(1), side: side,
+      order: (stem in fingerOrder) ? fingerOrder[stem] : -1,
+      thumb: stem === '親指'
+    });
   });
   e.rig = (bones.length || fingers.length) ? { bones, fingers } : null;
+  if (e.rig) {
+    // Arm IK handles: shoulder/elbow/wrist refs + segment lengths (measured
+    // in bind, model units) so the MMD arms can run the same two-bone IK as
+    // the procedural rig instead of euler-copying across different rests.
+    // MMD arm chains run +Y (measured offsets), unlike procedural -Y.
+    e.rig.arms = {};
+    ['L', 'R'].forEach(function (s) {
+      const sh = byClean['腕' + s], el = byClean['ひじ' + s], wr = byClean['手首' + s];
+      if (sh && el && wr) {
+        e.rig.arms[s] = {
+          sh: sh, el: el, wr: wr,
+          upper: el.position.length(), fore: wr.position.length()
+        };
+      }
+    });
+    // Touch landmarks: her3-anchored IK targets above the pelvis miss the
+    // short-torsoed MMD body by ~20 cm, so targets on her own torso/body get
+    // re-anchored onto these bones (plus GLB_LAND_OFF) every frame.
+    e.rig.land = {
+      pelvis: byClean['下半身'] || null,
+      breastL: byClean['乳親L'] || null,
+      breastR: byClean['乳親R'] || null
+    };
+  }
 }
 
 /* Drive the mapped skeleton from the live her3 joints. Runs AFTER
    glbFollowHer3 (root placement) inside updateGLBModel — which itself runs
    after updateAnim3, so every her3 joint is final for this frame. */
 const _gdZero = [0, 0, 0];
+// Last-seen IK ages per procedural hand: when anim3d's slewed IK target age
+// advances, that arm is IK-owned this frame (rub or pose plant) and the MMD
+// arm runs real two-bone IK to the same target instead of euler-copying.
+const _glbArmAge = { herL: -1, herR: -1 };
 function glbDriveRig(e, dt) {
   if (!e || !e.rig || (!e.rig.bones.length && !e.rig.fingers.length)) return;
   const rate = (dt > 0) ? (1 - Math.exp(-GLB_DRIVE_RATE * dt)) : 1;
   const rig = e.rig;
   const sm = (typeof _smPose3 !== 'undefined' && _smPose3.her) || null;
+
+  // Ankle rest calibration: the MMD ankle bind (-0.75) points the foot
+  // steeply down while her3's ankle 0 is ~neutral, so the smoothed pose value
+  // maps through an affine rest pose instead of adding onto the bind.
+  // Dangle adds passive plantarflexion with knee bend (a bent, unsupported
+  // knee lets the foot drop; an extended resting leg keeps toes up).
+  // Hoisted to GLB_FOOT_TUNE (module scope) so verify runs can sweep these
+  // live instead of round-tripping a code edit per candidate value.
+  const GLB_ANKLE0 = GLB_FOOT_TUNE.ankle0,
+        GLB_ANKLE_K = GLB_FOOT_TUNE.ankleK,
+        GLB_DANGLE_K = GLB_FOOT_TUNE.dangleK;
+
+  // Arms under live IK (rub/pose plant) skip the euler copy — the IK pass
+  // below aims them at the same slewed world target as the procedural rig.
+  // Ownership is inferred from the target's freshness stamp (anim3d bumps
+  // _aimSm3.age on every IK write; updateAnim3 always runs before us).
+  // Snapshot once per frame: the bone loop visits two entries per arm.
+  const _glbArmIK = { herL: false, herR: false };
+  if (typeof _aimSm3 !== 'undefined' && _aimSm3.age) {
+    ['herL', 'herR'].forEach(function (hk) {
+      const age = _aimSm3.age[hk];
+      _glbArmIK[hk] = (age !== undefined && age !== _glbArmAge[hk]);
+      _glbArmAge[hk] = age;
+    });
+  }
 
   for (let i = 0; i < rig.bones.length; i++) {
     const b = rig.bones[i];
@@ -658,38 +764,62 @@ function glbDriveRig(e, dt) {
     const tw = P.tweak || _gdZero;
 
     let sx = src.rotation.x, sy = src.rotation.y, sz = src.rotation.z;
+    let absolute = false; // absolute replaces bind; default adds onto it
     if (b.ankle === 0 || b.ankle === 1) {
-      sx = (sm && sm.ankle && (sm.ankle[b.ankle] || 0)) || 0; sy = 0; sz = 0;
+      const smA = (sm && sm.ankle && (sm.ankle[b.ankle] || 0)) || 0;
+      const kneeSrc = glbSrcJoint(b.path.replace('.foot', '.knee'));
+      const dangle = clamp(((kneeSrc && kneeSrc.rotation.x) || 0) - 0.5, 0, 1.4) * GLB_DANGLE_K;
+      sx = GLB_ANKLE0 + smA * GLB_ANKLE_K + dangle; sy = 0; sz = 0;
+      absolute = true;
     } else if (b.toe === 0 || b.toe === 1) {
       const a = (sm && sm.toes && (sm.toes[b.toe] || 0)) || 0;
-      sx = a * 0.5; sy = 0; sz = 0;
-    } else if (b.path === 'armL.hand' || b.path === 'armR.hand') {
-      const elb = (b.path === 'armL.hand') ? 'armL.elbow' : 'armR.elbow';
-      const es = glbSrcJoint(elb);
-      sx = es ? es.rotation.x * 0.5 : 0; sy = 0;
-    } else if (b.path === 'armL.elbow' || b.path === 'armR.elbow') {
+      sx = a * GLB_FOOT_TUNE.toeK; sy = 0; sz = 0;
+      // MMD authors つま先 with a flipped bind (Z ≈ ±pi): adding onto it
+      // folds the toe under the sole. Replacing the bind (absolute) keeps
+      // the toe aligned with the ankle's plantarflexion.
+      if (GLB_FOOT_TUNE.toeAbs) absolute = true;
+    } else if (b.part === 'hands') {
+      // Wrist stays near-neutral: it rides the forearm, so only a whisper of
+      // the elbow bend transfers (full coupling used to fold hands back
+      // against the forearm, reading as thin flat flaps from above).
+      const elb = glbSrcJoint(b.path.replace('.hand', '.elbow'));
+      sx = elb ? elb.rotation.x * 0.12 : 0; sy = 0; sz = 0;
+    } else if (b.part === 'arms' && /ひじ/.test(glbCleanKey(b.dst.name))) {
       // Elbow hinge flexion
       sx = src.rotation.x; sy = 0; sz = 0;
-    } else if (b.path === 'legL.knee' || b.path === 'legR.knee') {
+    } else if (b.part === 'legs' && /^足[LR]$/.test(glbCleanKey(b.dst.name))) {
+      // Thigh ABSOLUTE + mirrored spread. The src euler is an absolute joint
+      // angle while the MMD bind is a different rest pose (A-stance z=±0.135),
+      // so adding double-counts rest and overspreads 1.5x. And her3 +Z splays
+      // a +X-side limb outward while MMD +Z adducts it (opposite axis
+      // conventions, measured on the rig), so spread copies negated.
+      sx = src.rotation.x; sy = 0; sz = -src.rotation.z;
+      absolute = true;
+    } else if (b.part === 'legs') {
       // Knee flexion: positive X bends backward naturally in MMD
       sx = src.rotation.x; sy = 0; sz = 0;
     }
 
-    // Breasts: applyRig3 never rotates them (jiggle owns them) — reuse the
-    // smoothed chest pitch at low gain so cleavage rises/falls with the pose.
-    if ((b.path === 'breastL' || b.path === 'breastR') && sm && sm.chest) {
-      sx = (sm.chest[0] || 0); sy = 0; sz = 0;
+    // Breasts: keep bind pose rotation to avoid pitch distortion
+    if (b.path === 'breastL' || b.path === 'breastR') {
+      sx = 0; sy = 0; sz = 0;
     }
 
-    const tx = b.bx + sx * g + (tw[0] || 0);
-    const ty = b.by + sy * g + (tw[1] || 0);
-    const tz = b.bz + sz * g + (tw[2] || 0);
+    const tx = (absolute ? 0 : b.bx) + sx * g + (tw[0] || 0);
+    const ty = (absolute ? 0 : b.by) + sy * g + (tw[1] || 0);
+    const tz = (absolute ? 0 : b.bz) + sz * g + (tw[2] || 0);
     const r = b.dst.rotation;
 
-    // dt<=0 (paused/headless probe) snaps — still deterministic, no NaN risk.
-    r.x = (rate >= 1) ? tx : r.x + (tx - r.x) * rate;
-    r.y = (rate >= 1) ? ty : r.y + (ty - r.y) * rate;
-    r.z = (rate >= 1) ? tz : r.z + (tz - r.z) * rate;
+    let ikOwned = false;
+    if (b.part === 'arms') {
+      ikOwned = _glbArmIK[/^armL\./.test(b.path) ? 'herL' : 'herR'];
+    }
+    if (!ikOwned) {
+      // dt<=0 (paused/headless probe) snaps — still deterministic, no NaN risk.
+      r.x = (rate >= 1) ? tx : r.x + (tx - r.x) * rate;
+      r.y = (rate >= 1) ? ty : r.y + (ty - r.y) * rate;
+      r.z = (rate >= 1) ? tz : r.z + (tz - r.z) * rate;
+    }
 
     // Optional per-part bone scale (e.g. breast size); always written so
     // resetting to 1 restores the authored bind scale instead of sticking.
@@ -697,18 +827,83 @@ function glbDriveRig(e, dt) {
     b.dst.scale.set(b.sx * ps, b.sy * ps, b.sz * ps);
   }
 
-  // fingers: loose curl follows the her3 wrist roll (hands read as fists
-  // when she grips; open when the wrist is neutral). Gain-gated by hands.
+  // Fingers: task-driven curl + fan. Curl (local X, the flexion axis found
+  // by probing the rig) propagates base→tip with decay so the whole finger
+  // bends instead of kinking at the knuckle; fan (local Z) opens the four
+  // fingers from index to pinky so the hand reads volumetric, never a flat
+  // paddle. The rubbing hand ripples gently with the stroke rhythm.
   const PH = GLB_PARTS.hands;
   if (PH && PH.gain !== 0 && rig.fingers.length) {
+    const rubT = (typeof G !== 'undefined' && G.t) || 0;
     for (let i = 0; i < rig.fingers.length; i++) {
       const f = rig.fingers[i];
-      const src = glbSrcJoint(f.side);
-      const curl = src ? clamp(Math.abs(src.rotation.z) * 1.2, 0, 0.9) : 0;
+      if (!f.base) continue;
+      const task = (typeof GLB_HAND3 !== 'undefined' && GLB_HAND3[f.side]) || { curl: 0.35, spread: 0.14 };
+      let curl = clamp(task.curl || 0, 0, 1);
+      if (task.rub) curl += Math.sin(rubT * 12) * 0.08;
+      curl = clamp(curl, 0, 1) * (PH.gain == null ? 1 : PH.gain);
+      const spread = clamp(task.spread || 0, 0, 1) * (PH.gain == null ? 1 : PH.gain);
       const tw = PH.tweak || _gdZero;
-      const tx = f.bx + curl * PH.gain * 0.9 + (tw[0] || 0);
-      const r = f.dst.rotation;
-      r.x = (rate >= 1) ? tx : r.x + (tx - r.x) * rate;
+      const curlK = f.thumb ? 0.55 : 1.0;
+      const fan = (f.order < 0) ? 0 : (f.order - 1.5) * spread * 0.14;
+      const chain = [f.base].concat(f.segs);
+      const decay = [0.95, 0.75, 0.55, 0.38];
+      for (let s = 0; s < chain.length; s++) {
+        const seg = chain[s];
+        if (!seg || !seg.dst) continue;
+        const k = decay[Math.min(s, decay.length - 1)] * curlK;
+        const tx2 = seg.bx + curl * 0.85 * k + (s === 0 ? (tw[0] || 0) : 0);
+        const tz2 = seg.bz + (s === 0 ? fan : fan * 0.4) + (s === 0 ? (tw[2] || 0) : 0);
+        const r = seg.dst.rotation;
+        if (rate >= 1) { r.x = tx2; r.z = tz2; }
+        else { r.x = r.x + (tx2 - r.x) * rate; r.z = r.z + (tz2 - r.z) * rate; }
+      }
+    }
+  }
+
+  // Arm IK: aim each IK-owned MMD arm at the same slewed world target the
+  // procedural rig is tracking (rub + pose plants). Same two-bone primitive,
+  // just with the MMD rest direction (+Y) and measured segment lengths —
+  // exact tracking instead of euler-copying across different rest frames.
+  // Procedural herL/herR drive MMD R/L (side swap, see RIG_MAP).
+  if (rig.arms && typeof _aimSm3 !== 'undefined' && typeof aimArmAt3 === 'function') {
+    const pairs = [['herL', 'R'], ['herR', 'L']];
+    for (let a = 0; a < pairs.length; a++) {
+      const hk = pairs[a][0], ms = pairs[a][1];
+      if (!_glbArmIK[hk]) continue;
+      const A = rig.arms[ms];
+      const tgt = _aimSm3[hk];
+      if (!A || !tgt || !tgt.isVector3) continue;
+      // Re-anchor torso/body targets onto GLB anatomy: the MMD girl's torso
+      // is much shorter than her3's, so her3-anchored breast/mons targets
+      // float ~20 cm toward her head. Corrected = target + (GLB landmark −
+      // her3 landmark), recomputed live every frame. World/floor targets
+      // (bed, his body) stay exact — both rigs share that space.
+      let aimTgt = tgt;
+      const task = (typeof GLB_HAND3 !== 'undefined' && GLB_HAND3[ms]) || null;
+      const land = task && task.land;
+      if (land && rig.land && _glbT1 && _glbT2 && typeof her3 !== 'undefined' && her3) {
+        let hb = null, mb = null, off = null;
+        if (land === 'mons') {
+          mb = rig.land.pelvis; off = GLB_LAND_OFF.mons;
+          try { _glbT2.copy(clitorisWorld3(her3)); hb = true; } catch (_) { hb = false; }
+        } else if (land === 'breast') {
+          const leftish = tgt.x < 0;
+          mb = leftish ? rig.land.breastR : rig.land.breastL;
+          off = GLB_LAND_OFF.breast;
+          try { _glbT2.copy(breastWorld3(her3, leftish ? -1 : 1)); hb = true; } catch (_) { hb = false; }
+        }
+        if (hb && mb) {
+          mb.updateWorldMatrix(true, false);
+          _glbT1.setFromMatrixPosition(mb.matrixWorld);
+          _glbT1.x += off[0]; _glbT1.y += off[1]; _glbT1.z += off[2];
+          _glbT1.sub(_glbT2).add(tgt);
+          aimTgt = _glbT1;
+        }
+      }
+      const bias = (hk === 'herR') ? 0.22 : -0.22;
+      aimArmAt3({ shoulder: A.sh, elbow: A.el }, aimTgt,
+        A.upper, A.fore, bias, 30, dt, 20, _glbYAxis);
     }
   }
 }
@@ -853,7 +1048,7 @@ function glbApplyCustom(preset) {
       if (sk && sk.base) glbSetPartColor(preset, 'skin', sk.base);
     }
     if (G.char.breastSize !== undefined) {
-      glbSetScale('breast', 0.65 + G.char.breastSize * 0.9);
+      glbSetScale('breast', preset === 'goatchan' ? 1.0 : (0.65 + G.char.breastSize * 0.9));
     }
     if (G.char.bodyScale !== undefined) {
       const bs = 0.85 + G.char.bodyScale * 0.3;
@@ -954,7 +1149,7 @@ function glbBedFloor(x, z) {
 }
 function glbCollideBed(e) {
   const m = e && e.model;
-  if (!m) return;
+  if (!m || e.rig) return; // Rigged models have their pelvis anchored to her3.root directly
   try {
     _glbBedBox.setFromObject(m);
     if (_glbBedBox.isEmpty()) return;
