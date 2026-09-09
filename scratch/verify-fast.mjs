@@ -4,13 +4,41 @@
 // 1.2s settle, 0.5s between batched cam shots (camera snap is instant),
 // small default viewport (640x400, ~2.5x fewer SwiftShader pixels).
 // Typical single-load run (3 shots + diag): ~15s vs ~60-120s before.
+//
+// NEW: clears .shots/ at start so only the LATEST run's frames remain
+// (pass --keep to preserve previous shots). Chrome path auto-detected
+// across Windows / macOS / Linux (override with CHROME_PATH env).
 'use strict';
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
-const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const PORT = 9334;
 const BASE = 'http://127.0.0.1:5500/3d.html';
+
+// ---- Chrome auto-detect (Windows / macOS / Linux) ----
+function findChrome() {
+  if (process.env.CHROME_PATH && fs.existsSync(process.env.CHROME_PATH)) return process.env.CHROME_PATH;
+  const cands = [
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable',
+    '/usr/bin/chromium', '/usr/bin/chromium-browser',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'
+  ];
+  for (const c of cands) if (fs.existsSync(c)) return c;
+  try {
+    const p = execSync(
+      'command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || command -v chrome',
+      { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    if (p) return p;
+  } catch (_) {}
+  return cands[0];
+}
+const CHROME = findChrome();
 
 function arg(name, def) {
   const i = process.argv.indexOf('--' + name);
@@ -60,17 +88,27 @@ async function evaluate(ws, expr) {
   const diag = arg('diag', '');
   const prejs = arg('prejs', '');
   const width = parseInt(arg('w', '640'), 10), height = parseInt(arg('h', '400'), 10);
+  const keep = process.argv.includes('--keep');
   const t0 = Date.now();
 
+  // Clear previous shots so only the LATEST run remains (unless --keep).
+  if (!keep) {
+    try { fs.rmSync('.shots', { recursive: true, force: true }); } catch (_) {}
+    fs.mkdirSync('.shots', { recursive: true });
+    console.log('cleared .shots/ (latest run only)');
+  }
+
+  const cacheDir = (process.env.TEMP ? process.env.TEMP + '\\ag-verify-fast'
+    : path.join(os.tmpdir(), 'ag-verify-fast'));
   const chrome = spawn(CHROME, [
     '--headless=new', '--no-sandbox', '--hide-scrollbars',
     '--enable-unsafe-swiftshader', '--use-angle=swiftshader',
     '--disable-lcd-text', '--disable-extensions',
     '--window-size=' + width + ',' + height,
-    '--remote-debugging-port=' + PORT, '--user-data-dir=' + process.env.TEMP + '\\ag-verify-fast',
+    '--remote-debugging-port=' + PORT, '--user-data-dir=' + cacheDir,
     'about:blank'
   ], { stdio: 'ignore' });
-  await sleep(1800);
+  await sleep(1200);
 
   let ws;
   try {
@@ -122,7 +160,7 @@ async function evaluate(ws, expr) {
     }
     console.log('TOTAL', ((Date.now() - t0) / 1000).toFixed(1) + 's');
   } finally {
-    try { ws && ws.close(); } catch {}
+    try { ws && ws.close(); } catch { }
     chrome.kill();
   }
 })().catch(e => { console.error('VERIFY FAIL:', e.message); process.exit(1); });

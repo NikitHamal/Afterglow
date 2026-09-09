@@ -549,7 +549,9 @@ const GLB_PARTS = {
   spine:  { gain: 1.0, tweak: [0, 0, 0] },
   head:   { gain: 1.0, tweak: [0, 0, 0] },
   arms:   { gain: 0.85, tweak: [0, 0, 0] },
-  hands:  { gain: 0.85, tweak: [0, 0, 0] },
+  // hands: gain 0.85 keeps the wrist drive, scale 1.32 enlarges Goat-chan's
+  // small/thin hands so they read full and volumetric instead of paddle-thin.
+  hands:   { gain: 0.85, tweak: [0, 0, 0], scale: 1.32 },
   legs:   { gain: 1.0, tweak: [0, 0, 0] },
   feet:   { gain: 0.85, tweak: [0, 0, 0] },
   breast: { gain: 0.0, tweak: [0, 0, 0] }, // preserve sculpted breast shape
@@ -567,7 +569,11 @@ const GLB_DRIVE_RATE = 18;
    authored flipped (~±pi on Z), so adding onto it double-counts and the
    toe reads as folded back under the sole. */
 var GLB_FOOT_TUNE = {
-  ankle0: -1.6, ankleK: 0.85, dangleK: 0.7,
+  // Recalibrated so the foot rests in a natural L-shape across every pose
+  // instead of over-plantarflexing (the old ankle0=-1.6 swung the foot from
+  // ~+52° dorsiflexed in solo to ~-40° pointed in active poses). ankleK is
+  // now gentle so the authored per-pose ankle value only modulates slightly.
+  ankle0: -1.95, ankleK: 0.35, dangleK: 0.25,
   toeK: 0.5, toeAbs: false
 };
 
@@ -606,8 +612,10 @@ const GLB_RIG_MAP = [
 // spread 0 = fingers together, 1 = fully fanned. Relaxed default has natural
 // resting curl so hands never read as flat thin paddles.
 var GLB_HAND3 = {
-  L: { curl: 0.35, spread: 0.14, land: null },
-  R: { curl: 0.35, spread: 0.14, land: null }
+  // Relaxed default: a touch less curl and more fan so the hand reads full
+  // and open rather than a thin clenched paddle (rub/pose plants override).
+  L: { curl: 0.30, spread: 0.22, land: null },
+  R: { curl: 0.30, spread: 0.22, land: null }
 };
 // Static surface offsets (world) from landmark bones to touch points.
 const GLB_LAND_OFF = {

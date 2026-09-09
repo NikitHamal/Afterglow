@@ -381,58 +381,41 @@ function aimArmAt3(arm, targetWorld, upperLen, foreLen, bendBias, rate, dt, elbR
   const parent = sh.parent;
   if (!parent) return arm.elbow.rotation.x;
   parent.updateWorldMatrix(true, false);
-  const local = parent.worldToLocal(_tmpV.copy(targetWorld));
-  const dir = local.sub(sh.position);
-  // arms can't fold flat: keep the target out of the singularity ball around
-  // the joint, or the aim quaternion flips 180° in a single frame
-  const minR = Math.abs(upperLen - foreLen) + 0.06;
-  const dist = clamp(dir.length(), minR, (upperLen + foreLen) * 0.995);
+  // Correct two-bone IK. The previous version skipped its hinge-twist term
+  // whenever the target was reachable (the desired-forearm vector is parallel
+  // to the aim, so its projection onto the plane ⊥ aim is zero) — that left
+  // the wrist 10-25 cm short of the target. Here we place the elbow by the
+  // law of cosines and twist the shoulder so the elbow hinge (local X) actually
+  // flexes in the shoulder→elbow→target plane, so the wrist lands on target.
+  const rest = (restDir && restDir.isVector3) ? restDir.clone().normalize() : _downY;
+  const S = sh.position.clone();
+  const T = parent.worldToLocal(_tmpV.copy(targetWorld));
+  let dir = T.clone().sub(S);
+  const d = clamp(dir.length(), Math.abs(upperLen - foreLen) + 0.02, (upperLen + foreLen) * 0.999);
   dir.normalize();
-
-  // restDir = the limb's rest direction in shoulder space (procedural arms
-  // hang -Y; the MMD girl's run +Y — callers pass their own convention).
-  const rest = restDir || _downY;
+  // Base shoulder orientation: rest axis -> shoulder->target direction.
   _aimQ.setFromUnitVectors(rest, dir);
-
-  // cosine rule → interior angle at the elbow, joint-limited so limbs never
-  // lock straight or fold past flesh (also bounds the extension whip)
-  let cosI = (upperLen * upperLen + foreLen * foreLen - dist * dist) / (2 * upperLen * foreLen);
-  cosI = clamp(cosI, -1, 1);
-  const interior = clamp(Math.acos(cosI), 0.18, Math.PI - 0.18);
-  const ikE = Math.PI - interior + (bendBias || 0);
-
-  // Hinge-plane alignment: twist the aim about `dir` so the elbow flexes IN
-  // the shoulder→elbow→target plane. Minimal-arc aiming leaves an arbitrary
-  // twist, and deep folds amplify it into 10-20 cm wrist misses (measured).
-  // Closed-form: rotate the post-elbow forearm dir onto the desired dir.
-  if (_aimV1) {
-    // elbow position if the shoulder took the aim, in parent space
-    _aimV1.copy(rest).multiplyScalar(upperLen).applyQuaternion(_aimQ).add(sh.position);
-    // desired forearm dir: true target (= sh.position + dir*dist) minus elbow
-    _aimV2.copy(dir).multiplyScalar(dist).add(sh.position).sub(_aimV1);
-    if (_aimV2.lengthSq() > 1e-10) {
-      _aimV2.normalize();
-      // predicted forearm dir after the elbow bend: Rx(ikE)·rest, where
-      // Rx(θ)·(±Y) = ±Y·cosθ ± Z·sinθ (sign follows the rest convention)
-      _aimV4.copy(rest).applyQuaternion(_aimQ).multiplyScalar(Math.cos(ikE));
-      _aimV1.set(0, 0, 1).applyQuaternion(_aimQ);
-      _aimV4.addScaledVector(_aimV1, ((rest.y || 0) >= 0 ? 1 : -1) * Math.sin(ikE));
-      // project both onto the plane ⊥ dir, measure signed twist
-      _aimV3.copy(_aimV4).addScaledVector(dir, -_aimV4.dot(dir));
-      _aimV1.copy(_aimV2).addScaledVector(dir, -_aimV2.dot(dir));
-      if (_aimV3.lengthSq() > 1e-8 && _aimV1.lengthSq() > 1e-8) {
-        _aimV3.normalize(); _aimV1.normalize();
-        _aimV4.crossVectors(_aimV3, _aimV1);
-        const psi = Math.atan2(_aimV4.dot(dir), clamp(_aimV3.dot(_aimV1), -1, 1));
-        _aimQ2.setFromAxisAngle(dir, psi);
-        _aimQ.premultiply(_aimQ2);
-      }
-    }
-  }
-
+  // Shoulder interior angle (law of cosines) selects the upper-arm direction.
+  const alpha = Math.acos(clamp((upperLen * upperLen + d * d - foreLen * foreLen) / (2 * upperLen * d), -1, 1));
+  // Bend axis = shoulder local X carried into parent space (perpendicular to dir).
+  const bendAxis = _aimV1.set(1, 0, 0).applyQuaternion(_aimQ);
+  const upperDir = _aimV2.copy(dir).applyAxisAngle(bendAxis, alpha);
+  const elbowPos = _aimV3.copy(S).addScaledVector(upperDir, upperLen);
+  let foreDir = _aimV4.copy(T).sub(elbowPos);
+  if (foreDir.lengthSq() > 1e-12) foreDir.normalize();
+  // Shoulder quaternion that points rest -> upperDir, then twist about
+  // upperDir so the elbow hinge (local X) flexes toward the target plane.
+  const qS = _aimQ2.setFromUnitVectors(rest, upperDir);
+  const localFore = foreDir.clone().applyQuaternion(qS.clone().invert());
+  // rotate qS about upperDir by psi to zero localFore.x (elbow flexes in Y-Z)
+  const psi = Math.atan2(-localFore.x, localFore.z);
+  const qTwist = new THREE.Quaternion().setFromAxisAngle(upperDir, psi);
+  qS.premultiply(qTwist);
+  const localFore2 = foreDir.clone().applyQuaternion(qS.clone().invert());
+  const elbowAngle = clamp(Math.atan2(localFore2.z, localFore2.y) + (bendBias || 0), -2.9, 2.9);
   const track = dt > 0 ? (1 - Math.exp(-(rate || 14) * dt)) : 1;
-  sh.quaternion.slerp(_aimQ, track);
-  const useE = (dt > 0 && elbRate) ? dampNum3(arm.elbow.rotation.x, ikE, elbRate, dt) : ikE;
+  sh.quaternion.slerp(qS, track);
+  const useE = (dt > 0 && elbRate) ? dampNum3(arm.elbow.rotation.x, elbowAngle, elbRate, dt) : elbowAngle;
   arm.elbow.rotation.set(useE, 0, 0);
   return useE;
 }
@@ -730,11 +713,13 @@ function updateAnim3(dt) {
       // Finger task: rubbing hand caresses (ripples), breast hand cups.
       const ms = toMMD(key);
       if (ms && typeof GLB_HAND3 !== 'undefined') {
-        const caress = G.solo && zone === 3 && key === 'herR';
-        GLB_HAND3[ms].curl = caress ? 0.52 : 0.65;
-        GLB_HAND3[ms].spread = caress ? 0.07 : 0.10;
-        GLB_HAND3[ms].rub = caress ? 1 : 0;
-        GLB_HAND3[ms].land = caress ? 'mons' : 'breast';
+      const caress = G.solo && zone === 3 && key === 'herR';
+      // Slightly more open / less clenched than before so the hand reads full
+      // and volumetric (not a thin paddle) while still caressing / cupping.
+      GLB_HAND3[ms].curl = caress ? 0.46 : 0.56;
+      GLB_HAND3[ms].spread = caress ? 0.13 : 0.17;
+      GLB_HAND3[ms].rub = caress ? 1 : 0;
+      GLB_HAND3[ms].land = caress ? 'mons' : 'breast';
       }
       if (!_aimSm3.init[key]) {
         arm.hand.updateWorldMatrix(true, false);
