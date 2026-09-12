@@ -14,3 +14,7 @@ assets/goatchan/tex/
 
 # Dev verification screenshots (local only, never push).
 .shots/
+
+# Dev scratch outputs (generated GLB copies, diag dumps)
+scratch/glb/*.glb
+scratch/out/
