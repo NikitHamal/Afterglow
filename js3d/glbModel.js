@@ -622,9 +622,16 @@ var GLB_HAND3 = {
   R: { curl: 0.50, spread: 0.12, land: null }
 };
 // Static surface offsets (world) from landmark bones to touch points.
+// These are WORLD offsets, and the girl lies on her back, so +Y is "outward
+// from her chest" — which is the right direction for both the breast and the
+// mons. 乳親 is the breast's ROOT at the chest wall, not its surface, so the
+// offset has to carry the hand out to where the flesh actually is; at the old
+// 0.11 m the target sat only ~0.12 m from the shoulder and the arm had to fold
+// almost completely, which read as cramped. Measured sweep: 0.11 m = tight
+// fold, 0.19 m = relaxed arm still touching, 0.27 m = arm visibly floating.
 const GLB_LAND_OFF = {
-  breast: [0, 0.11, 0],
-  mons: [0, 0.09, 0.06]
+  breast: [0, 0.19, 0],
+  mons: [0, 0.15, 0.10]
 };
 const _glbT1 = (typeof THREE !== 'undefined' && THREE.Vector3) ? new THREE.Vector3() : null;
 const _glbT2 = (typeof THREE !== 'undefined' && THREE.Vector3) ? new THREE.Vector3() : null;
