@@ -246,12 +246,16 @@ function solveHands3(pose, rubArms, dt) {
     if (rubArms && rubArms.has(key)) continue;
     // Finger task for planted (non-rub) her hands: weight-bearing palms open
     // flat, hair touches stay gentle, body rests keep a soft natural curl.
+    // Curl values are deliberately higher than "flat": at 0.15-0.42 the MMD
+    // fingers stay nearly straight, so from any near-side camera the hand
+    // reads as a thin splayed paddle. Measured on the rig, ~0.6 curl gives a
+    // relaxed anatomical hand while still reading as open.
     const ms2 = (key === 'herL' ? 'R' : key === 'herR' ? 'L' : null);
     if (ms2 && typeof GLB_HAND3 !== 'undefined') {
-      if (cfg.k === 'herHead') { GLB_HAND3[ms2].curl = 0.30; GLB_HAND3[ms2].spread = 0.18; GLB_HAND3[ms2].land = null; }
-      else if (cfg.floor != null) { GLB_HAND3[ms2].curl = 0.15; GLB_HAND3[ms2].spread = 0.28; GLB_HAND3[ms2].land = null; }
-      else if (cfg.k === 'herHips') { GLB_HAND3[ms2].curl = 0.42; GLB_HAND3[ms2].spread = 0.12; GLB_HAND3[ms2].land = 'mons'; }
-      else { GLB_HAND3[ms2].curl = 0.42; GLB_HAND3[ms2].spread = 0.12; GLB_HAND3[ms2].land = 'breast'; }
+      if (cfg.k === 'herHead') { GLB_HAND3[ms2].curl = 0.42; GLB_HAND3[ms2].spread = 0.14; GLB_HAND3[ms2].land = null; }
+      else if (cfg.floor != null) { GLB_HAND3[ms2].curl = 0.26; GLB_HAND3[ms2].spread = 0.20; GLB_HAND3[ms2].land = null; }
+      else if (cfg.k === 'herHips') { GLB_HAND3[ms2].curl = 0.58; GLB_HAND3[ms2].spread = 0.10; GLB_HAND3[ms2].land = 'mons'; }
+      else { GLB_HAND3[ms2].curl = 0.62; GLB_HAND3[ms2].spread = 0.10; GLB_HAND3[ms2].land = 'breast'; }
       GLB_HAND3[ms2].rub = 0;
     }
     const rig = (key === 'himL' || key === 'himR') ? him3 : her3;
@@ -547,8 +551,8 @@ function updateAnim3(dt) {
   // Finger task defaults (relaxed): the GLB hand simulation reads these.
   // Procedural herL/herR live on -X/+X = anatomical R/L, so they map crossed.
   if (typeof GLB_HAND3 !== 'undefined') {
-    GLB_HAND3.L.curl = 0.35; GLB_HAND3.L.spread = 0.14; GLB_HAND3.L.rub = 0; GLB_HAND3.L.land = null;
-    GLB_HAND3.R.curl = 0.35; GLB_HAND3.R.spread = 0.14; GLB_HAND3.R.rub = 0; GLB_HAND3.R.land = null;
+    GLB_HAND3.L.curl = 0.50; GLB_HAND3.L.spread = 0.12; GLB_HAND3.L.rub = 0; GLB_HAND3.L.land = null;
+    GLB_HAND3.R.curl = 0.50; GLB_HAND3.R.spread = 0.12; GLB_HAND3.R.rub = 0; GLB_HAND3.R.land = null;
   }
   const rub = clamp(G.rub || 0, 0, 1);
   const zone = (G.rubZone | 0);
@@ -728,11 +732,14 @@ function updateAnim3(dt) {
     for (const [arm, tv, key] of targets) {
       if (!arm || !arm.hand) continue;
       // Finger task: rubbing hand caresses (ripples), breast hand cups.
+      // Curl sits above the "flat paddle" band (see the planted-hand note
+      // above): the caressing hand stays open enough to stroke, the cupping
+      // hand closes more so it reads as a hand holding the breast.
       const ms = toMMD(key);
       if (ms && typeof GLB_HAND3 !== 'undefined') {
         const caress = G.solo && zone === 3 && key === 'herR';
-        GLB_HAND3[ms].curl = caress ? 0.52 : 0.65;
-        GLB_HAND3[ms].spread = caress ? 0.07 : 0.10;
+        GLB_HAND3[ms].curl = caress ? 0.60 : 0.72;
+        GLB_HAND3[ms].spread = caress ? 0.06 : 0.09;
         GLB_HAND3[ms].rub = caress ? 1 : 0;
         GLB_HAND3[ms].land = caress ? 'mons' : 'breast';
       }

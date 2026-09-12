@@ -586,10 +586,22 @@ const GLB_RIG_MAP = [
   { part: 'arms',   from: 'armL.elbow',   to: 'ひじ.R' },
   { part: 'hands',  from: 'armR.hand',    to: '手首.L' },
   { part: 'hands',  from: 'armL.hand',    to: '手首.R' },
-  { part: 'legs',   from: 'legR.hip',     to: '足.L' },
-  { part: 'legs',   from: 'legL.hip',     to: '足.R' },
+  { part: 'legs',   from: 'legR.hip',     to: '足.L', thigh: true },
+  { part: 'legs',   from: 'legL.hip',     to: '足.R', thigh: true },
   { part: 'legs',   from: 'legR.knee',    to: 'ひざ.L' },
   { part: 'legs',   from: 'legL.knee',    to: 'ひざ.R' },
+  // Auxiliary leg bones the MMD author left in the skin. They are NOT in the
+  // main chain — ひざALT hangs off the THIGH (not the knee) and 足捩 off
+  // 下半身 — so unless we drive them they hold their bind rotation while the
+  // real leg bends. Any vertex carrying their weight is then pulled between
+  // two divergent transforms, which is what was stretching the sock/shin.
+  // Give each the same rotation as its real counterpart so the blend is
+  // coherent again. (Measured: the sock's shin verts carry ひざALT 5% +
+  // 足捩 7%; before this fix the shin cross-section stretched 4.2x.)
+  { part: 'legs',   from: 'legR.knee',    to: 'ひざALT.L' },
+  { part: 'legs',   from: 'legL.knee',    to: 'ひざALT.R' },
+  { part: 'legs',   from: 'legR.hip',     to: '足捩.L', thigh: true },
+  { part: 'legs',   from: 'legL.hip',     to: '足捩.R', thigh: true },
   // sm.ankle/toes[0] belongs to procedural legL (= anatomical R = MMD R),
   // so the MMD L bones read index 1 and vice versa.
   { part: 'feet',   from: 'legR.foot',    to: '足首.L', ankle: 1 },
@@ -606,8 +618,8 @@ const GLB_RIG_MAP = [
 // spread 0 = fingers together, 1 = fully fanned. Relaxed default has natural
 // resting curl so hands never read as flat thin paddles.
 var GLB_HAND3 = {
-  L: { curl: 0.35, spread: 0.14, land: null },
-  R: { curl: 0.35, spread: 0.14, land: null }
+  L: { curl: 0.50, spread: 0.12, land: null },
+  R: { curl: 0.50, spread: 0.12, land: null }
 };
 // Static surface offsets (world) from landmark bones to touch points.
 const GLB_LAND_OFF = {
@@ -658,7 +670,7 @@ function glbBuildRig(e) {
     if (!dst) continue;
     bones.push({
       part: m.part, path: m.from, dst,
-      ankle: m.ankle, toe: m.toe,
+      ankle: m.ankle, toe: m.toe, thigh: m.thigh,
       bx: dst.rotation.x, by: dst.rotation.y, bz: dst.rotation.z,
       sx: dst.scale.x, sy: dst.scale.y, sz: dst.scale.z
     });
@@ -787,7 +799,7 @@ function glbDriveRig(e, dt) {
     } else if (b.part === 'arms' && /ひじ/.test(glbCleanKey(b.dst.name))) {
       // Elbow hinge flexion
       sx = src.rotation.x; sy = 0; sz = 0;
-    } else if (b.part === 'legs' && /^足[LR]$/.test(glbCleanKey(b.dst.name))) {
+    } else if (b.part === 'legs' && b.thigh) {
       // Thigh ABSOLUTE + mirrored spread. The src euler is an absolute joint
       // angle while the MMD bind is a different rest pose (A-stance z=±0.135),
       // so adding double-counts rest and overspreads 1.5x. And her3 +Z splays
@@ -838,7 +850,7 @@ function glbDriveRig(e, dt) {
     for (let i = 0; i < rig.fingers.length; i++) {
       const f = rig.fingers[i];
       if (!f.base) continue;
-      const task = (typeof GLB_HAND3 !== 'undefined' && GLB_HAND3[f.side]) || { curl: 0.35, spread: 0.14 };
+      const task = (typeof GLB_HAND3 !== 'undefined' && GLB_HAND3[f.side]) || { curl: 0.50, spread: 0.12 };
       let curl = clamp(task.curl || 0, 0, 1);
       if (task.rub) curl += Math.sin(rubT * 12) * 0.08;
       curl = clamp(curl, 0, 1) * (PH.gain == null ? 1 : PH.gain);
