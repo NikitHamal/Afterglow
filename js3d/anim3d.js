@@ -405,31 +405,71 @@ function aimArmAt3(arm, targetWorld, upperLen, foreLen, bendBias, rate, dt, elbR
   const interior = clamp(Math.acos(cosI), 0.18, Math.PI - 0.18);
   const ikE = Math.PI - interior + (bendBias || 0);
 
-  // Hinge-plane alignment: twist the aim about `dir` so the elbow flexes IN
-  // the shoulder→elbow→target plane. Minimal-arc aiming leaves an arbitrary
-  // twist, and deep folds amplify it into 10-20 cm wrist misses (measured).
-  // Closed-form: rotate the post-elbow forearm dir onto the desired dir.
-  if (_aimV1) {
-    // elbow position if the shoulder took the aim, in parent space
-    _aimV1.copy(rest).multiplyScalar(upperLen).applyQuaternion(_aimQ).add(sh.position);
-    // desired forearm dir: true target (= sh.position + dir*dist) minus elbow
-    _aimV2.copy(dir).multiplyScalar(dist).add(sh.position).sub(_aimV1);
-    if (_aimV2.lengthSq() > 1e-10) {
-      _aimV2.normalize();
-      // predicted forearm dir after the elbow bend: Rx(ikE)·rest, where
-      // Rx(θ)·(±Y) = ±Y·cosθ ± Z·sinθ (sign follows the rest convention)
-      _aimV4.copy(rest).applyQuaternion(_aimQ).multiplyScalar(Math.cos(ikE));
-      _aimV1.set(0, 0, 1).applyQuaternion(_aimQ);
-      _aimV4.addScaledVector(_aimV1, ((rest.y || 0) >= 0 ? 1 : -1) * Math.sin(ikE));
-      // project both onto the plane ⊥ dir, measure signed twist
-      _aimV3.copy(_aimV4).addScaledVector(dir, -_aimV4.dot(dir));
-      _aimV1.copy(_aimV2).addScaledVector(dir, -_aimV2.dot(dir));
-      if (_aimV3.lengthSq() > 1e-8 && _aimV1.lengthSq() > 1e-8) {
-        _aimV3.normalize(); _aimV1.normalize();
-        _aimV4.crossVectors(_aimV3, _aimV1);
-        const psi = Math.atan2(_aimV4.dot(dir), clamp(_aimV3.dot(_aimV1), -1, 1));
-        _aimQ2.setFromAxisAngle(dir, psi);
-        _aimQ.premultiply(_aimQ2);
+  // (The old hinge-plane block lived here. It was degenerate: with the upper
+  // arm aimed at the target, the "predicted" and "desired" forearm directions
+  // were both parallel to `dir`, so the perpendicular components were ~0 and
+  // psi came out as 0 — no twist correction ever happened. The bend plane is
+  // now resolved properly in the single block below.)
+
+  // Shoulder offset. Aiming the upper arm straight at the target puts the
+  // elbow ON the shoulder→target line, so the forearm can only span
+  // |dist − upper| and the wrist lands on the right sphere but at the wrong
+  // angle — missing by ≈ 2·dist·sin(α/2), where
+  //   cos α = (upper² + dist² − fore²) / (2·upper·dist).
+  // On the short-torsoed MMD girl the breast/mons sit close to the shoulder,
+  // so the fold is deep and α is large: measured misses were 0.158 m and
+  // 0.210 m against predicted 0.148 m and 0.196 m. Swing the aim by α toward
+  // whichever side the elbow already bends so the upper arm points at the
+  // true elbow. The pole is read from the live elbow offset, which keeps the
+  // bend side stable frame to frame (no popping) and matches the sign of the
+  // flexion convention automatically.
+  if (_aimV1 && dist > 1e-6) {
+    _aimV1.copy(arm.elbow.position);
+    if (_aimV1.lengthSq() > 1e-12) {
+      _aimV1.normalize().applyQuaternion(sh.quaternion);   // elbow dir, parent space
+      _aimV1.addScaledVector(dir, -_aimV1.dot(dir));       // keep it ⊥ dir
+    }
+    if (_aimV1.lengthSq() < 1e-8) {
+      // arm is currently straight: fall back to any perpendicular
+      _aimV1.set(0, 0, 1).applyQuaternion(_aimQ).addScaledVector(dir, -_aimV1.dot(dir));
+      if (_aimV1.lengthSq() < 1e-8) _aimV1.crossVectors(dir, _aimV2.set(0, 1, 0));
+    }
+    if (_aimV1.lengthSq() > 1e-8) {
+      _aimV1.normalize();                                  // = p, the bend pole
+      // 2. shoulder offset: aim the upper arm at the true elbow
+      const cosA = clamp(
+        (upperLen * upperLen + dist * dist - foreLen * foreLen) / (2 * upperLen * dist), -1, 1);
+      const alpha = Math.acos(cosA);
+      _aimV2.crossVectors(dir, _aimV1).normalize();        // axis n = dir × pole
+      _aimQ2.setFromAxisAngle(_aimV2, alpha);              // R(n,α)·dir = elbow dir
+      _aimQ.premultiply(_aimQ2);
+
+      // 3. twist. The forearm must fold from the upper arm toward the target,
+      // so the hinge axis is exactly elbowDir × foreDir. Rotating about the
+      // elbow direction until the elbow's local X (its flexion axis) equals
+      // that axis has a definite sign — unlike a plane-normal formulation,
+      // where n and −n describe the same plane and picking wrong folds the
+      // forearm 90° out of plane (measured 0.36 m miss on one arm only).
+      _aimV3.copy(dir).multiplyScalar(Math.cos(alpha)).addScaledVector(_aimV1, Math.sin(alpha));
+      _aimV2.copy(dir).multiplyScalar(dist).add(sh.position)                    // true target
+        .sub(_aimV4.copy(_aimV3).multiplyScalar(upperLen).add(sh.position));    // true elbow
+      if (_aimV2.lengthSq() > 1e-10) {
+        _aimV2.normalize();                                  // foreDir
+        _aimV4.crossVectors(_aimV3, _aimV2);                 // hinge = elbowDir × foreDir
+        if (_aimV4.lengthSq() > 1e-10) {
+          _aimV4.normalize();
+          _aimV1.set(1, 0, 0).applyQuaternion(_aimQ);        // predicted hinge = local X
+          _aimV1.addScaledVector(_aimV3, -_aimV1.dot(_aimV3));
+          _aimV4.addScaledVector(_aimV3, -_aimV4.dot(_aimV3));
+          if (_aimV1.lengthSq() > 1e-8 && _aimV4.lengthSq() > 1e-8) {
+            _aimV1.normalize(); _aimV4.normalize();
+            const c = clamp(_aimV1.dot(_aimV4), -1, 1);
+            _aimV2.crossVectors(_aimV1, _aimV4);
+            const psi = Math.atan2(_aimV2.dot(_aimV3), c);
+            _aimQ2.setFromAxisAngle(_aimV3, psi);
+            _aimQ.premultiply(_aimQ2);
+          }
+        }
       }
     }
   }

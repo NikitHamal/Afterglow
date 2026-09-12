@@ -913,7 +913,12 @@ function glbDriveRig(e, dt) {
           aimTgt = _glbT1;
         }
       }
-      const bias = (hk === 'herR') ? 0.22 : -0.22;
+      // bendBias shifts the elbow off the cosine-rule angle, which lengthens
+      // or shortens the reach so the wrist can never land on the target.
+      // With the bend plane now resolved explicitly inside aimArmAt3 (the
+      // shoulder offset picks the side) the bias is redundant and only costs
+      // reach: measured 0.171 m of reach for a 0.133 m target.
+      const bias = 0;
       aimArmAt3({ shoulder: A.sh, elbow: A.el }, aimTgt,
         A.upper, A.fore, bias, 30, dt, 20, _glbYAxis);
     }
