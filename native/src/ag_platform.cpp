@@ -21,6 +21,8 @@ namespace ag {
 int headlessRun(const HeadlessOpts& o) {
   Game g;
   g.reset();
+  fpv::visualReset();
+  oral::visualReset();
   g.state = "play";
   g.view = o.view;
   g.pleasure = o.pleasure;

@@ -54,6 +54,7 @@ void herExpression(Canvas& cv, Game& g); // shared with 3D mode
 
 // ---- js/fpv.js ----
 namespace fpv {
+void visualReset(); // reseed draw-time visual RNG (parity harness)
 void draw(Canvas& cv, Game& g); // full first-person pass
 } // namespace fpv
 
@@ -68,6 +69,7 @@ void drawBodies(Canvas& cv, Game& g); // pose-driven her/him rendering
 // ---- js/oral.js ----
 namespace oral {
 void toggle(Game& g); // O key
+void visualReset();    // reseed draw-time visual RNG (parity harness)
 void draw(Canvas& cv, Game& g); // oral-mode scene pass
 } // namespace oral
 

@@ -1070,6 +1070,11 @@ struct FpvSm {
   bool ok = false;
 };
 static FpvSm fpv_smL, fpv_smR;
+void visualReset() { // parity harness: reseed RNG + clear smoothing
+  fpv_rng = Rng(0x46505631ull);
+  fpv_smL = FpvSm{};
+  fpv_smR = FpvSm{};
+}
 static V2 fpv_smTo(FpvSm& o, const Game& g, F64 tx, F64 ty) {
   if (!o.ok || o.v != g.view) {
     o.x = tx;
