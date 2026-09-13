@@ -455,6 +455,7 @@ void update(Game& g, F64 dt) {
       g.spurts < s.prevSpurts) {
     s = AuSched{};
     s.init = true;
+    cueRng_ = Rng(1234567ull); // keep headless frames bit-stable
   }
 
   const std::string& st = g.state;

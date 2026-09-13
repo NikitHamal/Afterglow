@@ -1387,6 +1387,8 @@ void drawOralFPV(Canvas& cv, Game& g) {
 
 } // namespace — file-local helpers end; toggle/draw need external linkage
 
+void visualReset() { oral_rng = Rng(9182); } // parity harness determinism
+
 const char* pickLine(std::initializer_list<const char*> xs) {
   size_t n = 0;
   for (auto x : xs) (void)x, n++;
