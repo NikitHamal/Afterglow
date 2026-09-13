@@ -49,17 +49,25 @@ int headlessRun(const HeadlessOpts& o) {
       cv.writePPM(p);
     }
   }
-  // identity: cleared-cache redraw of the final state must match exactly.
-  // Snapshot g first so a redraw that spawns particles can't diverge.
-  uint64_t before = cv.hash();
-  Game g2 = g;
+  // identity: two consecutive redraws from identical state must match.
+  // Draws advance visual RNG/smoothing like the JS originals, so the check
+  // compares redraw-vs-redraw (cache cleared before the first), not
+  // last-frame-vs-redraw.
+  Game gA = g, gB = g;
+  fpv::visualReset();
+  oral::visualReset();
   cv.cacheClear();
-  app::draw(cv, g2);
+  app::draw(cv, gA);
+  uint64_t h1 = cv.hash();
+  fpv::visualReset();
+  oral::visualReset();
+  app::draw(cv, gB);
   uint64_t after = cv.hash();
-  std::printf("identity %s cache %llu\n", before == after ? "OK" : "MISMATCH",
-              (unsigned long long)cv.cacheSize());
+  size_t nCache = cv.cacheSize();
+  std::printf("identity %s cache %llu\n", h1 == after ? "OK" : "MISMATCH",
+              (unsigned long long)nCache);
   (void)first;
-  return before == after ? 0 : 1;
+  return h1 == after ? 0 : 1;
 }
 
 #ifndef AG_WITH_SDL
