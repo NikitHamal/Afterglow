@@ -628,6 +628,8 @@ function updateAnim3(dt) {
   _smPose3.him = dampCfg3(_smPose3.him, pose.him, dt);
   applyRig3(her3, _smPose3.her, dt, k, skipHer);
   applyRig3(him3, _smPose3.him, dt, k, skipHim);
+  // couple fit: nudge the male onto a loaded GLB girl's body (see glbCoupleFit3)
+  if (typeof glbCoupleFit3 === 'function') glbCoupleFit3(him3, posIdx, dt);
 
   /* ---- thrust: damped stroke drive so depth spikes glide instead of
      snapping. Knees stay planted: cowgirl rides vertically, horizontal

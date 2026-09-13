@@ -1087,6 +1087,54 @@ function glbApplyCustom(preset) {
    carries the fully blended/damped 7-pose + thrust + breath + tremor + oral
    motion), then layer secondary life on top. Falls back to the legacy
    standing placement when the procedural rigs are unavailable. */
+/* ---- couple fit ----------------------------------------------------------
+   The couple poses in POSES3 were authored against the PROCEDURAL girl's
+   body, and the male rig matches her (both ~1.00 wide, ~0.60 tall in pose).
+   A loaded GLB girl is slimmer and shorter in the same pose (Goat-chan
+   measures 0.62 x 0.50 x 1.14 against the procedural 1.00 x 0.66 x 1.34),
+   so the authored `him.pos` buries him inside her — measured mean
+   interpenetration 0.27 m, worst 0.54 m on MISSIONARY.
+
+   Each GLB character can therefore carry a uniform scale plus a per-pose
+   offset, applied to him AFTER the shared pose rig, so the procedural
+   couples are completely untouched. Values are damped so switching pose or
+   character glides instead of popping. */
+var GLB_COUPLE_FIT = {
+  goatchan: {
+    scale: 0.85,
+    poses: {
+      // [dx, dy, dz] metres, added to him after applyRig3
+      0: [0, 0.10, 0.07],   // MISSIONARY
+      1: [0, 0.10, 0.07],   // LEGS-UP
+      2: [0, 0.04, 0.02],   // DOGGY — already close, small nudge only
+      3: [0, 0.05, 0.05],   // PRONE BONE — the worst case in the report
+      4: [0, 0.05, 0.03],   // COWGIRL
+      5: [0, 0.05, 0.03],
+      6: [0, 0.06, 0.04]
+    }
+  }
+};
+var _cfCur = { x: 0, y: 0, z: 0, s: 1 };
+function glbCoupleFit3(himRig, posIdx, dt) {
+  if (!himRig || !himRig.root) return;
+  const solo = (typeof G !== 'undefined') && G.solo;
+  const active = !!(typeof GLB_MODEL !== 'undefined' && GLB_MODEL.loaded && GLB_MODEL.model && !solo);
+  const cfg = active ? GLB_COUPLE_FIT[GLB_MODEL.key] : null;
+  const off = (cfg && cfg.poses && cfg.poses[posIdx | 0]) || null;
+  const tx = off ? off[0] : 0, ty = off ? off[1] : 0, tz = off ? off[2] : 0;
+  const ts = cfg && cfg.scale != null ? cfg.scale : 1;
+  // slow ease so a pose/character swap glides; dt<=0 (headless probe) snaps
+  const rate = (dt > 0) ? (1 - Math.exp(-5 * dt)) : 1;
+  _cfCur.x += (tx - _cfCur.x) * rate;
+  _cfCur.y += (ty - _cfCur.y) * rate;
+  _cfCur.z += (tz - _cfCur.z) * rate;
+  _cfCur.s += (ts - _cfCur.s) * rate;
+  himRig.root.position.x += _cfCur.x;
+  himRig.root.position.y += _cfCur.y;
+  himRig.root.position.z += _cfCur.z;
+  himRig.root.scale.setScalar(_cfCur.s);
+}
+
 function glbFollowHer3(e, dt, key) {
   const m = e.model;
   const root = (typeof her3 !== 'undefined' && her3) ? her3.root : null;

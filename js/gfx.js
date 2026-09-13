@@ -20,27 +20,65 @@ function chaos(x) {
 }
 
 /* ============================================================
+   GRADIENT CACHE
+   CanvasGradient objects are immutable once built, so identical
+   (transform, geometry, stops) requests can safely share one.
+   Gradient coordinates are interpreted in the CTM at paint time,
+   so the current transform is part of the key. Exact keys keep the
+   reuse bit-for-bit identical to the uncached result.
+   ============================================================ */
+const _gcache = new Map();
+const _GCAP = 4096;
+function _gkey(kind, nums, stops) {
+  const m = X.getTransform();
+  let k = kind + m.a + '|' + m.b + '|' + m.c + '|' + m.d + '|' + m.e + '|' + m.f + '|';
+  for (let i = 0; i < nums.length; i++) k += nums[i] + '|';
+  for (let i = 0; i < stops.length; i++) k += stops[i][0] + ':' + stops[i][1] + '|';
+  return k;
+}
+function _gget(k, make) {
+  let g = _gcache.get(k);
+  if (g === undefined) {
+    if (_gcache.size >= _GCAP) _gcache.clear();
+    g = make();
+    _gcache.set(k, g);
+  }
+  return g;
+}
+function gLinear(x0, y0, x1, y1, stops) {
+  return _gget(_gkey('L', [x0, y0, x1, y1], stops), () => {
+    const g = X.createLinearGradient(x0, y0, x1, y1);
+    for (let i = 0; i < stops.length; i++) g.addColorStop(stops[i][0], stops[i][1]);
+    return g;
+  });
+}
+function gRadial(x0, y0, r0, x1, y1, r1, stops) {
+  return _gget(_gkey('R', [x0, y0, r0, x1, y1, r1], stops), () => {
+    const g = X.createRadialGradient(x0, y0, r0, x1, y1, r1);
+    for (let i = 0; i < stops.length; i++) g.addColorStop(stops[i][0], stops[i][1]);
+    return g;
+  });
+}
+
+/* ============================================================
    ADVANCED SHADING & PROCEDURAL PRIMITIVES
    ============================================================ */
 function sg(y0, y1, c1, c2) {
   const ya = Number.isFinite(y0) ? y0 : 0;
   const yb = Number.isFinite(y1) ? y1 : 100;
-  const g = X.createLinearGradient(0, ya, 0, yb);
-  g.addColorStop(0, c1);
-  g.addColorStop(1, c2);
-  return g;
+  return gLinear(0, ya, 0, yb, [[0, c1], [1, c2]]);
 }
 
 function shade(x, y, rx, ry, col, rot = 0, lc) {
   const cx = Number.isFinite(x) ? x : 0, cy = Number.isFinite(y) ? y : 0;
-  const rad = Math.max(Number.isFinite(rx) ? Math.abs(rx) : 10, Number.isFinite(ry) ? Math.abs(ry) : 10) * 1.15;
-  const g = X.createRadialGradient(cx, cy, 0, cx, cy, rad > 0 ? rad : 10);
-  if (lc) g.addColorStop(0, lc);
-  else g.addColorStop(0, col);
-  g.addColorStop(1, 'rgba(0,0,0,0)');
+  const ax = Number.isFinite(rx) ? Math.abs(rx) : 10;
+  const ay = Number.isFinite(ry) ? Math.abs(ry) : 10;
+  const rad = Math.max(ax, ay) * 1.15;
+  const g = gRadial(cx, cy, 0, cx, cy, rad > 0 ? rad : 10,
+    [[0, lc ? lc : col], [1, 'rgba(0,0,0,0)']]);
   X.fillStyle = g;
   X.beginPath();
-  X.ellipse(cx, cy, Math.max(1, Number.isFinite(rx) ? Math.abs(rx) : 10), Math.max(1, Number.isFinite(ry) ? Math.abs(ry) : 10), rot, 0, TAU);
+  X.ellipse(cx, cy, Math.max(1, ax), Math.max(1, ay), rot, 0, TAU);
   X.fill();
 }
 
