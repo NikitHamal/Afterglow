@@ -49,10 +49,12 @@ int headlessRun(const HeadlessOpts& o) {
       cv.writePPM(p);
     }
   }
-  // identity: cleared-cache redraw of the final state must match exactly
+  // identity: cleared-cache redraw of the final state must match exactly.
+  // Snapshot g first so a redraw that spawns particles can't diverge.
   uint64_t before = cv.hash();
+  Game g2 = g;
   cv.cacheClear();
-  app::draw(cv, g);
+  app::draw(cv, g2);
   uint64_t after = cv.hash();
   std::printf("identity %s cache %llu\n", before == after ? "OK" : "MISMATCH",
               (unsigned long long)cv.cacheSize());

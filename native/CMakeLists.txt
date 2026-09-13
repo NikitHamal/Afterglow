@@ -115,6 +115,12 @@ if(AG_BUILD_PARITY)
   # keeps one definition of headlessRun shared by both binaries.
   add_executable(ag_parity tests/ag_parity.cpp src/ag_platform.cpp)
   target_link_libraries(ag_parity PRIVATE afterglow_core)
+  if(AG_WITH_SDL AND NOT ANDROID)
+    target_link_libraries(ag_parity PRIVATE SDL3::SDL3)
+    target_include_directories(ag_parity PRIVATE
+      "${CMAKE_BINARY_DIR}/_deps/sdl3-src/include")
+    target_compile_definitions(ag_parity PRIVATE AG_WITH_SDL=1)
+  endif()
 endif()
 
 # ---- install / packaging (Windows) ----
