@@ -66,8 +66,20 @@ add_library(afterglow_core STATIC
   src/ag_core.cpp
   src/ag_gfx.cpp
   src/ag_skin.cpp
+  src/ag_mech.cpp
+  src/ag_input.cpp
+  src/ag_poses.cpp
+  src/ag_side.cpp
+  src/ag_fpv.cpp
+  src/ag_oral.cpp
+  src/ag_chars.cpp
   src/ag_audio.cpp
   src/ag_hud.cpp
+  src/ag_d3_engine.cpp
+  src/ag_d3_glb.cpp
+  src/ag_d3_cast.cpp
+  src/ag_d3_animfx.cpp
+  src/ag_d3_app.cpp
   src/ag_port_todo.cpp
   src/ag_3d_todo.cpp
 )

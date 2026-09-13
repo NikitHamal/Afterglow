@@ -36,6 +36,11 @@ void shade(Canvas& cv, F64 x, F64 y, F64 rx, F64 ry, std::string_view col,
 void capsule(Canvas& cv, V2 a, V2 b, F64 r1, F64 r2, ColorF flat, F64 bob = 0);
 void capsuleGrad(Canvas& cv, V2 a, V2 b, F64 r1, F64 r2, GradPtr fill,
                  F64 bob = 0);
+// js quirk, reproduced exactly: js/gfx.js capsule() with a non-string,
+// non-array fill (oral.js passes TONE objects) builds an unused gradient,
+// assigns the object to fillStyle (ignored per spec — paint unchanged), fills
+// the capsule path with the CURRENT paint, and returns early (no SSS/hl/AO).
+void capsuleTone(Canvas& cv, V2 a, V2 b, F64 r1, F64 r2, F64 bob = 0);
 
 // js/gfx.js:157-163
 void heartPath(Canvas& cv, F64 x, F64 y, F64 s);

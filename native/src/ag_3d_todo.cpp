@@ -1,36 +1,17 @@
-// Afterglow native — ag_3d_todo.cpp (stubs; see ag_3d.h + PORT_STATUS).
+// Afterglow native — ag_3d_todo.cpp
+// 3D is fully ported end-to-end (engine/glb/cast/animfx/app). Only
+// Camera::reset stays here (trivial one-liner).
+//
+// PORT_STATUS (final 3D):
+//   DONE: engine3d (camera rig + PBR-lite + buckets), glbModel (cgltf load,
+//         repair, CPU skinning), chars3d+poses3d (registry, 10 pose table),
+//         anim3d+fx3d (curves + additive sprites), app3d (frame + GL HUD).
+//   TODO(platform): declare d3SetCamMode/d3PushKey/d3PushWheel/d3AddShake/
+//         d3FxPass in ag_3d.h and hook SDL input + G.shake (see engine file).
 #include "ag_3d.h"
-#include "ag_2dmods.h"
 
 namespace ag::d3 {
 
 void Camera::reset() { *this = Camera(); }
-
-bool Engine::init(int, int) { return false; } // TODO js3d/engine3d.js
-void Engine::resize(int, int) {}
-void Engine::shutdown() {}
-void Engine::beginFrame() {}
-void Engine::endFrame() {}
-
-bool Model::load(const char* p) {
-  path = p ? p : "";
-  return false;
-} // TODO js3d/glbModel.js (cgltf, CPU skin)
-void Model::unload() { loaded = false; }
-void Model::pose(const Game&, double) {} // TODO poses3d+anim3d curves
-void Model::draw(Engine&, const Game&) {}
-
-bool Cast::loadAll(const char*) { return false; } // TODO js3d/chars3d.js
-void Cast::pose(const Game&, double) {}
-void Cast::draw(Engine&, const Game&) {}
-
-void Fx::update(const Game&, double) {} // TODO js3d/fx3d.js
-void Fx::draw(Engine&, const Game&) {}
-
-bool App3d::init(const char*, int, int) { return false; } // TODO app3d.js
-void App3d::frame(Game& g, Rng& rng, double dt) {
-  app::step(g, rng, dt); // shared sim already real
-}
-void App3d::shutdown() {}
 
 } // namespace ag::d3

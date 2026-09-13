@@ -162,6 +162,16 @@ void capsuleGrad(Canvas& cv, V2 a, V2 b, F64 r1, F64 r2, GradPtr fill,
   cv.restore();
 }
 
+void capsuleTone(Canvas& cv, V2 a, V2 b, F64 r1, F64 r2, F64 bob) {
+  if (!std::isfinite(a.x) || !std::isfinite(a.y) || !std::isfinite(b.x) ||
+      !std::isfinite(b.y))
+    return;
+  F64 dx = b.x - a.x, dy = b.y - a.y;
+  if (std::hypot(dx, dy) < 0.001) return;
+  capsuleBody(cv, a, b, r1, r2, bob);
+  cv.fill(); // current paint, no SSS/highlight/AO (JS quirk, see header)
+}
+
 void heartPath(Canvas& cv, F64 x, F64 y, F64 s) {
   cv.beginPath();
   cv.moveTo(x, y + s * 0.95);
