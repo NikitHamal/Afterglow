@@ -1481,7 +1481,7 @@ void Model::pose(const Game& g, double dt) {
   if (it == store().end())
     return;
   Entry& e = it->second;
-  float dtf = dt <= 0 ? 0 : (dt > 0.1 ? 0.1f : f(dt));
+  float dtf = dt <= 0 ? 0.0f : (dt > 0.1 ? 0.1f : f(dt));
   bool frozen = (g.state == "intro");
   float t = f(g.t);
   float depth = f(g.depth);
