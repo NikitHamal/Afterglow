@@ -3,9 +3,6 @@
 // Backend-agnostic: the platform pulls PCM via mixInto() (SDL audio stream on
 // PC+Android, direct call in headless parity). Full js/audio.js cue scheduling
 // (moan/stroke/climax timing) lands in update(); mixer + decode are real now.
-#define STB_VORBIS_IMPLEMENTATION
-#include "stb_vorbis.c"
-
 #include "ag_2dmods.h"
 
 #include <algorithm>
@@ -15,6 +12,21 @@
 #include <cstring>
 #include <filesystem>
 #include <mutex>
+
+// stb_vorbis.c leaks single-letter macros (C, L, R) that collide with
+// input::Key enumerators, so it must come after project headers and its
+// macros must not escape this TU.
+#define STB_VORBIS_IMPLEMENTATION
+#include "stb_vorbis.c"
+#ifdef C
+#undef C
+#endif
+#ifdef L
+#undef L
+#endif
+#ifdef R
+#undef R
+#endif
 
 namespace ag::audio {
 namespace {

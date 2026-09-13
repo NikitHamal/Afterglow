@@ -29,6 +29,6 @@ file(GLOB AG_SRC
 
 add_library(main SHARED ${AG_SRC})
 target_include_directories(main PRIVATE "${AG_VENDOR_DIR}")
-target_compile_definitions(main PRIVATE AG_WITH_SDL=1)
+target_compile_definitions(main PRIVATE AG_WITH_SDL=1 AG_VW=1280 AG_VH=720)
 target_compile_options(main PRIVATE -O3 -ffast-math -fno-math-errno)
 target_link_libraries(main SDL3::SDL3 android log)

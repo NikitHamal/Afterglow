@@ -20,8 +20,16 @@ namespace ag {
 
 using F64 = double;
 inline constexpr F64 TAU = 6.283185307179586476925286766559;
-inline constexpr int VW = AG_VW; // 1280 virtual pixels (js/core.js W)
-inline constexpr int VH = AG_VH; // 720  virtual pixels (js/core.js H)
+// Compile definitions (desktop CMake) may override; otherwise default here so
+// every consumer (e.g. the Android JNI build) sees the same 1280x720.
+#ifndef AG_VW
+#define AG_VW 1280 // virtual pixels (js/core.js W)
+#endif
+#ifndef AG_VH
+#define AG_VH 720 // virtual pixels (js/core.js H)
+#endif
+inline constexpr int VW = AG_VW;
+inline constexpr int VH = AG_VH;
 
 // ---- math (1:1 with js/core.js) ----
 inline F64 clamp(F64 v, F64 a, F64 b) { return v < a ? a : (v > b ? b : v); }
@@ -119,7 +127,7 @@ inline std::array<float, 3> hexToRgb(std::string_view h) {
   ColorF c = mustColor(h);
   return {c.r * 255.0f, c.g * 255.0f, c.b * 255.0f};
 }
-inline std::string lerpHex(std::string_view a, std::string_view b, F64 t);
+std::string lerpHex(std::string_view a, std::string_view b, F64 t);
 
 // ---- deterministic RNG ----
 // Web uses Math.random (nondeterministic). The port uses a seeded xorshift64*

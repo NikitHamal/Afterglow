@@ -4,7 +4,6 @@
     {
       "name": "windows-msvc",
       "displayName": "Windows MSVC + SDL3",
-      "generator": "Visual Studio 17 2022",
       "architecture": "x64",
       "binaryDir": "${sourceDir}/build/win64",
       "cacheVariables": {
