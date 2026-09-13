@@ -1,0 +1,1 @@
+(function(){GLB_PARTS.legs.gain=0;GLB_PARTS.feet.gain=0;return JSON.stringify({arms:GLB_PARTS.arms.gain,hands:GLB_PARTS.hands.gain,legs:GLB_PARTS.legs.gain,feet:GLB_PARTS.feet.gain,spine:GLB_PARTS.spine.gain,head:GLB_PARTS.head.gain});})()

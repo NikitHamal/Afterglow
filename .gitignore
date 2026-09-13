@@ -14,3 +14,22 @@ assets/goatchan/tex/
 
 # Dev verification screenshots (local only, never push).
 .shots/
+
+# Dev scratch outputs (generated GLB copies, diag dumps)
+scratch/glb/*.glb
+scratch/out/
+
+# ---- native port (C++) ----
+native/build/
+native/parity-out/
+native/*.user
+android-build/
+android/.gradle/
+android/app/build/
+android/local.properties
+sdl-src/
+*.apk
+*.aab
+*.keystore
+.gradle/
+.cxx/

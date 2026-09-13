@@ -187,6 +187,9 @@ function shotBoot3() {
   }
   // stored and re-asserted every frame — pose auto-cam must never win
   SHOT3.cam = {};
+  // dev only: ?readyframes=N shortens the SHOT-READY gate for fast iteration
+  // (default 160; SwiftShader ~10fps so 160 ≈ 16s, 90 ≈ 9s with warm cache)
+  SHOT3.readyAt = clamp(parseInt(q.get('readyframes') || '160', 10) | 0, 30, 400);
   if (typeof CAM3 !== 'undefined') {
     if (q.has('dist')) SHOT3.cam.dist = parseFloat(q.get('dist'));
     if (q.has('yaw')) SHOT3.cam.yaw = parseFloat(q.get('yaw'));
@@ -221,7 +224,7 @@ function shotTick3() {
     CAM3._dist = CAM3.dist; CAM3._yaw = CAM3.yaw; CAM3._pitch = CAM3.pitch;
   }
   SHOT3.frames++;
-  if (SHOT3.frames === 160) { try { document.title = 'SHOT-READY'; } catch (e) {} }
+  if (SHOT3.frames === (SHOT3.readyAt || 160)) { try { document.title = 'SHOT-READY'; } catch (e) {} }
 }
 
 /* ============================================================

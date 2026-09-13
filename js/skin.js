@@ -28,17 +28,15 @@ const SK_LIT = [-0.62, -0.78];
 // lg = [x0,y0,x1,y1] light->shadow axis. Leaves path current for clipping.
 function skFillShape(fn, T, lg){
   X.beginPath(); fn();
-  const g = X.createLinearGradient(lg[0], lg[1], lg[2], lg[3]);
-  g.addColorStop(0, T.hi); g.addColorStop(0.38, T.b);
-  g.addColorStop(0.78, T.s); g.addColorStop(1, T.d);
+  const g = gLinear(lg[0], lg[1], lg[2], lg[3],
+    [[0, T.hi], [0.38, T.b], [0.78, T.s], [1, T.d]]);
   X.fillStyle = g; X.fill();
 }
 // Fill a caller-defined closed path with a radial skin gradient (heads, domes).
 function skFillRad(fn, T, cx, cy, r0, r1){
   X.beginPath(); fn();
-  const g = X.createRadialGradient(cx, cy, r0, cx, cy, r1);
-  g.addColorStop(0, T.hi); g.addColorStop(0.45, T.b);
-  g.addColorStop(0.82, T.s); g.addColorStop(1, T.d);
+  const g = gRadial(cx, cy, r0, cx, cy, r1,
+    [[0, T.hi], [0.45, T.b], [0.82, T.s], [1, T.d]]);
   X.fillStyle = g; X.fill();
 }
 // Run shading callbacks clipped inside a caller-defined path.
