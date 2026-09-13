@@ -244,11 +244,14 @@ void Canvas::keyStops(GKey& k, std::span<const GradStop> stops) {
     uint64_t u = 0;
     std::memcpy(&u, &s.off, 8);
     for (int i = 0; i < 8; i++) k.stops.push_back((char)(u >> (i * 8)));
-    RGBA8 p = pack(s.col);
-    k.stops.push_back((char)p.r);
-    k.stops.push_back((char)p.g);
-    k.stops.push_back((char)p.b);
-    k.stops.push_back((char)p.a);
+    // Full float bits, not RGBA8: quantized keys aliased sub-LSB variants
+    // so cache history leaked into pixels (clear+redraw drifted by 1 LSB).
+    const float c[4] = {s.col.r, s.col.g, s.col.b, s.col.a};
+    for (float fv : c) {
+      uint32_t w = 0;
+      std::memcpy(&w, &fv, 4);
+      for (int i = 0; i < 4; i++) k.stops.push_back((char)(w >> (i * 8)));
+    }
   }
 }
 
