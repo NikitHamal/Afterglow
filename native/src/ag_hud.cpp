@@ -4,8 +4,6 @@
 
 #include <cstdio>
 
-#include <cstdio>
-
 namespace ag::hud {
 
 HudFrame build(const Game& g, int sw, int sh) {
