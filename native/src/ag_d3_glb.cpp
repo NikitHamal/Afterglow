@@ -337,7 +337,7 @@ struct RigRow {
 // clang-format off
 const RigRow kRig[] = {
   {P_SPINE, S_TORSO, 0, M_EULER, "\xe4\xb8\x8a\xe5\x8d\x8a\xe8\xba\xab"},       // 上半身
-  {P_SPINE, S_CHEST, 0, M_EULER, "\xe4\xb8\x8a\xe5\x8d\x8a\xe8\xba\xab2"},      // 上半身2
+  {P_SPINE, S_CHEST, 0, M_EULER, "\xe4\xb8\x8a\xe5\x8d\x8a\xe8\xba\xab" "2"},     // 上半身2 (\x needs split before hex digit)
   {P_HEAD,  S_NECK,  0, M_EULER, "\xe9\xa6\x96"},                              // 首
   {P_ARMS,  S_SH,  +1, M_EULER, "\xe8\x85\x95.L"},                             // 腕L <- armR (swap)
   {P_ARMS,  S_SH,  -1, M_EULER, "\xe8\x85\x95.R"},                             // 腕R <- armL
