@@ -97,7 +97,11 @@ else()
 endif()
 
 if(AG_BUILD_PARITY)
-  add_executable(ag_parity tests/ag_parity.cpp)
+  # headlessRun lives in ag_platform.cpp (headless branch, no SDL), which is
+  # otherwise only compiled into the `afterglow` exe — so the parity harness
+  # must compile it too, otherwise ag_parity fails to link (LNK2001). This
+  # keeps one definition of headlessRun shared by both binaries.
+  add_executable(ag_parity tests/ag_parity.cpp src/ag_platform.cpp)
   target_link_libraries(ag_parity PRIVATE afterglow_core)
 endif()
 
