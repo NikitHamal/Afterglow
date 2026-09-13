@@ -75,7 +75,8 @@ int runGame(int argc, char** argv) {
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_main.h>
+// NOTE: SDL_main.h is intentionally included only in main.cpp (the TU that
+// defines main). Including it here too emitted a second WinMain -> LNK2005.
 
 namespace {
 input::Key mapKey(SDL_Keycode k) {
