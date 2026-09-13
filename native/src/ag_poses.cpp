@@ -723,7 +723,7 @@ static void pos_cowgirlFPV(Canvas& cv, Game& g, const PosExpr& E, F64 br) {
   pos_capsule(cv, {640, 790}, {640, hipsY + 6}, 24 * pu, 16 * pu,
               pos_himT(g));
   for (F64 s : {-1.0, 1.0})
-    pos_capsule(cv, {640 + s * 65, hipsY}, {s < 0 ? 515 : 765, 725}, 46, 36,
+    pos_capsule(cv, {640 + s * 65, hipsY}, {s < 0 ? 515.0 : 765.0, 725.0}, 46, 36,
                 pos_herT(g));
   pos_poseGlute(cv, g, 640, hipsY, 74, 42, 0);
   pos_capsule(cv, {640, hipsY - 10}, {640, 360}, 62, 48, pos_herT(g));
