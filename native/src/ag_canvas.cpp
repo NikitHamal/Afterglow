@@ -63,6 +63,8 @@ struct Span {
   int y = 0, x0 = 0, x1 = 0; // [x0,x1)
 };
 
+} // namespace
+
 // Nonzero winding of (x,y) over closed polygon loops.
 int Canvas::winding(const std::vector<DevPath>& loops, F64 x, F64 y) {
   int w = 0;
@@ -83,8 +85,6 @@ int Canvas::winding(const std::vector<DevPath>& loops, F64 x, F64 y) {
   }
   return w;
 }
-
-} // namespace
 
 // ---- Gradient::sample (linear + full two-circle radial, WHATWG) ----
 ColorF Gradient::sample(F64 ux, F64 uy) const {
