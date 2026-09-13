@@ -97,6 +97,7 @@ public:
                bool ccw = false);
   void rect(F64 x, F64 y, F64 w, F64 h);
   void fill();
+  void fillEvenOdd(); // fill('evenodd') — used by oral lipRing()
   void stroke();
   void clip();
   void fillRect(F64 x, F64 y, F64 w, F64 h);
@@ -174,6 +175,8 @@ private:
   std::vector<DevPath> devicePaths() const;
   bool insideClips(F64 dx, F64 dy) const;
   void fillPolys(const std::vector<DevPath>& dev, const FillPaint& paint);
+  void fillPolysEx(const std::vector<DevPath>& dev, const FillPaint& paint,
+                   bool evenOdd);
   void strokePolys(const std::vector<DevPath>& dev, const FillPaint& paint);
   ColorF resolvePaint(const FillPaint& paint, F64 ux, F64 uy) const;
 

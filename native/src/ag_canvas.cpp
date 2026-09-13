@@ -10,6 +10,7 @@
 #include "ag_canvas.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 
@@ -485,7 +486,20 @@ void Canvas::clip() {
   if (!entry.empty()) clips_.push_back(std::move(entry));
 }
 
-void Canvas::fillPolys(const std::vector<DevPath>& dev, const FillPaint& paint) {
+void Canvas::fillEvenOdd() {
+  auto dev = devicePaths();
+  if (dev.empty()) return;
+  // No shadow pass: the game never shadows evenodd fills (lipRing).
+  fillPolysEx(dev, fillPaint_, true);
+}
+
+void Canvas::fillPolys(const std::vector<DevPath>& dev,
+                       const FillPaint& paint) {
+  fillPolysEx(dev, paint, false);
+}
+
+void Canvas::fillPolysEx(const std::vector<DevPath>& dev,
+                         const FillPaint& paint, bool evenOdd) {
   struct Edge {
     F64 y0, y1, x, dxdy;
     int dir;
@@ -546,7 +560,8 @@ void Canvas::fillPolys(const std::vector<DevPath>& dev, const FillPaint& paint) 
     int wind = 0;
     for (size_t i = 0; i + 1 < xs.size(); i++) {
       wind += xs[i].second;
-      if (wind == 0) continue;
+      bool inside = evenOdd ? ((wind & 1) != 0) : (wind != 0);
+      if (!inside) continue;
       int x0 = std::max(0, (int)std::ceil(xs[i].first - 0.5));
       int x1 = std::min(w_, (int)std::ceil(xs[i + 1].first - 0.5));
       for (int x = x0; x < x1; x++) {

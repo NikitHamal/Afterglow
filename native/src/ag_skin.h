@@ -64,8 +64,30 @@ void breastS(Canvas& cv, Game& g, F64 cx, F64 cy, F64 r, F64 ang,
              const Tone& T, const BreastOpt& opt = BreastOpt{}); // :165
 struct VulvaOpt {
   std::string view = "side"; // 'side' | 'front'
+  // Game-carried state (js reads G.ar / G.char inside vulvaS). The function
+  // signature is unchanged; callers that own a Game forward g.ar / g.ch here.
+  // Defaults match the JS no-G fallbacks (no wet specular, trim, dark hair).
+  F64 ar = 0;                        // G.ar — wet specular sheen when > 22
+  std::string pubicHair = "trim";    // G.char.pubicHair
+  std::string hairColor = "#231318"; // G.char.hairColor
 };
 void vulvaS(Canvas& cv, F64 cx, F64 cy, F64 open, F64 eng, const Tone& T,
             const VulvaOpt& opt = VulvaOpt{}); // js/skin.js:206
+
+// js/skin.js:279 — neck + trapezius column (skull to shoulder line).
+struct NeckOpt {
+  bool line = true;
+};
+void neckS(Canvas& cv, V2 top, V2 base, F64 w, const Tone& T,
+           const NeckOpt& opt = NeckOpt{}); // js/skin.js:279
+
+// js/skin.js:308 — silky tapered ribbon tress; empty sheen = no sheen pass.
+void tressS(Canvas& cv, F64 x0, F64 y0, F64 c1x, F64 c1y, F64 c2x, F64 c2y,
+            F64 x1, F64 y1, F64 w0, F64 w1, std::string_view col,
+            std::string_view sheen = {}); // js/skin.js:308
+
+// js/skin.js:335 — rounded scalp / hair mass with soft top light.
+void hairMassS(Canvas& cv, F64 cx, F64 cy, F64 rx, F64 ry, F64 rot,
+               std::string_view col); // js/skin.js:335
 
 } // namespace ag
