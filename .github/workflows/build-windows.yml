@@ -1,0 +1,51 @@
+name: build-windows
+
+on:
+  push:
+    branches: [main, master]
+    paths: ["native/**", "android/**", ".github/workflows/build-windows.yml"]
+  pull_request:
+    paths: ["native/**", ".github/workflows/build-windows.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: native
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Ninja + NSIS
+        run: choco install ninja nsis -y --no-progress
+
+      - name: Configure (MSVC, Release, SDL3 via FetchContent)
+        run: cmake --preset windows-msvc
+
+      - name: Build
+        run: cmake --build --preset windows-msvc --parallel
+
+      - name: Pixel-parity harness (headless, deterministic)
+        run: .\build\win64\Release\ag_parity.exe --frames 24 --out parity-out
+
+      - name: Upload parity shots (visual review)
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-ppm
+          path: native/parity-out/*.ppm
+
+      - name: Package (portable ZIP + NSIS installer)
+        working-directory: native/build/win64
+        run: cpack -C Release
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: afterglow-windows
+          path: |
+            native/build/win64/*.zip
+            native/build/win64/*.exe
