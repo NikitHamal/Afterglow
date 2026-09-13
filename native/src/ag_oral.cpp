@@ -1385,6 +1385,8 @@ void drawOralFPV(Canvas& cv, Game& g) {
   cv.fill();
 }
 
+} // namespace — file-local helpers end; toggle/draw need external linkage
+
 const char* pickLine(std::initializer_list<const char*> xs) {
   size_t n = 0;
   for (auto x : xs) (void)x, n++;

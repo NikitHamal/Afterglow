@@ -17,10 +17,17 @@ add_subdirectory(${SDL_SRC} SDL3bin)
 
 set(AG_VENDOR_DIR "${CMAKE_BINARY_DIR}/ag-vendor")
 file(MAKE_DIRECTORY "${AG_VENDOR_DIR}")
-foreach(f stb_vorbis.c stb_truetype.h)
-  if(NOT EXISTS "${AG_VENDOR_DIR}/${f}")
-    file(DOWNLOAD "https://raw.githubusercontent.com/nothings/stb/master/${f}"
-      "${AG_VENDOR_DIR}/${f}" TLS_VERIFY ON)
+# Single headers (same set as native/CMakeLists.txt ag_fetch).
+set(AG_DEPS
+  "stb_vorbis.c|https://raw.githubusercontent.com/nothings/stb/master/stb_vorbis.c"
+  "stb_truetype.h|https://raw.githubusercontent.com/nothings/stb/master/stb_truetype.h"
+  "cgltf.h|https://raw.githubusercontent.com/jkuhlmann/cgltf/master/cgltf.h")
+foreach(pair IN LISTS AG_DEPS)
+  string(REPLACE "|" ";" parts "${pair}")
+  list(GET parts 0 nm)
+  list(GET parts 1 url)
+  if(NOT EXISTS "${AG_VENDOR_DIR}/${nm}")
+    file(DOWNLOAD "${url}" "${AG_VENDOR_DIR}/${nm}" TLS_VERIFY ON)
   endif()
 endforeach()
 
