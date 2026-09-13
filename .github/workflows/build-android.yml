@@ -1,0 +1,67 @@
+name: build-android
+
+on:
+  push:
+    branches: [main, master]
+    paths: ["native/**", "android/**", ".github/workflows/build-android.yml"]
+  pull_request:
+    paths: ["native/**", "android/**"]
+  workflow_dispatch:
+
+env:
+  SDL_TAG: release-3.2.10
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK + NDK + CMake
+        uses: android-actions/setup-android@v3
+      - run: |
+          sdkmanager "platforms;android-34" "ndk;27.2.12479018" \
+            "build-tools;34.0.0" "cmake;3.22.1"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Clone SDL3 (one tree serves Java activity + native lib)
+        run: git clone --depth 1 --branch "$SDL_TAG" https://github.com/libsdl-org/SDL sdl-src
+
+      - name: Stage APK fonts (OFL, same files as PC build)
+        run: |
+          mkdir -p android/app/src/main/assets/fonts
+          curl -sSL -o android/app/src/main/assets/fonts/Sora-Regular.ttf \
+            "https://github.com/google/fonts/raw/main/ofl/sora/Sora%5Bwght%5D.ttf"
+          curl -sSL -o android/app/src/main/assets/fonts/CormorantGaramond-Medium.ttf \
+            "https://github.com/google/fonts/raw/main/ofl/cormorantgaramond/CormorantGaramond%5Bwght%5D.ttf"
+          ls -la android/app/src/main/assets/fonts
+
+      - name: Assemble debug APK (auto-signed, sideloadable)
+        working-directory: android
+        env:
+          SDL_SRC: ${{ github.workspace }}/sdl-src
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.2.12479018
+        run: gradle assembleDebug --no-daemon --parallel
+
+      - name: Assemble release AAB (unsigned, for store signing)
+        working-directory: android
+        env:
+          SDL_SRC: ${{ github.workspace }}/sdl-src
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.2.12479018
+        run: gradle bundleRelease --no-daemon --parallel
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: afterglow-android
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/bundle/release/*.aab
