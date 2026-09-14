@@ -1,0 +1,11 @@
+const FPV_CAM = { cx:640, topY:940, depthK:-650, k:840, kpad:0.64, dOff:0.25, eyeH:0.30 };
+const P=(u,d,h)=>{const dd=Math.max(0.02,d-FPV_CAM.dOff);const sc=FPV_CAM.k/(dd+FPV_CAM.kpad);
+  return [FPV_CAM.cx+u*sc, FPV_CAM.topY+dd*FPV_CAM.depthK+(FPV_CAM.eyeH-h)*sc, sc];};
+const B={lift:0.15, chin:1.60, shoulder:1.46, shHalf:0.168, crown:1.74};
+const bdy=1.009;
+const hp = P(0, B.chin+0.04, B.lift+0.045);
+console.log('head anchor  x=%s y=%s sc=%s', hp[0].toFixed(1), hp[1].toFixed(1), hp[2].toFixed(1));
+console.log('hs = sc/430 =', (hp[2]/430).toFixed(4), '  <-- tiny, head drawn at ~75px wide would be', (80*hp[2]/430).toFixed(1),'px');
+console.log('shoulder-L', P(B.shHalf*bdy,B.shoulder,B.lift).map(v=>v.toFixed(1)).join(', '));
+console.log('shoulder-R', P(-B.shHalf*bdy,B.shoulder,B.lift).map(v=>v.toFixed(1)).join(', '));
+console.log('crown', P(0,B.crown,B.lift+0.06).map(v=>v.toFixed(1)).join(', '));

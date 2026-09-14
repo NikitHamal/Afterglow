@@ -3,6 +3,96 @@
 'use strict';
 
 /* ============================================================
+   BED-SPACE PERSPECTIVE PROJECTION
+   ------------------------------------------------------------
+   This is a real pitched pinhole camera, not a stack of offsets.
+
+   The viewer kneels between her spread knees and leans forward over her,
+   so his eyes sit at (dOff, eyeH) and the view axis is pitched DOWN by
+   `pitch`. Everything she is made of is placed in bed space and projected
+   through that camera, which is what produces the foreshortening:
+
+     · her pelvis is nearest  -> largest, low in the frame
+     · her torso recedes      -> narrows and rises
+     · her face is furthest   -> smallest, near the top
+     · her knees are BEHIND the lens plane, so they fall out of frame and
+       only the inner thighs graze the bottom corners
+
+     u = lateral offset, metres, +u to screen right
+     d = distance along the bed away from her plantar surface (metres)
+     h = height above the mattress, metres (0 = flat on the sheet)
+
+   Camera space:  f = d - dOff (forward),  v = h - eyeH (up)
+     z  =  f·cos(pitch) - v·sin(pitch)      depth along the view axis
+     yc =  f·sin(pitch) + v·cos(pitch)      height above the view axis
+   then  x = cx + k·u/z  and  y = cy - k·yc/z.
+   ============================================================ */
+const FPV_CAM = {
+  cx: 640,           // screen x of the lens axis
+  cy: 355,           // screen y of the view-axis centre
+  k: 960,            // focal length: px of image per metre at 1 m depth
+  dOff: 0.60,        // where the viewer's eyes sit along the bed
+  eyeH: 0.95,        // eye height above the mattress, metres
+  pitch: 0.8727      // 50° downward — leaning over her
+};
+const FPV_COS = Math.cos(FPV_CAM.pitch), FPV_SIN = Math.sin(FPV_CAM.pitch);
+const FPV_ZMIN = 0.12;   // never divide by less than this (keeps behind-lens finite)
+
+function fpvProj(u, d, h){
+  const f = d - FPV_CAM.dOff;
+  const v = h - FPV_CAM.eyeH;
+  const z = Math.max(FPV_ZMIN, f * FPV_COS - v * FPV_SIN);
+  const yc = f * FPV_SIN + v * FPV_COS;
+  const sc = FPV_CAM.k / z;
+  return [FPV_CAM.cx + u * sc, FPV_CAM.cy - yc * sc, sc];
+}
+// scale only (cheap for sizing strokes / flourishes at a given depth)
+function fpvS(d){ return fpvProj(0, d, 0)[2]; }
+// true when any of the given screen points is inside the frame (+margin)
+function fpvOn(pts, m){
+  m = m == null ? 260 : m;
+  for(const p of pts){
+    if(p[0] > -m && p[0] < W + m && p[1] > -m && p[1] < H + m) return true;
+  }
+  return false;
+}
+// her body-scale multiplier for the current character
+function fpvBdy(){ return 0.82 + (G.char ? G.char.bodyScale : 0.45) * 0.42; }
+// her breast-size multiplier for the current character
+function fpvBsz(){ return 0.72 + (G.char ? G.char.breastSize : 0.45) * 0.62; }
+
+/* Skeleton of her supine body in bed space, in metres. Her head is toward
+   d≈1.74 and her feet toward the lens at d≈0.34. The values are real
+   anatomical landmarks: hip joints ~0.86 m from the soles, shoulder ~1.46,
+   crown ~1.74, with half-widths taken from a real female skeleton. */
+const FPV_BODY = {
+  footFwd:  0.34,   // her feet (nearest the lens)
+  ankle:    0.42,
+  knee:     0.60,
+  thighMid: 0.72,
+  hip:      0.86,
+  mons:     0.92,
+  navel:    1.05,
+  waist:    1.09,
+  ribs:     1.27,
+  sternum:  1.33,
+  shoulder: 1.46,
+  neck:     1.54,
+  chin:     1.60,
+  brow:     1.66,
+  crown:    1.74,
+  hipHalf:  0.150,  // half-width of the pelvis  (real ~0.30 m across)
+  waistHalf:0.114,
+  ribHalf:  0.132,
+  shHalf:   0.168,
+  headHalf: 0.072,
+  kneeSpread: 0.235, // half-spread of the knees — thighs still frame the
+                     // lens but stay anatomically continuous with the hips
+  footSpread: 0.205,
+  lift:     0.15    // default body-plane height above the sheet
+};
+
+/* ============================================================
    FIRST-PERSON KINEMATICS & SENSORY SHIVER
    ============================================================ */
 function fpvTremor(){
@@ -21,27 +111,30 @@ function drawFPVRoom(){
   X.fillStyle = '#0f090d';
   X.fillRect(0, 0, W, H);
 
-  // Far wall & ceiling with soft perspective corner shadow
-  const wallG = X.createLinearGradient(0, 0, 0, 300);
+  // The viewer is pitched down over her, so almost the whole frame is the
+  // mattress. The far wall only intrudes as a dim band along the very top,
+  // beyond her crown.
+  const farY = 62;
+  const wallG = X.createLinearGradient(0, 0, 0, farY + 40);
   wallG.addColorStop(0, '#1a1016');
   wallG.addColorStop(0.7, '#130c11');
   wallG.addColorStop(1, '#0c070a');
   X.fillStyle = wallG;
-  X.fillRect(0, 0, W, 280);
+  X.fillRect(0, 0, W, farY + 40);
 
-  // Far window above headboard spilling cool moonlight
-  const wx = 960, wy = 24, ww = 180, wh = 140;
+  // Far window above the headboard spilling cool moonlight (mostly cropped)
+  const wx = 992, wy = -60, ww = 160, wh = 116;
   X.fillStyle = 'rgba(120,145,170,0.06)';
   X.fillRect(wx, wy, ww, wh);
-  const moonG = X.createRadialGradient(wx + 130, wy + 35, 6, wx + 130, wy + 35, 65);
+  const moonG = X.createRadialGradient(wx + 112, wy + 30, 6, wx + 112, wy + 30, 56);
   moonG.addColorStop(0, 'rgba(230,242,255,0.22)');
   moonG.addColorStop(0.4, 'rgba(180,210,240,0.06)');
   moonG.addColorStop(1, 'rgba(0,0,0,0)');
   X.save(); X.globalCompositeOperation = 'screen';
   X.fillStyle = moonG;
-  X.beginPath(); X.arc(wx + 130, wy + 35, 65, 0, TAU); X.fill();
+  X.beginPath(); X.arc(wx + 112, wy + 30, 56, 0, TAU); X.fill();
   X.fillStyle = 'rgba(235,245,255,0.85)';
-  X.beginPath(); X.arc(wx + 130, wy + 35, 16, 0, TAU); X.fill();
+  X.beginPath(); X.arc(wx + 112, wy + 30, 12, 0, TAU); X.fill();
   X.restore();
 
   // Window mullions
@@ -54,47 +147,51 @@ function drawFPVRoom(){
   X.stroke();
 
   // Bedside lamp (warm left illumination casting directional golden light)
-  const lx = 180, ly = 110;
-  const lampG = X.createRadialGradient(lx, ly, 8, lx, ly, 460);
-  lampG.addColorStop(0, 'rgba(255,195,125,0.28)');
-  lampG.addColorStop(0.35, 'rgba(255,165,95,0.12)');
+  const lx = 140, ly = -30;
+  const lampG = X.createRadialGradient(lx, ly, 8, lx, ly, 480);
+  lampG.addColorStop(0, 'rgba(255,195,125,0.30)');
+  lampG.addColorStop(0.35, 'rgba(255,165,95,0.13)');
   lampG.addColorStop(0.7, 'rgba(255,140,80,0.03)');
   lampG.addColorStop(1, 'rgba(0,0,0,0)');
   X.save(); X.globalCompositeOperation = 'screen';
   X.fillStyle = lampG;
-  X.beginPath(); X.arc(lx, ly, 460, 0, TAU); X.fill();
+  X.beginPath(); X.arc(lx, ly, 480, 0, TAU); X.fill();
   X.restore();
 
   // Lamp fixture silhouette
   X.fillStyle = '#2d1820';
   X.beginPath();
-  X.moveTo(148, 134); X.lineTo(212, 134); X.lineTo(198, 98); X.lineTo(162, 98);
+  X.moveTo(108, -4); X.lineTo(172, -4); X.lineTo(158, -40); X.lineTo(122, -40);
   X.closePath(); X.fill();
   X.fillStyle = 'rgba(255,215,145,0.7)';
   X.beginPath();
-  X.moveTo(162, 100); X.lineTo(198, 100); X.lineTo(206, 132); X.lineTo(154, 132);
+  X.moveTo(122, -38); X.lineTo(158, -38); X.lineTo(166, -6); X.lineTo(114, -6);
   X.closePath(); X.fill();
 
-  // Mattress & crumpled satin sheets in dramatic perspective receding from camera
-  const sheetG = X.createLinearGradient(0, 260, 0, H);
-  sheetG.addColorStop(0, '#421d28');
-  sheetG.addColorStop(0.35, '#2e131b');
-  sheetG.addColorStop(0.75, '#1e0a11');
+  // Mattress & crumpled satin sheets: the near sheet fills almost the whole
+  // frame because the camera looks straight along the bed.
+  const sheetG = X.createLinearGradient(0, farY + 40, 0, H);
+  sheetG.addColorStop(0, '#3a1a24');
+  sheetG.addColorStop(0.16, '#421d28');
+  sheetG.addColorStop(0.45, '#2e131b');
+  sheetG.addColorStop(0.8, '#1e0a11');
   sheetG.addColorStop(1, '#11050a');
   X.fillStyle = sheetG;
-  X.fillRect(0, 250, W, H - 250);
+  X.fillRect(0, farY + 40, W, H - farY - 40);
 
-  // Dynamic tension wrinkles radiating from her hips, back, and thighs
+  // Dynamic tension wrinkles radiating from her hips, back, and thighs.
+  // They are compressed near the far edge and stretch toward the lens.
   const bounce = (G.depth || 0) * 8 + (G.impact || 0) * 6;
   X.save();
   X.globalCompositeOperation = 'multiply';
   X.strokeStyle = 'rgba(12,3,6,0.52)';
   X.lineWidth = 3.2;
   for(let i = 0; i < 7; i++){
-    const y = 380 + i * 46;
+    const u = i / 6;
+    const y = lerp(farY + 74, 700, u * u * 0.85 + u * 0.15);
     X.beginPath();
     X.moveTo(70 + ((i * 61) % 120), y);
-    X.bezierCurveTo(460, y - 26 + ((i * 29) % 24) + bounce * 0.4, 820, y + 16 - ((i * 19) % 20), 1210 - ((i * 53) % 140), y);
+    X.bezierCurveTo(460, y - 14 + ((i * 29) % 24) + bounce * 0.4, 820, y + 10 - ((i * 19) % 20), 1210 - ((i * 53) % 140), y);
     X.stroke();
   }
   X.restore();
@@ -113,34 +210,36 @@ function drawFPVRoom(){
   }
   X.restore();
 
-  // Pillow under her head (dim bedding in lamplight, not a glow)
-  const pilG = X.createLinearGradient(640 - 170, 120, 640 + 170, 214);
-  pilG.addColorStop(0, '#43332a');
-  pilG.addColorStop(0.35, '#382b22');
-  pilG.addColorStop(0.75, '#281e17');
-  pilG.addColorStop(1, '#1d1611');
+  // Pillow under her head. Kept very low-contrast — a bright bolster behind
+  // her crown reads as a halo, which is the last thing we want.
+  const pilY = 40, pilRx = 78, pilRy = 19;
+  const pilG = X.createLinearGradient(640 - pilRx, pilY - pilRy, 640 + pilRx, pilY + pilRy);
+  pilG.addColorStop(0, '#2b2019');
+  pilG.addColorStop(0.35, '#241b15');
+  pilG.addColorStop(0.75, '#1a130f');
+  pilG.addColorStop(1, '#130d0a');
   X.fillStyle = pilG;
   X.beginPath();
-  X.ellipse(640, 170, 170, 44, -0.01, 0, TAU);
+  X.ellipse(640, pilY, pilRx, pilRy, -0.01, 0, TAU);
   X.fill();
 
   // Head depression shadow
   X.save();
   X.globalCompositeOperation = 'multiply';
-  const headIndent = X.createRadialGradient(640, 158, 6, 640, 158, 44);
-  headIndent.addColorStop(0, 'rgba(80,55,40,0.35)');
-  headIndent.addColorStop(0.65, 'rgba(90,60,45,0.14)');
+  const headIndent = X.createRadialGradient(640, pilY - 6, 4, 640, pilY - 6, 24);  headIndent.addColorStop(0, 'rgba(80,55,40,0.32)');
+  headIndent.addColorStop(0.65, 'rgba(90,60,45,0.12)');
   headIndent.addColorStop(1, 'rgba(0,0,0,0)');
   X.fillStyle = headIndent;
   X.beginPath();
-  X.ellipse(640, 158, 70, 22, 0, 0, TAU);
+  X.ellipse(640, pilY - 6, 36, 11, 0, 0, TAU);
   X.fill();
   X.restore();
 
-  // Soft body contact ambient occlusion on sheets
+  // Soft body contact ambient occlusion pooled under her hips and thighs —
+  // this is the anchor shadow that plants her on the sheet
   X.save();
   X.globalCompositeOperation = 'multiply';
-  shade(640, 485 + bounce * 0.4, 210, 140, 'rgba(10,3,7,0.58)', 0);
+  shade(640, 772 + bounce * 0.4, 300, 180, 'rgba(10,3,7,0.58)', 0);
   X.restore();
 }
 
@@ -148,77 +247,122 @@ function drawFPVRoom(){
    HER HEAD: LOOKING UP AT PLAYER (FORESHORTENED, DEVOTIONAL)
    ============================================================ */
 function drawFPVHead(E){
+  const B = FPV_BODY;
   const breathe = Math.sin((G.t || 0) * TAU * 0.33) * 1.8;
-  const ks = 1 + (G.kiss || 0) * 0.12;
-  const hx = 640 + Math.sin((G.t || 0) * 0.5) * 2.2;
-  const hy = 148 + breathe * 0.45 + (G.pleasure || 0) * 0.025;
   const hairCol = G.char ? G.char.hairColor : '#231318';
 
+  // ---- project the head into bed space -----------------------------------
+  // Her face is seen from between her breasts looking up the bed: the chin is
+  // the nearest point of the head, the crown the furthest, so the skull is
+  // squashed vertically while its width holds. Everything is sized in metres
+  // against the local projection scale, so the head is correctly SMALL and
+  // DISTANT relative to the looming pelvis.
+  const hp = fpvProj(0, B.chin + 0.02, B.lift + 0.055);
+  const hx = hp[0] + Math.sin((G.t || 0) * 0.5) * 1.6;
+  const hy = hp[1] + breathe * 0.3;
+  // The face/hair art below is authored at a ~430 px reference scale, where
+  // the face spans 88 px and the hair mass 160 px. Her head projects at
+  // sc≈760, so hs ≈ 0.88 makes the drawn face ~78 px wide — matching a real
+  // 0.11 m face seen from the far end of the bed.
+  const ks = (hp[2] / 430) * 0.56 * (1 + 0.03 * (G.kiss || 0));
+  const hs = ks;
+  const squashY = clamp(0.88 - (G.nod || 0) * 0.05 - (G.pleasure || 0) * 0.0004, 0.68, 0.95);
+
   // Hair hugging the head — layered mass cradling it, no halo ring
-  hairMassS(hx, hy + 16, 80, 50, 0, hairCol);
   X.save();
-  X.beginPath(); X.ellipse(hx, hy + 16, 80, 50, 0, 0, TAU); X.clip();
+  X.translate(hx, hy);
+  X.scale(hs, hs * squashY);
+
+  hairMassS(0, 16, 80, 50, 0, hairCol);
+  X.save();
+  X.beginPath(); X.ellipse(0, 16, 80, 50, 0, 0, TAU); X.clip();
   X.strokeStyle = skDark(hairCol, 0.45); X.lineWidth = 2.4; X.lineCap = 'round';
   for(let i = 0; i < 5; i++){
     X.beginPath();
-    X.moveTo(hx - 32 + i * 16, hy - 8);
-    X.quadraticCurveTo(hx - 52 + i * 26, hy + 24, hx - 70 + i * 35, hy + 58);
+    X.moveTo(-32 + i * 16, -8);
+    X.quadraticCurveTo(-52 + i * 26, 24, -70 + i * 35, 58);
     X.stroke();
   }
   X.globalCompositeOperation = 'soft-light';
-  shade(hx, hy + 2, 62, 20, 'rgba(255,235,220,0.20)', 0);
+  shade(0, 2, 62, 20, 'rgba(255,235,220,0.20)', 0);
   X.restore();
 
   // Silky locks spilling down onto the pillow beside her neck
   for(let i = 0; i < 6; i++){
     const s = i < 3 ? -1 : 1, k = i % 3;
-    const bx = hx + s * (30 + k * 10), by = hy + 26 + k * 6;
-    const c1x = hx + s * (48 + k * 12), c1y = by + 26;
-    const c2x = hx + s * (56 + k * 14), c2y = by + 54;
-    const tx = hx + s * (50 + k * 14), ty = hy + 96 + k * 12;
+    const bx = s * (30 + k * 10), by = 26 + k * 6;
+    const c1x = s * (48 + k * 12), c1y = by + 26;
+    const c2x = s * (56 + k * 14), c2y = by + 54;
+    const tx = s * (50 + k * 14), ty = 96 + k * 12;
     tressS(bx, by, c1x, c1y, c2x, c2y, tx, ty, 13 - k * 2.2, 3, hairCol, 'rgba(255,200,210,0.14)');
   }
+  X.restore();
 
   X.save();
   X.translate(hx, hy);
-  X.scale(ks, ks);
+  X.scale(hs, hs * squashY);
   X.rotate(E.tilt * 0.35 + (G.nod || 0) * 0.1 + Math.sin((G.t || 0) * TAU * 0.33) * 0.015);
 
   const fpvSk = getSkin();
 
-  // Neck: slim column with a gentle waist, SCM cords, suprasternal notch,
-  // and soft trapezius slopes melting into the clavicle (never a solid cone)
-  const nkTop = 30;
+  // The neck must actually reach the shoulders the torso drew, so undo the
+  // head transform to find where they land and rebuild the neck in local px.
+  const _sy = hs * squashY, _sx = hs;
+  const shLp = fpvProj( B.shHalf * fpvBdy(), B.shoulder, B.lift );
+  const shRp = fpvProj(-B.shHalf * fpvBdy(), B.shoulder, B.lift );
+  const nkBaseY = ((shLp[1] + shRp[1]) / 2 - hy) / _sy;
+  // A real neck is ~0.084 m across — noticeably narrower than the head, which
+  // is what stops it reading as a lampshade under the jaw.
+  const nkHalfPx = 0.038 * fpvS(B.neck) * fpvBdy();
+  const nkHalfN  = nkHalfPx / _sx;
+
+  // Neck: a slim column that only starts to flare where the trapezius meets
+  // the collarbone line the torso already drew. The flare is gentle (1.3x) so
+  // the neck never becomes a second trunk.
+  const nkTop = 14;
+  const nkBot = clamp(nkBaseY, nkTop + 30, nkTop + 260);
+  const nkW = nkHalfN;
   const neckPath = () => {
-    X.moveTo(-11, nkTop);
-    X.bezierCurveTo(-12.5, 44, -13, 56, -16, 68);
-    X.bezierCurveTo(-19, 78, -26, 84, -34, 88);
-    X.bezierCurveTo(-20, 99, 20, 99, 34, 88);
-    X.bezierCurveTo(26, 84, 19, 78, 16, 68);
-    X.bezierCurveTo(13, 56, 12.5, 44, 11, nkTop);
+    X.moveTo(-nkW * 1.00, nkTop);
+    X.bezierCurveTo(-nkW * 1.06, lerp(nkTop, nkBot, 0.34),
+                    -nkW * 1.10, lerp(nkTop, nkBot, 0.60),
+                    -nkW * 1.16, lerp(nkTop, nkBot, 0.78));
+    X.bezierCurveTo(-nkW * 1.24, lerp(nkTop, nkBot, 0.89),
+                    -nkW * 1.29, lerp(nkTop, nkBot, 0.96),
+                    -nkW * 1.32, nkBot);
+    X.lineTo(nkW * 1.32, nkBot);
+    X.bezierCurveTo( nkW * 1.29, lerp(nkTop, nkBot, 0.96),
+                     nkW * 1.24, lerp(nkTop, nkBot, 0.89),
+                     nkW * 1.16, lerp(nkTop, nkBot, 0.78));
+    X.bezierCurveTo( nkW * 1.10, lerp(nkTop, nkBot, 0.60),
+                     nkW * 1.06, lerp(nkTop, nkBot, 0.34),
+                     nkW * 1.00, nkTop);
     X.closePath();
   };
-  X.beginPath(); neckPath();
-  const nkg = X.createLinearGradient(0, nkTop, 0, 92);
-  nkg.addColorStop(0, fpvSk.herSh); nkg.addColorStop(0.45, fpvSk.her); nkg.addColorStop(1, fpvSk.herSh);
-  X.fillStyle = nkg; X.fill();
+  // Fill with the same directional light the torso uses, so the neck and trunk
+  // read as one continuous surface instead of two pasted tones.
+  const nkT = skTone(fpvSk.her);
+  skFillShape(neckPath, nkT, [0 + nkW * 0.9, nkTop, 0 - nkW * 0.9, nkBot]);
   skClipIn(neckPath, () => {
-    // throat shadow tucked under the jaw
-    fAO(0, nkTop + 3, 13, 7, 0.42);
+    // Throat shadow — it must sit BELOW the chin line, otherwise the face
+    // paints over it and the jaw melts into the neck like a snout.
+    fAO(0, 54, nkW * 1.25, nkW * 0.80, 0.40);
     // sternocleidomastoid cords running down each side
-    fSh(-8, 52, 3.2, 16, 'rgba(175,100,80,0.22)', 0.10);
-    fSh(8, 52, 3.2, 16, 'rgba(175,100,80,0.22)', -0.10);
-    // one slim front highlight instead of a full-column fill
-    fHi(0, 58, 4.5, 15, 'rgba(255,240,225,0.22)');
+    fSh(-nkW * 0.58, lerp(nkTop, nkBot, 0.42), nkW * 0.30, (nkBot - nkTop) * 0.28,
+      'rgba(175,100,80,0.18)', 0.10);
+    fSh( nkW * 0.58, lerp(nkTop, nkBot, 0.42), nkW * 0.30, (nkBot - nkTop) * 0.28,
+      'rgba(175,100,80,0.18)', -0.10);
+    // one slim front highlight
+    fHi(0, lerp(nkTop, nkBot, 0.55), nkW * 0.40, (nkBot - nkTop) * 0.26,
+      'rgba(255,240,225,0.16)');
     // suprasternal notch dip at the base
-    fAO(0, 90, 6, 4, 0.35);
-    // trapezius slopes softening outward into the shoulders
-    fSh(-27, 86, 12, 7, 'rgba(175,100,80,0.16)', 0.5);
-    fSh(27, 86, 12, 7, 'rgba(175,100,80,0.16)', -0.5);
+    fAO(0, nkBot - nkW * 0.35, nkW * 0.6, nkW * 0.4, 0.32);
   });
 
-  // Jawline & chin foreshortened looking upward
-  X.fillStyle = sg(-52, 14, fpvSk.her, fpvSk.herSh);
+  // Jawline & chin foreshortened looking upward. Filled with the SAME tone
+  // range as the trunk (highlight -> shadow), otherwise the face reads a
+  // full stop darker than the body it belongs to.
+  X.fillStyle = sg(-52, 14, nkT.hi, nkT.s);
   X.beginPath();
   X.ellipse(0, -2, 44, 49, 0, 0, TAU);
   X.fill();
@@ -235,6 +379,10 @@ function drawFPVHead(E){
   shade(26, 12, 22, 14, 'rgba(170,95,72,0.17)', 0.38);
   shade(-26, 12, 22, 14, 'rgba(170,95,72,0.17)', -0.38);
   shade(0, 42, 26, 11, 'rgba(170,95,72,0.16)', 0);
+  // Under-jaw shadow: a dark crescent along the mandible. Without it the face
+  // ellipse simply continues into the neck and she reads as snouted.
+  shade(0, 52, 34, 13, 'rgba(120,58,46,0.34)', 0);
+  shade(0, 47, 40, 6,  'rgba(120,58,46,0.20)', 0);
   X.restore();
 
   // Soft light highlight along forehead & chin tip
@@ -491,242 +639,456 @@ function drawFPVHead(E){
 function drawFPVBody(E, br){
   const trem = fpvTremor();
   const bounce = (G.depth || 0) * 8 + (G.impact || 0) * 6;
-  const cx = 640, topY = 206 + bounce * 0.3;
-  const sk = getSkin();
+  const B = FPV_BODY;
+  const T = herT();
   const [brR, brG, brB] = hexToRgb(G.char ? G.char.blushColor : '#e86070');
   const bsz = 0.72 + (G.char ? G.char.breastSize : 0.45) * 0.62;
   const bdy = 0.82 + (G.char ? G.char.bodyScale : 0.45) * 0.42;
+  const ple = G.pleasure || 0;
 
-  // ---- LEGS: SPREAD TOWARD CAMERA, FORESHORTENED IN PERSPECTIVE ----
-  const T = herT();
-  const spread = (1.0 + (G.pleasure || 0) * 0.0016) * bdy;
+  // ---- pose in bed space ------------------------------------------------
+  // knees draw up and fall open with pleasure; feet stay planted wide so the
+  // near thighs frame the lens. The base lift is small — at rest her knees
+  // are only slightly raised, and the projection amplifies every centimetre.
+  const drawUp   = 0.14 + ple * 0.0022 + bounce * 0.003;
+  const openAmt  = 0.050 + ple * 0.0011;
+
+  const hipHalf = B.hipHalf * bdy, waistHalf = B.waistHalf * bdy;
+  const ribHalf = B.ribHalf * bdy, shHalf = B.shHalf * bdy;
+
+  // ---- projected skeleton (screen points + per-point scale) -------------
+  // hipL/kneeL/ankL all use u < 0 so they stay on the same (screen-left) side;
+  // mixing the signs makes the two legs cross in an X over her pelvis.
+  const hipL  = fpvProj(-hipHalf,  B.hip,     B.lift);
+  const hipR  = fpvProj( hipHalf,  B.hip,     B.lift);
+  const mons  = fpvProj(0, B.mons,  B.lift + 0.04);
+  const navel = fpvProj(0, B.navel, B.lift + 0.015);
+  const waist = fpvProj(0, B.waist, B.lift + 0.004);
+  const ribs  = fpvProj(0, B.ribs,  B.lift);
+  const stern = fpvProj(0, B.sternum, B.lift + 0.006);
+  const shL   = fpvProj( shHalf, B.shoulder, B.lift);
+  const shR   = fpvProj(-shHalf, B.shoulder, B.lift);
+  const kneeL = fpvProj(-(B.kneeSpread + openAmt) * bdy, B.knee, B.lift + drawUp);
+  const kneeR = fpvProj( (B.kneeSpread + openAmt) * bdy, B.knee, B.lift + drawUp);
+  const ankL  = fpvProj(-B.footSpread * bdy, B.ankle, 0.15);
+  const ankR  = fpvProj( B.footSpread * bdy, B.ankle, 0.15);
+  const toeL  = fpvProj(-B.footSpread * bdy * 1.08, 0.20, 0.11);
+  const toeR  = fpvProj( B.footSpread * bdy * 1.08, 0.20, 0.11);
+
+  // helper: metres -> screen px at a given projected scale. The reference
+  // scale is the pelvis (sc≈445), where 1 m spans about 445 px.
+  const px = (m, sc) => m * sc;
+
+  // ---- LEGS: near thighs looming wide, foreshortened toward the lens ----
   for(const s of [-1, 1]){
-    const hip = [cx + s * 64 * bdy, 556 + bounce];
-    const knee = [cx + s * (204 * spread) + trem * s, 642 + bounce * 0.6];
-    const foot = [cx + s * (274 * spread), 758];
+    const hip = s < 0 ? hipL : hipR;
+    const knee = s < 0 ? kneeL : kneeR;
+    const ank  = s < 0 ? ankL : ankR;
+    const toe  = s < 0 ? toeL : toeR;
 
-    limbS(knee, foot, 34 * bdy, 22 * bdy, T, { belly: 1.16 });
-    limbS(hip, knee, 46 * bdy, 37 * bdy, T, { belly: 1.1, aoA: 0.32 });
+    // Her knees sit almost exactly at the lens plane, so the thighs rake down
+    // out of frame and the shins/feet are behind the camera entirely. Skip
+    // anything that projects wholly off-frame — it also avoids allocating
+    // enormous gradients for shapes nobody can see.
+    if(!fpvOn([[hip[0], hip[1]], [knee[0], knee[1]]], 400)) continue;
+    const shinVisible = fpvOn([[knee[0], knee[1]], [ank[0], ank[1]]], 200);
 
-    // Knee cap blend: continuous tone across the thigh/calf joint
-    X.save();
-    X.beginPath(); X.ellipse(knee[0], knee[1], 34 * bdy, 28 * bdy, s * 0.42, 0, TAU);
-    const kg = X.createRadialGradient(knee[0] - s * 8, knee[1] - 10, 4, knee[0], knee[1], 36 * bdy);
-    kg.addColorStop(0, T.b); kg.addColorStop(0.7, T.b); kg.addColorStop(1, T.s);
-    X.fillStyle = kg; X.fill();
-    X.restore();
-    fHi(knee[0], knee[1] - 10, 13 * bdy, 15, 'rgba(255,238,220,0.08)');
+    // thigh: hip -> knee. Real upper-thigh radius ~0.085 m, tapering to ~0.062
+    // at the knee. belly>1 gives the quadriceps its outward fullness.
+    limbS([hip[0], hip[1]], [knee[0], knee[1]],
+      px(0.084 * bdy, hip[2]), px(0.062 * bdy, knee[2]), T, { belly: 1.10, aoA: 0.26 });
+    if(shinVisible){
+      // calf: knee -> ankle — soleus swell then a slim ankle
+      limbS([knee[0], knee[1]], [ank[0], ank[1]],
+        px(0.058 * bdy, knee[2]), px(0.036 * bdy, ank[2]), T, { belly: 1.12 });
+      // foot/ankle cap fading off the bottom of the frame
+      limbS([ank[0], ank[1]], [toe[0], toe[1]], px(0.036 * bdy, ank[2]), px(0.028 * bdy, toe[2]), T, { belly: 1.05 });
+    }
+    if(shinVisible){
+      // Patella: a soft, slightly lighter disc that merges the two limb fills.
+      // Kept inside the limb radius so it never reads as a bolted-on ball.
+      X.save();
+      X.beginPath();
+      X.ellipse(knee[0], knee[1], px(0.060 * bdy, knee[2]), px(0.052 * bdy, knee[2]), s * 0.42, 0, TAU);
+      const kg = X.createRadialGradient(knee[0] - s * 8, knee[1] - 9, 2, knee[0], knee[1], px(0.068 * bdy, knee[2]));
+      kg.addColorStop(0, T.b); kg.addColorStop(0.68, T.b); kg.addColorStop(1, T.s);
+      X.fillStyle = kg; X.fill();
+      X.restore();
+      // tiny retracted-patella highlight, not a specular ball
+      fHi(knee[0], knee[1] - 9, px(0.020 * bdy, knee[2]), px(0.026 * bdy, knee[2]), 'rgba(255,238,220,0.07)');
 
-    // Vastus medialis inner thigh teardrop contour
+      // median patellar crease so the knee reads as a joint
+      X.strokeStyle = 'rgba(178,108,90,0.20)';
+      X.lineWidth = Math.max(1.3, px(0.0035, knee[2]));
+      X.beginPath();
+      X.arc(knee[0], knee[1] - px(0.006, knee[2]), px(0.030 * bdy, knee[2]), Math.PI * 0.22, Math.PI * 0.78);
+      X.stroke();
+
+      // kneecap AO where the shin turns away
+      fAO(ank[0], ank[1], px(0.048 * bdy, ank[2]), px(0.030 * bdy, ank[2]), 0.16);
+    }
+
+    // vastus medialis teardrop riding the inner thigh — drawn for the thigh
+    // even when the shin is off-frame, since this is the muscle that reads
+    // on the big near limb.
     X.strokeStyle = 'rgba(185,115,95,0.16)';
-    X.lineWidth = 2.4;
+    X.lineWidth = Math.max(1.5, px(0.0045, knee[2]));
     X.beginPath();
-    X.moveTo(hip[0] + s * 22, hip[1] - 28);
-    X.bezierCurveTo(knee[0] - s * 10, knee[1] - 62, knee[0] + s * 4, knee[1] - 26, knee[0] + s * 2, knee[1] - 12);
+    X.moveTo(hip[0] + s * px(0.040, hip[2]), hip[1] - px(0.052, hip[2]));
+    X.bezierCurveTo(
+      knee[0] - s * px(0.020, knee[2]), knee[1] - px(0.120, knee[2]),
+      knee[0] + s * px(0.008, knee[2]),  knee[1] - px(0.050, knee[2]),
+      knee[0] + s * px(0.004, knee[2]),  knee[1] - px(0.024, knee[2]));
     X.stroke();
 
-    // Inguinal groove (crease where thigh meets pelvis)
+    // inguinal groove where the thigh meets the pelvis
     X.strokeStyle = 'rgba(165,95,75,0.22)';
-    X.lineWidth = 2.2;
+    X.lineWidth = Math.max(1.4, px(0.0038, hip[2]));
     X.beginPath();
-    X.moveTo(cx + s * 44 * bdy, 528 + bounce);
-    X.quadraticCurveTo(cx + s * 115 * bdy, 566 + bounce, cx + s * 158 * bdy, 620);
+    X.moveTo(hip[0] * 0.72 + 640 * 0.28, hip[1] + px(0.007, hip[2]));
+    X.quadraticCurveTo(knee[0] * 0.42 + 640 * 0.58, hip[1] - px(0.028, hip[2]),
+      knee[0], knee[1] + px(0.080, knee[2]));
     X.stroke();
   }
 
-  // ---- ARMS: drawn under the torso at rest so the shoulder joint reads connected ----
-  const a2 = sm(55, 80, G.pleasure || 0);
+  // ---- PELVIS BLOCK: ties the thighs to the torso, hides the leg roots ---
+  const pelvY = (hipL[1] + hipR[1]) / 2;
+  X.save();
+  X.beginPath();
+  X.moveTo(hipL[0], hipL[1] - px(0.0372, hipL[2]));
+  X.bezierCurveTo(hipL[0] - px(0.0233, hipL[2]), mons[1] + px(0.0465, mons[2]), mons[0] - px(0.1302, mons[2]), mons[1] - px(0.0140, mons[2]), mons[0], mons[1] - px(0.0186, mons[2]));
+  X.bezierCurveTo(mons[0] + px(0.1302, mons[2]), mons[1] - px(0.0140, mons[2]), hipR[0] + px(0.0233, hipR[2]), mons[1] + px(0.0465, mons[2]), hipR[0], hipR[1] - px(0.0372, hipR[2]));
+  X.bezierCurveTo(hipR[0] + px(0.0140, hipR[2]), pelvY + px(0.0791, hipR[2]), hipR[0] - px(0.0465, hipR[2]), pelvY + px(0.1116, hipR[2]), 640, pelvY + px(0.1209, hipR[2]));
+  X.bezierCurveTo(hipL[0] + px(0.0465, hipL[2]), pelvY + px(0.1116, hipL[2]), hipL[0] - px(0.0140, hipL[2]), pelvY + px(0.0791, hipL[2]), hipL[0], hipL[1] - px(0.0372, hipL[2]));
+  X.closePath();
+  const pg = X.createLinearGradient(640, mons[1], 640, pelvY + px(0.1209, hipL[2]));
+  pg.addColorStop(0, T.b); pg.addColorStop(0.55, T.b); pg.addColorStop(1, T.s);
+  X.fillStyle = pg; X.fill();
+  X.restore();
+  skClipIn(() => {
+    X.moveTo(hipL[0], hipL[1] - px(0.0372, hipL[2]));
+    X.bezierCurveTo(hipL[0] - px(0.0233, hipL[2]), mons[1] + px(0.0465, mons[2]), mons[0] - px(0.1302, mons[2]), mons[1] - px(0.0140, mons[2]), mons[0], mons[1] - px(0.0186, mons[2]));
+    X.bezierCurveTo(mons[0] + px(0.1302, mons[2]), mons[1] - px(0.0140, mons[2]), hipR[0] + px(0.0233, hipR[2]), mons[1] + px(0.0465, mons[2]), hipR[0], hipR[1] - px(0.0372, hipR[2]));
+    X.bezierCurveTo(hipR[0] + px(0.0140, hipR[2]), pelvY + px(0.0791, hipR[2]), hipR[0] - px(0.0465, hipR[2]), pelvY + px(0.1116, hipR[2]), 640, pelvY + px(0.1209, hipR[2]));
+    X.bezierCurveTo(hipL[0] + px(0.0465, hipL[2]), pelvY + px(0.1116, hipL[2]), hipL[0] - px(0.0140, hipL[2]), pelvY + px(0.0791, hipL[2]), hipL[0], hipL[1] - px(0.0372, hipL[2]));
+    X.closePath();
+  }, () => {
+    fAO(hipL[0] + px(0.0419, hipL[2]), hipL[1], px(0.0698, hipL[2]), px(0.0791, hipL[2]), 0.26, -0.4);
+    fAO(hipR[0] - px(0.0419, hipR[2]), hipR[1], px(0.0698, hipR[2]), px(0.0791, hipR[2]), 0.26,  0.4);
+    fHi(640, mons[1] + px(0.0140, mons[2]), px(0.0791, mons[2]), px(0.0465, mons[2]), 'rgba(255,235,215,0.14)');
+  });
+  skLine(() => {
+    X.moveTo(hipL[0], hipL[1] - px(0.0372, hipL[2]));
+    X.bezierCurveTo(mons[0] - px(0.1302, mons[2]), mons[1] - px(0.0140, mons[2]), mons[0] + px(0.1302, mons[2]), mons[1] - px(0.0140, mons[2]), hipR[0], hipR[1] - px(0.0372, hipR[2]));
+  }, T, 1.4, 0.26);
+
+  // ---- ARMS: drawn under the torso so the shoulder reads connected -------
+  // At rest her upper arms lie on the sheet beside her ribs, running from the
+  // shoulder TOWARD the lens (down the length of her body) — so the elbow and
+  // wrist depths are always SMALLER than the shoulder's. Only at high
+  // pleasure do they lift off the sheet to clutch at your back.
+  const a2 = sm(62, 88, ple);
   const drawArms = () => {
     for(const s of [-1, 1]){
-      const sh = [cx + s * 58 * bdy, 248 + bounce * 0.3];
-      const el = [cx + s * 90 * bdy, lerp(352, 300, a2)];
-      const ha = [lerp(cx + s * 116 * bdy, cx + s * 64 * bdy, a2), lerp(462, 190, a2)];
-      limbS(sh, el, 17, 13, T, { belly: 1.08, aoA: 0.3 });
-      limbS(el, ha, 13, 10, T, { belly: 1.05 });
-      const A = lerp(2.2, -0.9, a2);
-      handS(ha[0], ha[1], s < 0 ? A : Math.PI - A, 1.0, T, { curl: lerp(0.5, 0.65, a2), spread: 0.35 });
+      const sh = s < 0 ? shR : shL;
+      // The arm's root sits slightly INBOARD, further away and lower than the
+      // shoulder joint, so the deltoid stays tucked under the torso silhouette
+      // instead of ballooning above it as a shoulder pad.
+      const shA = fpvProj(s * shHalf * 0.86, B.shoulder + 0.03, B.lift - 0.085);
+      const elU = lerp(0.232, 0.300, a2) * s * bdy;
+      const elD = lerp(B.shoulder - 0.30, B.shoulder - 0.06, a2);
+      const elH = B.lift + lerp(-0.075, 0.10, a2);
+      const el  = fpvProj(elU, elD, elH);
+      const haU = lerp(0.212, 0.200, a2) * s * bdy;
+      const haD = lerp(B.shoulder - 0.56, B.shoulder - 0.26, a2);
+      const haH = B.lift + lerp(-0.065, 0.30, a2);
+      const ha  = fpvProj(haU, haD, haH);
+
+      // upper arm: real radius ~0.044 m -> 0.034 at the elbow
+      limbS([shA[0], shA[1]], [el[0], el[1]],
+        px(0.0445 * bdy, shA[2]), px(0.0335 * bdy, el[2]), T,
+        { belly: 1.05, aoA: 0.24 });
+      // forearm: ~0.033 -> 0.024, belly gives the brachioradialis swell
+      limbS([el[0], el[1]], [ha[0], ha[1]],
+        px(0.0325 * bdy, el[2]), px(0.0235 * bdy, ha[2]), T,
+        { belly: 1.06 });
+      // a soft AO pool in the crook of the elbow, NOT a stroked ring — a
+      // circle outline here reads as a doll's ball joint
+      fAO(el[0] + s * px(0.010, el[2]), el[1] + px(0.004, el[2]),
+          px(0.020 * bdy, el[2]), px(0.016 * bdy, el[2]), 0.20);
+
+      const handAng = s < 0 ? (1.55 - a2 * 2.3) : (Math.PI - 1.55 + a2 * 2.3);
+      handS(ha[0], ha[1], handAng,
+        lerp(0.44, 0.60, a2) * (ha[2] / 430),
+        T, { curl: lerp(0.34, 0.66, a2), spread: 0.20 });
     }
   };
   if(a2 < 0.5) drawArms();
 
-  // ---- TORSO: HOURGLASS, ELEVATED RIBCAGE, TAUT ABDOMEN & SOFT BELLY ----
+  // ---- TORSO: hourglass silhouette from mons to the collarbone line ------
+  // The top corners ride on the projected shoulder joints, and the crest of
+  // the chest sits between them, so the trunk meets the neck with no seam.
+  const clavY = (shL[1] + shR[1]) / 2 + px(0.012, stern[2]);   // collarbone line
+  // NOTE: shL is the u>0 shoulder (screen RIGHT) and shR the u<0 one (screen
+  // LEFT), because they are named for her body, not the viewer. hipL/hipR are
+  // the opposite way round. The armpits must follow the VIEWER's sides so the
+  // silhouette path never jumps across the trunk and self-intersects.
+  const axilL = 640 - (shHalf * 1.02) * shR[2];   // screen-left armpit
+  const axilR = 640 + (shHalf * 1.02) * shL[2];   // screen-right armpit
   const torso = () => {
-    X.moveTo(cx - 24 * bdy, topY);
-    X.bezierCurveTo(cx - 70 * bdy, 258, cx - 78 * bdy, 308, cx - 74 * bdy, 335); // Upper chest / axilla
-    X.bezierCurveTo(cx - 72 * bdy, 372, cx - 56 * bdy, 408, cx - 54 * bdy, 435); // Ribcage tapering to waist
-    X.bezierCurveTo(cx - 52 * bdy, 465, cx - 84 * bdy, 532, cx - 82 * bdy, 546); // Waist flaring into smooth hips
-    X.bezierCurveTo(cx - 44 * bdy, 570, cx - 18 * bdy, 572, cx, 572);             // Lower pelvis
-    X.bezierCurveTo(cx + 18 * bdy, 572, cx + 44 * bdy, 570, cx + 82 * bdy, 546); // Right lower hip
-    X.bezierCurveTo(cx + 84 * bdy, 532, cx + 52 * bdy, 465, cx + 54 * bdy, 435); // Right waist
-    X.bezierCurveTo(cx + 56 * bdy, 408, cx + 72 * bdy, 372, cx + 74 * bdy, 335); // Right ribcage
-    X.bezierCurveTo(cx + 78 * bdy, 308, cx + 70 * bdy, 258, cx + 24 * bdy, topY); // Right chest
+    X.moveTo(hipL[0], hipL[1] - px(0.0419, hipL[2]));
+    // up the left flank: hip -> waist -> ribcage -> axilla
+    X.bezierCurveTo(
+      hipL[0] - px(0.0047, hipL[2]), hipL[1] - px(0.1349, hipL[2]),
+      640 - waistHalf * waist[2], waist[1] + px(0.0186, waist[2]),
+      640 - waistHalf * waist[2], waist[1]);
+    X.bezierCurveTo(
+      640 - (waistHalf * 0.80) * ribs[2], lerp(waist[1], ribs[1], 0.55),
+      640 - ribHalf * ribs[2], ribs[1] + px(0.0140, ribs[2]),
+      640 - ribHalf * ribs[2], ribs[1]);
+    X.bezierCurveTo(
+      640 - (ribHalf * 0.96) * stern[2], lerp(ribs[1], clavY, 0.55),
+      axilL + px(0.0140, shR[2]),       lerp(ribs[1], clavY, 0.86),
+      axilL,                            clavY);
+    // Shoulder line: a trapezius slope that climbs from the outer shoulder up
+    // to the base of the neck. A flat bar across the top reads as a garment
+    // collar; the slope is what makes it read as muscle.
+    X.bezierCurveTo(
+      axilL - px(0.0090, shR[2]),       clavY - px(0.0180, shR[2]),
+      640 - shHalf * 0.52 * shR[2],     clavY - px(0.0330, shR[2]),
+      640 - shHalf * 0.17 * shR[2],     clavY - px(0.0420, shR[2]));
+    X.bezierCurveTo(
+      640 - shHalf * 0.06 * shL[2],     clavY - px(0.0450, shL[2]),
+      640 + shHalf * 0.06 * shL[2],     clavY - px(0.0450, shL[2]),
+      640 + shHalf * 0.17 * shL[2],     clavY - px(0.0420, shL[2]));
+    X.bezierCurveTo(
+      640 + shHalf * 0.52 * shL[2],     clavY - px(0.0330, shL[2]),
+      axilR + px(0.0090, shL[2]),       clavY - px(0.0180, shL[2]),
+      axilR,                            clavY);
+    // down the right flank (mirror of the left)
+    X.bezierCurveTo(
+      axilR - px(0.0140, shL[2]),       lerp(ribs[1], clavY, 0.86),
+      640 + (ribHalf * 0.96) * stern[2], lerp(ribs[1], clavY, 0.55),
+      640 + ribHalf * ribs[2],          ribs[1]);
+    X.bezierCurveTo(
+      640 + ribHalf * ribs[2],          ribs[1] + px(0.0140, ribs[2]),
+      640 + (waistHalf * 0.80) * ribs[2], lerp(waist[1], ribs[1], 0.55),
+      640 + waistHalf * waist[2],       waist[1]);
+    X.bezierCurveTo(
+      640 + waistHalf * waist[2],       waist[1] + px(0.0186, waist[2]),
+      hipR[0] + px(0.0047, hipR[2]),    hipR[1] - px(0.1349, hipR[2]),
+      hipR[0],                          hipR[1] - px(0.0419, hipR[2]));
     X.closePath();
   };
-  skFillShape(torso, T, [cx - 60, topY - 30, cx + 40, 580]);
+  const torsoBBox = () => {
+    X.moveTo(hipL[0], hipL[1] - px(0.0419, hipL[2]));
+    X.lineTo(640 - ribHalf * ribs[2], ribs[1]);
+    X.lineTo(axilL, clavY);
+    X.lineTo(axilR, clavY);
+    X.lineTo(hipR[0], hipR[1] - px(0.0419, hipR[2]));
+    X.closePath();
+  };
+  // The light axis must START ABOVE the shoulder line and END BELOW the hips,
+  // otherwise the gradient clamps to its lightest stop across the whole upper
+  // chest and the shoulders read as a flat bright collar.
+  skFillShape(torso, T, [640 - 56, clavY - 120, 640 + 50, hipL[1] + 130]);
   skClipIn(torso, () => {
-    fAO(cx - 66 * bdy, 400, 16, 90, 0.30);
-    fAO(cx + 66 * bdy, 400, 16, 90, 0.30);
-    fAO(cx - 74 * bdy, 540, 26, 34, 0.15);
-    fAO(cx + 74 * bdy, 540, 26, 34, 0.15);
-    fSh(cx - 44 * bdy, 372, 30, 12, 'rgba(160,90,70,0.22)', 0.18);
-    fSh(cx + 44 * bdy, 372, 30, 12, 'rgba(160,90,70,0.22)', -0.18);
-    fHi(cx, 290, 24 * bdy, 95, 'rgba(255,235,215,0.20)');
-    fHi(cx, 476, 30 * bdy, 52, 'rgba(255,235,215,0.18)');
+    // Flank shadows hug the ribcage — they must stay SHORT, or their upper
+    // tips rise past the collarbones and carve a dark bowtie out of the chest.
+    fAO(640 - ribHalf * ribs[2] * 0.92, (waist[1] + ribs[1]) / 2 + px(0.028, ribs[2]), px(0.028, ribs[2]), px(0.098, ribs[2]), 0.22);
+    fAO(640 + ribHalf * ribs[2] * 0.92, (waist[1] + ribs[1]) / 2 + px(0.028, ribs[2]), px(0.028, ribs[2]), px(0.098, ribs[2]), 0.22);
+    fAO(640 - hipHalf * hipL[2] * 0.94, hipL[1] - px(0.0233, hipL[2]), px(0.0605, hipL[2]), px(0.0791, hipL[2]), 0.16);
+    fAO(640 + hipHalf * hipR[2] * 0.94, hipR[1] - px(0.0233, hipR[2]), px(0.0605, hipR[2]), px(0.0791, hipR[2]), 0.16);
+    fSh(640 - waistHalf * waist[2] * 0.72, waist[1] - px(0.0930, ribs[2]), px(0.0698, ribs[2]), px(0.0326, ribs[2]), 'rgba(160,90,70,0.22)', 0.18);
+    fSh(640 + waistHalf * waist[2] * 0.72, waist[1] - px(0.0930, ribs[2]), px(0.0698, ribs[2]), px(0.0326, ribs[2]), 'rgba(160,90,70,0.22)', -0.18);
+    // diffuse chest light — kept broad and low so the collarbones never read
+    // as a bright hard crescent across the top of the trunk
+    fHi(640, (ribs[1] + stern[1]) / 2 + px(0.028, stern[2]), px(0.062, stern[2]), px(0.115, stern[2]), 'rgba(255,235,215,0.13)');
+    fHi(640, (waist[1] + navel[1]) / 2, px(0.0698, waist[2]), px(0.1116, waist[2]), 'rgba(255,235,215,0.14)');
+    // soft abdominal midline groove
+    X.save(); X.globalCompositeOperation = 'multiply';
+    shade(640, lerp(waist[1], navel[1], 0.5), px(0.020, waist[2]), px(0.090, waist[2]), 'rgba(158,92,70,0.16)', 0);
+    X.restore();
   });
-  skLine(torso, T, 1.4, 0.28);
+  skLine(torso, T, 1.4, 0.26);
 
-  // Chest flush / vasocongestion (soft-edged tint)
-  shade(cx, 314, 60 * bdy, 30, `rgba(${brR},${brG},${brB},${0.05 + E.blush * 0.16})`, 0);
+  // chest flush / vasocongestion
+  shade(640, (ribs[1] + stern[1]) / 2, px(0.1395, stern[2]), px(0.0698, stern[2]), `rgba(${brR},${brG},${brB},${0.05 + E.blush * 0.16})`, 0);
 
-  // Sex flush rubor patches across sternum and belly
+  // sex flush patches across sternum and belly
   if((G.ar || 0) > 30){
-    const ra = (G.ar - 30) / 70;
-    const rc = `rgba(${brR},${brG},${brB},${0.04 + 0.08 * ra})`;
-    [
-      [cx - 30, 318, 26, 16],
-      [cx + 30, 318, 26, 16],
-      [cx - 24, 418, 28, 18],
-      [cx + 24, 418, 28, 18]
-    ].forEach(([x, y, rx, ry]) => shade(x, y, rx, ry, rc, 0));
+    const ra = (G.ar - 30) / 70, rc = `rgba(${brR},${brG},${brB},${0.04 + 0.08 * ra})`;
+    [[-30, stern[1] + px(0.0233, stern[2]), 26, 16], [30, stern[1] + px(0.0233, stern[2]), 26, 16],
+     [-24, navel[1] + px(0.0140, navel[2]), 28, 18], [24, navel[1] + px(0.0140, navel[2]), 28, 18]]
+      .forEach(([dx, y, rx, ry]) => shade(640 + dx, y, px(rx, navel[2]), px(ry, navel[2]), rc, 0));
   }
 
-  // Navel (realistic shadow depth and soft upper fold)
-  const navelY = 450 + bounce * 0.5;
+  // navel
+  const navR = px(0.0140, navel[2]);
   X.save();
   X.globalCompositeOperation = 'multiply';
-  shade(cx, navelY, 5.5, 7.5, 'rgba(145,85,65,0.48)', 0);
+  shade(navel[0], navel[1], navR * 0.92, navR * 1.25, 'rgba(145,85,65,0.48)', 0);
   X.restore();
   X.strokeStyle = 'rgba(155,95,75,0.52)';
-  X.lineWidth = 1.8;
-  X.beginPath();
-  X.ellipse(cx, navelY, 4.4, 6.2, 0, 0, TAU);
-  X.stroke();
+  X.lineWidth = Math.max(1.4, navR * 0.3);
+  X.beginPath(); X.ellipse(navel[0], navel[1], navR * 0.74, navR, 0, 0, TAU); X.stroke();
 
-  // Linea alba (subtle abdominal midline)
+  // linea alba (subtle midline)
   X.strokeStyle = 'rgba(155,95,75,0.12)';
-  X.lineWidth = 1.6;
+  X.lineWidth = Math.max(1.2, navR * 0.26);
   X.beginPath();
-  X.moveTo(cx, 410 + bounce * 0.4); X.lineTo(cx, navelY - 7);
-  X.moveTo(cx, navelY + 7); X.lineTo(cx, 486 + bounce * 0.5);
+  X.moveTo(640, ribs[1] + px(0.0186, ribs[2])); X.lineTo(640, navel[1] - navR * 1.15);
+  X.moveTo(640, navel[1] + navR * 1.15); X.lineTo(640, mons[1] - px(0.0326, mons[2]));
   X.stroke();
 
-  // Clavicle ridges (collarbones rising and falling with breathing)
+  // clavicles — ridges from the shoulder joint sweeping in to the sternum
   X.strokeStyle = 'rgba(165,95,75,0.38)';
-  X.lineWidth = 2.0;
+  X.lineWidth = Math.max(1.6, px(0.0047, stern[2]));
   X.beginPath();
-  X.moveTo(cx - 38, 230); X.quadraticCurveTo(cx - 14, 238, cx + 2, 234);
-  X.moveTo(cx + 38, 230); X.quadraticCurveTo(cx + 14, 238, cx - 2, 234);
+  X.moveTo(axilL, clavY + px(0.0047, shR[2]));
+  X.quadraticCurveTo(640 - shHalf * 0.34 * shR[2], clavY - px(0.0116, shR[2]), 640, clavY - px(0.0069, shR[2]));
+  X.moveTo(axilR, clavY + px(0.0047, shL[2]));
+  X.quadraticCurveTo(640 + shHalf * 0.34 * shL[2], clavY - px(0.0116, shL[2]), 640, clavY - px(0.0069, shL[2]));
   X.stroke();
 
-  // Arms rise over the torso only when clutching upward in high pleasure
+  // arms rise over the torso only when clutching upward in high pleasure
   if(a2 >= 0.5) drawArms();
 
-  // ---- BREASTS: SUPINE GRAVITY SPREAD, LATERAL DRAPE, Montgomery Glands & ERECT NIPPLES ----
+  // ---- BREASTS: supine, gravity-spread, merged into the ribcage ----------
+  // Key fix: supine breasts are NOT spheres. Lying on her back, the gland
+  // settles laterally and flattens against the chest wall, so each breast is
+  // drawn as a soft dome whose medial edge dissolves into the sternum and
+  // whose lateral edge rolls over the flank. No closed outline — the dome is
+  // blended with a radial fill plus an interior shadow, so no seam shows.
   const jig = (G.breast ? G.breast.p : 0) * 0.95;
   const squash = sm(0.86, 1.0, G.depth || 0);
   const erect = clamp(0.35 + 0.65 * ((G.ar || 0) / 100), 0, 1);
   const nipCol = G.char ? G.char.nippleColor : '#c25f63';
+  const brD = B.sternum - 0.03;
+  // Nipple-to-nipple is ~0.19 m, so each dome is centred ~0.09 m off the
+  // midline — well inside the ribcage, not hanging off its edges.
+  const brU = 0.092 * bdy;
+  const brH = B.lift + 0.030 + jig * 0.003;      // apex barely proud of the chest
 
   for(const s of [-1, 1]){
-    // Supine drape: settled closer to the sternum so the pair reads as one chest
-    const bx = cx + s * (30 * bdy + bsz * 4.5);
-    const by = 336 + br * 0.65 + jig * 0.58 + bounce * 0.4;
-    const baseW = 34 * bsz * (1 + squash * 0.08) - jig * 0.1;
-    const baseH = 40 * bsz * (1 - squash * 0.12) + jig * 0.15;
+    const bp = fpvProj(s * brU, brD, brH);
+    const bx = bp[0], by = bp[1], bs = bp[2];
+    // realistic supine breast: ~0.062 m wide, ~0.058 m tall before size mult.
+    // (breastSize 0.45 -> bsz ~1.0, so this is the nominal figure.)
+    const baseW = px((0.060 + 0.018 * (bsz - 1)) * (1 + squash * 0.10) - jig * 0.0002, bs);
+    const baseH = px((0.056 + 0.016 * (bsz - 1)) * (1 - squash * 0.16) + jig * 0.0003, bs);
 
     X.save();
     X.translate(bx, by);
     X.rotate(s * 0.10);
 
-    // Contact shadow haloing the dome on the chest wall
+    // A shadow tide on the chest wall UNDER the dome — this is what makes the
+    // dome read as a mass standing off the ribs rather than a pasted circle.
+    // Kept tight so it never carves a dark wedge out of the sternum.
     X.save();
     X.globalCompositeOperation = 'multiply';
-    shade(s * 8, 16, baseW * 1.12, baseH * 1.0, 'rgba(160,92,70,0.26)', s * 0.10);
+    shade(-s * baseW * 0.10, baseH * 0.26, baseW * 0.72, baseH * 0.62,
+      'rgba(142,76,60,0.22)', s * 0.06);
     X.restore();
 
-    // Anatomical supine contour (flattened slope at sternum, full lateral curve at flank)
+    // Supine contour: full and low outboard (where the gland pools), tapering
+    // to a soft medial slope that vanishes into the sternum. The two lower
+    // control points push the silhouette down onto the ribcage.
     const dome = () => {
-      X.moveTo(0, -baseH * 0.88);
-      X.bezierCurveTo(s * 6 - baseW * 0.55, -baseH * 0.6, -baseW * 1.08, -baseH * 0.05, -baseW * 0.88, baseH * 0.46);
-      X.bezierCurveTo(-baseW * 0.68, baseH * 0.94, -baseW * 0.15, baseH * 1.02, 0, baseH);
-      X.bezierCurveTo(baseW * 0.58, baseH * 0.96, baseW * 1.10, baseH * 0.56, baseW * 0.96, 0);
-      X.bezierCurveTo(baseW * 0.84, -baseH * 0.56, s * 8 + baseW * 0.46, -baseH * 0.84, 0, -baseH * 0.88);
+      X.moveTo(s * baseW * 0.55, -baseH * 0.72);              // upper medial
+      X.bezierCurveTo(
+        -s * baseW * 0.30, -baseH * 0.94,
+        -baseW * 1.30,     -baseH * 0.34,
+        -baseW * 1.10,      baseH * 0.34);                    // lateral bulge
+      X.bezierCurveTo(
+        -baseW * 0.90,      baseH * 0.92,
+        -baseW * 0.16,      baseH * 1.02,
+         s * baseW * 0.30,  baseH * 0.86);                    // lower fold
+      X.bezierCurveTo(
+         baseW * 0.86,      baseH * 0.60,
+         baseW * 1.06,      baseH * 0.02,
+         s * baseW * 0.55, -baseH * 0.72);                    // medial slope
       X.closePath();
     };
     X.beginPath(); dome();
-    const bg = X.createRadialGradient(-s * baseW * 0.22, -baseH * 0.28, baseW * 0.12, 0, 0, baseW * 1.45);
-    bg.addColorStop(0, T.hi); bg.addColorStop(0.5, T.b); bg.addColorStop(1, T.s);
+    // The rim fades to transparent so the dome melts into the chest wall
+    // instead of sitting on it as a pasted oval with a visible edge.
+    const bg = X.createRadialGradient(
+      -s * baseW * 0.34, -baseH * 0.30, baseW * 0.06,
+       s * baseW * 0.06,  baseH * 0.06, baseW * 1.30);
+    bg.addColorStop(0,    T.hi);
+    bg.addColorStop(0.28, T.b);
+    bg.addColorStop(0.62, T.b);
+    bg.addColorStop(0.86, `rgba(${hexToRgb(T.s).join(',')},0.92)`);
+    bg.addColorStop(1,    `rgba(${hexToRgb(T.s).join(',')},0)`);
     X.fillStyle = bg; X.fill();
+
     skClipIn(dome, () => {
-      fAO(-s * baseW * 0.15, baseH * 0.86, baseW * 0.8, baseH * 0.24, 0.30);
-      fSh(s * baseW * 0.72, baseH * 0.1, baseW * 0.3, baseH * 0.7, 'rgba(160,90,70,0.20)', s * 0.1);
+      fAO(-s * baseW * 0.30, baseH * 0.80, baseW * 0.94, baseH * 0.30, 0.28);   // under-fold
+      fSh( s * baseW * 0.80, baseH * 0.06, baseW * 0.34, baseH * 0.74, 'rgba(150,80,62,0.20)',  s * 0.10);
+      fSh(-s * baseW * 0.86, baseH * 0.02, baseW * 0.28, baseH * 0.70, 'rgba(140,74,58,0.14)', -s * 0.10);
+      fHi(-s * baseW * 0.40, -baseH * 0.26, baseW * 0.54, baseH * 0.44, 'rgba(255,238,220,0.24)');
     });
 
-    // Soft spherical dome highlight on upper fullness
-    fHi(-s * 5, -baseH * 0.16, baseW * 0.5, baseH * 0.42, 'rgba(255,238,220,0.30)');
+    // Inframammary fold: a soft crease, not a stroked arc
+    X.save();
+    X.globalCompositeOperation = 'multiply';
+    shade(0, baseH * 0.74, baseW * 0.72, baseH * 0.16, 'rgba(148,80,62,0.26)', 0);
+    X.restore();
 
-    // Inframammary fold crease
-    X.strokeStyle = 'rgba(155,90,72,0.34)';
-    X.lineWidth = 1.9;
-    X.beginPath();
-    X.ellipse(s * 2, baseH * 0.74, baseW * 0.46, baseH * 0.22, 0, 0.2, Math.PI - 0.2);
-    X.stroke();
-
-    // Areola: tilted anatomically upward and outward, reacting to arousal
-    const aDistX = s * 3.5, aDistY = -baseH * 0.06;
-    const aer = (9.0 + 2.2 * clamp((G.ar || 0) / 100, 0, 1)) * Math.max(bsz, 0.84);
-
-    // Areolar halo with micro-wrinkles from turgor (kept sheer, never glowing)
-    X.fillStyle = 'rgba(206,128,110,0.36)';
-    X.beginPath(); X.ellipse(aDistX, aDistY, aer + 2.4, aer * 0.86, s * 0.1, 0, TAU); X.fill();
-    X.fillStyle = 'rgba(216,138,118,0.62)';
-    X.beginPath(); X.ellipse(aDistX, aDistY, aer, aer * 0.82, s * 0.1, 0, TAU); X.fill();
-
-    // Montgomery tubercles (circumferential glands around areola)
-    X.fillStyle = 'rgba(188,118,102,0.70)';
-    for(let i = 0; i < 7; i++){
-      const ta = i / 7 * TAU + 0.35;
-      X.beginPath();
-      X.arc(aDistX + Math.cos(ta) * aer * 0.72, aDistY + Math.sin(ta) * aer * 0.62, 0.85, 0, TAU);
-      X.fill();
-    }
-
-    // Erect nipple (protrudes forward, swollen coronal margin)
-    const nr = (3.4 + 2.0 * erect) * Math.max(bsz * 0.9, 0.85);
+    // Areola + nipple. Seen from above and between her legs, the areola sits
+    // on the upper-medial face of the dome and is squashed to an ellipse.
+    const aDistX = -s * baseW * 0.20, aDistY = -baseH * 0.22;
+    const aer = px((0.018 + 0.0050 * clamp((G.ar || 0) / 100, 0, 1)) *
+      Math.max(bsz, 0.84), bs);
+    // soft areola halo — no hard rim, so it melts into the breast
+    const ag = X.createRadialGradient(aDistX, aDistY, aer * 0.2, aDistX, aDistY, aer * 1.5);
+    ag.addColorStop(0,   'rgba(206,128,110,0.42)');
+    ag.addColorStop(0.62,'rgba(206,128,110,0.26)');
+    ag.addColorStop(1,   'rgba(206,128,110,0)');
+    X.fillStyle = ag;
+    X.beginPath(); X.ellipse(aDistX, aDistY, aer * 1.5, aer * 1.2, s * 0.12, 0, TAU); X.fill();
+    X.fillStyle = 'rgba(212,132,112,0.52)';
+    X.beginPath(); X.ellipse(aDistX, aDistY, aer, aer * 0.80, s * 0.12, 0, TAU); X.fill();
+    const nr = px((0.0068 + 0.0038 * erect) * Math.max(bsz * 0.9, 0.85), bs);
     X.fillStyle = nipCol;
     X.beginPath();
-    X.ellipse(aDistX, aDistY, nr, nr * (1 + 0.18 * erect), s * 0.08, 0, TAU);
+    X.ellipse(aDistX, aDistY, nr, nr * (1 + 0.20 * erect), s * 0.10, 0, TAU);
     X.fill();
-
-    // High specular moist catchlight on nipple tip (small, never a white dot)
-    X.fillStyle = 'rgba(255,245,245,0.42)';
+    X.fillStyle = 'rgba(255,240,240,0.34)';
     X.beginPath();
-    X.arc(aDistX - 1.1, aDistY - 1.1, nr * 0.30, 0, TAU);
+    X.arc(aDistX - nr * 0.30, aDistY - nr * 0.30, nr * 0.30, 0, TAU);
     X.fill();
 
     X.restore();
   }
 
-  // Cleavage shadow between the domes
+  // Sternum valley between the domes — a soft, low-contrast dip, not a dark
+  // wedge. Anything stronger reads as a bowtie carved out of her chest.
   X.save();
   X.globalCompositeOperation = 'multiply';
-  shade(cx, 342 + br * 0.65 + jig * 0.58 + bounce * 0.4, 10, 36 * bsz, 'rgba(160,92,70,0.22)', 0);
+  shade(640, (stern[1] + ribs[1]) / 2 + px(0.006, stern[2]),
+    px(0.026, stern[2]), px(0.052, stern[2]) * bsz, 'rgba(158,92,72,0.16)', 0);
   X.restore();
 
-  // ---- THE SPOT: VULVA (shared front-view renderer) ----
-  const vy = 554 + bounce;
+  // ---- THE SPOT: vulva, anchored on the projected mons -------------------
+  const vy = mons[1] + px(0.0140, mons[2]);
+  const vs = mons[2];
   const eng = clamp((G.ar || 0) / 100, 0, 1);
   const iopen = 4.5 + 10.5 * (G.depth || 0);
 
-  // Arousal hyperemic glow (deep vasocongestion warmth, kept sheer)
   if((G.ar || 0) > 20){
     X.save();
     X.globalCompositeOperation = 'screen';
-    shade(cx, vy, 28 + 12 * eng, 22, 'rgba(255,160,165,0.15)', 0);
+    shade(640, vy, px(0.065 + 0.028 * eng, vs), px(0.0512, vs), 'rgba(255,160,165,0.15)', 0);
     X.restore();
   }
-
-  vulvaS(cx, vy, iopen, eng, T, { view: 'front' });
+  X.save();
+  X.translate(640, vy);
+  // vulvaS is authored at a ~430px scale, so scale it to this depth
+  X.scale(vs / 430, vs / 430);
+  vulvaS(0, 0, iopen, eng, T, { view: 'front' });
+  X.restore();
 }
 
 /* ============================================================

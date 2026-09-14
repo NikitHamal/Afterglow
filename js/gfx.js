@@ -71,15 +71,22 @@ function sg(y0, y1, c1, c2) {
 
 function shade(x, y, rx, ry, col, rot = 0, lc) {
   const cx = Number.isFinite(x) ? x : 0, cy = Number.isFinite(y) ? y : 0;
-  const ax = Number.isFinite(rx) ? Math.abs(rx) : 10;
-  const ay = Number.isFinite(ry) ? Math.abs(ry) : 10;
-  const rad = Math.max(ax, ay) * 1.15;
-  const g = gRadial(cx, cy, 0, cx, cy, rad > 0 ? rad : 10,
-    [[0, lc ? lc : col], [1, 'rgba(0,0,0,0)']]);
+  const ax = Math.max(1, Number.isFinite(rx) ? Math.abs(rx) : 10);
+  const ay = Math.max(1, Number.isFinite(ry) ? Math.abs(ry) : 10);
+  // Draw the gradient in a space scaled to the ellipse, so it reaches full
+  // transparency exactly at the rim. A circular gradient inside an elliptical
+  // clip leaves a hard edge wherever the minor axis is much shorter than the
+  // major one (elongated AO pools used to show up as pasted-on ovals).
+  X.save();
+  X.translate(cx, cy);
+  if (rot) X.rotate(rot);
+  X.scale(ax, ay);
+  const g = gRadial(0, 0, 0, 0, 0, 1, [[0, lc ? lc : col], [1, 'rgba(0,0,0,0)']]);
   X.fillStyle = g;
   X.beginPath();
-  X.ellipse(cx, cy, Math.max(1, ax), Math.max(1, ay), rot, 0, TAU);
+  X.arc(0, 0, 1, 0, TAU);
   X.fill();
+  X.restore();
 }
 
 /**
