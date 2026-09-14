@@ -85,6 +85,12 @@ async function evaluate(ws, expr) {
     await send(ws, 'Runtime.enable', {});
     const url = BASE + '?' + go;
     console.log('loading', url);
+    // Force the exact viewport so the 1280x720 canvas maps 1:1 to the PNG.
+    // Without this, Chrome's window chrome shrinks the captured image and
+    // every screenshot comes out vertically squashed.
+    await send(ws, 'Emulation.setDeviceMetricsOverride', {
+      width, height, deviceScaleFactor: 1, mobile: false
+    });
     await send(ws, 'Page.navigate', { url });
     await sleep(1500);
     const errs = await evaluate(ws, '(window.__agErrors||[])');
