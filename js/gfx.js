@@ -343,23 +343,34 @@ function drawBed() {
   X.restore();
 
   // Crushed Down Pillow (indented naturally beneath her head)
+  // A pillow in a lamp-lit bedroom at night is NOT brighter than the skin resting
+  // on it — it sits in her head's own shadow and only its lamp-side rim glows.
+  // The old #c7b096 fill read as a white plate behind a dim figure.
   const px = 286, py = 542;
-  const pilG = X.createLinearGradient(px - 110, py - 35, px + 110, py + 35);
-  pilG.addColorStop(0, '#c7b096');
-  pilG.addColorStop(0.4, '#b0977c');
-  pilG.addColorStop(0.85, '#8a7460');
-  pilG.addColorStop(1, '#635142');
+  const pilG = X.createRadialGradient(px - 52, py - 18, 8, px, py, 120);
+  pilG.addColorStop(0, '#6f5c4a');
+  pilG.addColorStop(0.40, '#59473c');
+  pilG.addColorStop(0.74, '#40312a');
+  pilG.addColorStop(0.93, 'rgba(38,29,25,0.88)');
+  pilG.addColorStop(1, 'rgba(38,29,25,0)');
   X.fillStyle = pilG;
   X.beginPath();
-  X.ellipse(px, py, 112, 34, -0.04, 0, TAU);
+  X.ellipse(px, py, 116, 36, -0.04, 0, TAU);
   X.fill();
+  // lamp-side rim: the pillow's upper-left edge catches the warm key
+  X.save(); X.globalCompositeOperation = 'screen';
+  shade(px - 62, py - 16, 62, 16, 'rgba(255,196,140,0.22)', -0.12);
+  X.restore();
+  // creases where the ticking folds under the weight
+  skArc(px - 96, py + 12, px - 40, py + 24, px + 24, py + 20, 5.5, '26,18,16', 0.30, { n: 9, thin: 0.6 });
+  skArc(px + 18, py + 22, px + 62, py + 18, px + 96, py + 8, 5.0, '26,18,16', 0.24, { n: 9, thin: 0.6 });
 
   // Weight depression crater under head
   X.save();
   X.globalCompositeOperation = 'multiply';
   const cratG = X.createRadialGradient(px + 45, py + 4, 4, px + 45, py + 4, 52);
-  cratG.addColorStop(0, 'rgba(75,52,38,0.55)');
-  cratG.addColorStop(0.65, 'rgba(85,58,42,0.22)');
+  cratG.addColorStop(0, 'rgba(38,24,18,0.62)');
+  cratG.addColorStop(0.65, 'rgba(48,32,24,0.26)');
   cratG.addColorStop(1, 'rgba(0,0,0,0)');
   X.fillStyle = cratG;
   X.beginPath();

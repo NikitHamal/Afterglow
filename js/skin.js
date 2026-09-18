@@ -11,9 +11,12 @@ function skLight(h, t){ return skMix(h, '#fff4ea', t); }
 function skDark(h, t){ return skMix(h, '#3a1410', t); }
 
 // Build a 4-stop tone ramp {hi,b,s,d} from a base skin hex.
+// The ramp is deliberately wide (lit cheek ~2x the core shadow) because that
+// value range is what makes a silhouette read as a lit three-dimensional volume
+// instead of flat pigment.
 function skTone(base){
-  const d = skDark(base, 0.5);
-  return { hi: skLight(base, 0.42), b: base, s: skDark(base, 0.26), d, dk: d };
+  const d = skDark(base, 0.58);
+  return { hi: skLight(base, 0.50), b: base, s: skDark(base, 0.30), d, dk: d };
 }
 function herT(){ const s = getSkin(); return Object.assign(skTone(s.her), { base: s.her, sh: s.herSh, dk: s.herDk }); }
 function himT(){ const s = getSkin(); return Object.assign(skTone(s.him), { base: s.him, sh: s.himSh, dk: s.himSh }); }
@@ -46,11 +49,103 @@ function fSh(x, y, rx, ry, col, rot){ X.save(); X.globalCompositeOperation = 'mu
 // Soft screen highlight blob.
 function fHi(x, y, rx, ry, col, rot){ X.save(); X.globalCompositeOperation = 'screen'; shade(x, y, rx, ry, col, rot || 0); X.restore(); }
 // Warm subsurface glow at shadow terminator.
-function fSSS(x, y, rx, ry, rot){ X.save(); X.globalCompositeOperation = 'soft-light'; shade(x, y, rx, ry, 'rgba(255,120,90,0.40)', rot || 0); X.restore(); }
+function fSSS(x, y, rx, ry, rot){ X.save(); X.globalCompositeOperation = 'soft-light'; shade(x, y, rx, ry, 'rgba(255,135,105,0.32)', rot || 0); X.restore(); }
 // Contact / ambient-occlusion pool.
 function fAO(x, y, rx, ry, a, rot){ fSh(x, y, rx, ry, `rgba(30,10,12,${a})`, rot); }
 // Delicate silhouette line so forms read against dark bg (hentai linework).
 function skLine(fn, T, w, a){ X.save(); X.beginPath(); fn(); X.strokeStyle = `rgba(${hexToRgb(T.dk).join(',')},${a == null ? 0.4 : a})`; X.lineWidth = w || 1.4; X.stroke(); X.restore(); }
+
+/* ============================================================
+   FORM PASS — the volume treatment every body shape runs through
+   ------------------------------------------------------------
+   A shape filled with a single gradient still looks like a cut-out: real lit
+   forms lose brightness again at BOTH silhouette edges (limb darkening) and
+   catch a rim where the key and the moon graze the outline. L/S are the two
+   ends of the light axis in the CURRENT path coordinates; everything else is
+   proportional to that axis, so the same call works at any size.
+   ============================================================ */
+function skContour(fn, L, S, opt){
+  opt = opt || {};
+  const e = opt.edge == null ? 0.30 : opt.edge;
+  if(e > 0){
+    X.save(); X.globalCompositeOperation = 'multiply';
+    X.beginPath(); fn();
+    X.fillStyle = gLinear(L[0], L[1], S[0], S[1], [
+      [0, `rgba(74,30,26,${e * 0.80})`], [0.11, 'rgba(74,30,26,0)'],
+      [0.76, 'rgba(74,30,26,0)'], [1, `rgba(74,30,26,${e})`]]);
+    X.fill(); X.restore();
+  }
+  const rm = opt.rim == null ? 0.20 : opt.rim;
+  if(rm > 0){
+    X.save(); X.globalCompositeOperation = 'screen';
+    X.beginPath(); fn();
+    X.fillStyle = gLinear(L[0], L[1], S[0], S[1], [
+      [0, 'rgba(255,238,220,0)'], [0.085, `rgba(255,241,224,${rm})`],
+      [0.24, 'rgba(255,238,220,0)'], [1, 'rgba(0,0,0,0)']]);
+    X.fill(); X.restore();
+  }
+  const cs = opt.cool == null ? 0.15 : opt.cool;
+  if(cs > 0){
+    X.save(); X.globalCompositeOperation = 'screen';
+    X.beginPath(); fn();
+    X.fillStyle = gLinear(L[0], L[1], S[0], S[1], [
+      [0, 'rgba(0,0,0,0)'], [0.86, 'rgba(0,0,0,0)'],
+      [0.965, `rgba(188,214,255,${cs})`], [1, 'rgba(188,214,255,0)']]);
+    X.fill(); X.restore();
+  }
+}
+// Directional body fill + the volume pass, in one call.
+function skForm(fn, T, L, S, opt){
+  skFillShape(fn, T, [L[0], L[1], S[0], S[1]]);
+  skContour(fn, L, S, opt);
+}
+// Light axis across a form: returns [Lx,Ly,Sx,Sy] for a shape centred at
+// (cx,cy) whose cross-section radius is r. `axis` picks the cross-section
+// direction — 'auto' uses the light vector itself (works for any orientation).
+function skAxis(cx, cy, r, axis, lit){
+  lit = lit || SK_LIT;
+  let ax = lit[0], ay = lit[1];
+  if(axis){
+    // project the light onto the given cross-section normal
+    const d = lit[0] * axis[0] + lit[1] * axis[1];
+    const s = d < 0 ? -1 : 1;
+    ax = axis[0] * s; ay = axis[1] * s;
+  }
+  return [cx + ax * r, cy + ay * r, cx - ax * r, cy - ay * r];
+}
+
+/* ============================================================
+   FEATHERED LINEWORK
+   ------------------------------------------------------------
+   A canvas stroke at a constant alpha with round caps reads as a plastic rod
+   lying on the skin. Anatomical lines — ribs, creases, tendons, the areolar
+   border — have to taper and fade at both ends, so they go down as a chain of
+   soft gradient blobs along the curve instead.
+   rgb = 'r,g,b' string · a = peak alpha · opt{n, up, rot, wide}
+   ============================================================ */
+function skArc(x0, y0, qx, qy, x1, y1, w, rgb, a, opt){
+  opt = opt || {};
+  // Blob spacing must stay well under the blob radius or the line breaks up
+  // into polka dots, so the count follows the arc's actual length.
+  const len = Math.hypot(qx - x0, qy - y0) + Math.hypot(x1 - qx, y1 - qy);
+  const n = opt.n || clamp(Math.ceil(len / Math.max(3, w * 0.55)), 8, 20);
+  // ...and the blob width must exceed the blob spacing, whatever n the caller
+  // picked. Scaling `wide` to the spacing keeps any arc continuous instead of
+  // dotted, which is what lets long anatomical lines stay cheap (low n).
+  const spacing = len / n;
+  const wide = Math.max(opt.wide == null ? 0.85 : opt.wide, 1.55 * spacing / Math.max(1, w));
+  X.save();
+  X.globalCompositeOperation = opt.up ? 'screen' : 'multiply';
+  for(let i = 0; i <= n; i++){
+    const t = i / n, mt = 1 - t;
+    const x = mt * mt * x0 + 2 * mt * t * qx + t * t * x1;
+    const y = mt * mt * y0 + 2 * mt * t * qy + t * t * y1;
+    const e = Math.sin(Math.PI * (0.24 + 0.62 * t));   // taper both ends
+    shade(x, y, w * wide * (0.5 + 0.6 * e), w * (opt.thin || 0.60),
+      `rgba(${rgb},${(a * e).toFixed(3)})`, opt.rot || 0);
+  }
+  X.restore();
+}
 
 /* ============================================================
    ORGANIC TAPERED LIMB (replaces mechanical capsule)
@@ -80,19 +175,28 @@ function limbS(a, b, r1, r2, T, opt){
   // directional volume: light side -> shadow side across the limb
   const R = Math.max(r1, r2) * 1.15;
   const cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2;
-  skFillShape(path, T, [cx + lit[0] * R, cy + lit[1] * R, cx - lit[0] * R, cy - lit[1] * R]);
+  const L = [cx + lit[0] * R, cy + lit[1] * R], S = [cx - lit[0] * R, cy - lit[1] * R];
+  skForm(path, T, L, S, {
+    edge: opt.edge == null ? 0.30 : opt.edge,
+    rim: opt.rim == null ? 0.20 : opt.rim,
+    cool: opt.cool == null ? 0.14 : opt.cool
+  });
 
   skClipIn(path, () => {
-    // specular crest toward light
-    fHi(cx + lit[0] * rm * 0.5, cy + lit[1] * rm * 0.5, len * 0.42, rm * 0.5, 'rgba(255,240,225,0.30)', Math.atan2(uy, ux));
-    // warm SSS terminator
-    fSSS(cx - lit[0] * rm * 0.35, cy - lit[1] * rm * 0.35, len * 0.4, rm * 0.6, Math.atan2(uy, ux));
-    // core shadow on far edge
-    fSh(cx - lit[0] * rm * 0.85, cy - lit[1] * rm * 0.85, len * 0.5, rm * 0.62, 'rgba(70,26,22,0.42)', Math.atan2(uy, ux));
+    // specular crest toward light — softer, broader
+    fHi(cx + lit[0] * rm * 0.48, cy + lit[1] * rm * 0.48, len * 0.44, rm * 0.52, 'rgba(255,242,228,0.22)', Math.atan2(uy, ux));
+    fHi(cx + lit[0] * rm * 0.52, cy + lit[1] * rm * 0.52, len * 0.28, rm * 0.28, 'rgba(255,252,245,0.18)', Math.atan2(uy, ux));
+    // warm SSS terminator — subtle peach bleed
+    fSSS(cx - lit[0] * rm * 0.30, cy - lit[1] * rm * 0.30, len * 0.38, rm * 0.55, Math.atan2(uy, ux));
+    // core shadow on far edge — less burnt, more depth
+    fSh(cx - lit[0] * rm * 0.85, cy - lit[1] * rm * 0.85, len * 0.52, rm * 0.60, 'rgba(70,26,22,0.28)', Math.atan2(uy, ux));
+    fSh(cx - lit[0] * rm * 0.65, cy - lit[1] * rm * 0.65, len * 0.42, rm * 0.42, 'rgba(90,36,28,0.14)', Math.atan2(uy, ux));
+    // knee / elbow crease hint: a soft transverse dip just inside the far end
+    if(opt.crease) fSh(b[0] - ux * r2 * 0.9, b[1] - uy * r2 * 0.9, r2 * 1.6, r2 * 0.5, 'rgba(96,42,32,0.20)', Math.atan2(uy, ux));
     if(opt.aoA) fAO(a[0], a[1], r1 * 1.25, r1 * 1.25, opt.aoA);
     if(opt.aoB) fAO(b[0], b[1], r2 * 1.25, r2 * 1.25, opt.aoB);
   });
-  if(opt.line !== false) skLine(path, T, 1.3, 0.32);
+  if(opt.line !== false) skLine(path, T, 1.2, 0.22);
 }
 
 /* ============================================================
@@ -110,7 +214,14 @@ function handS(x, y, ang, s, T, opt){
     X.quadraticCurveTo(-12, 0, -9, -8); X.closePath();
   };
   skFillShape(palm, T, [-10, -10, 10, 10]);
-  skClipIn(palm, () => { fHi(-2, -3, 7, 5, 'rgba(255,240,225,0.30)'); fAO(0, 8, 9, 4, 0.3); });
+  skClipIn(palm, () => {
+    fHi(-2, -3, 7, 5, 'rgba(255,240,225,0.22)');
+    fHi(-1, -2, 4, 2.2, 'rgba(255,252,245,0.20)');
+    fAO(0, 8, 9, 4, 0.22);
+    // thenar & hypothenar subtle volume
+    fSh(-5, 4, 4, 3, 'rgba(120,65,55,0.12)', -0.6);
+    fSh(5, 4, 4, 3, 'rgba(120,65,55,0.10)', 0.6);
+  });
   // four fingers fanning from knuckle line
   for(let i = 0; i < 4; i++){
     const kx = -7 + i * 4.6, ky = -8;
@@ -121,8 +232,10 @@ function handS(x, y, ang, s, T, opt){
     const j2 = [kx + Math.cos(fa + bend * 0.5) * L, ky + Math.sin(fa + bend * 0.5) * L + curl * 5];
     limbS([kx, ky], j1, 2.6, 2.2, T, { line: false, belly: 1.0 });
     limbS(j1, j2, 2.2, 1.6, T, { line: false, belly: 1.0 });
-    X.fillStyle = 'rgba(255,235,225,0.5)';           // nail
-    X.beginPath(); X.ellipse(j2[0], j2[1] + 0.4, 1.3, 1.0, fa, 0, TAU); X.fill();
+    X.fillStyle = 'rgba(255,240,232,0.65)';           // nail with lunula
+    X.beginPath(); X.ellipse(j2[0], j2[1] + 0.4, 1.35, 1.05, fa, 0, TAU); X.fill();
+    X.fillStyle = 'rgba(255,255,255,0.42)';
+    X.beginPath(); X.ellipse(j2[0] - 0.2, j2[1] - 0.1, 0.75, 0.55, fa, 0, TAU); X.fill();
   }
   // thumb opposing
   const ta = Math.PI * 0.78;
@@ -175,26 +288,39 @@ function breastS(cx, cy, r, ang, T, opt){
     X.bezierCurveTo(r * 1.15, r * 0.3, r * 1.15, -r * 0.3, r * 0.9, -r * 0.85);
     X.closePath();
   };
-  // radial form light from upper-outer
+  // radial form light from upper-outer — softer
   X.beginPath(); path();
-  const g = X.createRadialGradient(-r * 0.45, -r * 0.5, r * 0.1, 0, 0, r * 1.5);
-  g.addColorStop(0, T.hi); g.addColorStop(0.42, T.b); g.addColorStop(0.8, T.s); g.addColorStop(1, T.d);
+  const g = X.createRadialGradient(-r * 0.38, -r * 0.42, r * 0.08, 0, 0, r * 1.48);
+  g.addColorStop(0, T.hi); g.addColorStop(0.38, T.b); g.addColorStop(0.74, T.s); g.addColorStop(1, T.d);
   X.fillStyle = g; X.fill();
+  // rim/limb-darkening so the dome has a real edge instead of a sticker outline
+  skContour(path, [-r * 1.15 * 0.62, -r * 1.15 * 0.78], [r * 1.15 * 0.62, r * 1.15 * 0.78],
+    { edge: 0.18, rim: 0.16, cool: 0.16 });
   skClipIn(path, () => {
-    fHi(-r * 0.42, -r * 0.48, r * 0.5, r * 0.36, 'rgba(255,244,232,0.42)', -0.5);   // crest specular
-    fSh(r * 0.1, r * 0.85, r * 0.95, r * 0.4, 'rgba(90,35,30,0.5)', 0.12);          // under-breast shadow
-    fSSS(-r * 0.9, r * 0.35, r * 0.5, r * 0.4, 0.6);                                // rim SSS
-    fAO(r * 0.85, 0, r * 0.4, r * 0.9, 0.35);                                       // chest-wall contact
+    fHi(-r * 0.38, -r * 0.44, r * 0.48, r * 0.32, 'rgba(255,244,232,0.28)', -0.5);   // crest specular
+    fHi(-r * 0.30, -r * 0.36, r * 0.28, r * 0.18, 'rgba(255,255,250,0.18)', -0.5);
+    fSh(r * 0.08, r * 0.82, r * 0.90, r * 0.38, 'rgba(90,35,30,0.32)', 0.12);          // under-breast shadow
+    fSSS(-r * 0.88, r * 0.32, r * 0.48, r * 0.38, 0.6);                                // rim SSS
+    fAO(r * 0.82, 0, r * 0.38, r * 0.88, 0.24);                                       // chest-wall contact
   });
   // areola + nipple on the apex, squashed by viewing angle
   const aer = r * (0.34 + 0.06 * ar);
   X.save(); X.translate(-r * 0.92, r * 0.02); X.rotate(0.1);
-  X.fillStyle = `rgba(${hexToRgb(G.char ? G.char.nippleColor : '#c25f63').join(',')},0.55)`;
-  X.beginPath(); X.ellipse(0, 0, aer * 0.62, aer, 0, 0, TAU); X.fill();
+  // areola with soft halo + Montgomery dots + nipple SSS
+  const areolaBase = skDark(G.char ? G.char.nippleColor : '#c25f63', 0.08);
+  const ag2 = X.createRadialGradient(0, 0, aer * 0.15, 0, 0, aer * 1.1);
+  ag2.addColorStop(0, `rgba(${hexToRgb(G.char ? G.char.nippleColor : '#c25f63').join(',')},0.62)`);
+  ag2.addColorStop(0.55, `rgba(${hexToRgb(areolaBase).join(',')},0.38)`);
+  ag2.addColorStop(1, `rgba(${hexToRgb(areolaBase).join(',')},0)`);
+  X.fillStyle = ag2;
+  X.beginPath(); X.ellipse(0, 0, aer * 0.70, aer * 0.95, 0, 0, TAU); X.fill();
   X.fillStyle = G.char ? G.char.nippleColor : '#c25f63';
-  X.beginPath(); X.ellipse(-aer * 0.15, 0, aer * 0.3, aer * 0.42 + ar * 1.5, 0, 0, TAU); X.fill();
-  X.fillStyle = 'rgba(255,255,255,0.5)';
-  X.beginPath(); X.arc(-aer * 0.3, -aer * 0.25, aer * 0.14, 0, TAU); X.fill();
+  X.beginPath(); X.ellipse(-aer * 0.12, 0, aer * 0.30, aer * 0.42 + ar * 1.6, 0, 0, TAU); X.fill();
+  // Montgomery tubercles
+  X.fillStyle = `rgba(${hexToRgb(skDark(G.char ? G.char.nippleColor : '#c25f63', 0.18)).join(',')},0.22)`;
+  for(let k=0;k<6;k++){ const a=k/6*TAU, rr=aer*0.52; X.beginPath(); X.arc(Math.cos(a)*rr*0.62, Math.sin(a)*rr*0.92, 0.55, 0, TAU); X.fill(); }
+  X.fillStyle = 'rgba(255,242,240,0.42)';
+  X.beginPath(); X.arc(-aer * 0.28, -aer * 0.22, aer * 0.13, 0, TAU); X.fill();
   X.restore();
   skLine(path, T, 1.3, 0.3);
   X.restore();
@@ -235,8 +361,8 @@ function vulvaS(cx, cy, open, eng, T, opt){
     X.fillStyle = `rgba(${215 + 25 * eng | 0},105,118,0.95)`;
     X.beginPath(); X.arc(cx, cy - 9, 1.4 + 1.4 * eng, 0, TAU); X.fill();
   } else {
-    // side: single cleft with swollen labia edge
-    X.strokeStyle = `rgba(${185 + 25 * eng | 0},105,100,0.8)`; X.lineWidth = 3.4; X.lineCap = 'round';
+    // side: single cleft with swollen labia edge — softer
+    X.strokeStyle = `rgba(${185 + 22 * eng | 0},105,100,0.62)`; X.lineWidth = 2.8; X.lineCap = 'round';
     X.beginPath(); X.moveTo(cx + 1, cy - 12); X.quadraticCurveTo(cx + 5, cy, cx + 1, cy + 11); X.stroke();
     X.fillStyle = `rgba(${205 + 30 * eng | 0},100,112,0.85)`;
     X.beginPath(); X.ellipse(cx + 2, cy, 2.4, 8 + open * 0.4, 0.1, 0, TAU); X.fill();
@@ -331,10 +457,31 @@ function tressS(x0, y0, c1x, c1y, c2x, c2y, x1, y1, w0, w1, col, sheen){
     X.beginPath(); X.moveTo(x0, y0); X.bezierCurveTo(c1x, c1y, c2x, c2y, x1, y1); X.stroke(); X.restore();
   }
 }
-// Rounded scalp / hair mass with soft top light.
+// Rounded scalp / hair mass. Three offset lobes instead of one ellipse: a single
+// ellipse gives hair a helmet silhouette with a machined edge, which is the
+// loudest cartoon tell left on a portrait once the skin is properly shaded.
 function hairMassS(cx, cy, rx, ry, rot, col){
-  X.beginPath(); X.ellipse(cx, cy, rx, ry, rot, 0, TAU);
-  const g = X.createRadialGradient(cx - rx * 0.3, cy - ry * 0.5, rx * 0.1, cx, cy, rx * 1.2);
-  g.addColorStop(0, skLight(col, 0.22)); g.addColorStop(0.55, col); g.addColorStop(1, skDark(col, 0.4));
-  X.fillStyle = g; X.fill();
+  const lobes = [
+    [-0.32, -0.12, 0.80, 0.90],
+    [ 0.30, -0.16, 0.76, 0.84],
+    [ 0.02,  0.16, 0.92, 0.96]
+  ];
+  X.save();
+  X.translate(cx, cy); X.rotate(rot);
+  for(let i = 0; i < lobes.length; i++){
+    const L = lobes[i];
+    X.beginPath();
+    X.ellipse(L[0] * rx, L[1] * ry, rx * L[2], ry * L[3], (i - 1) * 0.15, 0, TAU);
+    const g = X.createRadialGradient(-rx * 0.30, -ry * 0.52, rx * 0.08,
+                                     L[0] * rx, L[1] * ry, rx * L[2] * 1.28);
+    g.addColorStop(0, skLight(col, 0.18));
+    g.addColorStop(0.52, col);
+    g.addColorStop(1, skDark(col, 0.44));
+    X.fillStyle = g; X.fill();
+  }
+  // lamp sheen on the upper-left of the crown
+  X.globalCompositeOperation = 'soft-light';
+  X.beginPath(); X.ellipse(-rx * 0.34, -ry * 0.40, rx * 0.44, ry * 0.30, -0.5, 0, TAU);
+  X.fillStyle = 'rgba(255,206,216,0.28)'; X.fill();
+  X.restore();
 }

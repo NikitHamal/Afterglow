@@ -2,80 +2,183 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Afterglow — dev shot</title>
+<title>SHOT-2D</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../css/app.css">
 <style>
-  /* hide all HUD/overlays so we see pure canvas art */
-  .hud,#bubble,#hint,#intro,#endOv,#mashTip,#charSel,#custPanel{display:none!important}
+  /* deterministic headless capture: no fonts, no animation, fixed stage */
+  html,body{margin:0;background:#000}
+  #wrap{width:1280px;height:720px}
+  #stage{width:1280px;height:720px}
 </style>
 </head>
 <body>
 <div id="wrap">
   <div id="stage">
     <canvas id="scene"></canvas>
-    <div class="hud" id="plWrap"><div id="plName">Y</div><div id="plMood">x</div>
-      <div id="plBar"><div id="plFill"></div><div id="plMoodPulse"></div><div id="plTicks"><i></i></div></div>
+    <div class="hud" id="plWrap"><div id="plName">Y</div><div id="plMood">snug</div>
+      <div id="plBar"><div id="plFill"></div><div id="plMoodPulse"></div><div id="plTicks"></div></div>
       <div id="orgHearts"></div></div>
     <div class="hud" id="dpWrap"><div class="lbl">depth</div>
-      <div id="dpBar"><div id="dpFill"></div><div id="hotZone"></div><div id="dpMark"></div></div><div id="spotFx">x</div></div>
-    <div class="hud" id="slWrap"><div id="stamBox"><div id="stamRow"><span class="lbl" id="stamLbl">s</span><span class="val" id="stamVal">1</span></div>
-      <div id="stamBar"><div id="stamFill"></div></div></div>
-      <div id="tempoBox"><div id="tempoRow"><span class="lbl">r</span><span id="comboChip">x<b>1</b></span></div>
-      <div id="tempoStrip"><div id="tBand"></div><div id="tMark"></div></div></div></div>
-    <div class="hud" id="topBar"><span id="clock">0</span><span id="strk">0</span></div>
+      <div id="dpBar"><div id="dpFill"></div><div id="hotZone"></div><div id="dpMark"></div></div>
+      <div id="spotFx">her spot</div></div>
+    <div class="hud" id="slWrap">
+      <div id="stamBox"><div id="stamRow"><span class="lbl" id="stamLbl">stamina</span><span class="val" id="stamVal">100</span></div>
+        <div id="stamBar"><div id="stamFill"></div></div></div>
+      <div id="tempoBox"><div id="tempoRow"><span class="lbl">rhythm</span><span id="comboChip">x<b>1.0</b></span></div>
+        <div id="tempoStrip"><div id="tBand"></div><div id="tMark"></div></div></div></div>
+    <div class="hud" id="topBar"><span id="clock">0:00</span><span id="strk">0 strokes</span></div>
     <div class="hud" id="actWrap">
-      <button class="abtn" id="btnKiss">E</button><button class="abtn" id="btnRub">C</button>
-      <button class="abtn" id="btnPos">T</button><button class="abtn" id="btnOral">O</button>
-      <button class="abtn" id="btnClimax">X</button></div>
+      <button class="abtn" id="btnKiss">EMBRACE</button>
+      <button class="abtn" id="btnRub">RUB HER</button>
+      <button class="abtn" id="btnPos">MISSIONARY</button>
+      <button class="abtn" id="btnOral">ORAL</button>
+      <button class="abtn" id="btnSolo">SOLO</button>
+      <button class="abtn" id="btnClimax">CLIMAX</button>
+    </div>
     <div class="hud" id="util">
-      <button class="ubtn" id="btnMute">m</button><button class="ubtn" id="btnFull">f</button>
-      <button class="ubtn" id="btnView">v</button><button class="ubtn" id="btnZoom">z</button>
-      <button class="ubtn" id="btnCustom">p</button><button class="ubtn" id="btnRestart">r</button></div>
+      <button class="ubtn" id="btnMute"></button><button class="ubtn" id="btnFull"></button>
+      <button class="ubtn" id="btnView"></button><button class="ubtn" id="btnZoom"></button>
+      <button class="ubtn" id="btnCustom"></button><button class="ubtn" id="btnRestart"></button>
+    </div>
     <div id="bubble"></div>
-    <div class="hud" id="hint"><div class="h1">h</div><div class="hand"></div><div class="h2">h</div></div>
-    <div class="hud" id="mashTip">m</div>
-    <div class="ov hide" id="intro"><div class="card"><div class="chip18">18</div><h1>i</h1>
-      <div class="sub">s</div><div class="quote">q</div><div class="how"></div>
-      <button class="bigbtn" id="btnBegin">b</button><div class="keysline">k</div></div></div>
-    <div class="ov hide" id="endOv"><div class="card"><div class="chip18">18</div>
-      <div id="endHead"><div><h1>e</h1><div id="gradeNote"></div><div id="syncBadge"></div></div><div id="grade">S</div></div>
-      <div id="endGrid"></div><div class="btnRow">
-      <button class="bigbtn" id="btnKeep">k</button><button class="bigbtn ghost" id="btnAgain">a</button></div></div></div>
+    <div class="hud" id="hint"><div class="h1">HOLD</div><div class="hand"></div><div class="h2">drag</div></div>
+    <div class="hud" id="mashTip">CLIMAXING</div>
+    <div class="ov hide" id="intro"><div class="card"><button class="bigbtn" id="btnBegin">GO</button></div></div>
+    <div class="ov hide" id="endOv"><div class="card">
+      <div id="endHead"><div><h1>end</h1><div id="gradeNote"></div><div id="syncBadge"></div></div><div id="grade">S</div></div>
+      <div id="endGrid">
+        <div class="k">SESSION</div><div class="v" id="stTime">-</div>
+        <div class="k">STROKES</div><div class="v" id="stStrokes">-</div>
+        <div class="k">HER ORGASMS</div><div class="v" id="stOrg">-</div>
+        <div class="k">BEST COMBO</div><div class="v" id="stCombo">-</div>
+        <div class="k">RHYTHM ACCURACY</div><div class="v" id="stAcc">-</div>
+        <div class="k">FINISH</div><div class="v" id="stFin">-</div>
+      </div>
+      <div class="btnRow"><button class="bigbtn" id="btnKeep">K</button><button class="bigbtn ghost" id="btnAgain">R</button></div>
+    </div></div>
   </div>
 </div>
-  <script src="../js/core.js"></script>
-  <script src="../js/audio.js"></script>
-  <script src="../js/chars.js"></script>
-  <script src="../js/input.js"></script>
-  <script src="../js/mechanics.js"></script>
-  <script src="../js/gfx.js"></script>
-  <script src="../js/skin.js"></script>
-  <script src="../js/side.js"></script>
-  <script src="../js/fpv.js"></script>
-  <script src="../js/poses.js"></script>
-  <script src="../js/oral.js"></script>
-  <script src="../js/charui.js"></script>
-  <script src="../js/app.js"></script>
-  <script>
-  // dev-shot state injection (query params)
-  (function(){
-    var q=new URLSearchParams(location.search);
-    G.state=q.get('state')||'play';
-    G.pleasure=+(q.get('pleasure')||62);
-    G.ar=+(q.get('ar')||55);
-    var d=+(q.get('depth')||0.55); G.depth=G.target=G.pDepth=d;
-    G.view=q.get('view')||'side';
-    G.fpvFocus=q.get('focus')||'full';
-    if(q.get('focus')==='breasts'){ G.fpvZoom=1.65; G.fpvPanX=640; G.fpvPanY=348; }
-    else if(q.get('focus')==='hips'){ G.fpvZoom=1.78; G.fpvPanX=640; G.fpvPanY=548; }
-    else if(q.get('focus')==='face'){ G.fpvZoom=1.85; G.fpvPanX=640; G.fpvPanY=172; }
-    G.pos=+(q.get('pos')||0);
-    G.oral=+(q.get('oral')||0);
-    G.sesT=+(q.get('t')||25);
-    G.rub=+(q.get('rub')||0); G.rubZone=+(q.get('zone')||0);
-    if(q.get('freeze')==='1'){ G.spaceHeld=false; }
-  })();
-  </script>
+<script src="../js/core.js"></script>
+<script src="../js/audio.js"></script>
+<script src="../js/chars.js"></script>
+<script src="../js/input.js"></script>
+<script src="../js/mechanics.js"></script>
+<script src="../js/gfx.js"></script>
+<script src="../js/skin.js"></script>
+<script src="../js/side.js"></script>
+<script src="../js/fpv.js"></script>
+<script src="../js/poses.js"></script>
+<script src="../js/oral.js"></script>
+<script src="../js/charui.js"></script>
+<script src="../js/app.js"></script>
+<script>
+/* ---- shot driver (runs after app.js: it re-renders one deterministic frame) ---- */
+(function(){
+  window.__agErrors = [];
+  window.addEventListener('error', e => window.__agErrors.push(String(e.message)));
+
+  const KB = { width:1280, height:720 };
+  const cvs = document.getElementById('scene');
+  cvs.width = KB.width; cvs.height = KB.height;
+  // app.js already sized the canvas from the stage; force the deterministic size
+  if (typeof CV !== 'undefined') { CV.width = KB.width; CV.height = KB.height; }
+
+  // canvas must be laid out before X.setTransform math works
+  const st = document.getElementById('stage');
+  st.style.width = KB.width + 'px'; st.style.height = KB.height + 'px';
+
+  const Q = new URLSearchParams(location.search);
+  function num(k, d){ const v = Q.get(k); return v == null ? d : parseFloat(v); }
+  function str(k, d){ const v = Q.get(k); return v == null ? d : v; }
+
+  // character (applyPreset copies a deep clone into G.char; do it before state)
+  try {
+    const cid = str('char', 'yuki');
+    if (cid && typeof CHARS !== 'undefined' && CHARS[cid] && typeof applyPreset === 'function') {
+      applyPreset(cid);
+    }
+  } catch(e){ window.__agErrors.push('char: ' + e.message); }
+
+  // core state
+  G.state = str('state', 'play');
+  G.view  = str('view', 'fpv');
+  G.solo  = str('solo','0') === '1';
+  G.t     = num('t', 25);
+  G.pleasure = num('pleasure', 62);
+  G.ar       = num('ar', 55);
+  G.depth = G.target = G.pDepth = num('depth', 0.55);
+  G.sesT = num('sesT', 25);
+  G.rate = num('rate', 1.2);
+  G.stamina = num('stamina', 100);
+  G.combo = num('combo', 1.0);
+  G.kiss = G.kissT = num('kiss', 0);
+  G.rub = G.rubT = num('rub', 0);
+  G.rubZone = num('zone', 0) | 0;
+  G.oral = G.oralT = num('oral', 0);
+  G.pos = num('pos', 0) | 0;
+  G.orgasms = num('orgasms', 0) | 0;
+  G.viewFade = 0;
+  G.strokes = num('strokes', 40) | 0;
+  G.impact = num('impact', 0);
+  G.shaftPulse = num('shaftPulse', 0);
+  G.fpvFocus = str('focus', 'full');
+  G.fpvZoom  = num('zoom', 1.0);
+  G.fpvPanX  = num('panx', 640);
+  G.fpvPanY  = num('pany', 360);
+  G.fpvZoomT = G.fpvZoom;
+
+  // freeze the simulation clock so the frame is deterministic
+  G.freezeT = num('t', 25);
+
+  // hide every overlay / HUD chrome that would pollute a capture
+  document.querySelectorAll('.ov').forEach(e => e.classList.add('hide'));
+  if (str('hud','0') !== '1') {
+    document.querySelectorAll('.hud').forEach(e => e.style.display = 'none');
+  }
+  document.getElementById('bubble').classList.remove('show');
+
+  try {
+    if (typeof initCharUI === 'function') initCharUI();
+    document.querySelectorAll('.cCard, #charSel').forEach(e => e.classList.add('hide'));
+    const cs = document.getElementById('charSel'); if (cs) cs.style.display = 'none';
+  } catch(e){ window.__agErrors.push('ui: ' + e.message); }
+
+  // ---- deterministic frame pipeline -------------------------------------
+  // app.js's tick() advances G.t and re-runs update(). We want the exact
+  // requested state, so we take over: cancel app's loop by replacing the
+  // globals it uses, pin G.t, hold the injected state, and render N frames so
+  // every smoothing lerp (fpvZoom/pan, kiss blend) has converged.
+  const FRAMES = parseInt(str('frames', '40'), 10);
+  const PIN = { t: G.t, view: G.view, pos: G.pos, solo: G.solo, state: G.state,
+                pleasure: G.pleasure, ar: G.ar, depth: G.depth, sess: G.sesT,
+                focus: G.fpvFocus, zoomT: G.fpvZoom };
+
+  window.__shot = { frames: 0, ready: false };
+  window.tick = function(){ /* disabled: shot driver owns the loop */ };
+  try { update = function(){}; } catch(e){}
+  try { var _updateNoop = true; } catch(e){}
+
+  let n = 0;
+  function step(){
+    // pin the requested state back every frame (update/lerp may drift it)
+    G.t = PIN.t;
+    G.view = PIN.view;
+    G.pos = PIN.pos;
+    G.solo = PIN.solo;
+    G.state = PIN.state;
+    G.pleasure = PIN.pleasure;
+    G.ar = PIN.ar;
+    G.depth = G.target = G.pDepth = PIN.depth;
+    G.sesT = PIN.sess;
+    G.fpvFocus = PIN.focus;
+    try { draw(); } catch(e){ window.__agErrors.push('draw: ' + e.message); }
+    n++;
+    if (n < FRAMES) { requestAnimationFrame(step); }
+    else { window.__shot.ready = true; document.title = 'SHOT-READY'; }
+  }
+  requestAnimationFrame(step);
+})();
+</script>
 </body>
 </html>

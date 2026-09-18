@@ -134,3 +134,17 @@ if(lsGet('ag_view')==='fpv'){ G.view='fpv'; document.getElementById('btnView').c
 // character system — init after DOM + canvas ready
 loadCharState();
 initCharUI();
+// headless screenshot helper: ?play=1&char=goatchan&view=fpv auto-starts without intro
+try{
+  const qs=new URLSearchParams(location.search);
+  if(qs.get('play')==='1'){
+    const ch=qs.get('char'); if(ch && typeof CHARS!=='undefined' && CHARS[ch]){ Object.assign(G.char, JSON.parse(JSON.stringify(CHARS[ch]))); }
+    G.state='play'; G.pleasure=+qs.get('pleasure')||62; G.ar=+qs.get('ar')||68; G.depth=+qs.get('depth')||0.55;
+    const v=qs.get('view'); if(v) G.view=v;
+    const solo=qs.get('solo'); if(solo) G.solo=solo==='1';
+    if(typeof startNight==='function') startNight();
+    document.getElementById('intro')?.classList.add('hide');
+    document.getElementById('charSel')?.classList.add('hide');
+    G.state='play';
+  }
+}catch(_){}

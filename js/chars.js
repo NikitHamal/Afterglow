@@ -80,8 +80,8 @@ const CHARS={
 const _skinBase =['#f4cba8','#d4936a','#7a4028'];
 const _skinSh   =['#cf9273','#a96840','#582815'];
 const _skinDk   =['#c98a6d','#9e6035','#4e2010'];
-const _himBase  =['#dba06f','#c07840','#7a4828'];
-const _himSh    =['#a96c44','#8a5030','#5a3018'];
+const _himBase  =['#d9a176','#bd7f4e','#7a4828'];
+const _himSh    =['#ad7450','#94613e','#5a3018'];
 
 function getSkin(){
   const t=G.char?G.char.skinTone:.18;
@@ -89,8 +89,8 @@ function getSkin(){
     her:  lerpHex3(_skinBase[0], _skinBase[1], _skinBase[2], t),
     herSh:lerpHex3(_skinSh[0],  _skinSh[1],  _skinSh[2],  t),
     herDk:lerpHex3(_skinDk[0],  _skinDk[1],  _skinDk[2],  t),
-    him:  lerpHex3(_himBase[0], _himBase[1], _himBase[2],  t*.5+.1),
-    himSh:lerpHex3(_himSh[0],   _himSh[1],   _himSh[2],   t*.5+.1)
+    him:  lerpHex3(_himBase[0], _himBase[1], _himBase[2],  t*.62+.06),
+    himSh:lerpHex3(_himSh[0],   _himSh[1],   _himSh[2],   t*.62+.06)
   };
 }
 

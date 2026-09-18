@@ -65,6 +65,34 @@ function fpvBsz(){ return 0.72 + (G.char ? G.char.breastSize : 0.45) * 0.62; }
    d≈1.74 and her feet toward the lens at d≈0.34. The values are real
    anatomical landmarks: hip joints ~0.86 m from the soles, shoulder ~1.46,
    crown ~1.74, with half-widths taken from a real female skeleton. */
+/* Neck silhouette: under the jaw it is a slim column, then it opens into the
+   trapezius. Shared by the head pass (which paints the part under the jaw) and
+   a second pass after the trunk (which re-paints the base over the collar line
+   so the two modules cannot leave a cut edge across the throat). */
+function fpvNeckPath(w, top, bot){
+  const wt = w * 0.94, wb = w * 1.75;
+  X.beginPath();
+  X.moveTo(-wt, top);
+  X.bezierCurveTo(-wt * 1.03, lerp(top, bot, 0.30),
+                  -wt * 1.18, lerp(top, bot, 0.52),
+                  -lerp(wt, wb, 0.44), lerp(top, bot, 0.68));
+  X.bezierCurveTo(-lerp(wt, wb, 0.82), lerp(top, bot, 0.82),
+                  -wb * 0.99, bot - 8,
+                  -wb, bot + 22);
+  // Base dips into a shallow U: a flat bottom edge reads as a cut-out throat,
+  // whereas a curved junction is exactly how a neck stands off a chest.
+  X.quadraticCurveTo(-wb * 0.52, bot + 44, 0, bot + 50);
+  X.quadraticCurveTo( wb * 0.52, bot + 44, wb, bot + 22);
+  X.bezierCurveTo(wb * 0.99, bot - 8,
+                  lerp(wt, wb, 0.82), lerp(top, bot, 0.82),
+                  lerp(wt, wb, 0.44), lerp(top, bot, 0.68));
+  X.bezierCurveTo(wt * 1.18, lerp(top, bot, 0.52),
+                  wt * 1.03, lerp(top, bot, 0.30),
+                  wt, top);
+  X.closePath();
+}
+// Shared neck geometry (see fpvNeckPath above).
+
 const FPV_BODY = {
   footFwd:  0.34,   // her feet (nearest the lens)
   ankle:    0.42,
@@ -311,85 +339,96 @@ function drawFPVHead(E){
   const shLp = fpvProj( B.shHalf * fpvBdy(), B.shoulder, B.lift );
   const shRp = fpvProj(-B.shHalf * fpvBdy(), B.shoulder, B.lift );
   const nkBaseY = ((shLp[1] + shRp[1]) / 2 - hy) / _sy;
-  // A real neck is ~0.084 m across — noticeably narrower than the head, which
-  // is what stops it reading as a lampshade under the jaw.
-  const nkHalfPx = 0.038 * fpvS(B.neck) * fpvBdy();
+  // A real neck is ~0.072 m across — noticeably narrower than the head, which
+  // is what stops it reading as a lampshade under the jaw. Slimmed for realism.
+  const nkHalfPx = 0.034 * fpvS(B.neck) * fpvBdy();
   const nkHalfN  = nkHalfPx / _sx;
 
   // Neck: a slim column that only starts to flare where the trapezius meets
-  // the collarbone line the torso already drew. The flare is gentle (1.3x) so
+  // the collarbone line the torso already drew. The flare is gentle (1.18x) so
   // the neck never becomes a second trunk.
   const nkTop = 14;
   const nkBot = clamp(nkBaseY, nkTop + 30, nkTop + 260);
   const nkW = nkHalfN;
-  const neckPath = () => {
-    X.moveTo(-nkW * 1.00, nkTop);
-    X.bezierCurveTo(-nkW * 1.06, lerp(nkTop, nkBot, 0.34),
-                    -nkW * 1.10, lerp(nkTop, nkBot, 0.60),
-                    -nkW * 1.16, lerp(nkTop, nkBot, 0.78));
-    X.bezierCurveTo(-nkW * 1.24, lerp(nkTop, nkBot, 0.89),
-                    -nkW * 1.29, lerp(nkTop, nkBot, 0.96),
-                    -nkW * 1.32, nkBot);
-    X.lineTo(nkW * 1.32, nkBot);
-    X.bezierCurveTo( nkW * 1.29, lerp(nkTop, nkBot, 0.96),
-                     nkW * 1.24, lerp(nkTop, nkBot, 0.89),
-                     nkW * 1.16, lerp(nkTop, nkBot, 0.78));
-    X.bezierCurveTo( nkW * 1.10, lerp(nkTop, nkBot, 0.60),
-                     nkW * 1.06, lerp(nkTop, nkBot, 0.34),
-                     nkW * 1.00, nkTop);
+  // A neck is not a column with a flat bottom: it spreads into the trapezius.
+  // The base runs well below the collar line (the torso paints over it) and the
+  // spread is wide, so what emerges above the collar is the trapezius slope
+  // rising to the skull instead of a bar with a notch cut in the shoulders.
+  const nkMidY = (nkTop + nkBot) / 2;
+  const neckPath = () => fpvNeckPath(nkW, nkTop, nkBot);
+  // Fill with the same directional light the torso uses, so the neck and trunk
+  // read as one continuous surface instead of two pasted tones. The axis runs
+  // ACROSS the neck (screen-left key -> right shadow): an axis down its length
+  // only ramps top-to-bottom and leaves it a flat cardboard bar.
+  const nkT = skTone(fpvSk.her);
+  // The neck is a small form: the trunk's full ramp reads as a burnt welt at
+  // this scale, so it gets a compressesd version of the same ramp.
+  const nkRamp = { hi: nkT.hi, b: nkT.b, s: skDark(nkT.b, 0.16), d: skDark(nkT.b, 0.32), dk: skDark(nkT.b, 0.32) };
+  skForm(neckPath, nkRamp, [-nkW * 1.35, nkMidY - nkW * 0.30], [nkW * 1.35, nkMidY + nkW * 0.30],
+    { edge: 0.16, rim: 0.12, cool: 0.08 });
+  skClipIn(neckPath, () => {
+    // Throat hollow — soft under-chin occlusion below the mandible
+    fAO(0, 48, nkW * 1.05, nkW * 0.80, 0.30);
+    fAO(0, 40, nkW * 0.80, nkW * 0.46, 0.20);
+    fSh(0, lerp(nkTop, nkBot, 0.50), nkW * 1.10, (nkBot - nkTop) * 0.07, 'rgba(165,95,70,0.12)', 0);
+    // sternocleidomastoid cords — subtle twin ridges running to the clavicles
+    for(const s of [-1, 1]){
+      fSh(s * nkW * 0.56, lerp(nkTop, nkBot, 0.40), nkW * 0.24, (nkBot - nkTop) * 0.30,
+        'rgba(165,92,72,0.16)', s * 0.14);
+      fHi(s * nkW * 0.30, lerp(nkTop, nkBot, 0.48), nkW * 0.16, (nkBot - nkTop) * 0.24,
+        'rgba(255,240,226,0.12)');
+    }
+    // tracheal highlight + larynx subtle
+    fHi(-nkW * 0.16, lerp(nkTop, nkBot, 0.50), nkW * 0.40, (nkBot - nkTop) * 0.26,
+      'rgba(255,242,230,0.16)');
+    // suprasternal notch dip at the base — softer
+    fAO(0, nkBot - nkW * 0.30, nkW * 0.52, nkW * 0.30, 0.24);
+    // clavicular hollows at trapezius roots
+    fAO(-nkW * 1.30, nkBot - 6, nkW * 0.40, nkW * 0.26, 0.20);
+    fAO( nkW * 1.30, nkBot - 6, nkW * 0.44, nkW * 0.28, 0.24);
+    // trapezius terminator falling off the shoulder slopes
+    fSh(-nkW * 1.85, nkBot + 10, nkW * 0.60, nkW * 0.40, 'rgba(140,70,56,0.14)', 0.30);
+    fSh( nkW * 1.85, nkBot + 10, nkW * 0.66, nkW * 0.44, 'rgba(130,62,52,0.17)', -0.30);
+  });
+  // Neck-to-chest junction: the cylinder throws a soft shadow onto the chest, so
+  // the silhouette stops reading as a cut edge and starts reading as contact.
+  skArc(-nkW * 1.90, nkBot + 16, 0, nkBot + 92, nkW * 1.90, nkBot + 16,
+        nkW * 0.70, '122,58,48', 0.30, { n: 16, thin: 0.78 });
+
+  // Jawline & chin foreshortened looking upward. Volumetric radial fill so the
+  // face has the same luminous depth as the body — not a flat pasted disc.
+  const facePath = () => {
+    X.ellipse(0, -2, 44, 49, 0, 0, TAU);
+    X.moveTo(-40, -8);
+    X.bezierCurveTo(-36, 35, -12, 46, 0, 47);
+    X.bezierCurveTo(12, 46, 36, 35, 40, -8);
     X.closePath();
   };
-  // Fill with the same directional light the torso uses, so the neck and trunk
-  // read as one continuous surface instead of two pasted tones.
-  const nkT = skTone(fpvSk.her);
-  skFillShape(neckPath, nkT, [0 + nkW * 0.9, nkTop, 0 - nkW * 0.9, nkBot]);
-  skClipIn(neckPath, () => {
-    // Throat shadow — it must sit BELOW the chin line, otherwise the face
-    // paints over it and the jaw melts into the neck like a snout.
-    fAO(0, 54, nkW * 1.25, nkW * 0.80, 0.40);
-    // sternocleidomastoid cords running down each side
-    fSh(-nkW * 0.58, lerp(nkTop, nkBot, 0.42), nkW * 0.30, (nkBot - nkTop) * 0.28,
-      'rgba(175,100,80,0.18)', 0.10);
-    fSh( nkW * 0.58, lerp(nkTop, nkBot, 0.42), nkW * 0.30, (nkBot - nkTop) * 0.28,
-      'rgba(175,100,80,0.18)', -0.10);
-    // one slim front highlight
-    fHi(0, lerp(nkTop, nkBot, 0.55), nkW * 0.40, (nkBot - nkTop) * 0.26,
-      'rgba(255,240,225,0.16)');
-    // suprasternal notch dip at the base
-    fAO(0, nkBot - nkW * 0.35, nkW * 0.6, nkW * 0.4, 0.32);
+  skFillRad(facePath, nkT, -10, -14, 6, 58);
+  skClipIn(facePath, () => {
+    // zygomatic arch + masseter soft shadow
+    fSh(-18, 8, 14, 9, 'rgba(160,88,70,0.12)', 0.22);
+    fSh(18, 8, 14, 9, 'rgba(160,88,70,0.11)', -0.22);
+    // nasal bridge & philtrum subtle
+    fSh(0, 12, 3.5, 18, 'rgba(150,80,65,0.10)', 0);
+    // under-jaw terminator — warm SSS bleed
+    fSSS(0, 36, 18, 8, 0);
   });
-
-  // Jawline & chin foreshortened looking upward. Filled with the SAME tone
-  // range as the trunk (highlight -> shadow), otherwise the face reads a
-  // full stop darker than the body it belongs to.
-  X.fillStyle = sg(-52, 14, nkT.hi, nkT.s);
-  X.beginPath();
-  X.ellipse(0, -2, 44, 49, 0, 0, TAU);
-  X.fill();
-  X.beginPath();
-  X.moveTo(-40, -8);
-  X.bezierCurveTo(-36, 35, -12, 46, 0, 47);
-  X.bezierCurveTo(12, 46, 36, 35, 40, -8);
-  X.closePath();
-  X.fill();
-
-  // Cheekbone, jaw hollow, and bridge shading (kept sheer so skin stays luminous)
-  X.save();
-  X.globalCompositeOperation = 'multiply';
-  shade(26, 12, 22, 14, 'rgba(170,95,72,0.17)', 0.38);
-  shade(-26, 12, 22, 14, 'rgba(170,95,72,0.17)', -0.38);
-  shade(0, 42, 26, 11, 'rgba(170,95,72,0.16)', 0);
-  // Under-jaw shadow: a dark crescent along the mandible. Without it the face
-  // ellipse simply continues into the neck and she reads as snouted.
-  shade(0, 52, 34, 13, 'rgba(120,58,46,0.34)', 0);
-  shade(0, 47, 40, 6,  'rgba(120,58,46,0.20)', 0);
+  // Cheekbone, jaw hollow — sheer so skin stays luminous
+  X.save(); X.globalCompositeOperation = 'multiply';
+  shade(24, 10, 20, 12, 'rgba(165,92,72,0.11)', 0.38);
+  shade(-24, 10, 20, 12, 'rgba(165,92,72,0.10)', -0.38);
+  shade(0, 42, 24, 10, 'rgba(165,92,72,0.10)', 0);
+  shade(0, 52, 34, 12, 'rgba(118,58,46,0.26)', 0);
+  shade(0, 47, 40, 5.5, 'rgba(118,58,46,0.14)', 0);
   X.restore();
-
-  // Soft light highlight along forehead & chin tip
-  X.save();
-  X.globalCompositeOperation = 'soft-light';
-  shade(0, -28, 18, 28, 'rgba(255,240,225,0.42)', 0);
-  shade(0, 40, 10, 6, 'rgba(255,240,225,0.35)', 0);
+  // Forehead & chin SSS glow + soft specular
+  X.save(); X.globalCompositeOperation = 'soft-light';
+  shade(-6, -26, 16, 24, 'rgba(255,242,230,0.34)', -0.08);
+  shade(0, 40, 9, 5.5, 'rgba(255,242,230,0.28)', 0);
+  X.restore();
+  X.save(); X.globalCompositeOperation = 'screen';
+  shade(-8, -28, 12, 18, 'rgba(255,252,248,0.16)', -0.06);
   X.restore();
 
   // Eyes: gazing directly up into the player's eyes with moist specular reflections
@@ -406,7 +445,7 @@ function drawFPVHead(E){
     X.restore();
 
     if(openness > 0.12){
-      // Sclera with soft pink vascularity at corners
+      // Sclera with soft pink vascularity at corners + subtle shadow
       X.beginPath();
       X.moveTo(ex - 10.5, ey + 1);
       X.quadraticCurveTo(ex, ey - 7.5 * openness - 2, ex + 10.5, ey + 1);
@@ -414,6 +453,9 @@ function drawFPVHead(E){
       X.closePath();
       X.fillStyle = '#faf6f3';
       X.fill();
+      X.save(); X.globalCompositeOperation='multiply';
+      shade(ex, ey + 3.5, 9, 3.2, 'rgba(180,130,120,0.10)', 0);
+      X.restore();
 
       // Caruncle
       X.fillStyle = 'rgba(215,145,140,0.45)';
@@ -421,29 +463,44 @@ function drawFPVHead(E){
       X.ellipse(ex - s * 9, ey + 1, 2.2, 1.8, 0, 0, TAU);
       X.fill();
 
-      // Iris looking upward at player
+      // Iris looking upward at player — radial depth with limbal ring
       const irisY = ey - 2.2 * openness - (roll * 3.5);
       const irisX = ex + roll * 3.8;
       const irisR = 5.2 * Math.max(openness, 0.28);
-      X.fillStyle = eyeCol;
+      const irisG = X.createRadialGradient(irisX - irisR*0.25, irisY - irisR*0.3, irisR*0.2, irisX, irisY, irisR);
+      irisG.addColorStop(0, skLight(eyeCol, 0.32));
+      irisG.addColorStop(0.45, eyeCol);
+      irisG.addColorStop(0.85, skDark(eyeCol, 0.32));
+      irisG.addColorStop(1, '#1a0a0e');
+      X.fillStyle = irisG;
       X.beginPath();
       X.arc(irisX, irisY, irisR, 0, TAU);
       X.fill();
+      // radial striations
+      X.save(); X.globalCompositeOperation='soft-light'; X.strokeStyle='rgba(0,0,0,0.18)'; X.lineWidth=0.7;
+      for(let k=0;k<8;k++){ const a=k/8*TAU; X.beginPath(); X.moveTo(irisX+Math.cos(a)*irisR*0.45, irisY+Math.sin(a)*irisR*0.45); X.lineTo(irisX+Math.cos(a)*irisR*0.92, irisY+Math.sin(a)*irisR*0.92); X.stroke(); }
+      X.restore();
+      // limbal ring
+      X.strokeStyle='rgba(20,10,14,0.38)'; X.lineWidth=1.1; X.beginPath(); X.arc(irisX, irisY, irisR, 0, TAU); X.stroke();
 
-      // Deep pupil
-      X.fillStyle = '#110609';
+      // Deep pupil with soft edge
+      X.fillStyle = '#0e0608';
       X.beginPath();
-      X.arc(irisX, irisY, irisR * 0.52, 0, TAU);
+      X.arc(irisX, irisY, irisR * 0.50, 0, TAU);
       X.fill();
+      X.fillStyle = 'rgba(40,18,22,0.9)';
+      X.beginPath(); X.arc(irisX, irisY, irisR * 0.52, 0, TAU); X.stroke();
 
       // Primary & secondary specular catchlights (reflecting bedroom lamp)
-      X.fillStyle = 'rgba(255,255,255,0.92)';
+      X.fillStyle = 'rgba(255,255,255,0.94)';
       X.beginPath();
-      X.arc(irisX + 1.5, irisY - 1.8, 1.5, 0, TAU);
+      X.arc(irisX + 1.4, irisY - 1.6, 1.45, 0, TAU);
       X.fill();
-      X.fillStyle = 'rgba(255,255,255,0.45)';
+      X.fillStyle = 'rgba(255,255,240,0.52)';
+      X.beginPath(); X.arc(irisX + 0.6, irisY - 0.9, 0.7, 0, TAU); X.fill();
+      X.fillStyle = 'rgba(255,255,255,0.40)';
       X.beginPath();
-      X.arc(irisX - 1.6, irisY + 1.2, 0.8, 0, TAU);
+      X.arc(irisX - 1.5, irisY + 1.1, 0.75, 0, TAU);
       X.fill();
 
       // Upper eyelid line & dense dark eyelashes
@@ -837,45 +894,43 @@ function drawFPVBody(E, br){
   const axilR = 640 + (shHalf * 1.02) * shL[2];   // screen-right armpit
   const torso = () => {
     X.moveTo(hipL[0], hipL[1] - px(0.0419, hipL[2]));
-    // up the left flank: hip -> waist -> ribcage -> axilla
+    // up the left flank: hip -> waist (pinched) -> ribcage -> axilla
     X.bezierCurveTo(
       hipL[0] - px(0.0047, hipL[2]), hipL[1] - px(0.1349, hipL[2]),
-      640 - waistHalf * waist[2], waist[1] + px(0.0186, waist[2]),
-      640 - waistHalf * waist[2], waist[1]);
+      640 - waistHalf * waist[2] * 0.90, waist[1] + px(0.0186, waist[2]),
+      640 - waistHalf * waist[2] * 0.90, waist[1]);
     X.bezierCurveTo(
-      640 - (waistHalf * 0.80) * ribs[2], lerp(waist[1], ribs[1], 0.55),
-      640 - ribHalf * ribs[2], ribs[1] + px(0.0140, ribs[2]),
-      640 - ribHalf * ribs[2], ribs[1]);
+      640 - (waistHalf * 0.68) * ribs[2], lerp(waist[1], ribs[1], 0.55),
+      640 - ribHalf * ribs[2] * 0.98, ribs[1] + px(0.0140, ribs[2]),
+      640 - ribHalf * ribs[2] * 0.98, ribs[1]);
     X.bezierCurveTo(
-      640 - (ribHalf * 0.96) * stern[2], lerp(ribs[1], clavY, 0.55),
+      640 - (ribHalf * 0.92) * stern[2], lerp(ribs[1], clavY, 0.55),
       axilL + px(0.0140, shR[2]),       lerp(ribs[1], clavY, 0.86),
       axilL,                            clavY);
-    // Shoulder line: a trapezius slope that climbs from the outer shoulder up
-    // to the base of the neck. A flat bar across the top reads as a garment
-    // collar; the slope is what makes it read as muscle.
+    // Shoulder line: steeper trapezius slope, suprasternal dip — no flat bar
     X.bezierCurveTo(
-      axilL - px(0.0090, shR[2]),       clavY - px(0.0180, shR[2]),
-      640 - shHalf * 0.52 * shR[2],     clavY - px(0.0330, shR[2]),
-      640 - shHalf * 0.17 * shR[2],     clavY - px(0.0420, shR[2]));
+      axilL - px(0.010, shR[2]),       clavY - px(0.022, shR[2]),
+      640 - shHalf * 0.50 * shR[2],     clavY - px(0.042, shR[2]),
+      640 - shHalf * 0.15 * shR[2],     clavY - px(0.056, shR[2]));
     X.bezierCurveTo(
-      640 - shHalf * 0.06 * shL[2],     clavY - px(0.0450, shL[2]),
-      640 + shHalf * 0.06 * shL[2],     clavY - px(0.0450, shL[2]),
-      640 + shHalf * 0.17 * shL[2],     clavY - px(0.0420, shL[2]));
+      640 - shHalf * 0.05 * shL[2],     clavY - px(0.060, shL[2]),
+      640 + shHalf * 0.05 * shL[2],     clavY - px(0.060, shL[2]),
+      640 + shHalf * 0.15 * shL[2],     clavY - px(0.056, shL[2]));
     X.bezierCurveTo(
-      640 + shHalf * 0.52 * shL[2],     clavY - px(0.0330, shL[2]),
-      axilR + px(0.0090, shL[2]),       clavY - px(0.0180, shL[2]),
+      640 + shHalf * 0.50 * shL[2],     clavY - px(0.042, shL[2]),
+      axilR + px(0.010, shL[2]),       clavY - px(0.022, shL[2]),
       axilR,                            clavY);
     // down the right flank (mirror of the left)
     X.bezierCurveTo(
       axilR - px(0.0140, shL[2]),       lerp(ribs[1], clavY, 0.86),
-      640 + (ribHalf * 0.96) * stern[2], lerp(ribs[1], clavY, 0.55),
-      640 + ribHalf * ribs[2],          ribs[1]);
+      640 + (ribHalf * 0.92) * stern[2], lerp(ribs[1], clavY, 0.55),
+      640 + ribHalf * ribs[2] * 0.98,          ribs[1]);
     X.bezierCurveTo(
-      640 + ribHalf * ribs[2],          ribs[1] + px(0.0140, ribs[2]),
-      640 + (waistHalf * 0.80) * ribs[2], lerp(waist[1], ribs[1], 0.55),
-      640 + waistHalf * waist[2],       waist[1]);
+      640 + ribHalf * ribs[2] * 0.98,          ribs[1] + px(0.0140, ribs[2]),
+      640 + (waistHalf * 0.68) * ribs[2], lerp(waist[1], ribs[1], 0.55),
+      640 + waistHalf * waist[2] * 0.90,       waist[1]);
     X.bezierCurveTo(
-      640 + waistHalf * waist[2],       waist[1] + px(0.0186, waist[2]),
+      640 + waistHalf * waist[2] * 0.90,       waist[1] + px(0.0186, waist[2]),
       hipR[0] + px(0.0047, hipR[2]),    hipR[1] - px(0.1349, hipR[2]),
       hipR[0],                          hipR[1] - px(0.0419, hipR[2]));
     X.closePath();
@@ -888,29 +943,103 @@ function drawFPVBody(E, br){
     X.lineTo(hipR[0], hipR[1] - px(0.0419, hipR[2]));
     X.closePath();
   };
-  // The light axis must START ABOVE the shoulder line and END BELOW the hips,
-  // otherwise the gradient clamps to its lightest stop across the whole upper
-  // chest and the shoulders read as a flat bright collar.
-  skFillShape(torso, T, [640 - 56, clavY - 120, 640 + 50, hipL[1] + 130]);
+  // KEY LIGHT is the bedside lamp, up-screen-left. Across a near-vertical trunk
+  // only the horizontal component of the light vector shades the flanks, so the
+  // axis runs LATERALLY (bright left flank -> dark right flank) with a small
+  // downward tilt. An axis that runs along the trunk only ramps top-to-bottom
+  // and washes the whole silhouette into a single flat tone.
+  const trunkR = Math.max(ribHalf * ribs[2], waistHalf * waist[2] * 0.90, hipHalf * hipL[2] * 0.84);
+  const trunkMidY = lerp(hipL[1], clavY, 0.46);
+  const trunkL = [640 - trunkR * 1.02, trunkMidY - trunkR * 0.40];
+  const trunkS = [640 + trunkR * 1.02, trunkMidY + trunkR * 0.40];
+  skForm(torso, T, trunkL, trunkS, { edge: 0.28, rim: 0.17, cool: 0.16 });
   skClipIn(torso, () => {
-    // Flank shadows hug the ribcage — they must stay SHORT, or their upper
-    // tips rise past the collarbones and carve a dark bowtie out of the chest.
-    fAO(640 - ribHalf * ribs[2] * 0.92, (waist[1] + ribs[1]) / 2 + px(0.028, ribs[2]), px(0.028, ribs[2]), px(0.098, ribs[2]), 0.22);
-    fAO(640 + ribHalf * ribs[2] * 0.92, (waist[1] + ribs[1]) / 2 + px(0.028, ribs[2]), px(0.028, ribs[2]), px(0.098, ribs[2]), 0.22);
-    fAO(640 - hipHalf * hipL[2] * 0.94, hipL[1] - px(0.0233, hipL[2]), px(0.0605, hipL[2]), px(0.0791, hipL[2]), 0.16);
-    fAO(640 + hipHalf * hipR[2] * 0.94, hipR[1] - px(0.0233, hipR[2]), px(0.0605, hipR[2]), px(0.0791, hipR[2]), 0.16);
-    fSh(640 - waistHalf * waist[2] * 0.72, waist[1] - px(0.0930, ribs[2]), px(0.0698, ribs[2]), px(0.0326, ribs[2]), 'rgba(160,90,70,0.22)', 0.18);
-    fSh(640 + waistHalf * waist[2] * 0.72, waist[1] - px(0.0930, ribs[2]), px(0.0698, ribs[2]), px(0.0326, ribs[2]), 'rgba(160,90,70,0.22)', -0.18);
-    // diffuse chest light — kept broad and low so the collarbones never read
-    // as a bright hard crescent across the top of the trunk
-    fHi(640, (ribs[1] + stern[1]) / 2 + px(0.028, stern[2]), px(0.062, stern[2]), px(0.115, stern[2]), 'rgba(255,235,215,0.13)');
-    fHi(640, (waist[1] + navel[1]) / 2, px(0.0698, waist[2]), px(0.1116, waist[2]), 'rgba(255,235,215,0.14)');
-    // soft abdominal midline groove
+    // Flank core shadows — the trunk's own cylinder terminator
+    fSh(640 - trunkR * 0.88, (waist[1] + ribs[1]) / 2 + px(0.048, ribs[2]), px(0.050, ribs[2]), px(0.170, ribs[2]), 'rgba(96,40,32,0.26)', 0.10);
+    fSh(640 + trunkR * 0.88, (waist[1] + ribs[1]) / 2 + px(0.048, ribs[2]), px(0.058, ribs[2]), px(0.190, ribs[2]), 'rgba(86,34,28,0.34)', -0.10);
+    fAO(640 - ribHalf * ribs[2] * 0.90, (waist[1] + ribs[1]) / 2 + px(0.032, ribs[2]), px(0.030, ribs[2]), px(0.092, ribs[2]), 0.20);
+    fAO(640 + ribHalf * ribs[2] * 0.90, (waist[1] + ribs[1]) / 2 + px(0.032, ribs[2]), px(0.036, ribs[2]), px(0.100, ribs[2]), 0.26);
+    fAO(640 - hipHalf * hipL[2] * 0.94, hipL[1] - px(0.0233, hipL[2]), px(0.054, hipL[2]), px(0.072, hipL[2]), 0.16);
+    fAO(640 + hipHalf * hipR[2] * 0.94, hipR[1] - px(0.0233, hipR[2]), px(0.060, hipR[2]), px(0.076, hipR[2]), 0.20);
+    // waist hollow + costal arch soft form
+    fSh(640 - waistHalf * waist[2] * 0.68, waist[1] - px(0.082, ribs[2]), px(0.060, ribs[2]), px(0.028, ribs[2]), 'rgba(158,88,68,0.14)', 0.18);
+    fSh(640 + waistHalf * waist[2] * 0.68, waist[1] - px(0.082, ribs[2]), px(0.060, ribs[2]), px(0.028, ribs[2]), 'rgba(150,80,62,0.18)', -0.18);
+    // --- clavicles: the ridge that turns a flat chest plate into a ribcage ---
+    const notchY = clavY - px(0.056, shR[2]);
+    for(const s of [-1, 1]){
+      const axp = s < 0 ? axilL : axilR;
+      const sc2 = s < 0 ? shR[2] : shL[2];
+      X.save();
+      // shadow tucked under the collarbone (infraclavicular fossa)
+      X.globalCompositeOperation = 'multiply';
+      X.strokeStyle = 'rgba(126,60,48,0.30)'; X.lineCap = 'round';
+      X.lineWidth = Math.max(3.0, px(0.016, sc2));
+      X.beginPath();
+      X.moveTo(640 + s * px(0.018, sc2), notchY + px(0.014, sc2));
+      X.quadraticCurveTo(640 + s * trunkR * 0.55, clavY - px(0.008, sc2), axp + s * px(0.006, sc2), clavY + px(0.020, sc2));
+      X.stroke();
+      // the bone itself catching the key
+      X.globalCompositeOperation = 'screen';
+      X.strokeStyle = 'rgba(255,246,234,0.34)';
+      X.lineWidth = Math.max(1.4, px(0.009, sc2));
+      X.beginPath();
+      X.moveTo(640 + s * px(0.016, sc2), notchY + px(0.006, sc2));
+      X.quadraticCurveTo(640 + s * trunkR * 0.55, clavY - px(0.022, sc2), axp + s * px(0.004, sc2), clavY + px(0.006, sc2));
+      X.stroke();
+      X.restore();
+      // hollow under the outer third of the clavicle
+      fAO(640 + s * trunkR * 0.62, clavY + px(0.020, sc2), px(0.036, sc2), px(0.022, sc2), 0.16, -s * 0.20);
+    }
+    // --- costal arches: three soft rib shadows per side, longest lowest -----
+    for(const s of [-1, 1]){
+      for(let i = 0; i < 3; i++){
+        const sc2 = s < 0 ? shR[2] : shL[2];
+        const t = 0.10 + i * 0.30;
+        const y0 = lerp(stern[1], ribs[1], t) + px(0.020 + i * 0.030, sc2);
+        const y1 = y0 - px(0.010 + i * 0.016, sc2);
+        skArc(640 + s * trunkR * 0.16, y0,
+              640 + s * trunkR * 0.62, y0 - px(0.006, sc2),
+              640 + s * trunkR * 0.90, y1,
+              px(0.013, sc2), '132,64,50', 0.26 - i * 0.04, { rot: s * 0.06 });
+      }
+    }
+    // inter-mammary + sternal soft light
+    fHi(640, (ribs[1] + stern[1]) / 2 + px(0.018, stern[2]), px(0.058, stern[2]), px(0.102, stern[2]), 'rgba(255,238,220,0.11)');
+    fHi(640, (waist[1] + navel[1]) / 2, px(0.062, waist[2]), px(0.098, waist[2]), 'rgba(255,238,220,0.10)');
+    // linea alba + rectus subtle midline
     X.save(); X.globalCompositeOperation = 'multiply';
-    shade(640, lerp(waist[1], navel[1], 0.5), px(0.020, waist[2]), px(0.090, waist[2]), 'rgba(158,92,70,0.16)', 0);
+    shade(640, lerp(waist[1], navel[1], 0.5), px(0.016, waist[2]), px(0.084, waist[2]), 'rgba(156,90,68,0.10)', 0);
     X.restore();
+    // sub-mammary soft AO so breasts cast onto ribs
+    fAO(640 - px(0.048, ribs[2]), stern[1] + px(0.034, stern[2]), px(0.042, stern[2]), px(0.018, stern[2]), 0.10);
+    fAO(640 + px(0.048, ribs[2]), stern[1] + px(0.034, stern[2]), px(0.042, stern[2]), px(0.018, stern[2]), 0.10);
   });
-  skLine(torso, T, 1.4, 0.26);
+  skLine(torso, T, 1.25, 0.20);
+
+  // --- deltoid caps + deltopectoral groove -----------------------------------
+  // The torso is painted over the arms, so without these the shoulder junction
+  // reads as a flat plate sitting on a tube.
+  if(a2 < 0.5){
+    X.save();
+    for(const s of [-1, 1]){
+      const axp = s < 0 ? axilL : axilR;
+      const sc2 = s < 0 ? shR[2] : shL[2];
+      const dy = clavY + px(0.030, sc2);
+      // rounded deltoid mass catching the key
+      X.globalCompositeOperation = 'screen';
+      shade(axp + s * px(0.010, sc2), dy, px(0.040, sc2), px(0.052, sc2), 'rgba(255,240,224,0.20)', s * 0.34);
+      // its own soft terminator against the chest
+      X.globalCompositeOperation = 'multiply';
+      shade(axp - s * px(0.026, sc2), dy + px(0.010, sc2), px(0.020, sc2), px(0.062, sc2), 'rgba(112,50,40,0.30)', -s * 0.20);
+      // deltopectoral groove running down from the clavicle
+      X.strokeStyle = 'rgba(118,54,44,0.24)'; X.lineWidth = Math.max(2.0, px(0.012, sc2)); X.lineCap = 'round';
+      X.beginPath();
+      X.moveTo(axp - s * px(0.016, sc2), dy - px(0.024, sc2));
+      X.quadraticCurveTo(axp - s * px(0.034, sc2), dy + px(0.034, sc2), axp - s * px(0.026, sc2), dy + px(0.090, sc2));
+      X.stroke();
+    }
+    X.restore();
+  }
 
   // chest flush / vasocongestion
   shade(640, (ribs[1] + stern[1]) / 2, px(0.1395, stern[2]), px(0.0698, stern[2]), `rgba(${brR},${brG},${brB},${0.05 + E.blush * 0.16})`, 0);
@@ -923,15 +1052,21 @@ function drawFPVBody(E, br){
       .forEach(([dx, y, rx, ry]) => shade(640 + dx, y, px(rx, navel[2]), px(ry, navel[2]), rc, 0));
   }
 
-  // navel
-  const navR = px(0.0140, navel[2]);
+  // navel — a depression, not a pasted disc: the upper wall sits in shadow, the
+  // rim is a soft crease and the lower lip catches the lamp
+  const navR = px(0.0105, navel[2]);
+  const navTone = hexToRgb(skDark(T.b, 0.34)).join(',');
   X.save();
   X.globalCompositeOperation = 'multiply';
-  shade(navel[0], navel[1], navR * 0.92, navR * 1.25, 'rgba(145,85,65,0.48)', 0);
+  shade(navel[0], navel[1] - navR * 0.28, navR * 0.98, navR * 1.26, `rgba(${navTone},0.32)`, 0);
   X.restore();
-  X.strokeStyle = 'rgba(155,95,75,0.52)';
-  X.lineWidth = Math.max(1.4, navR * 0.3);
-  X.beginPath(); X.ellipse(navel[0], navel[1], navR * 0.74, navR, 0, 0, TAU); X.stroke();
+  skArc(navel[0] - navR * 0.74, navel[1] - navR * 0.12,
+        navel[0], navel[1] - navR * 1.15,
+        navel[0] + navR * 0.74, navel[1] - navR * 0.12,
+        navR * 0.44, navTone, 0.34, { n: 12, thin: 0.8 });
+  X.save(); X.globalCompositeOperation = 'screen';
+  shade(navel[0], navel[1] + navR * 0.66, navR * 0.60, navR * 0.32, 'rgba(255,238,220,0.15)', 0);
+  X.restore();
 
   // linea alba (subtle midline)
   X.strokeStyle = 'rgba(155,95,75,0.12)';
@@ -991,74 +1126,133 @@ function drawFPVBody(E, br){
       'rgba(142,76,60,0.22)', s * 0.06);
     X.restore();
 
-    // Supine contour: full and low outboard (where the gland pools), tapering
-    // to a soft medial slope that vanishes into the sternum. The two lower
-    // control points push the silhouette down onto the ribcage.
+    // Supine contour: gravity drapes laterally, medial slope dissolves into sternum
     const dome = () => {
-      X.moveTo(s * baseW * 0.55, -baseH * 0.72);              // upper medial
+      X.moveTo(s * baseW * 0.52, -baseH * 0.68);              // upper medial
       X.bezierCurveTo(
-        -s * baseW * 0.30, -baseH * 0.94,
-        -baseW * 1.30,     -baseH * 0.34,
-        -baseW * 1.10,      baseH * 0.34);                    // lateral bulge
+        -s * baseW * 0.28, -baseH * 0.90,
+        -baseW * 1.18,     -baseH * 0.32,
+        -baseW * 1.02,      baseH * 0.32);                    // lateral bulge softened
       X.bezierCurveTo(
-        -baseW * 0.90,      baseH * 0.92,
-        -baseW * 0.16,      baseH * 1.02,
-         s * baseW * 0.30,  baseH * 0.86);                    // lower fold
+        -baseW * 0.84,      baseH * 0.86,
+        -baseW * 0.14,      baseH * 0.98,
+         s * baseW * 0.28,  baseH * 0.82);                    // lower fold
       X.bezierCurveTo(
-         baseW * 0.86,      baseH * 0.60,
-         baseW * 1.06,      baseH * 0.02,
-         s * baseW * 0.55, -baseH * 0.72);                    // medial slope
+         baseW * 0.80,      baseH * 0.56,
+         baseW * 0.98,      baseH * 0.02,
+         s * baseW * 0.52, -baseH * 0.68);                    // medial slope gentler
       X.closePath();
     };
     X.beginPath(); dome();
-    // The rim fades to transparent so the dome melts into the chest wall
-    // instead of sitting on it as a pasted oval with a visible edge.
+    // The dome is a MODULATION of the chest wall, not an opaque patch: every
+    // stop stays semi-transparent so the trunk's own key-light ramp reads
+    // through it. That is what removes the pasted-on "putty blob" edge — both
+    // surfaces then share one light field and meet at the same value.
+    // The crest is biased toward SCREEN-LEFT for BOTH breasts, because both are
+    // lit by the one lamp; mirroring it per side is what made them read as two
+    // pasted stickers with their own private spotlights.
     const bg = X.createRadialGradient(
-      -s * baseW * 0.34, -baseH * 0.30, baseW * 0.06,
-       s * baseW * 0.06,  baseH * 0.06, baseW * 1.30);
-    bg.addColorStop(0,    T.hi);
-    bg.addColorStop(0.28, T.b);
-    bg.addColorStop(0.62, T.b);
-    bg.addColorStop(0.86, `rgba(${hexToRgb(T.s).join(',')},0.92)`);
+      -baseW * 0.32, -baseH * 0.30, baseW * 0.04,
+       s * baseW * 0.06, baseH * 0.06, baseW * 1.20);
+    bg.addColorStop(0,    `rgba(${hexToRgb(skLight(T.b, 0.26)).join(',')},0.40)`);
+    bg.addColorStop(0.28, `rgba(${hexToRgb(T.b).join(',')},0.44)`);
+    bg.addColorStop(0.60, `rgba(${hexToRgb(T.b).join(',')},0.30)`);
+    bg.addColorStop(0.84, `rgba(${hexToRgb(T.s).join(',')},0.20)`);
     bg.addColorStop(1,    `rgba(${hexToRgb(T.s).join(',')},0)`);
     X.fillStyle = bg; X.fill();
 
     skClipIn(dome, () => {
-      fAO(-s * baseW * 0.30, baseH * 0.80, baseW * 0.94, baseH * 0.30, 0.28);   // under-fold
-      fSh( s * baseW * 0.80, baseH * 0.06, baseW * 0.34, baseH * 0.74, 'rgba(150,80,62,0.20)',  s * 0.10);
-      fSh(-s * baseW * 0.86, baseH * 0.02, baseW * 0.28, baseH * 0.70, 'rgba(140,74,58,0.14)', -s * 0.10);
-      fHi(-s * baseW * 0.40, -baseH * 0.26, baseW * 0.54, baseH * 0.44, 'rgba(255,238,220,0.24)');
+      fAO(-s * baseW * 0.20, baseH * 0.80, baseW * 0.86, baseH * 0.26, 0.26);    // inframammary furrow
+      fSh( s * baseW * 0.80, baseH * 0.04, baseW * 0.34, baseH * 0.72, 'rgba(140,72,56,0.22)',  s * 0.10);
+      fSh(-s * baseW * 0.86, baseH * 0.02, baseW * 0.24, baseH * 0.66, 'rgba(150,80,62,0.16)', -s * 0.10);
+      // crest: the lamp grazing the upper-left of the mound
+      fHi(-baseW * 0.34, -baseH * 0.26, baseW * 0.54, baseH * 0.42, 'rgba(255,242,230,0.24)');
+      fHi(-baseW * 0.20, -baseH * 0.16, baseW * 0.30, baseH * 0.20, 'rgba(255,255,250,0.14)');
+      fSSS( baseW * 0.42, baseH * 0.30, baseW * 0.44, baseH * 0.40, 0.2);
     });
+    // limb-darkening + crest rim so the mound has volume without gaining a
+    // drawn outline. The axis is the same screen-left key for both breasts.
+    skContour(dome, [-baseW * 1.06, -baseH * 0.74], [baseW * 1.06, baseH * 0.74],
+      { edge: 0.15, rim: 0.15, cool: 0.10 });
 
-    // Inframammary fold: a soft crease, not a stroked arc
+    // Inframammary fold: feathered, lower opacity
     X.save();
     X.globalCompositeOperation = 'multiply';
-    shade(0, baseH * 0.74, baseW * 0.72, baseH * 0.16, 'rgba(148,80,62,0.26)', 0);
+    shade(0, baseH * 0.74, baseW * 0.68, baseH * 0.13, 'rgba(146,78,60,0.16)', 0);
     X.restore();
 
     // Areola + nipple. Seen from above and between her legs, the areola sits
     // on the upper-medial face of the dome and is squashed to an ellipse.
     const aDistX = -s * baseW * 0.20, aDistY = -baseH * 0.22;
-    const aer = px((0.018 + 0.0050 * clamp((G.ar || 0) / 100, 0, 1)) *
+    const aer = px((0.0125 + 0.0035 * clamp((G.ar || 0) / 100, 0, 1)) *
       Math.max(bsz, 0.84), bs);
-    // soft areola halo — no hard rim, so it melts into the breast
-    const ag = X.createRadialGradient(aDistX, aDistY, aer * 0.2, aDistX, aDistY, aer * 1.5);
-    ag.addColorStop(0,   'rgba(206,128,110,0.42)');
-    ag.addColorStop(0.62,'rgba(206,128,110,0.26)');
-    ag.addColorStop(1,   'rgba(206,128,110,0)');
+    // Areolar tone is pulled toward the skin: a saturated pink disc at full
+    // opacity is the single biggest "sticker" tell on the whole figure.
+    const aerMid  = skMix(nipCol, T.b, 0.30);
+    const aerEdge = skMix(skDark(nipCol, 0.18), T.b, 0.34);
+    const ag = X.createRadialGradient(aDistX, aDistY, aer * 0.10, aDistX, aDistY, aer * 1.20);
+    ag.addColorStop(0,    `rgba(${hexToRgb(aerMid).join(',')},${0.50 + 0.12 * erect})`);
+    ag.addColorStop(0.42, `rgba(${hexToRgb(aerMid).join(',')},${0.40 + 0.10 * erect})`);
+    ag.addColorStop(0.74, `rgba(${hexToRgb(aerEdge).join(',')},0.28)`);
+    ag.addColorStop(0.92, `rgba(${hexToRgb(aerEdge).join(',')},0.12)`);
+    ag.addColorStop(1,    `rgba(${hexToRgb(aerEdge).join(',')},0)`);
     X.fillStyle = ag;
-    X.beginPath(); X.ellipse(aDistX, aDistY, aer * 1.5, aer * 1.2, s * 0.12, 0, TAU); X.fill();
-    X.fillStyle = 'rgba(212,132,112,0.52)';
-    X.beginPath(); X.ellipse(aDistX, aDistY, aer, aer * 0.80, s * 0.12, 0, TAU); X.fill();
-    const nr = px((0.0068 + 0.0038 * erect) * Math.max(bsz * 0.9, 0.85), bs);
-    X.fillStyle = nipCol;
-    X.beginPath();
-    X.ellipse(aDistX, aDistY, nr, nr * (1 + 0.20 * erect), s * 0.10, 0, TAU);
-    X.fill();
-    X.fillStyle = 'rgba(255,240,240,0.34)';
-    X.beginPath();
-    X.arc(aDistX - nr * 0.30, aDistY - nr * 0.30, nr * 0.30, 0, TAU);
-    X.fill();
+    X.beginPath(); X.ellipse(aDistX, aDistY, aer * 1.18, aer * 1.00, s * 0.12, 0, TAU); X.fill();
+
+    // Pigmented outer border of the areola — the darker ring that gives the
+    // disc an anatomical edge without ever drawing a hard circle.
+    const rg = X.createRadialGradient(aDistX, aDistY, aer * 0.58, aDistX, aDistY, aer * 1.06);
+    rg.addColorStop(0,   'rgba(0,0,0,0)');
+    rg.addColorStop(0.62,`rgba(${hexToRgb(skDark(aerEdge, 0.34)).join(',')},0.16)`);
+    rg.addColorStop(1,   'rgba(0,0,0,0)');
+    X.save(); X.globalCompositeOperation = 'multiply';
+    X.fillStyle = rg;
+    X.beginPath(); X.ellipse(aDistX, aDistY, aer * 1.16, aer * 0.98, s * 0.12, 0, TAU); X.fill();
+    X.restore();
+
+    // Montgomery tubercles: tiny raised glands scattered around the border, each
+    // with a lift on its upper-left and a soft seat shadow below. The radii are
+    // deliberately uneven — an even ring of dots reads as machined detail.
+    for(let k = 0; k < 9; k++){
+      const a = k / 9 * TAU + 0.35 + (k % 2) * 0.19;
+      const rr = aer * (0.62 + ((k * 7) % 5) * 0.075);
+      const mx2 = aDistX + Math.cos(a) * rr * 0.86, my2 = aDistY + Math.sin(a) * rr * 1.02;
+      const mr = Math.max(0.9, aer * (0.055 + (k % 3) * 0.018));
+      X.save(); X.globalCompositeOperation = 'multiply';
+      shade(mx2, my2 + mr * 0.5, mr * 1.7, mr * 1.1, 'rgba(140,70,58,0.22)', 0);
+      X.restore();
+      X.fillStyle = `rgba(${hexToRgb(skLight(aerMid, 0.22)).join(',')},0.55)`;
+      X.beginPath(); X.arc(mx2, my2, mr, 0, TAU); X.fill();
+      X.fillStyle = 'rgba(255,246,240,0.30)';
+      X.beginPath(); X.arc(mx2 - mr * 0.3, my2 - mr * 0.35, mr * 0.42, 0, TAU); X.fill();
+    }
+
+    // Nipple: a small cone standing on the areola, lit from the same upper-left
+    // key. Seat shadow first, then the body, then the crest and a wet tip.
+    const nr   = px((0.0040 + 0.0022 * erect) * Math.max(bsz * 0.9, 0.85), bs);
+    const nH   = nr * (1 + 0.26 * erect);
+    X.save(); X.globalCompositeOperation = 'multiply';
+    shade(aDistX + nr * 0.16, aDistY + nH * 0.72, nr * 2.0, nH * 0.86, 'rgba(120,54,48,0.34)', s * 0.10);
+    X.restore();
+    const ng = X.createRadialGradient(aDistX - nr * 0.42, aDistY - nH * 0.46, nr * 0.10,
+                                      aDistX, aDistY, nr * 2.05);
+    ng.addColorStop(0,   `rgba(${hexToRgb(skLight(nipCol, 0.26)).join(',')},0.92)`);
+    ng.addColorStop(0.46,`rgba(${hexToRgb(skDark(nipCol, 0.10)).join(',')},0.94)`);
+    ng.addColorStop(0.80,`rgba(${hexToRgb(skDark(nipCol, 0.34)).join(',')},0.86)`);
+    ng.addColorStop(1,   `rgba(${hexToRgb(skDark(nipCol, 0.46)).join(',')},0)`);
+    X.fillStyle = ng;
+    X.beginPath(); X.ellipse(aDistX, aDistY, nr, nH, s * 0.10, 0, TAU); X.fill();
+    // shade of the lower wall of the cone — turns a flat coin into a stud
+    X.save(); X.beginPath(); X.ellipse(aDistX, aDistY, nr, nH, s * 0.10, 0, TAU); X.clip();
+    X.globalCompositeOperation = 'multiply';
+    shade(aDistX, aDistY + nH * 0.66, nr * 1.15, nH * 0.52, 'rgba(136,62,56,0.30)', 0);
+    X.restore();
+    // crest + wet tip catchlight
+    X.save(); X.globalCompositeOperation = 'soft-light';
+    shade(aDistX - nr * 0.34, aDistY - nH * 0.40, nr * 0.95, nH * 0.70, 'rgba(255,170,158,0.32)', 0);
+    X.restore();
+    X.fillStyle = 'rgba(255,248,244,0.34)';
+    X.beginPath(); X.ellipse(aDistX - nr * 0.28, aDistY - nH * 0.34, nr * 0.26, nH * 0.20, 0, 0, TAU); X.fill();
 
     X.restore();
   }

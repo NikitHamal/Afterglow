@@ -1,41 +1,17 @@
-// Arm IK feasibility: bone offsets (lengths) + elbow hinge-axis probe.
-(function () {
-  var out = { arms: {}, probe: null };
-  function wpos(obj) {
-    obj.updateWorldMatrix(true, false);
-    var v = new THREE.Vector3();
-    obj.getWorldPosition(v);
-    return [+v.x.toFixed(3), +v.y.toFixed(3), +v.z.toFixed(3)];
-  }
-  try {
-    var E = GLB_STORE.goatchan, bones = {};
-    E.model.traverse(function (c) { if (c.isBone && c.name) bones[c.name] = c; });
-    function find(clean) {
-      var ks = Object.keys(bones);
-      for (var i = 0; i < ks.length; i++) if (ks[i].replace(/[._]/g, '') === clean) return bones[ks[i]];
-      return null;
-    }
-    ['L', 'R'].forEach(function (s) {
-      var sh = find('腕' + s), el = find('ひじ' + s), wr = find('手首' + s);
-      out.arms[s] = {
-        elbowOffset: [el.position.x, el.position.y, el.position.z].map(function (v) { return +v.toFixed(4); }),
-        wristOffset: [wr.position.x, wr.position.y, wr.position.z].map(function (v) { return +v.toFixed(4); }),
-        elbowE: [+el.rotation.x.toFixed(3), +el.rotation.y.toFixed(3), +el.rotation.z.toFixed(3)]
-      };
-    });
-    // hinge probe: rotate elbow per-axis, watch wrist displacement
-    var el = find('ひじL'), wr = find('手首L');
-    var p0 = wpos(wr), res = {};
-    ['x', 'y', 'z'].forEach(function (ax) {
-      var save = el.rotation[ax];
-      el.rotation[ax] = save + 0.4;
-      el.updateWorldMatrix(true, true);
-      var p = wpos(wr);
-      res['plus_' + ax] = [+(p[0] - p0[0]).toFixed(3), +(p[1] - p0[1]).toFixed(3), +(p[2] - p0[2]).toFixed(3)];
-      el.rotation[ax] = save;
-    });
-    el.updateWorldMatrix(true, true);
-    out.probe = { disp: res, restored: wpos(wr), p0: p0 };
-  } catch (err) { out.err = String((err && err.message) || err); }
-  return out;
-})()
+const FPV_CAM={cx:640,topY:940,depthK:-650,k:840,kpad:0.64,dOff:0.25,eyeH:0.30};
+const P=(u,d,h)=>{const dd=Math.max(0.02,d-FPV_CAM.dOff);const sc=FPV_CAM.k/(dd+FPV_CAM.kpad);
+  return [FPV_CAM.cx+u*sc,FPV_CAM.topY+dd*FPV_CAM.depthK+(FPV_CAM.eyeH-h)*sc,sc];};
+const B={shoulder:1.46,hip:0.86,mon:0.92,lift:0.15,shHalf:0.168};
+const bdy=1.009;
+console.log('--- CURRENT arm code (elD/haD go BEYOND the shoulder) ---');
+let el=P(0.255*bdy, B.shoulder+0.20, B.lift-0.055);
+let ha=P(0.205*bdy, B.shoulder+0.40, B.lift-0.045);
+console.log('shoulder', P(B.shHalf*bdy,B.shoulder,B.lift).map(v=>v.toFixed(0)).join(','));
+console.log('elbow   ', el.map(v=>v.toFixed(0)).join(','), '  <-- y should be positive');
+console.log('wrist   ', ha.map(v=>v.toFixed(0)).join(','), '  <-- OFF SCREEN TOP');
+console.log('\n--- PROPOSED: arms run TOWARD the lens (down her body) ---');
+el=P(0.232*bdy, B.shoulder-0.30, B.lift-0.075);
+ha=P(0.212*bdy, B.shoulder-0.56, B.lift-0.065);
+console.log('elbow   ', el.map(v=>v.toFixed(0)).join(','));
+console.log('wrist   ', ha.map(v=>v.toFixed(0)).join(','));
+console.log('hipR    ', P(B.hipHalf?0.151:bdy*0.15,B.hip,B.lift).map(v=>v.toFixed(0)).join(','));
