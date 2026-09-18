@@ -33,3 +33,5 @@ sdl-src/
 *.keystore
 .gradle/
 .cxx/
+
+node_modules/

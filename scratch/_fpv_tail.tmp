@@ -1,0 +1,390 @@
+
+/* ============================================================
+   HIS FOREARMS & HANDS: PHYSICAL INTERACTION & BREAST KNEADING
+   ============================================================ */
+let fpvSmL = { x: 0, y: 0, v: '', ok: false };
+let fpvSmR = { x: 0, y: 0, v: '', ok: false };
+
+function fpvSmTo(smObj, tx, ty){
+  if(!smObj.ok || smObj.v !== G.view){
+    smObj.x = tx; smObj.y = ty; smObj.v = G.view; smObj.ok = true;
+  } else {
+    smObj.x = lerp(smObj.x, tx, 0.22);
+    smObj.y = lerp(smObj.y, ty, 0.22);
+  }
+  return [smObj.x, smObj.y];
+}
+
+function drawFPVKnead(hx, hy, rub, small){
+  // Fingertip fan + circular motion streaks + tissue compression waves
+  const nf = small ? 2 : 3;
+  X.fillStyle = '#b88255';
+  for(let i = 0; i < nf; i++){
+    const a = (small ? 0.6 : 0.52) + i * (small ? 0.7 : 0.52) + Math.sin(G.t * 9 + i) * 0.16;
+    X.beginPath();
+    X.ellipse(
+      hx + Math.cos(a) * (small ? 14 : 19),
+      hy + Math.sin(a) * (small ? 11 : 15),
+      small ? 5.5 : 7.5,
+      small ? 3.8 : 4.8,
+      a, 0, TAU
+    );
+    X.fill();
+    // Fingernails
+    X.fillStyle = 'rgba(255,235,225,0.7)';
+    X.beginPath();
+    X.arc(hx + Math.cos(a) * (small ? 15 : 20), hy + Math.sin(a) * (small ? 12 : 16), 1.2, 0, TAU);
+    X.fill();
+    X.fillStyle = '#b88255';
+  }
+
+  // Pressure arc highlights
+  X.strokeStyle = `rgba(255,225,205,${0.34 * rub})`;
+  X.lineWidth = 2.6;
+  X.beginPath();
+  X.ellipse(hx, hy, small ? 24 : 42, small ? 22 : 40, 0, G.t * 9, G.t * 9 + 1.8);
+  X.stroke();
+
+  // Arousal ripple waves expanding from point of contact
+  for(let i = 0; i < 2; i++){
+    const u = ((G.t * 1.6 + i * 0.5) % 1);
+    X.strokeStyle = `rgba(255,145,170,${(1 - u) * 0.35 * rub})`;
+    X.lineWidth = 2.0;
+    X.beginPath();
+    X.ellipse(hx, hy, (small ? 11 : 18) + u * (small ? 28 : 46), (small ? 10 : 16) + u * (small ? 26 : 42), 0, 0, TAU);
+    X.stroke();
+  }
+}
+
+function drawFPVHands(br){
+  const rub = G.rub || 0, kiss = G.kiss || 0, zone = (G.rubZone || 0) | 0;
+  const jig = (G.breast ? G.breast.p : 0) * 0.95;
+  const bounce = (G.depth || 0) * 8 + (G.impact || 0) * 6;
+  const bsz = 0.72 + (G.char ? G.char.breastSize : 0.45) * 0.62;
+  const bdy = 0.82 + (G.char ? G.char.bodyScale : 0.45) * 0.42;
+
+  const LB = [640 - (30 * bdy + bsz * 4.5), 336 + br * 0.65 + jig * 0.58 + bounce * 0.4];
+  const RB = [640 + (30 * bdy + bsz * 4.5), 336 + br * 0.65 + jig * 0.58 + bounce * 0.4];
+  const LOW = [640, 544 + bounce];
+
+  const lWork = zone === 0 || zone === 1;
+  const rWork = zone === 0 || zone === 2;
+  const lowWork = zone === 3;
+  const embracing = kiss >= 0.5;
+  const active = rub > 0.12 && !embracing;
+
+  // Left Forearm entering from bottom left corner
+  const lBase = [170, 755], lEl = [370, 626];
+  let lT = [495, 536 + (G.depth || 0) * 6];
+  if(active && lWork){
+    lT = [LB[0] + Math.sin(G.t * 9 + Math.PI) * 12 * rub, LB[1] + Math.cos(G.t * 7.4 + Math.PI) * 10 * rub];
+  }
+  let lHand = fpvSmTo(fpvSmL, lT[0], lT[1]);
+  lHand = [lerp(lHand[0], 568, kiss), lerp(lHand[1], 248, kiss)];
+
+  const HT = himT();
+  limbS(lBase, lEl, 30, 24, HT, { belly: 1.08, aoA: 0.3 });
+  limbS(lEl, lHand, 22, 17, HT, { belly: 1.05 });
+  handS(lHand[0], lHand[1], Math.PI - 0.6, 1.32, HT, { curl: 0.62, spread: 0.3 });
+
+  // Right Forearm entering from bottom right corner
+  const rBase = [1110, 755], rEl = [910, 626];
+  let rT = [785, 536 + (G.depth || 0) * 6];
+  if(active){
+    if(rWork) rT = [RB[0] + Math.sin(G.t * 9) * 12 * rub, RB[1] + Math.cos(G.t * 7.4) * 10 * rub];
+    else if(lowWork) rT = [LOW[0] + Math.sin(G.t * 11) * 7.5 * rub, LOW[1] + Math.cos(G.t * 9) * 6.5 * rub];
+  }
+  let rHand = fpvSmTo(fpvSmR, rT[0], rT[1]);
+  rHand = [lerp(rHand[0], 712, kiss), lerp(rHand[1], 248, kiss)];
+
+  limbS(rBase, rEl, 30, 24, HT, { belly: 1.08, aoA: 0.3 });
+  limbS(rEl, rHand, 22, 17, HT, { belly: 1.05 });
+  handS(rHand[0], rHand[1], Math.PI + 0.6, 1.32, HT, { curl: 0.62, spread: 0.3 });
+
+  if(!active) return;
+
+  // Active touch FX & breast displacement
+  X.save();
+  X.globalAlpha = clamp(rub * 1.4, 0, 1);
+  if(lWork){
+    drawFPVKnead(lHand[0], lHand[1], rub, false);
+    if(R() < 0.025 * rub) G.hearts.push({ x: 592 + rr(-15, 15), y: 460 + rr(-8, 8), vy: -rr(20, 36), ph: R() * TAU, life: 1.2, s: rr(0.4, 0.7) });
+  }
+  if(rWork){
+    drawFPVKnead(rHand[0], rHand[1], rub, false);
+    if(R() < 0.025 * rub) G.hearts.push({ x: 688 + rr(-15, 15), y: 460 + rr(-8, 8), vy: -rr(20, 36), ph: R() * TAU, life: 1.2, s: rr(0.4, 0.7) });
+  }
+  if(lowWork){
+    drawFPVKnead(rHand[0], rHand[1], rub, true);
+    if(R() < 0.035 * rub) G.hearts.push({ x: 640 + rr(-12, 12), y: 695 + rr(-8, 8), vy: -rr(20, 36), ph: R() * TAU, life: 1.2, s: rr(0.4, 0.7) });
+  }
+  X.restore();
+}
+
+/* ============================================================
+   THE SHAFT: TOWERING FORESHORTENED PERSPECTIVE & ENTRY SEAL
+   ============================================================ */
+function drawFPVShaft(){
+  const d = G.depth || 0;
+  const sway = Math.sin(G.t * 1.7) * 3.2;
+  let tipY, tipX = 640 + sway;
+
+  if(G.state === 'climax' || G.state === 'finish'){
+    tipY = 542 + Math.sin(G.t * 30) * 2;
+  } else {
+    // Tip meets the introitus early; deeper thrusts sink it just past the seal
+    tipY = lerp(652, 552, clamp(d / 0.35, 0, 1)) - 6 * clamp((d - 0.35) / 0.65, 0, 1);
+  }
+
+  const wb = 27, wt = 17, baseY = 794;
+  const pu = 1 + 0.36 * (G.shaftPulse || 0);
+
+  // Testicles with realistic skin folds & weighted sag when pulled back
+  if(d < 0.55 && G.state !== 'finish'){
+    const bs = 1 - d * 0.88;
+    X.fillStyle = sg(695, 775, '#c58a66', '#a56840');
+    X.beginPath(); X.ellipse(604, 762, 25 * bs, 21 * bs, 0.22, 0, TAU); X.fill();
+    X.fillStyle = sg(695, 775, '#ce8f69', '#a56840');
+    X.beginPath(); X.ellipse(676, 762, 23 * bs, 20 * bs, -0.22, 0, TAU); X.fill();
+
+    // Scrotal median raphe
+    X.strokeStyle = 'rgba(85,48,28,0.38)';
+    X.lineWidth = 2.0;
+    X.beginPath();
+    X.moveTo(640, 752); X.quadraticCurveTo(640, 768, 640, 780);
+    X.stroke();
+  }
+
+  // His lower abdomen entering the frame so the shaft connects to a body
+  X.fillStyle = sg(640, 716, '#d8976a', '#9a5f3a');
+  X.beginPath(); X.ellipse(640, 762, 72, 48, 0, 0, TAU); X.fill();
+  X.save();
+  X.globalCompositeOperation = 'multiply';
+  shade(640, 742, 46, 14, 'rgba(85,45,24,0.30)', 0);
+  X.restore();
+
+  // Foreshortened cylindrical shaft body with realistic skin tones
+  const cg = X.createLinearGradient(640 - wb, 0, 640 + wb, 0);
+  cg.addColorStop(0, '#a56840');
+  cg.addColorStop(0.24, '#d18f60');
+  cg.addColorStop(0.48, '#eeb488');
+  cg.addColorStop(0.72, '#d69364');
+  cg.addColorStop(1, '#925c38');
+
+  X.beginPath();
+  X.moveTo(640 - wb, baseY);
+  X.quadraticCurveTo(640 - wb + 6, (baseY + tipY) / 2, tipX - wt * pu, tipY + 8);
+  X.quadraticCurveTo(tipX, tipY - 2, tipX + wt * pu, tipY + 8);
+  X.quadraticCurveTo(640 + wb - 6, (baseY + tipY) / 2, 640 + wb, baseY);
+  X.closePath();
+  X.fillStyle = cg;
+  X.fill();
+
+  // Cylindrical shading: ambient occlusion underside & soft highlight
+  X.save();
+  X.globalCompositeOperation = 'multiply';
+  shade(640 - 17, (baseY + tipY) / 2, 12, Math.abs(baseY - tipY) / 2, 'rgba(85,45,24,0.25)', 0);
+  X.restore();
+
+  X.save();
+  X.globalCompositeOperation = 'soft-light';
+  shade(640 - 4, (baseY + tipY) / 2, 14, Math.abs(baseY - tipY) / 2, 'rgba(255,230,200,0.38)', 0);
+  X.restore();
+
+  // Tight fleshy contact ring sealing the shaft at the introitus
+  const contactA = 0.18 + 0.26 * clamp(d, 0, 1);
+  X.save();
+  X.globalCompositeOperation = 'multiply';
+  shade(640, 556, 30 - 8 * clamp(d, 0, 1), 10, `rgba(22,6,10,${contactA})`, 0);
+  X.restore();
+
+  // Lubrication meniscus glinting at the entrance
+  if((G.ar || 0) > 35){
+    X.strokeStyle = `rgba(255,245,240,${0.10 + 0.14 * ((G.ar || 0) / 100)})`;
+    X.lineWidth = 2.4;
+    X.beginPath();
+    X.ellipse(640, 556, 24, 8, 0, 0, TAU);
+    X.stroke();
+  }
+
+  // Prominent branched dorsal veins pulsing with arousal
+  X.strokeStyle = 'rgba(135,75,55,0.40)';
+  X.lineWidth = 3.2;
+  X.lineCap = 'round';
+  X.beginPath();
+  X.moveTo(632, 765);
+  X.quadraticCurveTo(626, (765 + tipY) / 2 + 18, 635, tipY + 48);
+  X.stroke();
+
+  X.strokeStyle = 'rgba(135,75,55,0.28)';
+  X.lineWidth = 2.1;
+  X.beginPath();
+  X.moveTo(630, 705);
+  X.quadraticCurveTo(642, 682, 648, 658);
+  X.stroke();
+
+  // Glans, coronal ridge & urethral slit (visible during withdrawal or climax)
+  if(tipY > 580 || G.state === 'climax'){
+    // Coronal ridge flare
+    X.fillStyle = '#c7846f';
+    X.beginPath();
+    X.ellipse(tipX, tipY + 8, (wt + 3.0) * pu, 7.5 * pu, 0, 0, TAU);
+    X.fill();
+
+    // Glans body
+    const gg = X.createLinearGradient(tipX - wt, 0, tipX + wt, 0);
+    gg.addColorStop(0, '#c7846f');
+    gg.addColorStop(0.45, '#e9aa8f');
+    gg.addColorStop(1, '#b67562');
+    X.fillStyle = gg;
+    X.beginPath();
+    X.ellipse(tipX, tipY - 4, (wt - 0.5) * pu, 16 * pu, 0, 0, TAU);
+    X.fill();
+
+    // Urethral meatus
+    X.strokeStyle = 'rgba(115,55,50,0.65)';
+    X.lineWidth = 2.2;
+    X.beginPath();
+    X.moveTo(tipX, tipY - 17);
+    X.lineTo(tipX, tipY - 8);
+    X.stroke();
+
+    // Specular highlight on moist glans apex
+    X.fillStyle = 'rgba(255,255,255,0.35)';
+    X.beginPath();
+    X.ellipse(tipX - 6, tipY - 8, 3.8, 7.5, -0.2, 0, TAU);
+    X.fill();
+  }
+
+  // Glistening viscous wet coating along exposed shaft
+  if((G.ar || 0) > 26){
+    X.save();
+    X.globalCompositeOperation = 'screen';
+    X.strokeStyle = 'rgba(255,255,255,0.32)';
+    X.lineWidth = 4.2;
+    X.beginPath();
+    X.moveTo(622, 745);
+    X.quadraticCurveTo(627, (745 + tipY) / 2, tipX - 10, tipY + 12);
+    X.stroke();
+    X.restore();
+  }
+}
+
+/* ============================================================
+   PARTICLES: RECTILINEAR VISCOUS DRIPS, SWEAT & CLIMAX JETS
+   ============================================================ */
+function drawFPVFluids(){
+  // Drips running down sheets from her hips
+  (G.drips || []).forEach(d => {
+    const y = lerp(560, 655, d.p);
+    const x = 640 + (d.x - 648) * 0.5 + Math.sin(d.p * 9.5 + (d.j || 0)) * 1.6;
+
+    X.fillStyle = 'rgba(255,248,244,0.72)';
+    X.beginPath(); X.ellipse(x, y, 2.6, 4.2, 0, 0, TAU); X.fill();
+    X.fillStyle = 'rgba(255,255,255,0.95)';
+    X.beginPath(); X.arc(x - 0.7, y - 1.2, 1.0, 0, TAU); X.fill();
+
+    // Trailing thread
+    X.strokeStyle = 'rgba(255,248,244,0.32)';
+    X.lineWidth = 1.3;
+    X.beginPath();
+    X.moveTo(x, y - 4); X.lineTo(x, y - 10);
+    X.stroke();
+  });
+
+  // Wetness glisten specks clustered near entrance
+  (G.glisten || []).forEach(g => {
+    X.fillStyle = `rgba(255,250,245,${g.a * 0.65})`;
+    X.beginPath();
+    X.ellipse(640 + (g.x - 640) * 0.3, 556 + (g.y - 546) * 0.4, 2.8, 1.8, 0, 0, TAU);
+    X.fill();
+  });
+
+  // Ballistic climax jets
+  (G.jets || []).forEach(j => {
+    if(j.view !== 'fpv') return;
+    const spd = Math.hypot(j.vx, j.vy);
+    const a = Math.atan2(j.vy, j.vx);
+    const al = clamp(j.life * 2.4, 0, 1);
+
+    X.fillStyle = `rgba(255,250,246,${0.85 * al})`;
+    X.beginPath(); X.ellipse(j.x, j.y, 3.5 + spd * 0.007, 2.2, a, 0, TAU); X.fill();
+    X.fillStyle = `rgba(255,250,246,${0.35 * al})`;
+    X.beginPath(); X.ellipse(j.x - Math.cos(a) * 8, j.y - Math.sin(a) * 8, 2.2, 1.5, a, 0, TAU); X.fill();
+  });
+
+  // Perspiration beads on face and chest
+  (G.sweat || []).forEach((s, i) => {
+    const a = 0.45 * s.life;
+    X.fillStyle = `rgba(235,248,255,${a})`;
+    if(i % 2){
+      X.beginPath(); X.ellipse(640 + (s.x - 318) * 1.5, 140 + (s.y - 462) * 0.5, 1.5, 2.4, 0, 0, TAU); X.fill();
+    } else {
+      X.beginPath(); X.ellipse(640 + (s.x - 318) * 2.2, 300 + (s.y - 462) * 1.2, 1.5, 2.4, 0, 0, TAU); X.fill();
+    }
+  });
+
+  // Euphoric floating hearts
+  (G.hearts || []).forEach(h => {
+    X.fillStyle = `rgba(255,105,140,${0.58 * Math.min(1, h.life)})`;
+    heartPath(640 + (h.x - 655) + Math.sin(h.ph) * 8, 340 + (h.y - 485) * 0.8, h.s);
+    X.fill();
+  });
+}
+
+/* ============================================================
+   MAIN FPV COMPOSITOR & CINEMATIC CAMERA SYSTEM
+   ============================================================ */
+function drawFPV(){
+  drawFPVRoom();
+
+  const E = herExpression();
+  const br = Math.sin((G.t || 0) * TAU * (0.16 + (G.pleasure || 0) * 0.004)) * 2.2;
+
+  // Camera targets: full (1.0x), breasts (1.65x), hips/the spot (1.78x), face (1.85x)
+  let tZoom = 1.0, tPanX = 640, tPanY = 360;
+  if(G.fpvFocus === 'breasts'){ tZoom = 1.65; tPanX = 640; tPanY = 348; }
+  else if(G.fpvFocus === 'hips'){ tZoom = 1.78; tPanX = 640; tPanY = 548; }
+  else if(G.fpvFocus === 'face'){ tZoom = 1.85; tPanX = 640; tPanY = 172; }
+
+  G.fpvZoom = lerp(G.fpvZoom || 1.0, tZoom, 0.08);
+  G.fpvPanX = lerp(G.fpvPanX !== undefined ? G.fpvPanX : 640, tPanX, 0.08);
+  G.fpvPanY = lerp(G.fpvPanY !== undefined ? G.fpvPanY : 360, tPanY, 0.08);
+
+  const curZ = G.fpvZoom, px = G.fpvPanX, py = G.fpvPanY;
+
+  // POV Camera Dynamics: respiration sway + physical thrust tremor + tachycardia pulse
+  const swayX = Math.sin((G.t || 0) * 0.9) * 2.6 + (G.tired ? Math.sin((G.t || 0) * 7.5) * 1.3 : 0);
+  const swayY = Math.sin((G.t || 0) * TAU * 0.16) * 2.1 + (G.kiss || 0) * 10 - (G.depth || 0) * 4.2;
+
+  let beat = 0;
+  if((G.pleasure || 0) > 72){
+    const bpm = 74 + (G.pleasure - 72) * 1.25 + (G.orgasms || 0) * 8.5;
+    beat = Math.max(0, Math.sin((G.t || 0) * bpm * Math.PI / 30)) * 0.95;
+  }
+
+  X.save();
+  // Apply zoom centered on focus point with visceral motion
+  X.translate(640, 360);
+  X.scale(curZ, curZ);
+  X.translate(-px + swayX + beat * 0.75, -py + swayY + beat * 0.55);
+
+  drawFPVBody(E, br);
+  drawFPVHands(br);
+  drawFPVShaft();
+  drawFPVHead(E);
+  drawFPVFluids();
+
+  X.restore();
+
+  // Out-of-focus blurred foreground framing: your broad muscular shoulders leaning in
+  X.save();
+  X.fillStyle = 'rgba(145,85,55,0.18)';
+  X.beginPath(); X.ellipse(60, 762, 230, 125, 0.32, 0, TAU); X.fill();
+  X.beginPath(); X.ellipse(1220, 762, 230, 125, -0.32, 0, TAU); X.fill();
+
+  X.fillStyle = 'rgba(10,3,6,0.38)';
+  X.beginPath(); X.ellipse(38, 785, 210, 95, 0.32, 0, TAU); X.fill();
+  X.beginPath(); X.ellipse(1242, 785, 210, 95, -0.32, 0, TAU); X.fill();
+  X.restore();
+}

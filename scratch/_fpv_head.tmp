@@ -1,0 +1,552 @@
+// Afterglow — module: fpv (loaded by index.html)
+// Ultra-High-Fidelity First-Person Perspective Engine
+'use strict';
+
+/* ============================================================
+   BED-SPACE PERSPECTIVE PROJECTION
+   ------------------------------------------------------------
+   The FPV camera hovers just above and behind her spread knees,
+   looking up the length of her supine body. Everything she is made of
+   is placed in bed space and projected, so the near thighs loom large,
+   the pelvis anchors the lower third, the torso recedes, and the head
+   sits small and far away.
+
+     u = lateral offset,  metres, +u to screen right
+     d = distance along the bed away from the lens  (metres)
+     h = height above the mattress, metres (0 = flat on the sheet)
+
+   Screen-X is the lateral term divided by depth; screen-Y is driven by
+   depth (so the far end of the body rides up the frame) plus a height
+   correction (so a raised knee lifts and a sunken hip drops).
+   ============================================================ */
+const FPV_CAM = {
+  cx: 640,        // screen centre of the lens axis
+  topY: 660,      // screen y of a point at d = 0, h = 0
+  depthK: -280,   // px of screen-rise per metre of depth (negative = recedes up)
+  k: 820,         // focal length, px·m  (scale = k / (d + kpad))
+  kpad: 0.95,     // softening term so the near field never explodes
+  eyeH: 0.34      // camera eye height above the mattress, metres
+};
+function fpvProj(u, d, h){
+  const sc = FPV_CAM.k / (d + FPV_CAM.kpad);
+  const y  = FPV_CAM.topY + d * FPV_CAM.depthK + (FPV_CAM.eyeH - h) * sc;
+  return [FPV_CAM.cx + u * sc, y, sc];
+}
+// scale only (cheap for sizing strokes / flourishes at a given depth)
+function fpvS(d){ return FPV_CAM.k / (d + FPV_CAM.kpad); }
+
+/* Skeleton of her supine body in bed space. Numbers are metres and were
+   tuned against the 1280x720 frame so the silhouette fills it. Her head is
+   toward d≈1.76, her feet toward the lens at d≈0.30. */
+const FPV_BODY = {
+  footFwd:  0.30,   // her feet (nearest to the lens)
+  ankle:    0.40,
+  knee:     0.62,
+  thighMid: 0.74,
+  hip:      0.88,
+  mons:     0.94,
+  navel:    1.06,
+  waist:    1.10,
+  ribs:     1.28,
+  sternum:  1.34,
+  shoulder: 1.48,
+  neck:     1.56,
+  chin:     1.62,
+  brow:     1.68,
+  crown:    1.76,
+  hipHalf:  0.19,   // half-width of the pelvis
+  waistHalf:0.15,
+  ribHalf:  0.20,
+  shHalf:   0.21,
+  headHalf: 0.092,
+  kneeSpread: 0.44, // half-spread of the knees
+  footSpread: 0.30,
+  lift:     0.15    // default body-plane height above the sheet
+};
+
+/* ============================================================
+   FIRST-PERSON KINEMATICS & SENSORY SHIVER
+   ============================================================ */
+function fpvTremor(){
+  const org = G.state === 'orgasm' ? Math.sin(Math.PI * clamp((G.orgT || 0) / 5.2, 0, 1)) : 0;
+  const highAr = clamp(((G.ar || 0) - 60) / 40, 0, 1);
+  const shiver = org * (Math.sin(G.t * 38) * 0.65 + Math.sin(G.t * 54) * 0.35 + Math.cos(G.t * 19) * 0.2) * 5.2;
+  const arousalTremor = highAr * (Math.sin(G.t * 22) * 0.15 + Math.cos(G.t * 31) * 0.1) * 2.0;
+  return shiver + arousalTremor;
+}
+
+/* ============================================================
+   ENVIRONMENT: CINEMATIC BOUDOIR & RECEDING PERSPECTIVE BED
+   ============================================================ */
+function drawFPVRoom(){
+  // Atmospheric background: deep midnight burgundy & ambient shadows
+  X.fillStyle = '#0f090d';
+  X.fillRect(0, 0, W, H);
+
+  // Far wall & ceiling with soft perspective corner shadow
+  const wallG = X.createLinearGradient(0, 0, 0, 300);
+  wallG.addColorStop(0, '#1a1016');
+  wallG.addColorStop(0.7, '#130c11');
+  wallG.addColorStop(1, '#0c070a');
+  X.fillStyle = wallG;
+  X.fillRect(0, 0, W, 280);
+
+  // Far window above headboard spilling cool moonlight
+  const wx = 960, wy = 24, ww = 180, wh = 140;
+  X.fillStyle = 'rgba(120,145,170,0.06)';
+  X.fillRect(wx, wy, ww, wh);
+  const moonG = X.createRadialGradient(wx + 130, wy + 35, 6, wx + 130, wy + 35, 65);
+  moonG.addColorStop(0, 'rgba(230,242,255,0.22)');
+  moonG.addColorStop(0.4, 'rgba(180,210,240,0.06)');
+  moonG.addColorStop(1, 'rgba(0,0,0,0)');
+  X.save(); X.globalCompositeOperation = 'screen';
+  X.fillStyle = moonG;
+  X.beginPath(); X.arc(wx + 130, wy + 35, 65, 0, TAU); X.fill();
+  X.fillStyle = 'rgba(235,245,255,0.85)';
+  X.beginPath(); X.arc(wx + 130, wy + 35, 16, 0, TAU); X.fill();
+  X.restore();
+
+  // Window mullions
+  X.strokeStyle = 'rgba(25,16,22,0.85)';
+  X.lineWidth = 4;
+  X.strokeRect(wx, wy, ww, wh);
+  X.beginPath();
+  X.moveTo(wx + ww / 2, wy); X.lineTo(wx + ww / 2, wy + wh);
+  X.moveTo(wx, wy + wh * 0.45); X.lineTo(wx + ww, wy + wh * 0.45);
+  X.stroke();
+
+  // Bedside lamp (warm left illumination casting directional golden light)
+  const lx = 180, ly = 110;
+  const lampG = X.createRadialGradient(lx, ly, 8, lx, ly, 460);
+  lampG.addColorStop(0, 'rgba(255,195,125,0.28)');
+  lampG.addColorStop(0.35, 'rgba(255,165,95,0.12)');
+  lampG.addColorStop(0.7, 'rgba(255,140,80,0.03)');
+  lampG.addColorStop(1, 'rgba(0,0,0,0)');
+  X.save(); X.globalCompositeOperation = 'screen';
+  X.fillStyle = lampG;
+  X.beginPath(); X.arc(lx, ly, 460, 0, TAU); X.fill();
+  X.restore();
+
+  // Lamp fixture silhouette
+  X.fillStyle = '#2d1820';
+  X.beginPath();
+  X.moveTo(148, 134); X.lineTo(212, 134); X.lineTo(198, 98); X.lineTo(162, 98);
+  X.closePath(); X.fill();
+  X.fillStyle = 'rgba(255,215,145,0.7)';
+  X.beginPath();
+  X.moveTo(162, 100); X.lineTo(198, 100); X.lineTo(206, 132); X.lineTo(154, 132);
+  X.closePath(); X.fill();
+
+  // Mattress & crumpled satin sheets in dramatic perspective receding from camera
+  const sheetG = X.createLinearGradient(0, 260, 0, H);
+  sheetG.addColorStop(0, '#421d28');
+  sheetG.addColorStop(0.35, '#2e131b');
+  sheetG.addColorStop(0.75, '#1e0a11');
+  sheetG.addColorStop(1, '#11050a');
+  X.fillStyle = sheetG;
+  X.fillRect(0, 250, W, H - 250);
+
+  // Dynamic tension wrinkles radiating from her hips, back, and thighs
+  const bounce = (G.depth || 0) * 8 + (G.impact || 0) * 6;
+  X.save();
+  X.globalCompositeOperation = 'multiply';
+  X.strokeStyle = 'rgba(12,3,6,0.52)';
+  X.lineWidth = 3.2;
+  for(let i = 0; i < 7; i++){
+    const y = 380 + i * 46;
+    X.beginPath();
+    X.moveTo(70 + ((i * 61) % 120), y);
+    X.bezierCurveTo(460, y - 26 + ((i * 29) % 24) + bounce * 0.4, 820, y + 16 - ((i * 19) % 20), 1210 - ((i * 53) % 140), y);
+    X.stroke();
+  }
+  X.restore();
+
+  // Satin highlight luster catching bedside lamp
+  X.save();
+  X.globalCompositeOperation = 'soft-light';
+  X.strokeStyle = 'rgba(255,220,195,0.22)';
+  X.lineWidth = 4.5;
+  for(let i = 0; i < 5; i++){
+    const y = 390 + i * 50;
+    X.beginPath();
+    X.moveTo(100 + ((i * 53) % 90), y - 6);
+    X.bezierCurveTo(520, y - 28 + ((i * 23) % 20), 760, y + 8, 1160, y - 4);
+    X.stroke();
+  }
+  X.restore();
+
+  // Pillow under her head (dim bedding in lamplight, not a glow)
+  const pilG = X.createLinearGradient(640 - 170, 120, 640 + 170, 214);
+  pilG.addColorStop(0, '#43332a');
+  pilG.addColorStop(0.35, '#382b22');
+  pilG.addColorStop(0.75, '#281e17');
+  pilG.addColorStop(1, '#1d1611');
+  X.fillStyle = pilG;
+  X.beginPath();
+  X.ellipse(640, 170, 170, 44, -0.01, 0, TAU);
+  X.fill();
+
+  // Head depression shadow
+  X.save();
+  X.globalCompositeOperation = 'multiply';
+  const headIndent = X.createRadialGradient(640, 158, 6, 640, 158, 44);
+  headIndent.addColorStop(0, 'rgba(80,55,40,0.35)');
+  headIndent.addColorStop(0.65, 'rgba(90,60,45,0.14)');
+  headIndent.addColorStop(1, 'rgba(0,0,0,0)');
+  X.fillStyle = headIndent;
+  X.beginPath();
+  X.ellipse(640, 158, 70, 22, 0, 0, TAU);
+  X.fill();
+  X.restore();
+
+  // Soft body contact ambient occlusion on sheets
+  X.save();
+  X.globalCompositeOperation = 'multiply';
+  shade(640, 485 + bounce * 0.4, 210, 140, 'rgba(10,3,7,0.58)', 0);
+  X.restore();
+}
+
+/* ============================================================
+   HER HEAD: LOOKING UP AT PLAYER (FORESHORTENED, DEVOTIONAL)
+   ============================================================ */
+function drawFPVHead(E){
+  const breathe = Math.sin((G.t || 0) * TAU * 0.33) * 1.8;
+  const ks = 1 + (G.kiss || 0) * 0.12;
+  const hx = 640 + Math.sin((G.t || 0) * 0.5) * 2.2;
+  const hy = 148 + breathe * 0.45 + (G.pleasure || 0) * 0.025;
+  const hairCol = G.char ? G.char.hairColor : '#231318';
+
+  // Hair hugging the head — layered mass cradling it, no halo ring
+  hairMassS(hx, hy + 16, 80, 50, 0, hairCol);
+  X.save();
+  X.beginPath(); X.ellipse(hx, hy + 16, 80, 50, 0, 0, TAU); X.clip();
+  X.strokeStyle = skDark(hairCol, 0.45); X.lineWidth = 2.4; X.lineCap = 'round';
+  for(let i = 0; i < 5; i++){
+    X.beginPath();
+    X.moveTo(hx - 32 + i * 16, hy - 8);
+    X.quadraticCurveTo(hx - 52 + i * 26, hy + 24, hx - 70 + i * 35, hy + 58);
+    X.stroke();
+  }
+  X.globalCompositeOperation = 'soft-light';
+  shade(hx, hy + 2, 62, 20, 'rgba(255,235,220,0.20)', 0);
+  X.restore();
+
+  // Silky locks spilling down onto the pillow beside her neck
+  for(let i = 0; i < 6; i++){
+    const s = i < 3 ? -1 : 1, k = i % 3;
+    const bx = hx + s * (30 + k * 10), by = hy + 26 + k * 6;
+    const c1x = hx + s * (48 + k * 12), c1y = by + 26;
+    const c2x = hx + s * (56 + k * 14), c2y = by + 54;
+    const tx = hx + s * (50 + k * 14), ty = hy + 96 + k * 12;
+    tressS(bx, by, c1x, c1y, c2x, c2y, tx, ty, 13 - k * 2.2, 3, hairCol, 'rgba(255,200,210,0.14)');
+  }
+
+  X.save();
+  X.translate(hx, hy);
+  X.scale(ks, ks);
+  X.rotate(E.tilt * 0.35 + (G.nod || 0) * 0.1 + Math.sin((G.t || 0) * TAU * 0.33) * 0.015);
+
+  const fpvSk = getSkin();
+
+  // Neck: slim column with a gentle waist, SCM cords, suprasternal notch,
+  // and soft trapezius slopes melting into the clavicle (never a solid cone)
+  const nkTop = 30;
+  const neckPath = () => {
+    X.moveTo(-11, nkTop);
+    X.bezierCurveTo(-12.5, 44, -13, 56, -16, 68);
+    X.bezierCurveTo(-19, 78, -26, 84, -34, 88);
+    X.bezierCurveTo(-20, 99, 20, 99, 34, 88);
+    X.bezierCurveTo(26, 84, 19, 78, 16, 68);
+    X.bezierCurveTo(13, 56, 12.5, 44, 11, nkTop);
+    X.closePath();
+  };
+  X.beginPath(); neckPath();
+  const nkg = X.createLinearGradient(0, nkTop, 0, 92);
+  nkg.addColorStop(0, fpvSk.herSh); nkg.addColorStop(0.45, fpvSk.her); nkg.addColorStop(1, fpvSk.herSh);
+  X.fillStyle = nkg; X.fill();
+  skClipIn(neckPath, () => {
+    // throat shadow tucked under the jaw
+    fAO(0, nkTop + 3, 13, 7, 0.42);
+    // sternocleidomastoid cords running down each side
+    fSh(-8, 52, 3.2, 16, 'rgba(175,100,80,0.22)', 0.10);
+    fSh(8, 52, 3.2, 16, 'rgba(175,100,80,0.22)', -0.10);
+    // one slim front highlight instead of a full-column fill
+    fHi(0, 58, 4.5, 15, 'rgba(255,240,225,0.22)');
+    // suprasternal notch dip at the base
+    fAO(0, 90, 6, 4, 0.35);
+    // trapezius slopes softening outward into the shoulders
+    fSh(-27, 86, 12, 7, 'rgba(175,100,80,0.16)', 0.5);
+    fSh(27, 86, 12, 7, 'rgba(175,100,80,0.16)', -0.5);
+  });
+
+  // Jawline & chin foreshortened looking upward
+  X.fillStyle = sg(-52, 14, fpvSk.her, fpvSk.herSh);
+  X.beginPath();
+  X.ellipse(0, -2, 44, 49, 0, 0, TAU);
+  X.fill();
+  X.beginPath();
+  X.moveTo(-40, -8);
+  X.bezierCurveTo(-36, 35, -12, 46, 0, 47);
+  X.bezierCurveTo(12, 46, 36, 35, 40, -8);
+  X.closePath();
+  X.fill();
+
+  // Cheekbone, jaw hollow, and bridge shading (kept sheer so skin stays luminous)
+  X.save();
+  X.globalCompositeOperation = 'multiply';
+  shade(26, 12, 22, 14, 'rgba(170,95,72,0.17)', 0.38);
+  shade(-26, 12, 22, 14, 'rgba(170,95,72,0.17)', -0.38);
+  shade(0, 42, 26, 11, 'rgba(170,95,72,0.16)', 0);
+  X.restore();
+
+  // Soft light highlight along forehead & chin tip
+  X.save();
+  X.globalCompositeOperation = 'soft-light';
+  shade(0, -28, 18, 28, 'rgba(255,240,225,0.42)', 0);
+  shade(0, 40, 10, 6, 'rgba(255,240,225,0.35)', 0);
+  X.restore();
+
+  // Eyes: gazing directly up into the player's eyes with moist specular reflections
+  const Eo = E.eye, roll = E.rolled;
+  const eyeCol = G.char ? G.char.eyeColor : '#4a2c33';
+  for(const s of [-1, 1]){
+    const ex = s * 17.5, ey = -9;
+    const openness = Eo * (1 - roll * 0.5);
+
+    // Eye socket shadow
+    X.save();
+    X.globalCompositeOperation = 'multiply';
+    shade(ex, ey + 1, 12, 8, 'rgba(145,85,75,0.18)', s * 0.08);
+    X.restore();
+
+    if(openness > 0.12){
+      // Sclera with soft pink vascularity at corners
+      X.beginPath();
+      X.moveTo(ex - 10.5, ey + 1);
+      X.quadraticCurveTo(ex, ey - 7.5 * openness - 2, ex + 10.5, ey + 1);
+      X.quadraticCurveTo(ex, ey + 6.5 * openness, ex - 10.5, ey + 1);
+      X.closePath();
+      X.fillStyle = '#faf6f3';
+      X.fill();
+
+      // Caruncle
+      X.fillStyle = 'rgba(215,145,140,0.45)';
+      X.beginPath();
+      X.ellipse(ex - s * 9, ey + 1, 2.2, 1.8, 0, 0, TAU);
+      X.fill();
+
+      // Iris looking upward at player
+      const irisY = ey - 2.2 * openness - (roll * 3.5);
+      const irisX = ex + roll * 3.8;
+      const irisR = 5.2 * Math.max(openness, 0.28);
+      X.fillStyle = eyeCol;
+      X.beginPath();
+      X.arc(irisX, irisY, irisR, 0, TAU);
+      X.fill();
+
+      // Deep pupil
+      X.fillStyle = '#110609';
+      X.beginPath();
+      X.arc(irisX, irisY, irisR * 0.52, 0, TAU);
+      X.fill();
+
+      // Primary & secondary specular catchlights (reflecting bedroom lamp)
+      X.fillStyle = 'rgba(255,255,255,0.92)';
+      X.beginPath();
+      X.arc(irisX + 1.5, irisY - 1.8, 1.5, 0, TAU);
+      X.fill();
+      X.fillStyle = 'rgba(255,255,255,0.45)';
+      X.beginPath();
+      X.arc(irisX - 1.6, irisY + 1.2, 0.8, 0, TAU);
+      X.fill();
+
+      // Upper eyelid line & dense dark eyelashes
+      X.strokeStyle = 'rgba(46,20,26,0.96)';
+      X.lineWidth = 2.4;
+      X.beginPath();
+      X.moveTo(ex - 11, ey + 1);
+      X.quadraticCurveTo(ex, ey - 8 * openness - 2, ex + 11, ey + 1);
+      X.stroke();
+
+      // Individual lashes
+      X.lineWidth = 1.1;
+      for(let l = 0; l < 5; l++){
+        const t = l / 4;
+        const lx = ex + (-9 + t * 18);
+        const ly = ey - 6 * openness - Math.sin(t * Math.PI) * 2;
+        X.beginPath();
+        X.moveTo(lx, ly);
+        X.lineTo(lx + s * 1.5, ly - 3.8);
+        X.stroke();
+      }
+    } else {
+      // Eyelids closed in ecstasy
+      X.strokeStyle = 'rgba(46,20,26,0.96)';
+      X.lineWidth = 2.4;
+      X.beginPath();
+      X.moveTo(ex - 10.5, ey + 1);
+      X.quadraticCurveTo(ex, ey + 4.2, ex + 10.5, ey + 1);
+      X.stroke();
+    }
+
+    // Subtle eyeliner flick
+    X.strokeStyle = 'rgba(46,20,26,0.85)';
+    X.lineWidth = 1.4;
+    X.beginPath();
+    X.moveTo(ex + (s > 0 ? 10.5 : -10.5), ey + 1);
+    X.lineTo(ex + (s > 0 ? 14 : -14), ey - 2.5);
+    X.stroke();
+
+    // Arched soft eyebrow
+    X.strokeStyle = hairCol;
+    X.lineWidth = 2.1;
+    X.beginPath();
+    X.moveTo(ex - 9, ey - 14);
+    X.quadraticCurveTo(ex + 1, ey - 18 - E.brow * 6, ex + 10, ey - 13 - E.brow * 8);
+    X.stroke();
+  }
+
+  // Tears of overwhelming pleasure gathering at outer eye corners
+  if(G.pleasure > 70 || G.state === 'orgasm'){
+    const tearA = clamp(((G.pleasure - 70) / 30), 0, 1) * 0.75;
+    X.fillStyle = `rgba(235,248,255,${tearA})`;
+    X.beginPath(); X.arc(-22, -6, 2.2, 0, TAU); X.fill();
+    X.beginPath(); X.arc(22, -6, 2.2, 0, TAU); X.fill();
+  }
+
+  // Flushed cheeks (subsurface capillary vasocongestion)
+  const [brR, brG, brB] = hexToRgb(G.char ? G.char.blushColor : '#e86070');
+  shade(-27, 9, 17, 11, `rgba(${brR},${brG},${brB},${0.10 + E.blush * 0.26})`, 0.28);
+  shade(27, 9, 17, 11, `rgba(${brR},${brG},${brB},${0.10 + E.blush * 0.26})`, -0.28);
+
+  // Cute upturned nose tip with soft nostril wings
+  X.strokeStyle = 'rgba(165,95,82,0.48)';
+  X.lineWidth = 1.8;
+  X.beginPath();
+  X.moveTo(-3, 0); X.quadraticCurveTo(-6, 6, -3.5, 9);
+  X.quadraticCurveTo(0, 11, 3.5, 9); X.quadraticCurveTo(6, 6, 3, 0);
+  X.stroke();
+  X.fillStyle = 'rgba(255,240,230,0.35)';
+  X.beginPath(); X.ellipse(0, 3, 2.4, 2, 0, 0, TAU); X.fill();
+
+  // Lips: parted with Cupid's bow, wet inner mucosa, teeth, and tongue
+  const mo = E.mouth;
+  const lipCol = G.char ? G.char.lipColor : '#b3555f';
+  if(mo > 0.05){
+    // Dark open oral cavity
+    X.fillStyle = '#420f18';
+    X.beginPath();
+    X.ellipse(0, 29, 9 + mo * 4, 3 + mo * 11, 0, 0, TAU);
+    X.fill();
+
+    // Subtle translucent pearlescent upper teeth
+    if(mo > 0.22){
+      X.fillStyle = 'rgba(252,246,244,0.92)';
+      X.beginPath();
+      X.ellipse(0, 24.5 + mo * 2, 6.5 + mo * 2, 2.6, 0, 0, TAU);
+      X.fill();
+    }
+
+    // Moist soft pink tongue resting inside
+    X.fillStyle = 'rgba(205,100,118,0.95)';
+    X.beginPath();
+    X.ellipse(0, 32 + mo * 4.5, 7.5 + mo * 2.2, 2.4 + mo * 3.4, 0, 0, TAU);
+    X.fill();
+
+    // Upper lip with Cupid's bow
+    X.strokeStyle = lipCol;
+    X.lineWidth = 2.2;
+    X.beginPath();
+    X.moveTo(-10, 26.5);
+    X.quadraticCurveTo(-4, 23.5 - mo * 1.5, 0, 25.5);
+    X.quadraticCurveTo(4, 23.5 - mo * 1.5, 10, 26.5);
+    X.stroke();
+
+    // Plump glossy lower lip
+    X.strokeStyle = lipCol;
+    X.lineWidth = 2.4;
+    X.beginPath();
+    X.moveTo(-9, 29 + mo * 4);
+    X.quadraticCurveTo(0, 34.5 + mo * 9.5, 9, 29 + mo * 4);
+    X.stroke();
+
+    // Wet lip gloss specular reflections
+    X.fillStyle = 'rgba(255,250,248,0.55)';
+    X.beginPath();
+    X.ellipse(0, 33 + mo * 7.5, 4.2, 1.6, 0, 0, TAU);
+    X.fill();
+
+    // Glistening saliva strand across parted lips when panting
+    if(mo > 0.4 && (G.pleasure > 50 || G.oral > 0.3)){
+      X.strokeStyle = 'rgba(255,248,244,0.52)';
+      X.lineWidth = 1.3;
+      X.beginPath();
+      X.moveTo(-5, 27);
+      X.quadraticCurveTo(-3, 31 + mo * 4, -4, 33 + mo * 6);
+      X.stroke();
+    }
+  } else {
+    // Closed or relaxed soft pout
+    X.strokeStyle = lipCol;
+    X.lineWidth = 2.4;
+    X.beginPath();
+    X.moveTo(-9, 28);
+    X.quadraticCurveTo(0, 30.5, 9, 28);
+    X.stroke();
+    X.fillStyle = 'rgba(255,245,240,0.45)';
+    X.beginPath();
+    X.ellipse(0, 29.5, 4.5, 1.6, 0, 0, TAU);
+    X.fill();
+  }
+
+  // Delicate beauty mark
+  X.fillStyle = 'rgba(85,42,45,0.7)';
+  X.beginPath(); X.arc(11, 21, 1.3, 0, TAU); X.fill();
+
+  // Bangs: full fringe sitting on the forehead with a soft scalloped hairline
+  X.fillStyle = hairCol;
+  X.beginPath();
+  X.moveTo(-46, -12);
+  X.bezierCurveTo(-42, -48, -18, -60, 2, -58);
+  X.bezierCurveTo(24, -58, 44, -46, 46, -12);
+  X.quadraticCurveTo(30, -22, 14, -24);
+  X.quadraticCurveTo(0, -26, -14, -24);
+  X.quadraticCurveTo(-30, -22, -46, -12);
+  X.closePath();
+  X.fill();
+  // strand separations in the fringe
+  X.strokeStyle = 'rgba(0,0,0,0.35)'; X.lineWidth = 1.4;
+  for(const sx of [-24, -8, 8, 24]){
+    X.beginPath(); X.moveTo(sx, -52 + Math.abs(sx) * 0.15);
+    X.quadraticCurveTo(sx + 1, -38, sx - 1, -27); X.stroke();
+  }
+
+  // Hair sheen
+  X.save();
+  X.globalCompositeOperation = 'screen';
+  X.strokeStyle = 'rgba(215,155,165,0.32)';
+  X.lineWidth = 2.4;
+  X.beginPath();
+  X.moveTo(-26, -48);
+  X.quadraticCurveTo(-8, -56, 14, -50);
+  X.stroke();
+  X.restore();
+
+  // Blink eyelid cover
+  if((G.blinkPh || 0) > 0){
+    X.strokeStyle = 'rgba(65,32,38,0.95)';
+    X.lineWidth = 3.2;
+    for(const s of [-1, 1]){
+      X.beginPath();
+      X.moveTo(s * 17.5 - 11, -8);
+      X.lineTo(s * 17.5 + 11, -7.5);
+      X.stroke();
+    }
+  }
+
+  X.restore();
+}
+
+/* ============================================================
+   HER SUPINE BODY: GRAVITY BREASTS, BELLY, THIGHS & THE SPOT
+   ============================================================ */

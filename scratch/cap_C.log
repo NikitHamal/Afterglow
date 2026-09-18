@@ -1,0 +1,7 @@
+attempt 1 dirty (painted=false, errors=40), reloading
+attempt 2 dirty (painted=false, errors=40), reloading
+attempt 3 dirty (painted=false, errors=40), reloading
+painted: true
+page errors: []
+ready: false
+saved .shots/z3_face.jpg

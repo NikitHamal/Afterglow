@@ -1,0 +1,15 @@
+attempt 1 dirty (painted=false, errors=0), reloading
+attempt 2 dirty (painted=false, errors=40), reloading
+attempt 3 dirty (painted=false, errors=2), reloading
+attempt 4 dirty (painted=false, errors=0), reloading
+painted: true
+page errors: []
+ready: false
+EVAL>>> {
+ "view": "side",
+ "avgDrawMs": 111.21,
+ "fpsEq": 9,
+ "shadeCallsPerFrame": 550,
+ "gradientCreatesPerFrame": 168
+}
+saved .shots/s3_side.jpg
