@@ -92,6 +92,23 @@ for s_, L in LR.items():
             spec.append((nm, segs[k], segs[k + 1], parent, ("palm", f + s_)))
             parent = nm
 
+# hair physics chains (hair.py writes the joints): 髪.<n>.a-d + unweighted tip leaf 髪.<n>.z, rooted on 頭
+HAIR_SEGS = "abcd"
+if os.path.exists(OUT + "/hair_chains.json"):
+    for n_, J in enumerate(json.load(open(OUT + "/hair_chains.json"))):
+        J = [Vector(j) * S for j in J]
+        parent = "頭"
+        for k in range(4):
+            spec.append((f"髪.{n_}.{HAIR_SEGS[k]}", J[k], J[k + 1], parent, "none")); parent = f"髪.{n_}.{HAIR_SEGS[k]}"
+        tipd = (J[4] - J[3]).normalized()
+        spec.append((f"髪.{n_}.z", J[4], J[4] + tipd * 0.02, parent, "none"))
+# eye bones at the eyeball centres, pointing forward (gaze is driven in game)
+eyes_o = next((o for o in meshes if "high-poly" in o.name), None)
+if eyes_o:
+    EV = np.array([eyes_o.matrix_world @ v.co for v in eyes_o.data.vertices])
+    for sgn, L in ((1, ".L"), (-1, ".R")):
+        cE = Vector(EV[np.sign(EV[:, 0]) == sgn].mean(0)) * S
+        spec.append((f"目{L}", cE, cE + Vector((0, -0.02, 0)), "頭", "none"))
 arm_data = bpy.data.armatures.new("VivianRig"); arm = bpy.data.objects.new("VivianRig", arm_data)
 sc.collection.objects.link(arm); bpy.context.view_layer.objects.active = arm
 for o in bpy.context.view_layer.objects: o.select_set(False)
@@ -122,6 +139,8 @@ for s_, L in LR.items():
                 f"breast_{s_}": f"乳親{L}"})
     for f, jp in FING.items():
         for k in range(3): REN[f"{f}_0{k+1}_{s_}"] = f"{jp}{'０１２３'[k]}{L}"
+for n_ in range(64):
+    for k in HAIR_SEGS: REN[f"hair_{n_}_{k}"] = f"髪.{n_}.{k}"
 bone_names = set(arm_data.bones.keys())
 for o in meshes:
     old = {vg.index: vg.name for vg in o.vertex_groups}
@@ -138,7 +157,11 @@ for o in meshes:
         if m.type == "ARMATURE": o.modifiers.remove(m)
     unknown = set(acc) - bone_names
     if unknown: log(f"WARN {o.name}: groups without bones {unknown}")
-log("weights transferred")
+if eyes_o and "目.L" in bone_names:
+    for vg in list(eyes_o.vertex_groups): eyes_o.vertex_groups.remove(vg)
+    gl, gr = eyes_o.vertex_groups.new(name="目.L"), eyes_o.vertex_groups.new(name="目.R")
+    for v in eyes_o.data.vertices: (gl if (eyes_o.matrix_world @ v.co).x > 0 else gr).add([v.index], 1.0, "REPLACE")
+log("weights transferred (hair chains + eye bones included)")
 
 # ------------------------------------------------------------------ 6. scale meshes, parent to the new rig, drop MPFB rig
 for o in meshes:
@@ -160,6 +183,39 @@ for o in meshes:
     o.name = NAMES.get(o.name, o.name); o.data.name = o.name
 log("meshes scaled + bound to the MMD rig: " + ", ".join(o.name for o in meshes))
 
+# ------------------------------------------------------------------ 6b. hair colliders (glTF extras, read by js3d/glbHair.js)
+bo = bpy.data.objects["vivian_body"]
+BV = np.array([bo.matrix_world @ v.co for v in bo.data.vertices])
+def gw(name):
+    w = np.zeros(len(BV), np.float32)
+    if name not in bo.vertex_groups: return w
+    gi = bo.vertex_groups[name].index
+    for v in bo.data.vertices:
+        for g in v.groups:
+            if g.group == gi: w[v.index] = g.weight
+    return w
+def sphere(P, pct=70, pull=0.0, toward=None):
+    c = P.mean(0) if toward is None else P.mean(0) * (1 - pull) + toward * pull
+    return c, float(np.percentile(np.linalg.norm(P - c, axis=1), pct))
+cols = []
+def add(bone, c, r): cols.append({"bone": bone, "c": [float(c[0]), float(c[2]), float(-c[1])], "r": round(r, 4)})
+wh = gw("頭"); Ph = BV[wh > 0.9]; ch_ = (Ph.min(0) + Ph.max(0)) / 2; add("頭", ch_, float(np.percentile(np.linalg.norm(Ph - ch_, axis=1), 72)))
+wn_ = gw("首"); c, r = sphere(BV[wn_ > 0.5], 60); add("首", c, r)
+w2 = gw("上半身2"); sz = np.array(arm.matrix_world @ arm.data.bones["腕.L"].head_local).astype(float)[2]
+Pt = BV[(w2 > 0.5) & (BV[:, 2] > sz - 0.10) & (BV[:, 2] < sz + 0.02)]; tc = Pt.mean(0)
+for qx in (-1, 1):
+    for qy in (-1, 1):
+        Q = Pt[(np.sign(Pt[:, 0] - tc[0]) == qx) & (np.sign(Pt[:, 1] - tc[1]) == qy)]
+        if len(Q) > 10:
+            c, r = sphere(Q, 55, pull=0.45, toward=tc); add("上半身2", c, r * 0.9)
+for L in (".L", ".R"):
+    wb_ = gw("乳親" + L)
+    if (wb_ > 0.5).sum() > 10: c, r = sphere(BV[wb_ > 0.5], 65); add("乳親" + L, c, r)
+    wa = gw("肩" + L) + gw("腕" + L); Pa = BV[(wa > 0.5) & (BV[:, 2] > sz - 0.05)]
+    if len(Pa) > 10: c, r = sphere(Pa, 55); add("腕" + L, c, r)
+arm["afterglow"] = json.dumps({"hairColliders": cols, "version": 2})
+log(f"hair colliders: {len(cols)} spheres -> glTF extras")
+
 # keep a .blend of the game-ready model
 bpy.ops.wm.save_as_mainfile(filepath=OUT + "/vivian_game.blend")
 
@@ -168,7 +224,7 @@ def export(path, anims):
     bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=False, export_yup=True, export_apply=False,
                               export_skins=True, export_morph=True, export_morph_normal=True, export_animations=anims,
                               export_image_format="AUTO", export_texcoords=True, export_normals=True, export_tangents=False,
-                              export_materials="EXPORT", export_cameras=False, export_lights=False, export_extras=False,
+                              export_materials="EXPORT", export_cameras=False, export_lights=False, export_extras=True,
                               export_def_bones=False, export_rest_position_armature=True)
 export(EXP + "/vivian_raw.glb", False)
 log(f"game GLB exported ({os.path.getsize(EXP + '/vivian_raw.glb')/1e6:.1f} MB raw)")

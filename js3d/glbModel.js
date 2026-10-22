@@ -1291,12 +1291,15 @@ function updateGLBModel(dt) {
   // now — updateGLBModel runs after updateAnim3 in tick3). No-skeleton
   // models (null rig) skip silently and keep root-follow.
   if (e.rig) glbDriveRig(e, dt);
+  glbShape3(e);
   if (!frozen) {
     e.model.position.y += breath * calm;
     glbSecondary3(e, dt, calm);
     glbJiggle3(e);
   }
   glbFace3(e, frozen ? 0 : dt);
+  glbEyes3(e, frozen ? 0 : dt);
+  if (e.hair && typeof glbHairUpdate === 'function') glbHairUpdate(e, frozen ? 0 : dt);
   // Bed-solid collision LAST: the mattress/duvet is solid, nobody rests inside it.
   glbCollideBed(e);
 
@@ -1344,13 +1347,64 @@ function glbCollectExtras(e, cfg) {
   e.morphMeshes = [];
   e.jiggle = [];
   if (!e.model) return;
+  e.shapeMeshes = [];
+  e.eyes = [];
   e.model.traverse(c => {
     if (cfg.face && c.isMesh && c.morphTargetDictionary && c.morphTargetInfluences) e.morphMeshes.push(c);
-    if (cfg.jiggle && c.isBone) {
-      const m = /^乳親([LR])$/.exec(glbCleanKey(c.name));
+    if (c.isMesh && c.morphTargetDictionary && Object.keys(c.morphTargetDictionary).some(n => n.indexOf('body_') === 0)) e.shapeMeshes.push(c);
+    if (c.isBone) {
+      const k = glbCleanKey(c.name);
+      const m = cfg.jiggle ? /^乳親([LR])$/.exec(k) : null;
       if (m) e.jiggle.push({ bone: c, bx: c.rotation.x, bz: c.rotation.z, side: m[1] === 'L' ? 1 : -1 });
+      if (/^目[LR]$/.test(k)) e.eyes.push({ bone: c, rest: c.quaternion.clone() });
     }
   });
+  e.gaze = { t: 0, ox: 0, oy: 0 };
+  e.hair = (typeof glbHairInit === 'function') ? glbHairInit(e) : null;
+}
+
+// Body-shape morphs (body_bust, body_hips, …) from G.char.shape {name: 0..1}; missing names = 0.
+function glbShape3(e) {
+  const ms = e.shapeMeshes;
+  if (!ms || !ms.length) return;
+  const sh = (typeof G !== 'undefined' && G.char && G.char.shape) || {};
+  for (let i = 0; i < ms.length; i++) {
+    const d = ms[i].morphTargetDictionary, inf = ms[i].morphTargetInfluences;
+    for (const n in d) if (n.indexOf('body_') === 0) inf[d[n]] = clamp(+sh[n] || 0, 0, 1);
+  }
+}
+
+// Eyes: look at the viewer (the camera is his eyes in FPV) with saccades, clamped to a natural
+// range; roll up and go heavy-lidded near and through orgasm.
+const _gzA = new THREE.Vector3(), _gzB = new THREE.Vector3(), _gzU = new THREE.Vector3(), _gzT = new THREE.Vector3();
+const _gzQ = new THREE.Quaternion(), _gzQ2 = new THREE.Quaternion(), _gzQp = new THREE.Quaternion();
+function glbEyes3(e, dt) {
+  const E = e.eyes;
+  if (!E || !E.length || typeof camera3d === 'undefined' || !camera3d) return;
+  const Z = e.gaze;
+  Z.t -= dt;
+  if (Z.t <= 0) { Z.t = 0.5 + Math.random() * 2.4; Z.ox = (Math.random() - 0.5) * 0.16; Z.oy = (Math.random() - 0.5) * 0.10; }
+  const p = clamp((G.pleasure || 0) / 100, 0, 1);
+  const org = G.state === 'orgasm' ? Math.sin(Math.PI * clamp((G.orgT || 0) / 5.4, 0, 1)) : 0;
+  const roll = Math.max(org, clamp((p - 0.82) * 3, 0, 0.6));
+  const k = dt > 0 ? 1 - Math.exp(-18 * dt) : 1;
+  for (let i = 0; i < E.length; i++) {
+    const b = E[i].bone;
+    b.quaternion.copy(E[i].rest); b.updateMatrixWorld(true);
+    b.getWorldPosition(_gzA);
+    b.getWorldQuaternion(_gzQ);
+    const rest = _gzB.set(0, 1, 0).applyQuaternion(_gzQ);           // eye bones point forward at rest
+    b.parent.getWorldQuaternion(_gzQp);
+    _gzU.set(0, 1, 0).applyQuaternion(_gzQp);                         // her head's up (頭 points up the skull)
+    const tgt = _gzT.set(Z.ox, Z.oy, 0).applyQuaternion(camera3d.quaternion).add(camera3d.position).sub(_gzA).normalize();
+    let ang = rest.angleTo(tgt);
+    if (ang > 0.5) tgt.copy(rest).lerp(tgt, 0.5 / ang).normalize();
+    tgt.addScaledVector(_gzU, roll * 0.45).normalize();
+    _gzQ2.setFromUnitVectors(rest, tgt).multiply(_gzQ);
+    _gzQ2.premultiply(_gzQp.invert());
+    if (!E[i].q) E[i].q = _gzQ2.clone(); else E[i].q.slerp(_gzQ2, k);
+    b.quaternion.copy(E[i].q);
+  }
 }
 
 // Swap the baked albedo when the skin-tone slider crosses a band (textures cached once loaded).
@@ -1406,11 +1460,17 @@ function glbFace3(e, dt) {
   }
   const oral = clamp(G.oral || 0, 0, 1), kiss = clamp(G.kiss || 0, 0, 1);
   const after = clamp((G.after || 0) / 8.5, 0, 1);
+  // breathing: lips part a little on every breath, faster and deeper as she heats up
+  const breath = 0.5 + 0.5 * Math.sin(t * TAU * (0.22 + p * 0.38));
+  // each moan picks its shape: open "ah" or a rounded "oh" (borrowed from the oral morph)
+  if (moan > 0.05 && !F.moanOh && Math.random() < 0.35) F.moanOh = 1;
+  if (moan < 0.02) F.moanOh = 0;
+  const oh = F.moanOh ? moan * 0.45 : 0;
   const T = {
     blink: Math.max(blink, org * 0.9, kiss * 0.65),
-    moan: clamp(moan + org * 0.6, 0, 1) * (1 - oral) * (1 - kiss),
-    pleasure: clamp(0.06 + p * 0.78 + org * 0.35, 0, 1) * (1 - 0.7 * kiss),
-    oral: oral * (0.78 + 0.22 * Math.sin(t * 5.2)),
+    moan: clamp(moan * (F.moanOh ? 0.6 : 1) + org * 0.6, 0, 1) * (1 - oral) * (1 - kiss),
+    pleasure: clamp(0.06 + p * 0.78 + org * 0.35 + breath * p * 0.12, 0, 1) * (1 - 0.7 * kiss),
+    oral: Math.max(oral * (0.78 + 0.22 * Math.sin(t * 5.2)), oh * (1 - kiss)),
     kiss: kiss,
     smile: clamp(0.3 * (1 - p) + after * 0.6, 0, 1) * (1 - oral) * (1 - moan)
   };
