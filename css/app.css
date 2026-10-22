@@ -344,3 +344,19 @@
   @media (prefers-reduced-motion:reduce){
     *,*:before,*:after{animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important}
   }
+
+/* ---- customize: body variants ---- */
+.cpHot{color:#ff8fa8}
+.cpBodyBlock{border-top:1px solid var(--line); padding-top:1em}
+.cpVariants{display:grid; grid-template-columns:repeat(2,1fr); gap:.45em}
+.cpVar{display:flex; flex-direction:column; align-items:flex-start; gap:.1em; padding:.55em .8em; border-radius:.8em; cursor:pointer;
+  background:rgba(255,255,255,.03); border:1px solid var(--line); color:var(--cream); text-align:left;
+  transition:border-color .2s, background .2s, transform .15s}
+.cpVar b{font-weight:600; font-size:.9em; letter-spacing:.02em}
+.cpVar small{font-size:.72em; color:var(--muted)}
+.cpVar:hover,.cpVar.on{border-color:var(--rose); background:rgba(255,109,138,.1)}
+.cpVar.on b{color:#ffe3ea}
+.cpVar:active{transform:scale(.97)}
+.cpRanges{display:flex; flex-direction:column; gap:.35em}
+.cpRange{display:grid; grid-template-columns:5.2em 1fr 2.2em; align-items:center; gap:.6em; font-size:.82em; color:var(--muted)}
+.cpRange output{font-variant-numeric:tabular-nums; text-align:right; color:var(--cream); opacity:.8}

@@ -284,23 +284,16 @@ function buildCustomPanel(){
       <input class="cpColor" type="color" id="cpNipPick" title="custom">
     </div>
   </div>
-  <div class="cpSection" id="cpGlbSection" style="border-top:1px solid rgba(255,255,255,0.14);padding-top:10px;margin-top:10px;">
-    <div class="cpLabel" style="color:#ff6987">\u2726 GLB ATTIRE &amp; BODY PARTS</div>
-    <div class="cpToggle" id="cpGlbToggles" style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px">
-      <button class="cpTog on" data-glbpart="tail">Tail: ON</button>
-      <button class="cpTog on" data-glbpart="horns">Horns: ON</button>
-      <button class="cpTog on" data-glbpart="ears">Ears: ON</button>
-      <button class="cpTog on" data-glbpart="socks">Socks: ON</button>
-      <button class="cpTog on" data-glbpart="accessories">Harness: ON</button>
-      <button class="cpTog on" data-glbpart="nippless">Pasties: ON</button>
-      <button class="cpTog on" data-glbpart="runes">Runes: ON</button>
-      <button class="cpTog on" data-glbpart="genital">Genitals: ON</button>
-    </div>
-    <div style="margin-top:8px;font-size:10px;color:#aaa;letter-spacing:.05em">BODY RUNES GLOW COLOR</div>
-    <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-      <input class="cpColor" type="color" id="cpRunePick" value="#ff3366" title="rune color">
-      <span style="font-size:11px;color:#888">Marking tint</span>
-    </div>
+  <div class="cpSection cpBodyBlock" id="cpHerBody">
+    <div class="cpLabel cpHot">\u2726 HER BODY</div>
+    <div class="cpVariants">${Object.keys(HER_VARIANTS).map(k=>`<button class="cpVar" data-hv="${k}"><b>${k}</b><small>${HER_VARIANTS[k].hint}</small></button>`).join('')}</div>
+    <div class="cpRanges" id="cpHerRanges">${HER_SHAPES.map(([k,l])=>`<label class="cpRange"><span>${l}</span><input class="cpSlider" type="range" min="0" max="100" step="1" data-shape="${k}"><output></output></label>`).join('')}</div>
+  </div>
+  <div class="cpSection cpBodyBlock" id="cpHisBody">
+    <div class="cpLabel cpHot">\u2726 HIS BODY</div>
+    <div class="cpVariants">${Object.keys(HIM_VARIANTS).map(k=>`<button class="cpVar" data-mv="${k}"><b>${k}</b><small>${HIM_VARIANTS[k].hint}</small></button>`).join('')}</div>
+    <div class="cpToggle" id="cpHimTone">${['honey','caramel','deep'].map(t=>`<button class="cpTog" data-mtone="${t}">${t[0].toUpperCase()+t.slice(1)}</button>`).join('')}</div>
+    <div class="cpRanges" id="cpHisRanges">${HIM_SHAPES.map(([k,l])=>`<label class="cpRange"><span>${l}</span><input class="cpSlider" type="range" min="0" max="100" step="1" data-him="${k}"><output></output></label>`).join('')}</div>
   </div>
 </div>`;
   document.getElementById('stage').appendChild(el);
@@ -345,24 +338,21 @@ function buildCustomPanel(){
     G.char.breastSize=e.target.value/100; lsSaveChar();
     if(typeof glbSetScale==='function') glbSetScale('breast', 0.65 + G.char.breastSize * 0.9);
   });
-  // GLB parts toggles
-  el.querySelectorAll('[data-glbpart]').forEach(b=>b.addEventListener('click',()=>{
-    const pk = b.dataset.glbpart;
-    const curVis = !b.classList.contains('off');
-    const newVis = !curVis;
-    b.classList.toggle('off', !newVis);
-    b.classList.toggle('on', newVis);
-    const label = pk.charAt(0).toUpperCase() + pk.slice(1);
-    b.textContent = label + ': ' + (newVis ? 'ON' : 'OFF');
-    if(typeof glbSetPartVisible==='function') glbSetPartVisible(G.char.preset, pk, newVis);
+  // her body: variants + shape sliders (3D realistic women read G.char.shape; 2D maps variants onto bodyScale/breastSize)
+  el.querySelectorAll('[data-hv]').forEach(b=>b.addEventListener('click',()=>applyHerVariant(b.dataset.hv)));
+  el.querySelectorAll('[data-shape]').forEach(r=>r.addEventListener('input',()=>{
+    herShape()[r.dataset.shape]=r.value/100; G.char.variant='Custom'; lsSaveChar(); pushShape(); syncBodyPanel();
   }));
-  // GLB rune color picker
-  const rp = el.querySelector('#cpRunePick');
-  if (rp) {
-    rp.addEventListener('input', e=>{
-      if(typeof glbSetPartColor==='function') glbSetPartColor(G.char.preset, 'runes', e.target.value);
-    });
-  }
+  // his body: variants, tone, shape/size sliders (G.char.him is read by glbHim.js every frame)
+  el.querySelectorAll('[data-mv]').forEach(b=>b.addEventListener('click',()=>applyHimVariant(b.dataset.mv)));
+  el.querySelectorAll('[data-mtone]').forEach(b=>b.addEventListener('click',()=>{
+    himPrefs().tone=b.dataset.mtone; lsSaveChar();
+    if(typeof glbHimSetTone==='function') glbHimSetTone(b.dataset.mtone);
+    syncBodyPanel();
+  }));
+  el.querySelectorAll('[data-him]').forEach(r=>r.addEventListener('input',()=>{
+    himPrefs()[r.dataset.him]=r.value/100; himPrefs().variant='Custom'; lsSaveChar(); syncBodyPanel();
+  }));
   // fpv closeup toggles
   el.querySelectorAll('[data-fpv]').forEach(b=>b.addEventListener('click',()=>{
     G.fpvFocus=b.dataset.fpv;
@@ -410,26 +400,7 @@ function syncPanelFromChar(){
   p.querySelector('#cpHairPick').value=G.char.hairColor;
   p.querySelector('#cpLipPick').value=G.char.lipColor;
   p.querySelector('#cpNipPick').value=G.char.nippleColor;
-  const glbSec = p.querySelector('#cpGlbSection');
-  const isGLB = G.char && (G.char.isGLB || G.char.preset === 'goatchan');
-  if (glbSec) glbSec.style.display = isGLB ? 'block' : 'none';
-
-  if (isGLB) {
-    const custom = (G.char && G.char.glbCustom) || {};
-    const parts = custom.parts || {};
-    p.querySelectorAll('[data-glbpart]').forEach(b => {
-      const pk = b.dataset.glbpart;
-      const vis = parts[pk] !== undefined ? parts[pk] : true;
-      b.classList.toggle('off', !vis);
-      b.classList.toggle('on', vis);
-      const label = pk.charAt(0).toUpperCase() + pk.slice(1);
-      b.textContent = label + ': ' + (vis ? 'ON' : 'OFF');
-    });
-    const rp = p.querySelector('#cpRunePick');
-    if (rp && custom.colors && custom.colors.runes) {
-      rp.value = custom.colors.runes;
-    }
-  }
+  syncBodyPanel();
   syncSwatches(); syncToggles();
   p.querySelectorAll('.cpPre').forEach(b=>b.classList.toggle('on',b.dataset.p===G.char.preset));
 }
@@ -453,6 +424,59 @@ function syncToggles(){
 function openCustomPanel(){ custOpen=true; document.getElementById('custPanel').classList.add('open'); syncPanelFromChar(); }
 function closeCustomPanel(){ custOpen=false; document.getElementById('custPanel').classList.remove('open'); }
 function toggleCustomPanel(){ custOpen?closeCustomPanel():openCustomPanel(); }
+
+/* ---------- body variants (her: shape morphs on realistic GLB women; him: Marcus morphs + tone) ---------- */
+const IS3D_UI = !!document.getElementById('scene3d');
+const HER_SHAPES = [['body_bust','Bust'],['body_hips','Hips'],['body_waist','Waist'],['body_butt','Seat'],
+                    ['body_weight','Softness'],['body_muscle','Tone'],['body_belly','Tummy']];
+const HER_VARIANTS = {
+  Slim:       {hint:'lean, small curves',  shape:{body_bust:.12,body_hips:.08,body_waist:0,body_butt:.1,body_weight:0,body_muscle:.3,body_belly:0},     d2:[.34,.38]},
+  Curvy:      {hint:'hourglass',           shape:{body_bust:.5,body_hips:.55,body_waist:.1,body_butt:.55,body_weight:.2,body_muscle:.1,body_belly:0},  d2:[.6,.7]},
+  Voluptuous: {hint:'full and soft',       shape:{body_bust:.9,body_hips:.82,body_waist:.3,body_butt:.85,body_weight:.55,body_muscle:0,body_belly:.25}, d2:[.8,.94]},
+  Athletic:   {hint:'toned, firm',         shape:{body_bust:.28,body_hips:.3,body_waist:.05,body_butt:.5,body_weight:0,body_muscle:.85,body_belly:0},   d2:[.48,.5]}
+};
+const HIM_SHAPES = [['muscle','Muscle'],['weight','Weight'],['belly','Belly'],['length','Length'],['girth','Girth']];
+const HIM_VARIANTS = {
+  Lean:     {hint:'wiry',              v:{muscle:.12,weight:0,belly:0}},
+  Fit:      {hint:'athletic',          v:{muscle:.45,weight:.1,belly:0}},
+  Muscular: {hint:'built',             v:{muscle:1,weight:.25,belly:0}},
+  'Dad bod':{hint:'soft and solid',    v:{muscle:.12,weight:.55,belly:.8}}
+};
+function herShape(){ if(!G.char.shape||typeof G.char.shape!=='object') G.char.shape={}; return G.char.shape; }
+function himPrefs(){ if(!G.char.him||typeof G.char.him!=='object') G.char.him={}; return G.char.him; }
+function pushShape(){
+  if(typeof glbApplyShape==='function') glbApplyShape(G.char.preset);
+  else if(typeof glbApplyCustom==='function') glbApplyCustom(G.char.preset);
+}
+function applyHerVariant(name){
+  const V=HER_VARIANTS[name]; if(!V) return;
+  Object.assign(herShape(), V.shape); G.char.variant=name;
+  G.char.bodyScale=V.d2[0]; G.char.breastSize=V.d2[1];        // the 2D renderer reads these
+  lsSaveChar(); pushShape(); syncPanelFromChar();
+}
+function applyHimVariant(name){
+  const V=HIM_VARIANTS[name]; if(!V) return;
+  Object.assign(himPrefs(), V.v); himPrefs().variant=name; lsSaveChar(); syncBodyPanel();
+}
+function syncBodyPanel(){
+  const p=document.getElementById('custPanel'); if(!p) return;
+  const her=p.querySelector('#cpHerBody'), his=p.querySelector('#cpHisBody');
+  const realistic=!!(G.char && G.char.isGLB);
+  if(her) her.style.display='flex';
+  if(his) his.style.display=IS3D_UI?'flex':'none';
+  if(her){
+    her.querySelector('#cpHerRanges').style.display=(IS3D_UI&&realistic)?'':'none';   // shape morphs exist on the 3D realistic women only
+    const sh=herShape();
+    her.querySelectorAll('[data-shape]').forEach(r=>{ const v=sh[r.dataset.shape]||0; r.value=Math.round(v*100); r.nextElementSibling.textContent=Math.round(v*100); });
+    her.querySelectorAll('[data-hv]').forEach(b=>b.classList.toggle('on',b.dataset.hv===G.char.variant));
+  }
+  if(his){
+    const h=himPrefs();
+    his.querySelectorAll('[data-him]').forEach(r=>{ const v=h[r.dataset.him]||0; r.value=Math.round(v*100); r.nextElementSibling.textContent=Math.round(v*100); });
+    his.querySelectorAll('[data-mv]').forEach(b=>b.classList.toggle('on',b.dataset.mv===h.variant));
+    his.querySelectorAll('[data-mtone]').forEach(b=>b.classList.toggle('on',b.dataset.mtone===(h.tone||'caramel')));
+  }
+}
 
 /* ---------- DOM helpers in app.js ---------- */
 function updatePlName(){

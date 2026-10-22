@@ -232,8 +232,9 @@ function shotTick3() {
    ============================================================ */
 let last3 = performance.now();
 function tick3(ts) {
-  const dt = clamp((ts - last3) / 1000, 0, 0.05);
+  const raw = (ts - last3) / 1000, dt = clamp(raw, 0, 0.05);
   last3 = ts;
+  if (typeof perf3Tick === 'function') perf3Tick(raw);   // adaptive resolution + shadow refresh rate
 
   update(dt);            // shared game logic (js/mechanics.js) — unchanged
   syncCharLook3();
@@ -258,6 +259,7 @@ function boot3() {
   if (!initEngine3()) return;      // no webgl — message already shown
   initChars3();
   initFX3();
+  if (typeof perf3Init === 'function') perf3Init();
   cacheHUD3();
   if (typeof initGLBModel === 'function') initGLBModel();
 

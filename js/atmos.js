@@ -449,15 +449,20 @@ function drawLight(){
 
   // bloom: downsample, cube the luminance to isolate highlights, blur, add back
   try {
-    const s = ATM.small.getContext('2d'), s2 = ATM.small2.getContext('2d');
-    s.globalCompositeOperation = 'copy';
-    s.drawImage(CV, 0, 0, 320, 180);
-    s.globalCompositeOperation = 'multiply';
-    s.drawImage(ATM.small, 0, 0); s.drawImage(ATM.small, 0, 0); s.drawImage(ATM.small, 0, 0);
-    s2.globalCompositeOperation = 'copy';
-    s2.filter = 'blur(5px)';
-    s2.drawImage(ATM.small, 0, 0);
-    s2.filter = 'none';
+    // the blurred highlight layer changes slowly: rebuild it every other frame, composite it every frame
+    ATM.bloomTick = (ATM.bloomTick | 0) + 1;
+    if(ATM.bloomTick & 1 || !ATM.bloomReady){
+      const s = ATM.small.getContext('2d'), s2 = ATM.small2.getContext('2d');
+      s.globalCompositeOperation = 'copy';
+      s.drawImage(CV, 0, 0, 320, 180);
+      s.globalCompositeOperation = 'multiply';
+      s.drawImage(ATM.small, 0, 0); s.drawImage(ATM.small, 0, 0); s.drawImage(ATM.small, 0, 0);
+      s2.globalCompositeOperation = 'copy';
+      s2.filter = 'blur(5px)';
+      s2.drawImage(ATM.small, 0, 0);
+      s2.filter = 'none';
+      ATM.bloomReady = true;
+    }
     X.save(); X.setTransform(1, 0, 0, 1, 0, 0);
     X.globalCompositeOperation = 'screen';
     X.globalAlpha = clamp((G.view === 'fpv' ? 0.3 : 0.6) + p * 0.3 + (G.bloom || 0) * 1.5, 0, 1);
@@ -541,13 +546,20 @@ function atmBodyBegin(){
   bg.globalCompositeOperation = 'copy'; bg.drawImage(CV, 0, 0);
   X.save(); X.setTransform(1, 0, 0, 1, 0, 0); X.clearRect(0, 0, CV.width, CV.height); X.restore();
 }
+// Rims are soft 2-3 px edges: built at half resolution (3 quarter-size passes) and upscaled once,
+// instead of 4 full-resolution passes per rim — same look, about half the fill cost of the body layer.
+function _atmLayerSized(name, w, h){
+  if(!ATM[name] || ATM[name].width !== w || ATM[name].height !== h) ATM[name] = _atmCanvas(w, h);
+  return ATM[name];
+}
 function _rim(body, dx, dy, col, alpha){
-  const rc = _atmLayer('rim'), r = rc.getContext('2d');
-  r.globalCompositeOperation = 'copy'; r.drawImage(body, 0, 0);
-  r.globalCompositeOperation = 'destination-out'; r.drawImage(body, dx, dy);
-  r.globalCompositeOperation = 'source-in'; r.fillStyle = col; r.fillRect(0, 0, rc.width, rc.height);
+  const hw = Math.max(1, CV.width >> 1), hh = Math.max(1, CV.height >> 1);
+  const rc = _atmLayerSized('rim', hw, hh), r = rc.getContext('2d');
+  r.globalCompositeOperation = 'copy'; r.drawImage(body, 0, 0, hw, hh);
+  r.globalCompositeOperation = 'destination-out'; r.drawImage(body, dx * 0.5, dy * 0.5, hw, hh);
+  r.globalCompositeOperation = 'source-in'; r.fillStyle = col; r.fillRect(0, 0, hw, hh);
   X.globalCompositeOperation = 'screen'; X.globalAlpha = alpha;
-  X.drawImage(rc, 0, 0);
+  X.drawImage(rc, 0, 0, CV.width, CV.height);
 }
 function atmBodyEnd(){
   const body = _atmLayer('body'), bc = body.getContext('2d');

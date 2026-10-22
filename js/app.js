@@ -71,51 +71,56 @@ function comboPop(txt, sub){
   stage.appendChild(el);
   setTimeout(()=>el.remove(),1200);
 }
+const _hudC=new Map();
+function _st(el,k,v){ const m=_hudC.get(el)||(_hudC.set(el,{}),_hudC.get(el)); if(m[k]!==v){ m[k]=v; el.style[k]=v; } }
+function _tx(el,v){ const m=_hudC.get(el)||(_hudC.set(el,{}),_hudC.get(el)); if(m.$t!==v){ m.$t=v; el.textContent=v; } }
+function _cl(el,c,on){ const m=_hudC.get(el)||(_hudC.set(el,{}),_hudC.get(el)); on=!!on; if(m['c'+c]!==on){ m['c'+c]=on; el.classList.toggle(c,on); } }
+const btnKissEl=$('btnKiss'), btnRubEl=$('btnRub'), btnPosEl=$('btnPos'), btnOralEl=$('btnOral'), btnSoloEl=$('btnSolo'), btnZoomEl=$('btnZoom');
 function hudTick(){
-  plFill.style.transform=`scaleY(${G.pleasure/100})`;
-  plBar.classList.toggle('hot',G.pleasure>82);
+  _st(plFill,'transform',`scaleY(${(G.pleasure/100).toFixed(3)})`);
+  _cl(plBar,'hot',G.pleasure>82);
   let m='melting'; for(const [th,l] of MOODS){ if(G.pleasure<=th){m=l;break} }
-  if(G.state!=='intro') plMood.textContent = G.state==='orgasm'?'climaxing' : G.state==='climax'||G.state==='finish'?'full of you' : m;
-  dpFill.style.transform=`scaleY(${G.depth.toFixed(3)})`;
+  if(G.state!=='intro') _tx(plMood, G.state==='orgasm'?'climaxing' : G.state==='climax'||G.state==='finish'?'full of you' : m);
+  _st(dpFill,'transform',`scaleY(${G.depth.toFixed(3)})`);
   const z=hotZone();
-  hotEl.style.bottom=(z.c*100)+'%'; hotEl.style.height=(z.w*100)+'%';
-  dpMark.style.bottom=`calc(${(G.depth*100).toFixed(1)}% - 1px)`;
-  stamFill.style.transform=`scaleX(${G.stamina/100})`;
-  stamVal.textContent=Math.round(G.stamina);
-  stamBox.classList.toggle('tired',G.tired);
-  stamLbl.textContent=G.tired?'catching breath':'stamina';
+  _st(hotEl,'bottom',(z.c*100).toFixed(2)+'%'); _st(hotEl,'height',(z.w*100).toFixed(2)+'%');
+  _st(dpMark,'bottom',`calc(${(G.depth*100).toFixed(1)}% - 1px)`);
+  _st(stamFill,'transform',`scaleX(${(G.stamina/100).toFixed(3)})`);
+  _tx(stamVal,String(Math.round(G.stamina)));
+  _cl(stamBox,'tired',G.tired);
+  _tx(stamLbl,G.tired?'catching breath':'stamina');
   const b=sweetBand(), MAXR=3;
-  tBand.style.left=clamp((b.c-b.hw)/MAXR*100,0,96)+'%';
-  tBand.style.width=clamp(b.hw*2/MAXR*100,2,100)+'%';
-  tMark.style.left=clamp(G.rate/MAXR*100,0,99)+'%';
-  if(G.combo>1.05){ comboChip.classList.add('on'); comboB.textContent=G.combo.toFixed(1); }
-  else comboChip.classList.remove('on');
+  _st(tBand,'left',clamp((b.c-b.hw)/MAXR*100,0,96).toFixed(2)+'%');
+  _st(tBand,'width',clamp(b.hw*2/MAXR*100,2,100).toFixed(2)+'%');
+  _st(tMark,'left',clamp(G.rate/MAXR*100,0,99).toFixed(2)+'%');
+  _cl(comboChip,'on',G.combo>1.05);
+  if(G.combo>1.05) _tx(comboB,G.combo.toFixed(1));
   // sweet-band feedback + combo milestones
-  tempoBox.classList.toggle('inband', G.rate>.25 && Math.abs(G.rate-b.c)<=b.hw);
+  _cl(tempoBox,'inband', G.rate>.25 && Math.abs(G.rate-b.c)<=b.hw);
   const tier=Math.floor((G.combo-1)/.5);
   if(tier>comboTier && tier>0) comboPop('×'+G.combo.toFixed(1), tier>=3?'unstoppable':tier>=2?'in sync':'nice rhythm');
   comboTier=tier;
-  stage.classList.toggle('intro', G.state==='intro');
+  _cl(stage,'intro', G.state==='intro');
   const plv=(G.pleasure/100).toFixed(2); if(plv!==lastPl){ lastPl=plv; stage.style.setProperty('--pl',plv); }
   const mn=(G.sesT/60)|0, sc=('0'+((G.sesT%60)|0)).slice(-2);
-  clock.textContent=G.round>1?`R${G.round} · ${mn}:${sc}`:`${mn}:${sc}`;
-  strk.textContent=G.strokes+(G.strokes===1?' stroke':' strokes');
-  btnC.disabled=!(G.sesT>CFG.climaxAt&&(G.state==='play'||G.state==='orgasm'));
-  btnC.classList.toggle('ready',G.pleasure>85&&G.state==='play');
-  $('btnKiss').classList.toggle('on',G.kissT>0);
-  $('btnRub').classList.toggle('on',G.rubT>0);
-  const bRl=$('btnRub'), zl='RUB · '+(RUBLBL[rubZoneName()]||'BOTH')+' <kbd>C</kbd>';
+  _tx(clock,G.round>1?`R${G.round} · ${mn}:${sc}`:`${mn}:${sc}`);
+  _tx(strk,G.strokes+(G.strokes===1?' stroke':' strokes'));
+  const dis=!(G.sesT>CFG.climaxAt&&(G.state==='play'||G.state==='orgasm')); if(btnC.disabled!==dis) btnC.disabled=dis;
+  _cl(btnC,'ready',G.pleasure>85&&G.state==='play');
+  _cl(btnKissEl,'on',G.kissT>0);
+  _cl(btnRubEl,'on',G.rubT>0);
+  const bRl=btnRubEl, zl='RUB · '+(RUBLBL[rubZoneName()]||'BOTH')+' <kbd>C</kbd>';
   if(bRl._zl!==zl){ bRl._zl=zl; bRl.innerHTML=zl; }
-  const bPl=$('btnPos'), pl='POS · '+posName()+' <kbd>Tab</kbd>';
+  const bPl=btnPosEl, pl='POS · '+posName()+' <kbd>Tab</kbd>';
   if(bPl._pl!==pl){ bPl._pl=pl; bPl.innerHTML=pl; }
-  const bOr = $('btnOral');
+  const bOr = btnOralEl;
   if(bOr){
-    bOr.classList.toggle('on', (G.oralT || 0) > 0);
+    _cl(bOr,'on', (G.oralT || 0) > 0);
     const ot = ((G.oralT === 2) ? 'BLOW' : ((G.oralT === 1) ? 'LICK' : 'ORAL')) + ' <kbd>O</kbd>';
     if(bOr._ot !== ot){ bOr._ot = ot; bOr.innerHTML = ot; }
   }
-  const bSl=$('btnSolo'); if(bSl) bSl.classList.toggle('on',!!G.solo);
-  const bz=$('btnZoom'); if(bz) bz.classList.toggle('on', G.view==='fpv' && G.fpvFocus!=='full');
+  if(btnSoloEl) _cl(btnSoloEl,'on',!!G.solo);
+  if(btnZoomEl) _cl(btnZoomEl,'on', G.view==='fpv' && G.fpvFocus!=='full');
   // speech bubble
   if(G.speech){ bub.textContent=G.speech.txt; bub.classList.add('show');
     if(G.view==='fpv'){
@@ -131,19 +136,33 @@ function hudTick(){
 }
 
 /* ---------------- resize & loop ---------------- */
+/* adaptive resolution: the canvas backing store follows measured frame time (scale 0.55..1 of the
+   device pixel ratio, max 2). Off in dev screenshot modes (?shot / ?clean / ?adapt=0) so captures stay sharp. */
+const PERF2={scale:1, acc:0, n:0, slow:0, fast:0, on:!/[?&](adapt=0|shot=|clean=1)/.test(location.search)};
+function perf2Tick(raw){
+  if(!PERF2.on||document.hidden||raw<=0||raw>0.5) return;
+  PERF2.acc+=raw; PERF2.n++;
+  if(PERF2.acc<1) return;
+  const avg=PERF2.acc/PERF2.n; PERF2.acc=0; PERF2.n=0;
+  if(avg>1/40){ PERF2.fast=0; if(++PERF2.slow>=2){ PERF2.slow=0; perf2Scale(PERF2.scale-0.15); } }
+  else if(avg<1/55){ PERF2.slow=0; if(++PERF2.fast>=5){ PERF2.fast=0; perf2Scale(PERF2.scale+0.15); } }
+  else PERF2.slow=PERF2.fast=0;
+}
+function perf2Scale(s){ s=clamp(s,0.55,1); if(Math.abs(s-PERF2.scale)<0.01) return; PERF2.scale=s; resize(); }
 function resize(){
-  const w=stage.clientWidth, dpr=Math.min(2,window.devicePixelRatio||1);
-  CV.width=w*dpr; CV.height=w*dpr*9/16;
+  const w=stage.clientWidth, dpr=Math.min(2,window.devicePixelRatio||1)*PERF2.scale;
+  const cw=Math.round(w*dpr), ch=Math.round(w*dpr*9/16);
+  if(CV.width!==cw||CV.height!==ch){ CV.width=cw; CV.height=ch; }
   // HUD em scales with the stage, but never below a legible floor on phones
   stage.style.fontSize=Math.max(w/1280*10, Math.min(7.2, w/1280*15))+'px';
   dragK=1/(w*CFG.dragSens);
-  document.querySelectorAll('#plTicks').forEach(()=>{});
 }
 window.addEventListener('resize',resize); resize();
 
 let last=performance.now();
 function tick(ts){
-  const dt=clamp((ts-last)/1000,0,.05); last=ts;
+  const raw=(ts-last)/1000, dt=clamp(raw,0,.05); last=ts;
+  perf2Tick(raw);
   update(dt); draw();
   requestAnimationFrame(tick);
 }

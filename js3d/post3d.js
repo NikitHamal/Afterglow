@@ -142,7 +142,8 @@ function resizePost3(w, h) {
   const dispose = rt => rt && rt.dispose();
   dispose(POST3.rt); dispose(POST3.bright);
   POST3.blurA.forEach(dispose); POST3.blurB.forEach(dispose);
-  const samples = renderer3d.capabilities.isWebGL2 ? 4 : 0;
+  // high pixel ratios already supersample: 2x MSAA there halves the HDR target's memory and bandwidth
+  const samples = renderer3d.capabilities.isWebGL2 ? (pr >= 1.5 ? 2 : 4) : 0;
   POST3.rt = _postTarget3(W, H, samples, true);
   POST3.bright = _postTarget3(W >> 1, H >> 1, 0);
   POST3.blurA = []; POST3.blurB = [];

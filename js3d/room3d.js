@@ -200,7 +200,7 @@ function buildBed3(g) {
   // rumpled top sheet: a dense plane that wrinkles at the margins and spills
   // over the sides into hanging folds (the middle stays flat under the bodies)
   const ow = 0.28, sw = bw + ow * 2, sl = bl + ow - 0.35;
-  const sg = new THREE.PlaneGeometry(sw, sl, 120, 150);
+  const sg = new THREE.PlaneGeometry(sw, sl, 96, 120);        // ~23k tris (was 36k) — folds still read
   sg.rotateX(-Math.PI / 2);
   const p = sg.attributes.position, rnd = _rng3(31);
   const blobs = [];
@@ -241,7 +241,7 @@ function buildBed3(g) {
   const hbW = bw + 0.3, hbH = 1.25, hbZ = R3.bedZ0 - 0.12;
   const hbg = roundedBox3(hbW, hbH, 0.14, 0.05, 8);
   // re-segment the front with a tufting field: dimples on a diamond grid
-  const hbDense = new THREE.PlaneGeometry(hbW - 0.16, hbH - 0.16, 140, 80);
+  const hbDense = new THREE.PlaneGeometry(hbW - 0.16, hbH - 0.16, 104, 60);   // ~12k tris (was 22k)
   const hp = hbDense.attributes.position;
   const sx = 0.24, sy = 0.21;
   for (let i = 0; i < hp.count; i++) {

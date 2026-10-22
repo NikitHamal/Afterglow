@@ -98,8 +98,10 @@ function getSkin(){
 const CHAR_KEY='ag_char';
 function applyPreset(key){
   const p=CHARS[key]||CHARS.vivian;
+  const him=G.char.him;                       // his look is independent of which woman is picked
   for(const k in G.char) delete G.char[k];
   Object.assign(G.char, JSON.parse(JSON.stringify(p)));
+  if(him) G.char.him=him;
   lsSaveChar();
   if(typeof updatePlName==='function') updatePlName();
 }
