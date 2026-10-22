@@ -363,6 +363,8 @@ function endStats(){
    ============================================================ */
 
 function update(dt){
+  // Paused (window blur / help overlay): freeze the sim, keep rendering
+  if(G.paused) return;
   const t = (G.t += dt);
   G.ar = G.pleasure || 0;
 
@@ -432,13 +434,25 @@ function update(dt){
     if(G.state !== 'orgasm'){
       // Tissue resistance steepens near full penetration (0.85+)
       const elasticResistance = targetDepth > 0.82 ? 1.0 - (targetDepth - 0.82) * 0.45 : 1.0;
-      const springRate = Math.min(1.0, dt * 17.5 * elasticResistance);
-      G.depth = (G.depth || 0) + (targetDepth - G.depth) * springRate;
+      // Critically-damped follow (x'' = w^2(target-x) - 2w x'): the hips
+      // carry weight and never overshoot, and the smooth velocity keeps the
+      // stroke detector from firing on pointer jitter. Sub-stepped so a
+      // frame hitch can't destabilise it.
+      const w = 32 * elasticResistance;
+      const n = Math.max(1, Math.ceil(dt / 0.008)), h = dt / n;
+      let x = G.depth || 0, dv = G.dv || 0;
+      for(let i = 0; i < n; i++){
+        dv += (w * w * (targetDepth - x) - 2 * w * dv) * h;
+        x += dv * h;
+      }
+      if(x < 0){ x = 0; dv = Math.max(0, dv); } else if(x > 1){ x = 1; dv = Math.min(0, dv); }
+      G.depth = x; G.dv = dv;
     } else {
       // Involuntary shivering during orgasm
       const orgSpasm = (Math.sin(t * 12) * 0.5 + 0.5) * 0.15 * Math.sin(Math.PI * clamp((G.orgT || 0) / 5.2, 0, 1));
       const orgDrift = (Math.sin(t * 1.1) * 0.5 + 0.5) * 0.45 + orgSpasm;
       G.depth = (G.depth || 0) + (orgDrift - G.depth) * Math.min(1.0, dt * 6.5);
+      G.dv = 0;
     }
 
     // Kinematic Velocity & Inflection Stroke Detector
@@ -711,13 +725,32 @@ function scheduleVoice(dt){
     }
   }
 
-  // Sympathetic Cardiovascular Tachycardia (Heartbeat)
-  if((G.pleasure || 0) > 70){
+  // His breathing follows his stamina: steady when fresh, heavy when spent
+  if(!G.tired && (G.stamina || 100) < 55 && (G.state === 'play' || G.state === 'orgasm')){
+    G.nBreathS = (G.nBreathS || 1.2) - dt;
+    if(G.nBreathS <= 0 && typeof playBreath === 'function'){
+      playBreath(true);
+      G.nBreathS = lerp(0.95, 2.6, clamp((G.stamina || 0) / 55, 0, 1)) * rr(0.9, 1.15);
+    }
+  }
+
+  // Sympathetic Cardiovascular Tachycardia (Heartbeat) — faint from mid
+  // arousal, swelling in volume and tempo toward the edge
+  if((G.pleasure || 0) > 45 || G.state === 'orgasm'){
     G.nextBeat = (G.nextBeat || 0.6) - dt;
     if(G.nextBeat <= 0 && typeof playHeart === 'function'){
       playHeart();
-      const bpm = 74 + ((G.pleasure - 70) * 1.35) + ((G.orgasms || 0) * 8.5);
+      const bpm = 68 + (Math.max(0, G.pleasure - 45) * 1.25) + ((G.orgasms || 0) * 8.5);
       G.nextBeat = 60 / Math.min(185, bpm);
     }
   }
 }
+
+/* Per-frame feedback hooks (ambience bed, juice popups). Wrapped here so
+   neither app loop (2D app.js / 3D app3d.js) needs to know about them. */
+const _updateCore = update;
+update = function(dt){
+  _updateCore(dt);
+  if(typeof ambTick === 'function') try{ ambTick(dt); }catch(_){}
+  if(typeof juiceTick === 'function') try{ juiceTick(dt); }catch(_){}
+};

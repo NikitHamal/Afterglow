@@ -9,20 +9,40 @@
 function lsGet(k){ try{ return localStorage.getItem(k); }catch(_){ return null; } }
 function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(_){} }
 let AC=null, master=null, bus=null, revIn=null, muted=lsGet('ag_mute')==='1';
+/* Mix graph (every source lands on one of four stems):
+     bus    — body foley ─┐
+     voxBus — voices ─────┼─> glue comp ─> warmth EQ ─> master ─> limiter ─> out
+                          └─> room reverb send ──────────┘
+     ambBus — room tone / rain / heartbeat (ducked under voices) ─> master
+     uiBus  — dry interface ticks, no room ─> master                      */
+let voxBus=null, ambBus=null, uiBus=null, ambDuck=null, _hidden=false;
 function ai(){ if(AC) return;
   AC=new (window.AudioContext||window.webkitAudioContext)();
-  const comp=AC.createDynamicsCompressor();
-  // Transparent master peak limiter: allows full, loud acoustic presence without digital clipping
-  comp.threshold.value=-3; comp.knee.value=4; comp.ratio.value=12; comp.attack.value=.002; comp.release.value=.09;
-  master=AC.createGain(); master.gain.value=muted?0:1.0;
-  bus=AC.createGain(); bus.gain.value=1.0;
+  // Brick-wall-ish limiter at the very end so stacked climaxes never clip
+  const lim=AC.createDynamicsCompressor();
+  lim.threshold.value=-2.5; lim.knee.value=2; lim.ratio.value=20; lim.attack.value=.0015; lim.release.value=.12;
+  // Gentle glue compressor: pulls foley and voice into the same space
+  const glue=AC.createDynamicsCompressor();
+  glue.threshold.value=-20; glue.knee.value=10; glue.ratio.value=2.6; glue.attack.value=.012; glue.release.value=.22;
+  // Warmth: a little low-mid body, tame the 3k harshness of synth voices, soften air
+  const low=AC.createBiquadFilter(); low.type='lowshelf'; low.frequency.value=180; low.gain.value=2.2;
+  const mid=AC.createBiquadFilter(); mid.type='peaking'; mid.frequency.value=3100; mid.Q.value=1.1; mid.gain.value=-2.4;
+  const air=AC.createBiquadFilter(); air.type='highshelf'; air.frequency.value=9500; air.gain.value=-3;
+  master=AC.createGain(); master.gain.value=(muted||_hidden)?0:1.0;
+  bus=AC.createGain(); bus.gain.value=.86;
+  voxBus=AC.createGain(); voxBus.gain.value=.92;
+  ambBus=AC.createGain(); ambBus.gain.value=1;
+  ambDuck=AC.createGain(); ambDuck.gain.value=1;
+  uiBus=AC.createGain(); uiBus.gain.value=.5;
   // Room acoustics: procedural small-bedroom impulse response (convolution) + short predelay
   revIn=AC.createGain();
-  const revWet=AC.createGain(); revWet.gain.value=.20;
+  const revWet=AC.createGain(); revWet.gain.value=.22;
   try{
     const c=AC.createConvolver(); c.buffer=irBuf();
-    const pre=AC.createDelay(1); pre.delayTime.value=.016;
-    revIn.connect(pre); pre.connect(c); c.connect(revWet); revWet.connect(master);
+    const pre=AC.createDelay(1); pre.delayTime.value=.018;
+    // darken the tail: real bedrooms (curtains, bedding) eat the highs fast
+    const damp=AC.createBiquadFilter(); damp.type='lowpass'; damp.frequency.value=4200;
+    revIn.connect(pre); pre.connect(c); c.connect(damp); damp.connect(revWet); revWet.connect(master);
   }catch(_){
     // Fallback: feedback comb + lowpass damping
     const dl1=AC.createDelay(1); dl1.delayTime.value=.048;
@@ -34,8 +54,14 @@ function ai(){ if(AC) return;
     revIn.connect(dl2); dl2.connect(lp); lp.connect(fb2); fb2.connect(dl2);
     lp.connect(revWet); revWet.connect(master);
   }
-  bus.connect(master); bus.connect(revIn); master.connect(comp); comp.connect(AC.destination);
+  bus.connect(glue); voxBus.connect(glue);
+  bus.connect(revIn); voxBus.connect(revIn);
+  glue.connect(low); low.connect(mid); mid.connect(air); air.connect(master);
+  ambBus.connect(ambDuck); ambDuck.connect(master);
+  uiBus.connect(master);
+  master.connect(lim); lim.connect(AC.destination);
   sfxInit();
+  if(typeof ambStart==='function') try{ ambStart(); }catch(_){}
 }
 // Generated stereo room IR: decaying diffuse noise + a few scattered early reflections
 function irBuf(){
@@ -63,35 +89,73 @@ function noise(){ if(!NB){ NB=AC.createBuffer(1,AC.sampleRate*1.5,AC.sampleRate)
 function env(g,t,a,peak,d){ g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(peak,t+a);
   g.gain.exponentialRampToValueAtTime(.0001,t+a+d); }
 
-// Stereo placement: node -> panner -> bus (everything still gets room via bus->revIn)
-function route(node,p){
+/* Where things are on screen -> stereo position. Her head/voice and the
+   body contact point are projected from the 3D rig when it exists,
+   otherwise taken from the 2D side layout (her head lies screen-left). */
+function scrPan(kind){
+  try{
+    if(typeof her3!=='undefined' && her3 && her3.root && typeof camera3d!=='undefined' && camera3d){
+      const p=her3.root.getWorldPosition(new THREE.Vector3()).project(camera3d);
+      return clamp(p.x*.55,-.6,.6);
+    }
+  }catch(_){}
+  if(G.view==='fpv') return 0;
+  return kind==='vox' ? -.32 : .06;
+}
+const _sp=()=>scrPan('body')+rr(-.12,.12);
+
+// Stereo placement: node -> panner -> stem (bus/voxBus both feed the room)
+function route(node,p,dest){
+  const out=dest||bus;
   const has=AC.createStereoPanner;
   if(has&&p){ const pan=AC.createStereoPanner(); pan.pan.value=clamp(p,-1,1);
-    node.connect(pan); pan.connect(bus); }
-  else node.connect(bus);
+    node.connect(pan); pan.connect(out); }
+  else node.connect(out);
+}
+
+/* Voice gate: overlapping moans are what made the old mix clip and smear.
+   Each new voice is attenuated by how many are already sounding and a
+   4th simultaneous one is dropped; ambience dips under any voice. */
+const _vox=[];
+function voxGate(t,dur,force){
+  for(let i=_vox.length-1;i>=0;i--) if(_vox[i][1]<t) _vox.splice(i,1);
+  let n=0; for(const v of _vox) if(v[0]<t+dur && v[1]>t) n++;
+  if(n>=3 && !force) return 0;
+  _vox.push([t,t+dur]);
+  if(ambDuck){ const g=ambDuck.gain; g.cancelScheduledValues(t); g.setTargetAtTime(.55,t,.05); g.setTargetAtTime(1,t+dur,.4); }
+  return [1,.78,.58,.42][Math.min(n,3)];
 }
 
 /* ---- real-sample layer (pack foley + vox, synthesis = per-key fallback) ----
-   Lazy by design: no Audio element is created (and no HTTP request is made)
-   until audio init runs and audio/sfx.json lists files for a key.
-   Each key gets a 3-element Audio pool (rapid thrusts overlap instead of
-   cutting each other) and a random file per hit for variety. */
-const SFXDEF={};
+   Samples are fetched + decoded into AudioBuffers once audio init runs, so
+   they go through the same pan / glue / reverb chain as the synth instead of
+   bypassing the mix as raw <audio> elements did. Each hit picks a random
+   file (never the same one twice running) with small pitch + gain jitter so
+   fast thrusting doesn't machine-gun. <audio> pool is the fallback if a
+   browser can't decode a file. */
+const SFXVOX={moan:1,slurp:1,swallow:1,takeme:1,loveyou:1};
 const _sfx={};
 function sfxReg(k,files){
   if(!files || !files.length) return;
+  const S=_sfx[k]={files:files.slice(),bufs:[],last:-1,pool:null,next:0,ready:false,fi:0};
+  let chain=Promise.resolve();
+  files.forEach(f=>{
+    chain=chain.then(()=>fetch(f)).then(r=>r.ok?r.arrayBuffer():Promise.reject())
+      .then(ab=>new Promise((ok,no)=>{ const p=AC.decodeAudioData(ab,ok,no); if(p&&p.catch) p.catch(no); }))
+      .then(b=>{ S.bufs.push(b); },()=>{ if(!S.bufs.length && !S.pool) sfxPoolFallback(S); });
+  });
+}
+function sfxPoolFallback(S){
   const pool=[];
   for(let n=0;n<3;n++){ try{ const a=new Audio(); a.preload='auto'; pool.push(a); }catch(_){} }
   if(!pool.length) return;
-  const S=_sfx[k]={files:files.slice(),pool,next:0,ready:false,fi:0};
+  S.pool=pool;
   pool.forEach(a=>{
     a.oncanplaythrough=()=>{ S.ready=true; };
-    a.onerror=()=>{ // skip a dead file, try the next one in the list
-      S.fi++;
-      if(S.fi<S.files.length && a===S.pool[0]){ try{ a.src=S.files[S.fi]; a.load(); }catch(_){} }
-    };
+    a.onerror=()=>{ S.fi++;
+      if(S.fi<S.files.length && a===S.pool[0]){ try{ a.src=S.files[S.fi]; a.load(); }catch(_){} } };
   });
-  try{ pool[0].src=files[0]; pool[0].load(); }catch(_){}
+  try{ pool[0].src=S.files[0]; pool[0].load(); }catch(_){}
 }
 function sfxInit(){
   if(location.protocol!=='http:'&&location.protocol!=='https:') return;
@@ -99,18 +163,28 @@ function sfxInit(){
     if(!m) return; for(const k in m) sfxReg(k,m[k]);
   }).catch(()=>{});
 }
-function sfxPick(k){
+function sfxHit(k,vol,rate,pan){
   const S=_sfx[k];
-  if(!S||!S.ready) return null;
+  if(!S||!AC) return false;
+  if(S.bufs.length){
+    let i=(Math.random()*S.bufs.length)|0;
+    if(S.bufs.length>1 && i===S.last) i=(i+1)%S.bufs.length;
+    S.last=i;
+    const b=S.bufs[i], t=AC.currentTime+.004, isVox=!!SFXVOX[k];
+    let v=clamp(vol,0,1.2)*rr(.9,1.06);
+    if(isVox){ const gk=voxGate(t,b.duration/(rate||1)); if(!gk) return true; v*=gk; }
+    const s=AC.createBufferSource(); s.buffer=b;
+    s.playbackRate.value=(rate||1)*rr(.985,1.015);
+    const g=AC.createGain(); g.gain.value=v;
+    s.connect(g); route(g,pan??(isVox?scrPan('vox')+rr(-.06,.06):_sp()),isVox?voxBus:bus);
+    s.start(t);
+    return true;
+  }
+  if(!S.pool||!S.ready) return false;
   const f=S.files[(Math.random()*S.files.length)|0];
   const a=S.pool[S.next=(S.next+1)%S.pool.length];
-  try{ if(a.getAttribute('src')!==f){ a.src=f; a.load(); } }catch(_){}
-  return a;
-}
-function sfxHit(k,vol,rate){
-  const a=sfxPick(k);
-  if(!a) return false;
-  try{ a.volume=clamp(vol,0,1); a.playbackRate=rate||1; a.currentTime=0;
+  try{ if(a.getAttribute('src')!==f){ a.src=f; a.load(); }
+    a.volume=clamp(vol,0,1); a.playbackRate=rate||1; a.currentTime=0;
     const p=a.play(); if(p&&p.catch) p.catch(()=>{}); return true; }
   catch(_){ return false; }
 }
@@ -175,13 +249,16 @@ function playMoan(i,o={}){
   const t=AC.currentTime+(o.at||.012);
   const dur=o.dur??(0.36+i*.56+R()*.22);
   const f0=(o.f0??(225+R()*35))*(o.pmul??(0.94+i*.28));
-  const vol=clamp(.44+i*.50,.36,.98)*(o.vol??1);
+  let vol=clamp(.44+i*.50,.36,.98)*(o.vol??1);
 
   // Real moan sample only sometimes (single file = monotonous); synth varies the rest
-  if(R()<0.45 && sfxHit('moan',vol,rr(.9,1.12))){
+  if(!(o.at>.05) && R()<0.45 && sfxHit('moan',vol,rr(.9,1.12))){
     if(!o.silent) G.mouths.push({t0:G.t,dur:Math.min(dur,1.1),i});
     return;
   }
+  const gk=voxGate(t,dur,o.force); if(!gk) return;
+  vol*=gk;
+  const vp=scrPan('vox');
   const cyc=VCYC();
   // Voiced glottal pulses (looped wavetable = true harmonic series)
   const v=AC.createBufferSource(); v.buffer=voiceBuf(); v.loop=true;
@@ -223,7 +300,7 @@ function playMoan(i,o={}){
   const tr=AC.createOscillator(), trg=AC.createGain();
   tr.frequency.value=5+R()*1.2; trg.gain.value=vol*.05;
   tr.connect(trg); trg.connect(g.gain);
-  route(g,rr(-.12,.12));
+  route(g,vp+rr(-.08,.08),voxBus);
   // Breathy whisper texture (stereo pair)
   const nA=AC.createBufferSource(); nA.buffer=noise(); nA.loop=true;
   const nB=AC.createBufferSource(); nB.buffer=noise(); nB.loop=true;
@@ -231,8 +308,8 @@ function playMoan(i,o={}){
   const nfB=AC.createBiquadFilter(); nfB.type='bandpass'; nfB.frequency.value=2100+i*500; nfB.Q.value=1.5;
   const ngA=AC.createGain(); env(ngA,t,.03,vol*.28,dur*.7);
   const ngB=AC.createGain(); env(ngB,t,.05,vol*.22,dur*.65);
-  nA.connect(nfA); nfA.connect(ngA); route(ngA,-.35);
-  nB.connect(nfB); nfB.connect(ngB); route(ngB,.35);
+  nA.connect(nfA); nfA.connect(ngA); route(ngA,vp-.3,voxBus);
+  nB.connect(nfB); nfB.connect(ngB); route(ngB,vp+.3,voxBus);
 
   const te=t+dur+.1;
   v.start(t); v2.start(t); vib.start(t); tr.start(t); nA.start(t); nB.start(t);
@@ -265,7 +342,7 @@ function bust(dur,f,fgain,type,q,at,pan){
   const n=AC.createBufferSource(); n.buffer=noise(); n.loop=true; n.playbackRate.value=rr(.88,1.12);
   const f1=AC.createBiquadFilter(); f1.type=type; f1.frequency.value=f; f1.Q.value=q;
   const g=AC.createGain(); env(g,t,.008,fgain,dur);
-  n.connect(f1); f1.connect(g); route(g,pan??rr(-.3,.3)); n.start(t); n.stop(t+dur+.08); return t;
+  n.connect(f1); f1.connect(g); route(g,pan??_sp()); n.start(t); n.stop(t+dur+.08); return t;
 }
 
 // Deep intimate flesh impact (body slapping skin)
@@ -276,7 +353,7 @@ function playSlap(v=1){
   // Dry skin clap when she's dry, wet plap otherwise
   const pk=((G.lube??0.8)<0.45)?'slapdry':'slap';
   if(sfxHit(pk,vol,rr(.94,1.06))) return;
-  const pan=rr(-.4,.4);
+  const pan=_sp();
   // Punchy body thump: 135Hz -> 62Hz kick (audible on phones, laptop speakers, and headphones)
   const o=AC.createOscillator(); o.type='sine';
   o.frequency.setValueAtTime(135,t); o.frequency.exponentialRampToValueAtTime(62,t+.085);
@@ -298,7 +375,7 @@ function playSquelch(v=1,o={}){
   if(!AC||muted)return;
   const t=AC.currentTime+.008;
   const vol=clamp(.38+v*.52,.32,.95);
-  const dir=o.dir||0, wet=o.wet??1, pan=rr(-.45,.45);
+  const dir=o.dir||0, wet=o.wet??1, pan=_sp();
   if(sfxHit('wet',vol,dir<0?rr(1.02,1.12):dir>0?rr(.9,1.0):rr(.94,1.06))) return;
   // Low wet suction body
   const f1=AC.createBiquadFilter(); f1.type='lowpass'; f1.frequency.value=340; f1.Q.value=.9;
@@ -380,11 +457,22 @@ function playBreath(male){
 
 function playHeart(){
   if(!AC||muted)return;
-  if(sfxHit('heart',.5,1)) return;
-  [[0,.38,-.25],[.14,.24,.25]].forEach(([at,v,pa])=>{
+  // lub-dub that you feel more than hear: barely there at mid arousal,
+  // chest-thumping at the edge and through her orgasm
+  const k=G.state==='orgasm'?1:clamp(((G.pleasure||0)-45)/55,0,1);
+  const hv=.12+.5*k*k;
+  if(sfxHit('heart',hv,1)) return;
+  const out=ambBus||bus;
+  [[0,1,58],[.15,.62,52]].forEach(([at,v,f])=>{
     const t=AC.currentTime+at;
-    const o=AC.createOscillator(); o.type='sine'; o.frequency.value=58;
-    const g=AC.createGain(); env(g,t,.01,v,.12); o.connect(g); route(g,pa); o.start(t); o.stop(t+.18);
+    const o=AC.createOscillator(); o.type='sine';
+    o.frequency.setValueAtTime(f*1.25,t); o.frequency.exponentialRampToValueAtTime(f*.8,t+.12);
+    const g=AC.createGain(); env(g,t,.008,hv*v,.14); o.connect(g); route(g,0,out); o.start(t); o.stop(t+.2);
+    // soft fleshy knock on top so it survives laptop speakers
+    const n=AC.createBufferSource(); n.buffer=noise();
+    const lp=AC.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=180;
+    const ng=AC.createGain(); env(ng,t,.004,hv*v*.5,.05);
+    n.connect(lp); lp.connect(ng); route(ng,0,out); n.start(t); n.stop(t+.08);
   });
 }
 
@@ -463,10 +551,24 @@ function playOralGag(){
   s.connect(sg); route(sg,0); s.start(t); s.stop(t+.24);
 }
 
+function masterLevel(){ return (muted||_hidden)?0:1; }
 function setMute(m){ muted=m; lsSet('ag_mute',m?'1':'0');
-  if(master) master.gain.linearRampToValueAtTime(m?0:1.0,AC.currentTime+.15);
+  if(master){ const g=master.gain, t=AC.currentTime;
+    g.cancelScheduledValues(t); g.setValueAtTime(g.value,t); g.setTargetAtTime(masterLevel(),t,.08); }
   const el=document.getElementById('icoSnd'); if(el) el.style.opacity=m?.35:1;
 }
+// Tab hidden: fade out, then suspend the context (saves battery); fade back in on return
+document.addEventListener('visibilitychange',()=>{
+  _hidden=document.hidden;
+  if(!AC||!master) return;
+  const g=master.gain, t=AC.currentTime;
+  g.cancelScheduledValues(t); g.setValueAtTime(g.value,t);
+  if(_hidden){ g.setTargetAtTime(0,t,.06);
+    setTimeout(()=>{ if(_hidden&&AC.state==='running') AC.suspend().catch(()=>{}); },400); }
+  else { const r=AC.resume?AC.resume():null;
+    const up=()=>{ const t2=AC.currentTime; g.setValueAtTime(0,t2); g.setTargetAtTime(masterLevel(),t2,.25); };
+    if(r&&r.then) r.then(up,up); else up(); }
+});
 if(muted){ const _el=document.getElementById('icoSnd'); if(_el) _el.style.opacity='.35'; }
 
 /* ---------------- speech ---------------- */

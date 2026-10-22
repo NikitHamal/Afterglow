@@ -245,7 +245,8 @@ function tick3(ts) {
   hudTick3();
 
   if (typeof updateGLBModel === 'function') updateGLBModel(dt);
-  if (renderer3d) renderer3d.render(scene3d, camera3d);
+  if (typeof updateRoom3 === 'function') updateRoom3(dt);
+  if (renderer3d && !(typeof renderPost3 === 'function' && renderPost3(dt))) renderer3d.render(scene3d, camera3d);
   requestAnimationFrame(tick3);
 }
 
@@ -274,6 +275,7 @@ function boot3() {
   };
   rebuild();
 
+  if (typeof initPost3 === 'function') initPost3();
   resizeAll3();
   applyPoseCam3(true);
   shotBoot3();           // dev screenshot mode (no-op in normal play)

@@ -80,8 +80,8 @@ function drawOralSide(){
   const HIS=['#dba06f','#a96c44'];
 
   /* ---- him reclined ---- */
-  himHead(286,540,-1);
-  capsule([332,534],[692,528],46,36,himT());
+  bodyS([[338,532],[430,527],[540,526],[640,529],[700,532]],[24,38,34,30,30],[24,32,28,28,28],himT(),{k:1});
+  hisHeadAt(294,528,Math.PI/2-0.15,1.2,null,true);
   X.save(); X.globalCompositeOperation='multiply';
   shade(478,526,96,24,'rgba(110,60,40,.20)',0);
   shade(560,532,64,16,'rgba(90,48,32,.14)',0);
@@ -145,19 +145,8 @@ function drawOralSide(){
   capsule([988,578],[908,570],18,13,herFarT());
   footS(994,576,0.12,1.0,herFarT());
   capsule([908,570],[876,478],36,30,herT());
-  capsule([876,478],[824,368],37,30,herT());
-  X.save(); X.globalCompositeOperation='soft-light';
-  shade(848,424,28,58,'rgba(255,228,198,.36)',.08);
-  X.restore();
-  X.save(); X.globalCompositeOperation='multiply';
-  shade(862,502,20,42,'rgba(108,52,42,.22)',.14);
-  X.restore();
-  /* hip / waist */
-  skFillShape(()=>{
-    X.moveTo(824,372); X.quadraticCurveTo(858,400,872,454);
-    X.quadraticCurveTo(890,510,868,548); X.quadraticCurveTo(820,500,808,430);
-    X.quadraticCurveTo(802,390,824,372); X.closePath();
-  },herT(),[806,392,886,530]);
+  // torso: one silhouette from shoulder to hip (back to the right, chest left)
+  bodyS([[828,372],[838,410],[852,446],[872,486]],[16,20,17,26],[16,28,22,24],herT(),{k:1.55});
   poseGlute(884,500,30,36,0);
 
   const jig=G.breast.p*.78+Math.sin(G.t*8)*vel*1.15;

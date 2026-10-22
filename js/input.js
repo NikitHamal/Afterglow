@@ -7,6 +7,9 @@ function pdown(e){
   if(G.state==='intro')return;
   if(G.state==='climax'){ spurt(); return; }
   if(G.state!=='play'&&G.state!=='orgasm')return;
+  if(G.paused) return;
+  // full stroke = ~42% of the stage height, so phones and 4K screens feel the same
+  dragK=1/Math.max(160,(stage.clientHeight||720)*0.42);
   dragY=e.clientY; G.dragOn=true; stage.classList.add('drag');
   if(stage.setPointerCapture&&e.pointerId!==undefined) try{stage.setPointerCapture(e.pointerId)}catch(_){}
 }

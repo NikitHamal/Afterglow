@@ -49,14 +49,6 @@ const CHARS={
     nippleColor:'#6a2828', blushColor:'#883040', lipColor:'#6a2435', eyeColor:'#2a1208',
     pubicHair:'full'
   },
-  goatchan:{
-    preset:'goatchan', name:'Goat-chan',
-    quote:'\u201cMmh\u2026 are you ready for something wild? Don\u2019t hold back\u2026 \u2665\u201d',
-    skinTone:.15, hairColor:'#961e32', hairStyle:'horns',
-    bodyScale:.50, breastSize:.85,
-    nippleColor:'#f090a0', blushColor:'#f05068', lipColor:'#d04050', eyeColor:'#cc1030',
-    pubicHair:'trim', isGLB:true, glbPath:'assets/goatchan/goatchan.glb'
-  },
   kiyoko:{
     preset:'kiyoko', name:'Kiyoko',
     quote:'\u201cMmm\u2026 start with my ears? Then don\u2019t you dare stop\u2026 \u2665\u201d',
@@ -67,7 +59,7 @@ const CHARS={
   },
   anime:{
     preset:'anime', name:'Anime',
-    quote:'\u201cEhehe\u2026 senpai finally picked me! Be gentle\u2026 maybe\u2665\u201d',
+    quote:'\u201cMm\u2026 took you long enough. Lock the door\u2026 and take your time with me\u2665\u201d',
     skinTone:.18, hairColor:'#ff7ab0', hairStyle:'long',
     bodyScale:.47, breastSize:.60,
     nippleColor:'#c06070', blushColor:'#f08090', lipColor:'#d06080', eyeColor:'#6a3050',
@@ -107,7 +99,12 @@ function lsSaveChar(){ try{ localStorage.setItem(CHAR_KEY, JSON.stringify(G.char
 function loadCharState(){
   try{
     const raw=localStorage.getItem(CHAR_KEY);
-    if(raw){ const saved=JSON.parse(raw); Object.assign(G.char, saved); }
+    if(raw){
+      const saved=JSON.parse(raw);
+      // retired presets (removed from the roster) fall back to Yuki
+      if(saved && saved.preset && !CHARS[saved.preset]) applyPreset('yuki');
+      else Object.assign(G.char, saved);
+    }
   }catch(_){}
   if(typeof updatePlName==='function') updatePlName();
 }

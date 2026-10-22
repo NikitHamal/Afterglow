@@ -1,8 +1,10 @@
 // Afterglow — module: app (loaded by index.html)
 'use strict';
 function draw(){
+  atmCrossfadeCheck();               // grab the outgoing frame before clearing
   X.setTransform(CV.width/W,0,0,CV.height/H,0,0);
   X.clearRect(0,0,W,H);
+  atmEnsure();                       // (re)build cached room/bed layers
   // GROUNDED CAMERA: impact motion lives in the bodies (breast bounce, flesh
   // jiggle, thrust depth) — never in the world. No scene shake on insertion.
   X.save();
@@ -16,6 +18,7 @@ function draw(){
   else {
     drawRoom(); drawBed();
     if(G.state!=='intro'){
+      atmBodyBegin();
       if(G.solo) drawSoloSide();
       else if(G.oral>.03) drawOralSide();
       else if((G.pos|0)!==0) drawPoseSide();
@@ -28,6 +31,7 @@ function draw(){
         drawHerNear(out.E,out);
         drawRubFX(out.br);
       }
+      atmBodyEnd();
       drawFluids();
     }
     X.restore();
@@ -59,7 +63,14 @@ const plFill=$('plFill'), plBar=$('plBar'), plMood=$('plMood'), dpFill=$('dpFill
   tBand=$('tBand'), tMark=$('tMark'), comboChip=$('comboChip'), comboB=comboChip.querySelector('b'),
   clock=$('clock'), strk=$('strk'), btnC=$('btnClimax');
 const MOODS=[[0,'snug'],[22,'blushing'],[45,'melting'],[68,'trembling'],[85,'on the edge'],[99.9,'about to break']];
-let lastOrg=-1;
+let lastOrg=-1, comboTier=0, lastPl='';
+const tempoBox=$('tempoBox');
+function comboPop(txt, sub){
+  const el=document.createElement('div');
+  el.className='comboPop'; el.innerHTML=txt+'<small>'+sub+'</small>';
+  stage.appendChild(el);
+  setTimeout(()=>el.remove(),1200);
+}
 function hudTick(){
   plFill.style.transform=`scaleY(${G.pleasure/100})`;
   plBar.classList.toggle('hot',G.pleasure>82);
@@ -79,6 +90,13 @@ function hudTick(){
   tMark.style.left=clamp(G.rate/MAXR*100,0,99)+'%';
   if(G.combo>1.05){ comboChip.classList.add('on'); comboB.textContent=G.combo.toFixed(1); }
   else comboChip.classList.remove('on');
+  // sweet-band feedback + combo milestones
+  tempoBox.classList.toggle('inband', G.rate>.25 && Math.abs(G.rate-b.c)<=b.hw);
+  const tier=Math.floor((G.combo-1)/.5);
+  if(tier>comboTier && tier>0) comboPop('×'+G.combo.toFixed(1), tier>=3?'unstoppable':tier>=2?'in sync':'nice rhythm');
+  comboTier=tier;
+  stage.classList.toggle('intro', G.state==='intro');
+  const plv=(G.pleasure/100).toFixed(2); if(plv!==lastPl){ lastPl=plv; stage.style.setProperty('--pl',plv); }
   const mn=(G.sesT/60)|0, sc=('0'+((G.sesT%60)|0)).slice(-2);
   clock.textContent=G.round>1?`R${G.round} · ${mn}:${sc}`:`${mn}:${sc}`;
   strk.textContent=G.strokes+(G.strokes===1?' stroke':' strokes');
@@ -116,7 +134,8 @@ function hudTick(){
 function resize(){
   const w=stage.clientWidth, dpr=Math.min(2,window.devicePixelRatio||1);
   CV.width=w*dpr; CV.height=w*dpr*9/16;
-  stage.style.fontSize=(w/1280*10)+'px';
+  // HUD em scales with the stage, but never below a legible floor on phones
+  stage.style.fontSize=Math.max(w/1280*10, Math.min(7.2, w/1280*15))+'px';
   dragK=1/(w*CFG.dragSens);
   document.querySelectorAll('#plTicks').forEach(()=>{});
 }
@@ -134,7 +153,7 @@ if(lsGet('ag_view')==='fpv'){ G.view='fpv'; document.getElementById('btnView').c
 // character system — init after DOM + canvas ready
 loadCharState();
 initCharUI();
-// headless screenshot helper: ?play=1&char=goatchan&view=fpv auto-starts without intro
+// headless screenshot helper: ?play=1&char=kiyoko&view=fpv auto-starts without intro
 try{
   const qs=new URLSearchParams(location.search);
   if(qs.get('play')==='1'){

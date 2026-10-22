@@ -15,10 +15,11 @@ function buildCharSelector(){
   <div class="chip18">18+</div>
   <h1>Afterglow</h1>
   <div class="sub">choose your companion — tap her to begin</div>
+  <div class="adultNote"><b>18+</b> adults only · every character is a consenting adult</div>
   <div id="charRow"></div>
   <div id="charQuote" class="quote"></div>
   <div class="charBtnRow">
-    <button class="linkbtn" id="btnCharCustom">\u2726 customize before starting</button>
+    <button class="linkbtn" id="btnCharCustom">✦ customize before starting</button>
   </div>
 </div>`;
   document.getElementById('stage').prepend(el);
@@ -27,15 +28,34 @@ function buildCharSelector(){
   const row=el.querySelector('#charRow');
   Object.values(CHARS).forEach(c=>{
     const card=document.createElement('div');
-    card.className='cCard'; card.dataset.preset=c.preset;
-    card.innerHTML=`<canvas class="cPortrait" width="140" height="180"></canvas>
+    card.className='cCard'; card.dataset.preset=c.preset; card.tabIndex=0;
+    card.setAttribute('role','button'); card.setAttribute('aria-label','Choose '+c.name);
+    card.innerHTML=`<canvas class="cPortrait" width="280" height="360"></canvas>
       <div class="cName">${c.name}</div>`;
-    card.addEventListener('click',()=>{
+    const go=()=>{
+      if(card.classList.contains('picked')) return;
       selectChar(c.preset);
-      if(G.state==='intro') startNight();
+      if(G.state!=='intro') return;
+      card.classList.add('picked');
+      if(typeof ai==='function') ai();          // unlock audio inside the gesture
+      setTimeout(()=>{ card.classList.remove('picked'); startNight(); },420);
+    };
+    card.addEventListener('click',go);
+    card.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); go(); } });
+    // hover: preview her line and tilt the card toward the pointer
+    card.addEventListener('mouseenter',()=>{ const q=document.getElementById('charQuote'); if(q) q.textContent=c.quote; });
+    card.addEventListener('mousemove',e=>{
+      const r=card.getBoundingClientRect(), x=(e.clientX-r.left)/r.width, y=(e.clientY-r.top)/r.height;
+      card.style.setProperty('--ry',((x-.5)*14).toFixed(1)+'deg');
+      card.style.setProperty('--rx',((.5-y)*12).toFixed(1)+'deg');
+      card.style.setProperty('--mx',(x*100).toFixed(0)+'%');
+      card.style.setProperty('--my',(y*100).toFixed(0)+'%');
+    });
+    card.addEventListener('mouseleave',()=>{
+      card.style.setProperty('--rx','0deg'); card.style.setProperty('--ry','0deg');
+      const q=document.getElementById('charQuote'); if(q&&CHARS[G.char.preset]) q.textContent=CHARS[G.char.preset].quote;
     });
     row.appendChild(card);
-    // draw mini portrait
     setTimeout(()=>renderPortrait(card.querySelector('.cPortrait'),c),0);
   });
 
@@ -68,70 +88,114 @@ function selectChar(key, silent){
   if(!silent && typeof updatePlName==='function') updatePlName();
 }
 
-/* ---------- mini portrait renderer ---------- */
+/* ---------- portrait renderer ----------
+   A lamp-lit head-and-shoulders study of an adult woman: defined jaw and
+   cheekbones, long neck, collarbones; hair framing per preset. */
 function renderPortrait(cv,c){
   const cx=cv.getContext('2d');
-  const W=140,H=180;
-  cx.fillStyle='#1a0d12'; cx.fillRect(0,0,W,H);
-  // mood gradient bg
-  const bg=cx.createLinearGradient(0,0,0,H);
-  bg.addColorStop(0,'#231318'); bg.addColorStop(1,'#120a0d');
-  cx.fillStyle=bg; cx.fillRect(0,0,W,H);
-  // skin
+  const W=140,H=180, TAU2=Math.PI*2;
+  cx.setTransform(cv.width/W,0,0,cv.height/H,0,0);
+  const E=(x,y,rx,ry,r=0)=>{ cx.beginPath(); cx.ellipse(x,y,rx,ry,r,0,TAU2); };
+  const rg=(x0,y0,r0,x1,y1,r1,st)=>{ const g=cx.createRadialGradient(x0,y0,r0,x1,y1,r1); st.forEach(s=>g.addColorStop(s[0],s[1])); return g; };
+  const lg=(x0,y0,x1,y1,st)=>{ const g=cx.createLinearGradient(x0,y0,x1,y1); st.forEach(s=>g.addColorStop(s[0],s[1])); return g; };
+  const hc=c.hairColor, hcL=lerpHex(hc,'#ffe2d0',.28), hcD=lerpHex(hc,'#000000',.45);
   const t=c.skinTone;
-  const skinC=lerpHex3('#f4cba8','#d4936a','#7a4028',t);
-  const skinSh=lerpHex3('#cf9273','#a96840','#582815',t);
-  // hair spill
-  cx.fillStyle=c.hairColor;
-  cx.beginPath(); cx.ellipse(70,80,42,50,0,0,Math.PI*2); cx.fill();
-  // horns (for goatchan)
-  if(c.preset==='goatchan'||c.hairStyle==='horns'){
-    cx.fillStyle='#f5eee8';
-    cx.beginPath(); cx.moveTo(48,64); cx.quadraticCurveTo(24,40,28,26); cx.quadraticCurveTo(38,36,54,54); cx.fill();
-    cx.beginPath(); cx.moveTo(92,64); cx.quadraticCurveTo(116,40,112,26); cx.quadraticCurveTo(102,36,86,54); cx.fill();
+  const sk=lerpHex3('#f6d0b0','#d4936a','#7a4028',t), skL=lerpHex(sk,'#fff2e6',.35), skS=lerpHex(sk,'#3a1410',.28), skD=lerpHex(sk,'#2a0c0a',.5);
+  // backdrop: warm room bokeh
+  cx.fillStyle=lg(0,0,0,H,[[0,'#2a1220'],[1,'#0e0609']]); cx.fillRect(0,0,W,H);
+  [[22,30,14,'255,170,110',.22],[118,24,10,'255,120,150',.18],[110,70,16,'255,190,130',.12],[16,96,9,'255,140,160',.14],[128,120,12,'200,170,255',.08]]
+    .forEach(([x,y,r,col,a])=>{ cx.fillStyle=rg(x,y,0,x,y,r,[[0,`rgba(${col},${a})`],[1,`rgba(${col},0)`]]); E(x,y,r,r); cx.fill(); });
+  cx.fillStyle=rg(36,60,4,50,80,110,[[0,'rgba(255,180,120,.28)'],[1,'rgba(255,180,120,0)']]); cx.fillRect(0,0,W,H);
+  // hair: back mass (style dependent)
+  cx.fillStyle=lg(0,30,0,H,[[0,hcL],[.4,hc],[1,hcD]]);
+  if(c.hairStyle==='natural'){
+    E(70,70,52,50); cx.fill();
+    for(let i=0;i<22;i++){ const a=i/22*TAU2, r=46+(i%3)*4; E(70+Math.cos(a)*r,70+Math.sin(a)*r*.95,9,9); cx.fill(); }
+  } else {
+    cx.beginPath(); cx.moveTo(30,64); cx.bezierCurveTo(26,20,114,20,110,64);
+    cx.bezierCurveTo(118,110,122,150,112,180); cx.lineTo(28,180); cx.bezierCurveTo(18,150,22,110,30,64); cx.fill();
   }
-  // beast ears (for kiyoko) — tall triangles with pink inner ear
+  // shoulders + chest (bare), lit from the upper-left
+  cx.fillStyle=lg(10,140,130,170,[[0,skL],[.45,sk],[1,skS]]);
+  cx.beginPath(); cx.moveTo(4,H); cx.bezierCurveTo(8,150,34,140,56,136); cx.lineTo(84,136);
+  cx.bezierCurveTo(106,140,132,150,136,H); cx.closePath(); cx.fill();
+  // neck: long, with a soft shadow under the jaw
+  cx.fillStyle=lg(56,0,86,0,[[0,skL],[.5,sk],[1,skS]]);
+  cx.beginPath(); cx.moveTo(57,104); cx.lineTo(56,140); cx.quadraticCurveTo(70,146,84,140); cx.lineTo(83,104); cx.closePath(); cx.fill();
+  cx.fillStyle=rg(70,110,2,70,112,18,[[0,'rgba(60,20,16,.35)'],[1,'rgba(60,20,16,0)']]); E(70,112,18,10); cx.fill();
+  // collarbones + sternal notch
+  cx.strokeStyle=`rgba(${hexToRgb(skD).join(',')},.35)`; cx.lineWidth=1.2; cx.lineCap='round';
+  cx.beginPath(); cx.moveTo(34,150); cx.quadraticCurveTo(50,144,64,147); cx.moveTo(76,147); cx.quadraticCurveTo(90,144,106,150); cx.stroke();
+  cx.fillStyle=`rgba(${hexToRgb(skL).join(',')},.35)`; E(46,146,10,2,-.15); cx.fill();
+  // horns / ears behind the face
+  if(c.hairStyle==='horns'||c.preset==='goatchan'){
+    cx.fillStyle=lg(0,10,0,60,[[0,'#fffaf4'],[1,'#c9b8a8']]);
+    cx.beginPath(); cx.moveTo(46,50); cx.bezierCurveTo(30,40,20,24,26,8); cx.bezierCurveTo(34,24,46,32,56,40); cx.fill();
+    cx.beginPath(); cx.moveTo(94,50); cx.bezierCurveTo(110,40,120,24,114,8); cx.bezierCurveTo(106,24,94,32,84,40); cx.fill();
+    cx.strokeStyle='rgba(120,90,70,.35)'; cx.lineWidth=.8;
+    for(let i=0;i<4;i++){ cx.beginPath(); cx.moveTo(30+i*4,30-i*5); cx.lineTo(36+i*4,34-i*5); cx.moveTo(110-i*4,30-i*5); cx.lineTo(104-i*4,34-i*5); cx.stroke(); }
+  }
   if(c.preset==='kiyoko'){
-    cx.fillStyle=c.hairColor;
-    cx.beginPath(); cx.moveTo(44,62); cx.lineTo(34,20); cx.lineTo(66,50); cx.closePath(); cx.fill();
-    cx.beginPath(); cx.moveTo(96,62); cx.lineTo(106,20); cx.lineTo(74,50); cx.closePath(); cx.fill();
-    cx.fillStyle='rgba(244,160,150,.9)';
-    cx.beginPath(); cx.moveTo(46,56); cx.lineTo(40,30); cx.lineTo(60,50); cx.closePath(); cx.fill();
-    cx.beginPath(); cx.moveTo(94,56); cx.lineTo(100,30); cx.lineTo(80,50); cx.closePath(); cx.fill();
+    [[-1,44],[1,96]].forEach(([s,x])=>{
+      cx.fillStyle=hc; cx.beginPath(); cx.moveTo(x,50); cx.lineTo(x-s*8,8); cx.lineTo(x+s*20,38); cx.closePath(); cx.fill();
+      cx.fillStyle='rgba(250,170,160,.85)'; cx.beginPath(); cx.moveTo(x+s*2,46); cx.lineTo(x-s*4,18); cx.lineTo(x+s*14,38); cx.closePath(); cx.fill();
+    });
   }
-  // (removed presets leave no portrait extras — generic hair/face covers the rest)
-  // face oval
-  cx.fillStyle=skinC;
-  cx.beginPath(); cx.ellipse(70,78,30,36,0,0,Math.PI*2); cx.fill();
-  // jaw
-  cx.beginPath(); cx.moveTo(44,82); cx.quadraticCurveTo(40,112,70,122);
-  cx.quadraticCurveTo(100,112,96,82); cx.fill();
-  // neck + shoulders (bare suggestion)
-  cx.fillStyle=skinSh;
-  cx.beginPath(); cx.ellipse(70,132,22,12,0,0,Math.PI*2); cx.fill();
-  cx.fillStyle=skinC;
-  cx.beginPath(); cx.ellipse(70,128,14,18,0,0,Math.PI*2); cx.fill();
-  // blush
-  cx.fillStyle=`rgba(${hexToRgb(c.blushColor).join(',')},0.35)`;
-  cx.beginPath(); cx.ellipse(52,84,13,8,-.2,0,Math.PI*2); cx.fill();
-  cx.beginPath(); cx.ellipse(88,84,13,8,.2,0,Math.PI*2); cx.fill();
-  // eyes (simple)
-  cx.fillStyle='#f6e9e4';
-  cx.beginPath(); cx.ellipse(58,74,8,4.5,0,0,Math.PI*2); cx.fill();
-  cx.beginPath(); cx.ellipse(82,74,8,4.5,0,0,Math.PI*2); cx.fill();
-  cx.fillStyle=c.eyeColor;
-  cx.beginPath(); cx.arc(59,74,3,0,Math.PI*2); cx.fill();
-  cx.beginPath(); cx.arc(83,74,3,0,Math.PI*2); cx.fill();
-  cx.fillStyle='rgba(255,255,255,.8)';
-  cx.beginPath(); cx.arc(58,73,1,0,Math.PI*2); cx.fill();
-  cx.beginPath(); cx.arc(82,73,1,0,Math.PI*2); cx.fill();
-  // lashes
-  cx.strokeStyle='#2a181d'; cx.lineWidth=1.6;
-  cx.beginPath(); cx.moveTo(50,70); cx.quadraticCurveTo(58,66,66,70); cx.stroke();
-  cx.beginPath(); cx.moveTo(74,70); cx.quadraticCurveTo(82,66,90,70); cx.stroke();
-  // lips
-  cx.fillStyle=c.lipColor;
-  cx.beginPath(); cx.ellipse(70,100,8,3.5,0,0,Math.PI*2); cx.fill();
+  // face: adult oval — tapered jaw, cheekbones, defined chin
+  const face=()=>{ cx.beginPath(); cx.moveTo(70,36); cx.bezierCurveTo(94,36,101,56,99,76);
+    cx.bezierCurveTo(97,94,86,110,70,116); cx.bezierCurveTo(54,110,43,94,41,76); cx.bezierCurveTo(39,56,46,36,70,36); cx.closePath(); };
+  face(); cx.fillStyle=rg(60,62,4,70,76,46,[[0,skL],[.5,sk],[.85,skS],[1,skD]]); cx.fill();
+  cx.save(); face(); cx.clip();
+  cx.fillStyle=rg(94,86,2,94,86,20,[[0,'rgba(60,20,16,.28)'],[1,'rgba(60,20,16,0)']]); cx.fillRect(0,0,W,H);   // far-cheek turn
+  cx.fillStyle=rg(70,114,2,70,114,16,[[0,'rgba(60,20,16,.25)'],[1,'rgba(60,20,16,0)']]); cx.fillRect(0,0,W,H);  // chin underside
+  const bl=hexToRgb(c.blushColor).join(',');
+  cx.fillStyle=rg(54,86,0,54,86,12,[[0,`rgba(${bl},.38)`],[1,`rgba(${bl},0)`]]); E(54,86,12,8); cx.fill();
+  cx.fillStyle=rg(87,86,0,87,86,11,[[0,`rgba(${bl},.32)`],[1,`rgba(${bl},0)`]]); E(87,86,11,7); cx.fill();
+  cx.fillStyle='rgba(255,246,236,.28)'; E(56,66,7,3,-.3); cx.fill(); E(68,48,10,4); cx.fill();                  // cheekbone + forehead light
+  cx.restore();
+  // eyes: almond, heavy upper lash, iris gradient, catchlight; brows above
+  const eyeC=c.eyeColor;
+  [[57,-1],[84,1]].forEach(([x,s])=>{
+    const y=77;
+    cx.fillStyle='rgba(60,25,20,.18)'; E(x,y-2,10,5); cx.fill();                             // socket shade
+    cx.fillStyle='#f7ece8'; cx.beginPath(); cx.moveTo(x-8,y); cx.quadraticCurveTo(x,y-6.5,x+8,y-.5); cx.quadraticCurveTo(x,y+4.5,x-8,y); cx.fill();
+    cx.save(); cx.clip();
+    cx.fillStyle=rg(x,y-1,.5,x,y-.5,4.6,[[0,lerpHex(eyeC,'#ffffff',.35)],[.6,eyeC],[1,'#160609']]); E(x+s*.4,y-.6,4.4,4.6); cx.fill();
+    cx.fillStyle='#120406'; E(x+s*.4,y-.6,1.9,2.1); cx.fill();
+    cx.restore();
+    cx.fillStyle='rgba(255,255,255,.9)'; E(x-1.4+s*.4,y-2.4,1.2,1); cx.fill();
+    cx.strokeStyle='#1c0c10'; cx.lineWidth=1.9; cx.lineCap='round';
+    cx.beginPath(); cx.moveTo(x-8.6,y+.2); cx.quadraticCurveTo(x,y-7.6,x+8.6,y-1.2); cx.lineTo(x+10.4*1,y-3.2+(s>0?0:0)); cx.stroke();
+    cx.strokeStyle='rgba(40,16,18,.4)'; cx.lineWidth=.8;
+    cx.beginPath(); cx.moveTo(x-6,y+2.6); cx.quadraticCurveTo(x,y+4.6,x+7,y+1.6); cx.stroke();
+    cx.strokeStyle=hcD; cx.lineWidth=2.2;
+    cx.beginPath(); cx.moveTo(x-9,y-10+(s<0?1:0)); cx.quadraticCurveTo(x-1,y-14,x+9,y-10.5); cx.stroke();
+  });
+  // nose: bridge light + soft tip shadow
+  cx.strokeStyle='rgba(255,240,226,.35)'; cx.lineWidth=1.2; cx.beginPath(); cx.moveTo(69,80); cx.lineTo(68,92); cx.stroke();
+  cx.fillStyle='rgba(90,40,30,.25)'; E(72,96,4.5,2); cx.fill();
+  cx.strokeStyle='rgba(90,40,30,.45)'; cx.lineWidth=.9; cx.beginPath(); cx.moveTo(66,96.5); cx.quadraticCurveTo(70,98.5,74,96.5); cx.stroke();
+  // lips: full, glossy, slightly parted
+  const lip=c.lipColor;
+  cx.fillStyle=lg(0,100,0,110,[[0,lerpHex(lip,'#ffffff',.12)],[1,lerpHex(lip,'#000000',.2)]]);
+  cx.beginPath(); cx.moveTo(60,104); cx.quadraticCurveTo(65,100.5,70,102); cx.quadraticCurveTo(75,100.5,80,104); cx.quadraticCurveTo(70,106,60,104); cx.fill();
+  cx.beginPath(); cx.moveTo(61,104.4); cx.quadraticCurveTo(70,112.5,79,104.4); cx.quadraticCurveTo(70,106.4,61,104.4); cx.fill();
+  cx.strokeStyle='rgba(70,16,24,.7)'; cx.lineWidth=.9; cx.beginPath(); cx.moveTo(60.5,104.2); cx.quadraticCurveTo(70,106.6,79.5,104.2); cx.stroke();
+  cx.fillStyle='rgba(255,240,240,.55)'; E(72,108,3.4,1.1); cx.fill();
+  // front hair: side-swept fringe + locks over the shoulders
+  cx.fillStyle=lg(0,30,0,90,[[0,hcL],[.5,hc],[1,hcD]]);
+  if(c.hairStyle==='natural'){
+    cx.beginPath(); cx.moveTo(38,70); cx.bezierCurveTo(34,30,106,26,102,70); cx.bezierCurveTo(96,48,80,42,70,44); cx.bezierCurveTo(58,42,44,48,38,70); cx.fill();
+  } else {
+    cx.beginPath(); cx.moveTo(36,78); cx.bezierCurveTo(30,34,104,24,104,66);
+    cx.bezierCurveTo(96,50,86,44,74,48); cx.bezierCurveTo(66,56,54,60,46,74); cx.bezierCurveTo(44,76,40,80,36,78); cx.fill();
+    cx.beginPath(); cx.moveTo(40,72); cx.bezierCurveTo(30,100,34,130,26,158); cx.quadraticCurveTo(38,140,44,118); cx.bezierCurveTo(46,100,44,86,46,74); cx.fill();
+    cx.beginPath(); cx.moveTo(100,66); cx.bezierCurveTo(108,100,104,130,114,158); cx.quadraticCurveTo(100,140,96,118); cx.bezierCurveTo(94,100,96,84,96,70); cx.fill();
+  }
+  cx.strokeStyle='rgba(255,230,210,.22)'; cx.lineWidth=1.3;
+  cx.beginPath(); cx.moveTo(46,46); cx.quadraticCurveTo(62,34,84,38); cx.moveTo(42,56); cx.quadraticCurveTo(52,44,66,42); cx.stroke();
+  // vignette + warm rim on the lamp side
+  cx.fillStyle=rg(70,90,40,70,90,120,[[0,'rgba(0,0,0,0)'],[1,'rgba(0,0,0,.55)']]); cx.fillRect(0,0,W,H);
 }
 
 /* ---------- customization panel ---------- */

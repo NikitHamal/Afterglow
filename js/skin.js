@@ -173,9 +173,13 @@ function limbS(a, b, r1, r2, T, opt){
   };
 
   // directional volume: light side -> shadow side across the limb
-  const R = Math.max(r1, r2) * 1.15;
-  const cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2;
-  const L = [cx + lit[0] * R, cy + lit[1] * R], S = [cx - lit[0] * R, cy - lit[1] * R];
+  // The light axis is projected onto the limb's cross-section: a gradient laid
+  // along the raw lamp vector crosses a long limb diagonally, so the rim and
+  // edge-darkening bands cut over it as stripes instead of hugging the outline.
+  const R = rm * 1.04;
+  const cx = (a[0] + b[0]) / 2 + px * bow * 0.5, cy = (a[1] + b[1]) / 2 + py * bow * 0.5;
+  const ax = skAxis(cx, cy, R, [px, py], lit);
+  const L = [ax[0], ax[1]], S = [ax[2], ax[3]];
   skForm(path, T, L, S, {
     edge: opt.edge == null ? 0.30 : opt.edge,
     rim: opt.rim == null ? 0.20 : opt.rim,

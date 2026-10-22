@@ -197,17 +197,23 @@ function drawHer(){
 /* ============================================================
    HER HEAD & FACE (3/4 to viewer) with silky layered hair
    ============================================================ */
-function drawHerHead(E){
+// at (optional) = {x, y, rot, s}: place the same head elsewhere (the other
+// positions reuse it); the caller then draws its own neck.
+function drawHerHead(E, at){
   const T = herT();
-  const neckB = sp(364, 520, 0.015);
-  const headC = sp(312, 504, 0.008);
   const hairCol = G.char ? G.char.hairColor : '#231318';
-
-  neckS([headC[0] + 12, headC[1] + 14], [neckB[0] - 2, neckB[1] - 2], 12, T);
-
   X.save();
-  X.translate(headC[0], headC[1] - (G.pleasure || 0) * 0.02);
-  X.rotate(-0.06 + Math.sin((G.t || 0) * TAU * 0.33) * 0.015 - (G.nod || 0) * 0.06);
+  if(at){
+    X.translate(at.x, at.y);
+    X.rotate((at.rot || 0) + Math.sin((G.t || 0) * TAU * 0.33) * 0.015 - (G.nod || 0) * 0.06);
+    if(at.s) X.scale(at.s, at.s);
+  } else {
+    const neckB = sp(364, 520, 0.015);
+    const headC = sp(312, 504, 0.008);
+    neckS([headC[0] + 12, headC[1] + 14], [neckB[0] - 2, neckB[1] - 2], 12, T);
+    X.translate(headC[0], headC[1] - (G.pleasure || 0) * 0.02);
+    X.rotate(-0.06 + Math.sin((G.t || 0) * TAU * 0.33) * 0.015 - (G.nod || 0) * 0.06);
+  }
 
   hairMassS(-2, -4, 38, 38, 0, hairCol);
 
@@ -529,83 +535,93 @@ function drawHim(E){
   // (brow ledge, hollow temples, jaw plane), directional lamp shading, and
   // distinct brow/nose/mouth forms — three strokes on an oval read as a mask.
   neckS([head[0] + 8, head[1] + 12], [shld[0] + 2, shld[1] - 4], 15, T);
-  X.save();
-  X.translate(head[0], head[1]);
-  X.rotate(0.45 + d * 0.06);
-  // skull: crown, brow ledge, sunken temple, cheek, jaw corner, chin
-  const skull = () => {
-    X.moveTo(-20, -22);
-    X.bezierCurveTo(-24, -40, 10, -42, 24, -34);
-    X.bezierCurveTo(33, -29, 34, -18, 29, -12);
-    X.bezierCurveTo(26, -4, 27, 6, 21, 14);
-    X.bezierCurveTo(14, 23, 2, 26, -9, 22);
-    X.bezierCurveTo(-20, 22, -27, 15, -28, 4);
-    X.bezierCurveTo(-29, -7, -27, -16, -20, -22);
-    X.closePath();
-  };
-  X.beginPath(); skull();
-  const hg = X.createRadialGradient(-9, -15, 3, -2, 0, 42);
-  hg.addColorStop(0, T.hi); hg.addColorStop(0.42, T.b); hg.addColorStop(0.74, T.s); hg.addColorStop(1, T.d);
-  X.fillStyle = hg; X.fill();
-  // ear wedge tucked behind the jaw
-  X.beginPath();
-  X.moveTo(-12, 16); X.bezierCurveTo(-24, 24, -33, 16, -33, 5);
-  X.bezierCurveTo(-37, -3, -27, -8, -20, -11); X.closePath();
-  X.fillStyle = skDark(T.b, 0.12); X.fill();
-  skClipIn(skull, () => {
-    // form: lamp is up-left, he leans away from it — brow ridge lit, sockets
-    // and under-cheek hollow turn away, jaw goes shadowed
-    fHi(-6, -20, 17, 7, 'rgba(255,232,200,0.20)', -0.18);        // brow ridge light
-    fSh(-4, -7, 7, 5, 'rgba(90,45,30,0.20)', 0.25);              // eye socket
-    fSh(14, -2, 10, 9, 'rgba(140,72,52,0.16)', -0.20);           // near temple/cheek turn
-    fSh(-18, 2, 8, 10, 'rgba(120,58,42,0.14)', 0.30);            // far temple hollow
-    fSh(2, 16, 13, 6, 'rgba(130,66,48,0.16)', -0.08);            // under-cheek
-    fSh(16, 20, 10, 5, 'rgba(110,50,38,0.18)', 0.10);            // jaw underside
-    fHi(6, 8, 6, 3.4, 'rgba(255,238,214,0.14)', 0.1);            // cheekbone catch
-    fSSS(-10, 10, 8, 5, 0.3);                                    // ear/jaw SSS
-  });
-  // deep-set downcast eye: socket shadow, heavy lid, lash line — no white
-  X.save(); X.globalCompositeOperation = 'multiply';
-  X.strokeStyle = 'rgba(58,28,18,0.62)'; X.lineWidth = 2.4; X.lineCap = 'round';
-  X.beginPath(); X.moveTo(-15, -6.5); X.quadraticCurveTo(-10, -3.5, -4.5, -6); X.stroke();
-  // brow: single tapered mass, not a wire
-  X.strokeStyle = 'rgba(42,22,12,0.55)'; X.lineWidth = 3.0;
-  X.beginPath(); X.moveTo(-17, -13); X.quadraticCurveTo(-10, -11.5, -4, -14); X.stroke();
-  // nose: bridge plane + nostril shadow + lit underside
-  X.strokeStyle = 'rgba(130,68,42,0.40)'; X.lineWidth = 1.6;
-  X.beginPath(); X.moveTo(-13, -3); X.quadraticCurveTo(-17, 5, -14.5, 10.5); X.stroke();
-  X.restore();
-  X.save(); X.globalCompositeOperation = 'screen';
-  shade(-13.5, 12.5, 4.2, 1.7, 'rgba(255,226,196,0.30)', 0.1);   // nose underside light
-  X.restore();
-  // mouth: parted lip line with lower-lip light, no flat stroke
-  X.save(); X.globalCompositeOperation = 'multiply';
-  X.strokeStyle = 'rgba(112,48,38,0.55)'; X.lineWidth = 2.0;
-  X.beginPath(); X.moveTo(-14.5, 16.5); X.quadraticCurveTo(-10, 18.5, -5.5, 17); X.stroke();
-  X.restore();
-  X.save(); X.globalCompositeOperation = 'screen';
-  shade(-9.5, 20, 4.6, 1.3, 'rgba(255,232,208,0.20)', 0);        // lower-lip light
-  X.restore();
-  // jaw + cheek stubble: blue-brown shade only over the lower third
-  X.save(); X.beginPath(); skull(); X.clip();
-  X.globalCompositeOperation = 'multiply';
-  shade(4, 20, 22, 11, 'rgba(70,45,40,0.16)', 0.05);
-  X.restore();
-  // short tousled hair with layered mass + sheen
-  hairMassS(2, -22, 27, 17, -0.15, '#1c100a');
-  tressS(-14, -30, -6, -38, 6, -38, 14, -27, 8, 2, '#1c100a', 'rgba(255,210,170,0.16)');
-  tressS(-22, -16, -28, -6, -28, 4, -24, 10, 6, 2, '#1c100a');
-  tressS(-20, -28, -26, -18, -28, -10, -26, -4, 6, 2, '#1c100a');
-  // profile nose tip beyond the silhouette
-  X.fillStyle = T.b; X.beginPath(); X.ellipse(9, 4, 5.5, 7.5, 0.1, 0, TAU); X.fill();
-  X.strokeStyle = 'rgba(95,50,28,0.4)'; X.lineWidth = 1.0;
-  X.beginPath(); X.moveTo(8, -1); X.quadraticCurveTo(11, 4, 8, 9); X.stroke();
-  X.restore();
+  himHeadS(head[0] - 4, head[1] + 2, -0.62 - d * 0.06, 1.12);
 
   // ---- near arm reaching down to grip her hip ----
   limbS(shld, [566, 462], 16, 11.5, T, { belly: 1.1, aoA: 0.32 });
   limbS([566, 462], [602, 498], 11.5, 8, T, { belly: 1.06 });
   handS(606, 502, 1.9, 1.0, T, { curl: 0.45, spread: 0.4 });
+}
+
+/* His head in local space: a profile facing -x with the crown up (rot 0).
+   rot tips it (negative = looking down to the left); sc scales. */
+function himHeadS(x, y, rot, sc){
+  const T = himT();
+  const hc = '#1c100a';
+  X.save();
+  X.translate(x, y);
+  X.rotate(rot);
+  if(sc && sc !== 1) X.scale(sc, sc);
+  // one continuous silhouette: crown, forehead, brow, nose, lips, chin, jaw, nape
+  const head = () => {
+    X.moveTo(22, -16);
+    X.bezierCurveTo(14, -34, -12, -34, -18, -20);
+    X.bezierCurveTo(-20, -15, -20, -11, -22, -8);      // brow ledge
+    X.quadraticCurveTo(-21, -4, -23, 0);               // nasal bridge
+    X.lineTo(-29, 7);                                  // nose tip
+    X.quadraticCurveTo(-27, 10, -22, 10);              // nostril base
+    X.quadraticCurveTo(-23, 12.5, -22.5, 14);          // upper lip
+    X.quadraticCurveTo(-20.5, 15.5, -22, 17.5);        // lower lip
+    X.quadraticCurveTo(-21, 21, -22, 24);              // chin
+    X.bezierCurveTo(-21, 30, -8, 31, 2, 27);           // jaw underside
+    X.quadraticCurveTo(9, 25, 11, 18);                 // jaw angle
+    X.bezierCurveTo(14, 22, 20, 22, 22, 18);           // nape
+    X.bezierCurveTo(28, 8, 28, -4, 22, -16);           // occiput
+    X.closePath();
+  };
+  X.beginPath(); head();
+  X.fillStyle = gRadial(-10, -14, 3, 0, 0, 40, [[0, T.hi], [0.40, T.b], [0.75, T.s], [1, T.d]]);
+  X.fill();
+  skClipIn(head, () => {
+    fHi(-14, -16, 10, 6, 'rgba(255,236,210,0.22)', -0.3);        // forehead plane
+    fHi(-15, 4, 5, 4, 'rgba(255,236,210,0.16)', 0.2);            // cheekbone
+    fSh(-14, -4, 5, 3.5, 'rgba(90,45,30,0.26)', 0);              // eye socket
+    fSh(-6, 20, 14, 7, 'rgba(70,45,40,0.22)', 0.1);              // jaw stubble shadow
+    fSh(4, 22, 12, 6, 'rgba(110,50,38,0.24)', 0.2);              // under-jaw
+    fSSS(4, 4, 6, 9, 0);                                          // ear glow
+  });
+  skLine(head, T, 1.1, 0.26);
+  // ear
+  X.fillStyle = skDark(T.b, 0.10);
+  X.beginPath(); X.ellipse(5, 4, 5, 8, 0.15, 0, TAU); X.fill();
+  X.strokeStyle = 'rgba(110,52,36,0.45)'; X.lineWidth = 1.2;
+  X.beginPath(); X.arc(5.5, 4, 3.4, -1.9, 1.6); X.stroke();
+  // eye: heavy lid over a dark almond, lash line, brow mass
+  X.fillStyle = 'rgba(245,235,228,0.85)';
+  X.beginPath(); X.ellipse(-15, -3.5, 3.4, 1.6, 0.1, 0, TAU); X.fill();
+  X.fillStyle = '#2a1810';
+  X.beginPath(); X.ellipse(-16.4, -3.4, 1.4, 1.5, 0, 0, TAU); X.fill();
+  X.strokeStyle = 'rgba(40,20,12,0.85)'; X.lineWidth = 1.5; X.lineCap = 'round';
+  X.beginPath(); X.moveTo(-18.6, -4.2); X.quadraticCurveTo(-15, -6, -11.4, -4.2); X.stroke();
+  X.strokeStyle = 'rgba(30,16,10,0.75)'; X.lineWidth = 2.4;
+  X.beginPath(); X.moveTo(-20, -9); X.quadraticCurveTo(-15, -11, -9, -9.5); X.stroke();
+  // nostril + lip line
+  X.strokeStyle = 'rgba(110,52,38,0.5)'; X.lineWidth = 1.1;
+  X.beginPath(); X.moveTo(-24, 8.6); X.quadraticCurveTo(-22, 9.4, -21, 8); X.stroke();
+  X.strokeStyle = 'rgba(100,40,34,0.6)'; X.lineWidth = 1.2;
+  X.beginPath(); X.moveTo(-22.6, 15.6); X.lineTo(-18.5, 15.8); X.stroke();
+  // short hair: a cap over crown and back, sideburn in front of the ear
+  const hair = () => {
+    X.moveTo(-17, -19);
+    X.bezierCurveTo(-14, -36, 18, -38, 26, -14);
+    X.bezierCurveTo(29, -2, 26, 10, 21, 16);
+    X.quadraticCurveTo(16, 12, 12, 10);
+    X.quadraticCurveTo(13, -2, 6, -6);
+    X.quadraticCurveTo(0, -4, -1, 4);                 // sideburn
+    X.quadraticCurveTo(-4, -6, -6, -14);
+    X.quadraticCurveTo(-12, -16, -17, -19);
+    X.closePath();
+  };
+  X.beginPath(); hair();
+  X.fillStyle = gRadial(-2, -26, 2, 6, -12, 36, [[0, skLight(hc, 0.22)], [0.5, hc], [1, skDark(hc, 0.4)]]);
+  X.fill();
+  X.save(); X.globalCompositeOperation = 'screen';
+  X.strokeStyle = 'rgba(255,210,170,0.14)'; X.lineWidth = 2; X.lineCap = 'round';
+  for(let i = 0; i < 4; i++){
+    X.beginPath(); X.moveTo(-12 + i * 6, -27 + i * 1.5); X.quadraticCurveTo(0 + i * 6, -31, 12 + i * 4, -22 + i * 3); X.stroke();
+  }
+  X.restore();
+  X.restore();
 }
 
 /* ============================================================

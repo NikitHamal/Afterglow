@@ -24,7 +24,6 @@
    stretches ~1.5 m behind her and must not shrink her body fit).
    yaw = extra facing correction (rad) if a model proves to face backwards. */
 const GLB_REGISTRY = {
-  goatchan: { path: 'assets/goatchan/goatchan.glb', fit: 1.35, yOff: 0.62, exclude: null, yaw: 0 },
   kiyoko:   { path: 'assets/kiyoko.005.glb',         fit: 1.35, yOff: 0.62, exclude: /tail/i, yaw: 0 },
   anime:    { path: 'assets/free_download_female_anime.glb',          fit: 1.35, yOff: 0.62, exclude: null, yaw: 0 }
 };
@@ -465,9 +464,9 @@ function initGLBModel() {
 
   // Lazy loading: 70–100 MB files each — load the active girl now, stagger
   // the rest so the night starts instantly instead of fetching ~250 MB at once.
-  const activeKey = (G.char && G.char.preset) || 'goatchan';
+  const activeKey = (G.char && G.char.preset) || 'kiyoko';
   if (GLB_REGISTRY[activeKey]) glbLoadEntry(activeKey);
-  else if (GLB_REGISTRY.goatchan) glbLoadEntry('goatchan');
+  else if (GLB_REGISTRY.kiyoko) glbLoadEntry('kiyoko');
   const rest = Object.keys(GLB_REGISTRY).filter(k => {
     const e = GLB_STORE[k];
     return !(e && (e.loaded || e.loading));
@@ -484,7 +483,7 @@ function initGLBModel() {
     glbLoadEntry('__custom');
   }
 
-  glbAlias((G.char && G.char.preset) || 'goatchan');
+  glbAlias((G.char && G.char.preset) || 'kiyoko');
   const isGLB = !!(G.char && G.char.isGLB);
   setGLBActive(isGLB, G.char && G.char.preset);
 }
@@ -498,7 +497,7 @@ function glbIsPreset(key) {
 
 function setGLBActive(active, preset) {
   GLB_MODEL.active = !!active;
-  const want = preset || (G.char && G.char.preset) || GLB_MODEL.key || 'goatchan';
+  const want = preset || (G.char && G.char.preset) || GLB_MODEL.key || 'kiyoko';
   // Lazy: selecting an unloaded girl from the picker starts her download now.
   if (GLB_MODEL.active && GLB_REGISTRY[want]) {
     const e0 = GLB_STORE[want];
@@ -1216,19 +1215,22 @@ function glbSecondary3(e, dt, calm) {
    their own solveContact3 floor; this covers every GLB girl. */
 const _glbBedBox = new THREE.Box3();
 function glbBedFloor(x, z) {
-  if (Math.abs(x) < 2.3 && z > 0.85 && z < 3.95) return 0.24; // duvet mound
   return 0.13; // mattress top (0.11) + skin margin, matches solveContact3
 }
 function glbCollideBed(e) {
   const m = e && e.model;
   if (!m || e.rig) return; // Rigged models have their pelvis anchored to her3.root directly
   try {
-    _glbBedBox.setFromObject(m);
+    // measure the BODY only: dangling secondary parts (Kiyoko's tail) used to
+    // reach the mattress first and hoist the whole girl a metre into the air
+    const key = (G.char && G.char.preset) || GLB_MODEL.key;
+    const cfg = GLB_REGISTRY[key] || {};
+    _glbBedBox.copy(glbFitBox(m, cfg.exclude || /tail/i));
     if (_glbBedBox.isEmpty()) return;
     const cx = (_glbBedBox.min.x + _glbBedBox.max.x) * 0.5;
     const cz = (_glbBedBox.min.z + _glbBedBox.max.z) * 0.5;
     // only collide over the bed slab — figures posed beside it rest on the floor
-    if (Math.abs(cx) > 2.6 || cz < -3.8 || cz > 4.2) return;
+    if (Math.abs(cx) > 1.4 || cz < -2.0 || cz > 1.5) return;
     const pen = glbBedFloor(cx, cz) - _glbBedBox.min.y;
     if (pen > 0) m.position.y += pen; // sunk into mattress → lift onto surface
   } catch (_) {}

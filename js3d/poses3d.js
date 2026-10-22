@@ -104,7 +104,7 @@ const POSES3 = [
       herL: { k: 'himShoulderL', x: 0.06, y: -0.02, z: 0.04 },
       herR: { k: 'himShoulderR', x: -0.06, y: -0.02, z: 0.04 }
     },
-    cam: { yaw: 0.45, pitch: 0.32, dist: 4.2, fov: 42, target: [0, 0.36, -0.42] }
+    cam: { yaw: 0.45, pitch: 0.32, dist: 3.02, fov: 42, target: [0, 0.36, -0.42] }
   },
 
   { // 1 — LEGS-UP / DEEP FORNIX: Thighs hyperflexed to chest, grounded sacrum, maximum depth
@@ -132,7 +132,7 @@ const POSES3 = [
       herL: { k: 'herHead', x: -0.14, y: 0.05, z: 0.02 },
       herR: { k: 'herHead', x: 0.14, y: 0.05, z: 0.02 }
     },
-    cam: { yaw: 0.32, pitch: 0.28, dist: 3.9, fov: 40, target: [0, 0.38, -0.36] }
+    cam: { yaw: 0.32, pitch: 0.28, dist: 2.81, fov: 40, target: [0, 0.38, -0.36] }
   },
 
   { // 2 — DOGGY (ARCHED): All fours, deep lumbar lordosis sway, hips raised high, head dipping down
@@ -160,7 +160,7 @@ const POSES3 = [
       herL: { k: 'herChest', x: -0.16, y: -0.12, z: 0.03, floor: 0.12 },
       herR: { k: 'herChest', x: 0.16, y: -0.12, z: 0.03, floor: 0.12 }
     },
-    cam: { yaw: -0.62, pitch: 0.36, dist: 4.4, fov: 44, target: [0, 0.52, 0.02] }
+    cam: { yaw: -0.62, pitch: 0.36, dist: 3.17, fov: 44, target: [0, 0.52, 0.02] }
   },
 
   { // 3 — PRONE BONE: She lies flat, pelvic tilt creates tight anterior wall friction, he covers her
@@ -187,7 +187,7 @@ const POSES3 = [
       himR: { k: 'herChest', x: 0.28, y: -0.02, z: 0.06, floor: 0.12 },
       herL: null, herR: null
     },
-    cam: { yaw: 0.68, pitch: 0.42, dist: 4.3, fov: 42, target: [0, 0.38, -0.16] }
+    cam: { yaw: 0.68, pitch: 0.42, dist: 3.1, fov: 42, target: [0, 0.38, -0.16] }
   },
 
   { // 4 — COWGIRL: Upright straddle riding, arched spine, rhythmic vertical bouncing
@@ -219,7 +219,7 @@ const POSES3 = [
       herL: { k: 'herHead', x: -0.10, y: 0.02, z: 0.06 },
       herR: { k: 'herHead', x: 0.10, y: 0.02, z: 0.06 }
     },
-    cam: { yaw: 0.22, pitch: 0.24, dist: 3.8, fov: 42, target: [0, 0.58, -0.02] }
+    cam: { yaw: 0.22, pitch: 0.24, dist: 2.74, fov: 42, target: [0, 0.58, -0.02] }
   },
 
   { // 5 — REVERSE COWGIRL: Turned away, deep pelvic tilt, gluteal focus
@@ -247,7 +247,7 @@ const POSES3 = [
       herL: { k: 'herHead', x: -0.10, y: 0.08, z: 0.02 },
       herR: { k: 'herHead', x: 0.10, y: 0.08, z: 0.02 }
     },
-    cam: { yaw: -0.35, pitch: 0.20, dist: 3.8, fov: 42, target: [0, 0.60, 0.16] }
+    cam: { yaw: -0.35, pitch: 0.20, dist: 2.74, fov: 42, target: [0, 0.60, 0.16] }
   },
 
   { // 6 — SPOONING: Intimate lateral coitus; legs entwined, synchronized breathing
@@ -274,7 +274,7 @@ const POSES3 = [
       himR: { k: 'herHips', x: 0.04, y: 0.02, z: 0.06 },
       herL: null, herR: null
     },
-    cam: { yaw: 1.20, pitch: 0.30, dist: 4.1, fov: 42, target: [0, 0.38, -0.08] }
+    cam: { yaw: 1.20, pitch: 0.30, dist: 2.95, fov: 42, target: [0, 0.38, -0.08] }
   }
 ];
 
@@ -306,7 +306,7 @@ const ORAL_LICK3 = {
     herL: { k: 'herHead', x: -0.10, y: 0.04, z: 0.02 },
     herR: { k: 'herHead', x: 0.10, y: 0.04, z: 0.02 }
   },
-  cam: { yaw: 0.15, pitch: 0.36, dist: 3.6, fov: 38, target: [0, 0.36, -0.08] }
+  cam: { yaw: 0.15, pitch: 0.36, dist: 2.59, fov: 38, target: [0, 0.36, -0.08] }
 };
 
 const ORAL_BLOW3 = {
@@ -371,7 +371,7 @@ const SOLO_POSE3 = {
     herL: { k: 'herChest', x: -0.08, y: 0.04, z: 0.09 },
     herR: { k: 'herHips', x: 0.04, y: -0.03, z: 0.12 }
   },
-  cam: { yaw: 0.50, pitch: 0.30, dist: 3.4, fov: 40, target: [0, 0.35, -0.20] }
+  cam: { yaw: 0.50, pitch: 0.30, dist: 2.45, fov: 40, target: [0, 0.35, -0.20] }
 };
 
 /* ============================================================
@@ -500,9 +500,9 @@ function applyPoseCam3(force) {
   CAM3.yaw = p.cam.yaw;
   CAM3.pitch = p.cam.pitch;
   CAM3.dist = p.cam.dist;
-  if (p.cam.fov && CAM3.camera) {
-    CAM3.camera.fov = p.cam.fov;
-    CAM3.camera.updateProjectionMatrix();
+  if (p.cam.fov && typeof camera3d !== 'undefined' && camera3d) {
+    camera3d.fov = p.cam.fov;
+    camera3d.updateProjectionMatrix();
   }
   CAM3.target.set(p.cam.target[0], p.cam.target[1], p.cam.target[2]);
 }

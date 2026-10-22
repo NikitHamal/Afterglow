@@ -35,3 +35,6 @@ sdl-src/
 .cxx/
 
 node_modules/
+
+# Overhaul review screenshots (local only)
+task-shots/

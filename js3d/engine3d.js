@@ -5,6 +5,11 @@
 /* ============================================================
    RENDERER / SCENE / CAMERA
    ============================================================ */
+// Linear workflow: hex colors are authored in sRGB and must be decoded before
+// lighting. Without this every dark wall/sheet color was lit as if it were
+// linear and came out as washed-out pastel pink.
+if (THREE.ColorManagement) THREE.ColorManagement.enabled = true;
+
 const CV3 = document.getElementById('scene3d');
 let renderer3d = null, scene3d = null, camera3d = null;
 
@@ -24,8 +29,7 @@ if (renderer3d) {
   renderer3d.toneMappingExposure = 1.0;
 
   scene3d = new THREE.Scene();
-  scene3d.background = new THREE.Color(0x0d0709);
-  scene3d.fog = new THREE.Fog(0x0d0709, 9, 26);
+  scene3d.background = new THREE.Color(0x050307);   // room3d.js sets the real fog
 
   camera3d = new THREE.PerspectiveCamera(42, 16 / 9, 0.05, 120);
   camera3d.position.set(0, 2.1, 5.2);
@@ -280,171 +284,8 @@ function addGloss3(parent, x, y, z, s, op) {
   return null;
 }
 
-/* ============================================================
-   LIGHTING — warm bedside key, cool moon rim, soft bounce
-   ============================================================ */
+/* lighting rig + bedroom set live in js3d/room3d.js (buildLights / buildRoom3) */
 let keyLight3 = null, rimLight3 = null, fillLight3 = null, lampPoint3 = null;
-
-function buildLights() {
-  // deep boudoir ambient
-  scene3d.add(new THREE.AmbientLight(0x3a2030, 0.22));
-
-  // soft sky/ground bounce so skin gradients stay creamy, never chalky
-  scene3d.add(new THREE.HemisphereLight(0xffd9c8, 0x2a1218, 0.35));
-
-  // warm bedside lamp — low side key so it rakes across curves (buttocks,
-  // thighs, ribs) instead of flattening everything from the camera side
-  keyLight3 = new THREE.DirectionalLight(0xffb072, 1.15);
-  keyLight3.position.set(-5.0, 3.4, 0.8);
-  keyLight3.castShadow = true;
-  keyLight3.shadow.mapSize.set(1024, 1024);
-  keyLight3.shadow.camera.near = 0.5;
-  keyLight3.shadow.camera.far = 22;
-  const sc = keyLight3.shadow.camera;
-  sc.left = -6; sc.right = 6; sc.top = 6; sc.bottom = -6;
-  keyLight3.shadow.bias = -0.0012;
-  scene3d.add(keyLight3);
-
-  // cool moon rim from the window — separates silhouette from the dark room
-  rimLight3 = new THREE.DirectionalLight(0x8fb6ff, 1.10);
-  rimLight3.position.set(5.5, 3.2, -4.5);
-  scene3d.add(rimLight3);
-
-  // warm counter-rim from the opposite side so curves read on both flanks
-  const counterRim = new THREE.DirectionalLight(0xff9d76, 0.30);
-  counterRim.position.set(-5.0, 2.6, 3.8);
-  scene3d.add(counterRim);
-
-  // gentle fill so shadows don't go pure black
-  fillLight3 = new THREE.DirectionalLight(0xff8fa8, 0.25);
-  fillLight3.position.set(2.0, 1.4, 5.0);
-  scene3d.add(fillLight3);
-
-  // practical lamp bulb glow
-  lampPoint3 = new THREE.PointLight(0xffa860, 1.1, 12, 2);
-  lampPoint3.position.set(-2.9, 1.35, -1.4);
-  scene3d.add(lampPoint3);
-}
-
-/* ============================================================
-   ENVIRONMENT — bedroom set dressing
-   ============================================================ */
-function buildRoom3() {
-  const g = new THREE.Group();
-
-  // floor
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(40, 40),
-    toonMat(0x2a161c, { soft: false })
-  );
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.y = -0.62;
-  floor.receiveShadow = true;
-  g.add(floor);
-
-  // back wall + side wall
-  const wallMat = toonMat(0x241319, { soft: false });
-  const back = new THREE.Mesh(new THREE.PlaneGeometry(40, 12), wallMat);
-  back.position.set(0, 4, -7);
-  g.add(back);
-  const side = new THREE.Mesh(new THREE.PlaneGeometry(24, 12), wallMat);
-  side.rotation.y = Math.PI / 2;
-  side.position.set(-9, 4, 0);
-  g.add(side);
-
-  // ---- bed ----
-  const bedFrame = new THREE.Mesh(
-    new THREE.BoxGeometry(4.6, 0.42, 6.4),
-    toonMat(0x3d1b25, { soft: false })
-  );
-  bedFrame.position.set(0, -0.42, -0.4);
-  bedFrame.receiveShadow = true; bedFrame.castShadow = true;
-  g.add(bedFrame);
-
-  // mattress (top surface sits at y = 0)
-  const mattress = new THREE.Mesh(
-    new THREE.BoxGeometry(4.4, 0.34, 6.2),
-    toonMat(0x512833, { soft: false })
-  );
-  mattress.position.set(0, -0.06, -0.4);
-  mattress.receiveShadow = true;
-  g.add(mattress);
-
-  // duvet ruffle pooled around the lower bed
-  const duvet = new THREE.Mesh(
-    new THREE.BoxGeometry(4.5, 0.16, 3.0),
-    toonMat(0x3a2028, { soft: false })
-  );
-  duvet.position.set(0, 0.14, 2.4);
-  duvet.receiveShadow = true;
-  g.add(duvet);
-
-  // pillows at the head of the bed
-  for (let i = 0; i < 2; i++) {
-    const p = new THREE.Mesh(
-      new THREE.BoxGeometry(1.7, 0.28, 0.95),
-      toonMat(0xc7ad96, { soft: false })
-    );
-    p.position.set(-0.55 + i * 1.1, 0.24, -2.75);
-    p.rotation.z = i ? 0.05 : -0.04;
-    p.castShadow = true; p.receiveShadow = true;
-    g.add(p);
-  }
-
-  // ---- nightstand + lamp ----
-  const stand = new THREE.Mesh(
-    new THREE.BoxGeometry(1.15, 1.1, 1.0),
-    toonMat(0x1e1015, { soft: false })
-  );
-  stand.position.set(-3.1, -0.07, -1.5);
-  stand.castShadow = true; stand.receiveShadow = true;
-  g.add(stand);
-
-  const stem = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.045, 0.055, 0.55, 10),
-    toonMat(0x8a6a34, { soft: false })
-  );
-  stem.position.set(-3.1, 0.75, -1.5);
-  g.add(stem);
-
-  const shade = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.34, 0.46, 0.5, 14, 1, true),
-    new THREE.MeshBasicMaterial({ color: 0xffb877, side: THREE.DoubleSide, transparent: true, opacity: 0.92 })
-  );
-  shade.position.set(-3.1, 1.15, -1.5);
-  g.add(shade);
-  const bulb = new THREE.Mesh(
-    new THREE.SphereGeometry(0.13, 12, 10),
-    new THREE.MeshBasicMaterial({ color: 0xffd9a0 })
-  );
-  bulb.position.set(-3.1, 1.12, -1.5);
-  g.add(bulb);
-
-  // ---- window with moon ----
-  const winFrame = new THREE.Mesh(
-    new THREE.BoxGeometry(0.12, 2.6, 3.4),
-    toonMat(0x1a0e14, { soft: false })
-  );
-  winFrame.position.set(6.4, 2.2, -1.0);
-  g.add(winFrame);
-  const glass = new THREE.Mesh(
-    new THREE.PlaneGeometry(3.2, 2.4),
-    new THREE.MeshBasicMaterial({ color: 0x35506e, transparent: true, opacity: 0.34 })
-  );
-  glass.rotation.y = -Math.PI / 2;
-  glass.position.set(6.33, 2.2, -1.0);
-  g.add(glass);
-  const moon = new THREE.Mesh(
-    new THREE.CircleGeometry(0.42, 24),
-    new THREE.MeshBasicMaterial({ color: 0xdfe9f7 })
-  );
-  moon.rotation.y = -Math.PI / 2;
-  moon.position.set(6.3, 2.9, -0.4);
-  g.add(moon);
-
-  scene3d.add(g);
-  return g;
-}
 
 /* ============================================================
    CAMERA RIG — orbit / side / top / first-person
@@ -461,7 +302,9 @@ const CAM3 = {
   _yaw: 0, _pitch: 0.30, _dist: 5.4,
   _px: 0, _py: 2.1, _pz: 5.2
 };
+if (typeof window !== 'undefined') window.CAM3 = CAM3;   // poses3d checks window.CAM3
 
+const _camLook3 = new THREE.Vector3();
 /* smoothed camera state so mode switches glide instead of snapping */
 function updateCamera3(dt, G) {
   if (!camera3d) return;
@@ -631,8 +474,15 @@ function updateCamera3(dt, G) {
       CAM3.shake *= Math.pow(0.0001, dt);
       if (CAM3.shake < 0.0005) CAM3.shake = 0;
     }
+    // breathing hand-held drift: barely there at rest, deeper as she heats up
+    const tt = (G && G.t) || 0, heat = clamp(((G && G.pleasure) || 0) / 100, 0, 1);
+    const br = 0.006 + heat * 0.010;
+    y += Math.sin(tt * 1.25) * br;
+    x += Math.sin(tt * 0.43 + 1.1) * br * 1.4;
     camera3d.position.set(x, y, z);
-    camera3d.lookAt(CAM3.target);
+    _camLook3.copy(CAM3.target);
+    _camLook3.y += Math.sin(tt * 1.25 - 0.6) * br * 0.5;
+    camera3d.lookAt(_camLook3);
   }
   updateInk3();
 }
@@ -798,6 +648,7 @@ function resize3() {
   renderer3d.setSize(w, h, false);
   camera3d.aspect = (w && h) ? w / h : 16 / 9;
   camera3d.updateProjectionMatrix();
+  if (typeof resizePost3 === 'function') resizePost3(w, h);
 }
 
 /* ============================================================
