@@ -245,6 +245,7 @@ function tick3(ts) {
   hudTick3();
 
   if (typeof updateGLBModel === 'function') updateGLBModel(dt);
+  if (typeof updateGLBHim === 'function') updateGLBHim(dt);
   if (typeof updateRoom3 === 'function') updateRoom3(dt);
   if (renderer3d && !(typeof renderPost3 === 'function' && renderPost3(dt))) renderer3d.render(scene3d, camera3d);
   requestAnimationFrame(tick3);

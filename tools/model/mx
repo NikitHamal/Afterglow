@@ -1,0 +1,8 @@
+#!/bin/bash
+# Run Python in the remote marimo notebook's scratchpad: mx (stdin) | mx -c CODE | mx FILE
+# Needs: MOLAB_URL (notebook URL), MOLAB_TOKEN_FILE (file holding its auth token),
+#        the marimo-pair skill's execute-code.sh (MARIMO_PAIR_EXEC overrides its path).
+S=${MARIMO_PAIR_EXEC:-$HOME/.claude/skills/marimo-pair/scripts/execute-code.sh}
+T=$(cat "$MOLAB_TOKEN_FILE")
+if [ $# -eq 0 ]; then set -- -; fi
+bash "$S" --url "$MOLAB_URL" --token "$T" "$@" 2>&1 | grep -v "^Warning: connecting"

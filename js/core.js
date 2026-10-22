@@ -64,11 +64,11 @@ const G={
   faceSide:'profile', faceBlend:0,
   fpvFocus:'full', fpvZoom:1, fpvPanX:640, fpvPanY:360,
   char:{
-    preset:'yuki', name:'Yuki',
-    quote:'“Mm… finally we’re alone. You remember how I like it… right?”',
-    skinTone:.18, hairColor:'#231318', hairStyle:'long',
-    bodyScale:.45, breastSize:.45,
-    nippleColor:'#c25f63', blushColor:'#e86070', lipColor:'#b3555f', eyeColor:'#4a2c33',
-    pubicHair:'trim'
+    preset:'vivian', name:'Vivian',
+    quote:'\u201cMm\u2026 I\u2019ve waited all week for this. Close the door\u2026 and let me show you exactly how I like it.\u201d',
+    skinTone:.55, hairColor:'#3a2117', hairStyle:'long',
+    bodyScale:.62, breastSize:.72,
+    nippleColor:'#7a4038', blushColor:'#b85a5a', lipColor:'#7a1a2a', eyeColor:'#5a3a1e',
+    pubicHair:'trim', isGLB:true, glbPath:'assets/vivian/vivian.glb'
   }
 };

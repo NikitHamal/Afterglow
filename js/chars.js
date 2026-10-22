@@ -25,6 +25,14 @@ function lerpHex3(a,m,b,t){
 
 /* ---- presets ---- */
 const CHARS={
+  vivian:{
+    preset:'vivian', name:'Vivian',
+    quote:'\u201cMm\u2026 I\u2019ve waited all week for this. Close the door\u2026 and let me show you exactly how I like it.\u201d',
+    skinTone:.55, hairColor:'#3a2117', hairStyle:'long',
+    bodyScale:.62, breastSize:.72,
+    nippleColor:'#7a4038', blushColor:'#b85a5a', lipColor:'#7a1a2a', eyeColor:'#5a3a1e',
+    pubicHair:'trim', isGLB:true, glbPath:'assets/vivian/vivian.glb'
+  },
   yuki:{
     preset:'yuki', name:'Yuki',
     quote:'\u201cMm\u2026 finally we\u2019re alone. You remember how I like it\u2026 right?\u201d',
@@ -89,7 +97,7 @@ function getSkin(){
 /* ---- localStorage ---- */
 const CHAR_KEY='ag_char';
 function applyPreset(key){
-  const p=CHARS[key]||CHARS.yuki;
+  const p=CHARS[key]||CHARS.vivian;
   for(const k in G.char) delete G.char[k];
   Object.assign(G.char, JSON.parse(JSON.stringify(p)));
   lsSaveChar();
@@ -102,7 +110,7 @@ function loadCharState(){
     if(raw){
       const saved=JSON.parse(raw);
       // retired presets (removed from the roster) fall back to Yuki
-      if(saved && saved.preset && !CHARS[saved.preset]) applyPreset('yuki');
+      if(saved && saved.preset && !CHARS[saved.preset]) applyPreset('vivian');
       else Object.assign(G.char, saved);
     }
   }catch(_){}

@@ -24,6 +24,16 @@
    stretches ~1.5 m behind her and must not shrink her body fit).
    yaw = extra facing correction (rad) if a model proves to face backwards. */
 const GLB_REGISTRY = {
+  // Vivian: realistic PBR woman (Blender+MPFB pipeline, tools/model). Her own MMD skeleton copies
+  // Goat-chan's bone frames, so the shared driver works unchanged. Extras:
+  //   pbr    — keep her authored roughness/metalness (no clamp), tones swap the skin albedo by skinTone,
+  //   face   — expression morphs (blink/moan/pleasure/oral/kiss/smile) driven by glbFace3,
+  //   jiggle — breast spring on 乳親 bones, land — her own hand-target offsets [lateral, out, toward-feet].
+  vivian:   { path: 'assets/vivian/vivian.glb', fit: 1.35, yOff: 0.62, exclude: null, yaw: 0,
+              pbr: true, face: true, jiggle: true,
+              tones: { honey: 'assets/vivian/skin_honey.jpg', caramel: 'assets/vivian/skin_caramel.jpg', deep: 'assets/vivian/skin_deep.jpg' },
+              toneDefault: 'caramel',
+              land: { breast: [0.045, 0.155, 0.06], mons: [0, 0.14, 0.02] } },
   kiyoko:   { path: 'assets/kiyoko.005.glb',         fit: 1.35, yOff: 0.62, exclude: /tail/i, yaw: 0 },
   anime:    { path: 'assets/free_download_female_anime.glb',          fit: 1.35, yOff: 0.62, exclude: null, yaw: 0 }
 };
@@ -337,7 +347,7 @@ function glbFinishLoad(key, gltf) {  const e = glbEntryState(key);
         if (mt && !mt.map && c.geometry && c.geometry.attributes && c.geometry.attributes.color) {
           mt.vertexColors = true;
         }
-        if (mt) {
+        if (mt && !(GLB_REGISTRY[key] || {}).pbr) {
           if ('roughness' in mt) mt.roughness = Math.max(mt.roughness || 0.4, 0.35);
           if ('metalness' in mt) mt.metalness = Math.min(mt.metalness || 0.1, 0.15);
         }
@@ -348,6 +358,8 @@ function glbFinishLoad(key, gltf) {  const e = glbEntryState(key);
 
   glbPlaceEntry(key);
   glbBuildRig(e); // resolve MMD bone handles once (no-skeleton → null)
+  e.key = key;
+  glbCollectExtras(e, GLB_REGISTRY[key] || {});
   try { glbApplyCustom(key); } catch (_) {}
 
   // Sanitize texture encodings/formats BEFORE first GPU upload (exotic files
@@ -464,16 +476,9 @@ function initGLBModel() {
 
   // Lazy loading: 70–100 MB files each — load the active girl now, stagger
   // the rest so the night starts instantly instead of fetching ~250 MB at once.
-  const activeKey = (G.char && G.char.preset) || 'kiyoko';
-  if (GLB_REGISTRY[activeKey]) glbLoadEntry(activeKey);
-  else if (GLB_REGISTRY.kiyoko) glbLoadEntry('kiyoko');
-  const rest = Object.keys(GLB_REGISTRY).filter(k => {
-    const e = GLB_STORE[k];
-    return !(e && (e.loaded || e.loading));
-  });
-  rest.forEach((k, i) => {
-    setTimeout(() => glbLoadEntry(k), 2500 + i * 2500);
-  });
+  const activeKey = (G.char && G.char.preset) || 'vivian';
+  if (GLB_REGISTRY[activeKey] && G.char && G.char.isGLB) glbLoadEntry(activeKey);
+  // Others load on demand (setGLBActive) instead of all ~250 MB in the background.
 
   // Legacy fallback: a saved character pointing at an unregistered .glb
   const custom = G.char && G.char.glbPath;
@@ -902,13 +907,14 @@ function glbDriveRig(e, dt) {
       const land = task && task.land;
       if (land && rig.land && _glbT1 && _glbT2 && typeof her3 !== 'undefined' && her3) {
         let hb = null, mb = null, off = null;
+        const LC = (GLB_REGISTRY[e.key] || {}).land;
         if (land === 'mons') {
-          mb = rig.land.pelvis; off = GLB_LAND_OFF.mons;
+          mb = rig.land.pelvis; off = LC ? LC.mons : GLB_LAND_OFF.mons;
           try { _glbT2.copy(clitorisWorld3(her3)); hb = true; } catch (_) { hb = false; }
         } else if (land === 'breast') {
           const leftish = tgt.x < 0;
           mb = leftish ? rig.land.breastR : rig.land.breastL;
-          off = GLB_LAND_OFF.breast;
+          off = LC ? [(leftish ? -1 : 1) * LC.breast[0], LC.breast[1], LC.breast[2]] : GLB_LAND_OFF.breast;
           try { _glbT2.copy(breastWorld3(her3, leftish ? -1 : 1)); hb = true; } catch (_) { hb = false; }
         }
         if (hb && mb) {
@@ -1060,6 +1066,8 @@ function glbApplyCustom(preset) {
       glbSetPartColor(preset, gk, colors[gk]);
     }
   }
+
+  glbApplyTone(preset);
 
   // Synchronize character skin tone and hair color with GLB if not explicitly overridden
   if (G.char) {
@@ -1286,7 +1294,9 @@ function updateGLBModel(dt) {
   if (!frozen) {
     e.model.position.y += breath * calm;
     glbSecondary3(e, dt, calm);
+    glbJiggle3(e);
   }
+  glbFace3(e, frozen ? 0 : dt);
   // Bed-solid collision LAST: the mattress/duvet is solid, nobody rests inside it.
   glbCollideBed(e);
 
@@ -1320,4 +1330,107 @@ function updateGLBModel(dt) {
   GLB_MODEL.meshList = e.meshList;
   GLB_MODEL.baseScale = e.baseScale;
   GLB_MODEL.loaded = true;
+}
+
+
+/* ============================================================
+   REALISTIC-MODEL EXTRAS (Vivian): skin tones, expressions, breast spring
+   ============================================================ */
+const GLB_TONE_CACHE = {};
+function glbToneFor(st) { return st < 0.36 ? 'honey' : (st < 0.66 ? 'caramel' : 'deep'); }
+
+function glbCollectExtras(e, cfg) {
+  e.tone = cfg.toneDefault || null;
+  e.morphMeshes = [];
+  e.jiggle = [];
+  if (!e.model) return;
+  e.model.traverse(c => {
+    if (cfg.face && c.isMesh && c.morphTargetDictionary && c.morphTargetInfluences) e.morphMeshes.push(c);
+    if (cfg.jiggle && c.isBone) {
+      const m = /^乳親([LR])$/.exec(glbCleanKey(c.name));
+      if (m) e.jiggle.push({ bone: c, bx: c.rotation.x, bz: c.rotation.z, side: m[1] === 'L' ? 1 : -1 });
+    }
+  });
+}
+
+// Swap the baked albedo when the skin-tone slider crosses a band (textures cached once loaded).
+function glbApplyTone(key) {
+  const cfg = GLB_REGISTRY[key], e = GLB_STORE[key];
+  if (!cfg || !cfg.tones || !e || !e.model) return;
+  const tone = glbToneFor((G.char && G.char.skinTone != null) ? G.char.skinTone : 0.5);
+  if (e.tone === tone) return;
+  e.tone = tone;
+  const url = cfg.tones[tone];
+  const apply = tex => {
+    if (e.tone !== tone) return;
+    e.model.traverse(c => {
+      if (!c.isMesh) return;
+      (Array.isArray(c.material) ? c.material : [c.material]).forEach(m => {
+        if (m && m.map && /skin/i.test(m.name || '')) { m.map = tex; m.needsUpdate = true; }
+      });
+    });
+  };
+  if (GLB_TONE_CACHE[url]) { apply(GLB_TONE_CACHE[url]); return; }
+  new THREE.TextureLoader().load(url, tex => {
+    tex.flipY = false;
+    if (THREE.sRGBEncoding != null) tex.encoding = THREE.sRGBEncoding;
+    tex.anisotropy = 4;
+    GLB_TONE_CACHE[url] = tex;
+    apply(tex);
+  });
+}
+
+// Expression morphs from the game state: blink timer, moans from the voice events (G.mouths),
+// heavy-lidded pleasure with arousal, eyes closed through orgasm, O-mouth in oral, pucker on embrace,
+// a soft smile when calm or in the afterglow.
+function glbFace3(e, dt) {
+  const ms = e.morphMeshes;
+  if (!ms || !ms.length || typeof G === 'undefined') return;
+  const F = e.face || (e.face = { blinkT: 2 + Math.random() * 3, blinkPh: -1, blink: 0, moan: 0, pleasure: 0, oral: 0, kiss: 0, smile: 0 });
+  const t = G.t || 0;
+  const p = clamp((G.pleasure || 0) / 100, 0, 1);
+  const org = G.state === 'orgasm' ? Math.sin(Math.PI * clamp((G.orgT || 0) / 5.4, 0, 1)) : 0;
+  F.blinkT -= dt;
+  if (F.blinkT <= 0 && F.blinkPh < 0) { F.blinkPh = 0; F.blinkT = 1.8 + Math.random() * 3.6 - p; }
+  let blink = 0;
+  if (F.blinkPh >= 0) {
+    F.blinkPh += dt;
+    const u = F.blinkPh / 0.17;
+    if (u >= 1) F.blinkPh = -1; else blink = Math.sin(u * Math.PI);
+  }
+  let moan = 0;
+  const mouths = G.mouths || [];
+  for (let i = mouths.length - 1, n = 0; i >= 0 && n < 4; i--, n++) {
+    const m = mouths[i], u = (t - m.t0) / (m.dur || 0.6);
+    if (u >= 0 && u <= 1) moan = Math.max(moan, Math.sin(u * Math.PI) * (0.55 + 0.3 * (m.i || 0)));
+  }
+  const oral = clamp(G.oral || 0, 0, 1), kiss = clamp(G.kiss || 0, 0, 1);
+  const after = clamp((G.after || 0) / 8.5, 0, 1);
+  const T = {
+    blink: Math.max(blink, org * 0.9, kiss * 0.65),
+    moan: clamp(moan + org * 0.6, 0, 1) * (1 - oral) * (1 - kiss),
+    pleasure: clamp(0.06 + p * 0.78 + org * 0.35, 0, 1) * (1 - 0.7 * kiss),
+    oral: oral * (0.78 + 0.22 * Math.sin(t * 5.2)),
+    kiss: kiss,
+    smile: clamp(0.3 * (1 - p) + after * 0.6, 0, 1) * (1 - oral) * (1 - moan)
+  };
+  const k = dt > 0 ? 1 - Math.exp(-12 * dt) : 1;
+  for (const n in T) F[n] = (n === 'blink') ? T[n] : F[n] + (T[n] - F[n]) * k;
+  for (let i = 0; i < ms.length; i++) {
+    const d = ms[i].morphTargetDictionary, inf = ms[i].morphTargetInfluences;
+    for (const n in T) { const j = d[n]; if (j !== undefined) inf[j] = F[n]; }
+  }
+}
+
+// Breasts ride the same spring the 2D view uses (G.breast) plus the thrust bounce.
+function glbJiggle3(e) {
+  const J = e.jiggle;
+  if (!J || !J.length) return;
+  const bp = (typeof G !== 'undefined' && G.breast) ? (G.breast.p || 0) : 0;
+  const b = clamp(bp * 0.012 + (e.jiggleY || 0) * 1.6, -0.18, 0.18);
+  for (let i = 0; i < J.length; i++) {
+    const s = J[i];
+    s.bone.rotation.x = s.bx + b;
+    s.bone.rotation.z = s.bz + b * 0.25 * s.side;
+  }
 }
