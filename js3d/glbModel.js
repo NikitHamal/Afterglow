@@ -34,8 +34,6 @@ const GLB_REGISTRY = {
               tones: { honey: 'assets/vivian/skin_honey.jpg', caramel: 'assets/vivian/skin_caramel.jpg', deep: 'assets/vivian/skin_deep.jpg' },
               toneDefault: 'caramel',
               land: { breast: [0.045, 0.155, 0.06], mons: [0, 0.14, 0.02] } },
-  kiyoko:   { path: 'assets/kiyoko.005.glb',         fit: 1.35, yOff: 0.62, exclude: /tail/i, yaw: 0 },
-  anime:    { path: 'assets/free_download_female_anime.glb',          fit: 1.35, yOff: 0.62, exclude: null, yaw: 0 }
 };
 
 // Pose-follow scratch (THREE is always loaded before this module in 3d.html)

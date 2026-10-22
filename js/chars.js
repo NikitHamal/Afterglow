@@ -33,46 +33,6 @@ const CHARS={
     nippleColor:'#7a4038', blushColor:'#b85a5a', lipColor:'#7a1a2a', eyeColor:'#5a3a1e',
     pubicHair:'trim', isGLB:true, glbPath:'assets/vivian/vivian.glb'
   },
-  yuki:{
-    preset:'yuki', name:'Yuki',
-    quote:'\u201cMm\u2026 finally we\u2019re alone. You remember how I like it\u2026 right?\u201d',
-    skinTone:.18, hairColor:'#231318', hairStyle:'long',
-    bodyScale:.45, breastSize:.45,
-    nippleColor:'#c25f63', blushColor:'#e86070', lipColor:'#b3555f', eyeColor:'#4a2c33',
-    pubicHair:'trim'
-  },
-  mara:{
-    preset:'mara', name:'Mara',
-    quote:'\u201cHey\u2026 don\u2019t keep me waiting. Come closer\u2026\u201d',
-    skinTone:.46, hairColor:'#1a0e0a', hairStyle:'long',
-    bodyScale:.65, breastSize:.68,
-    nippleColor:'#a04848', blushColor:'#c05858', lipColor:'#943040', eyeColor:'#3a2018',
-    pubicHair:'trim'
-  },
-  sable:{
-    preset:'sable', name:'Sable',
-    quote:'\u201cYou sure you can handle this\u2026? Good.\u201d',
-    skinTone:.76, hairColor:'#14080a', hairStyle:'natural',
-    bodyScale:.58, breastSize:.55,
-    nippleColor:'#6a2828', blushColor:'#883040', lipColor:'#6a2435', eyeColor:'#2a1208',
-    pubicHair:'full'
-  },
-  kiyoko:{
-    preset:'kiyoko', name:'Kiyoko',
-    quote:'\u201cMmm\u2026 start with my ears? Then don\u2019t you dare stop\u2026 \u2665\u201d',
-    skinTone:.30, hairColor:'#e85a10', hairStyle:'long',
-    bodyScale:.48, breastSize:.62,
-    nippleColor:'#b05050', blushColor:'#e86070', lipColor:'#b3555f', eyeColor:'#5a3018',
-    pubicHair:'trim', isGLB:true, glbPath:'assets/kiyoko.005.glb'
-  },
-  anime:{
-    preset:'anime', name:'Anime',
-    quote:'\u201cMm\u2026 took you long enough. Lock the door\u2026 and take your time with me\u2665\u201d',
-    skinTone:.18, hairColor:'#ff7ab0', hairStyle:'long',
-    bodyScale:.47, breastSize:.60,
-    nippleColor:'#c06070', blushColor:'#f08090', lipColor:'#d06080', eyeColor:'#6a3050',
-    pubicHair:'trim', isGLB:true, glbPath:'assets/free_download_female_anime.glb'
-  }
 };
 
 /* ---- skin palette ---- */
