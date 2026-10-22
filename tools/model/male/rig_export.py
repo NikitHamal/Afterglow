@@ -89,12 +89,15 @@ for s_, L in LR.items():
             spec.append((nm, segs[k], segs[k + 1], parent, ("palm", f + s_)))
             parent = nm
 
-Bg, Ag, Dg, TIPg = (Vector(GEN[k]) * S for k in ("B", "A", "D", "tip"))
-Lsh = (TIPg - Bg).length
-def shaft_pt(f): return Bg + Ag * (Lsh * f) + Dg * (0.013 * S) * f * f
+Bg, Ag, Dg, TIPg, TIPe = (Vector(GEN[k]) * S for k in ("B", "A", "D", "tip", "tip_erect"))
+Lf = GEN["L_flaccid"] * S
+def shaft_pt(f): return Bg + Ag * (Lf * f)                     # straight chain along the bind axis (rest = flaccid)
+HCg = Vector(GEN["sack_center"]) * S; AXg = Vector(GEN["sack_axis"])
 spec += [("竿根", shaft_pt(0.0), shaft_pt(0.42), "下半身", ("lat",)),
          ("竿中", shaft_pt(0.42), shaft_pt(0.78), "竿根", ("lat",)),
-         ("竿先", shaft_pt(0.78), TIPg, "竿中", ("lat",))]
+         ("竿先", shaft_pt(0.78), shaft_pt(1.0), "竿中", ("lat",)),
+         ("竿端", TIPe, TIPe + Ag * 0.01, "竿先", ("lat",)),     # unweighted marker: erect tip in bind space
+         ("玉袋", HCg, HCg + AXg * (0.06 * S), "下半身", ("lat",))]
 arm_data = bpy.data.armatures.new("MarcusRig"); arm = bpy.data.objects.new("MarcusRig", arm_data)
 sc.collection.objects.link(arm); bpy.context.view_layer.objects.active = arm
 for o in bpy.context.view_layer.objects: o.select_set(False)
@@ -120,7 +123,7 @@ bpy.ops.object.mode_set(mode="OBJECT")
 log(f"MMD skeleton: {len(arm_data.bones)} bones")
 
 # ------------------------------------------------------------------ 5. weights: MPFB groups -> MMD names
-REN = {"shaft_root": "竿根", "shaft_mid": "竿中", "shaft_tip": "竿先", "pelvis": "下半身", "spine_01": "上半身", "spine_02": "上半身2", "spine_03": "上半身2", "neck_01": "首", "head": "頭"}
+REN = {"shaft_root": "竿根", "shaft_mid": "竿中", "shaft_tip": "竿先", "scrotum": "玉袋", "pelvis": "下半身", "spine_01": "上半身", "spine_02": "上半身2", "spine_03": "上半身2", "neck_01": "首", "head": "頭"}
 for s_, L in LR.items():
     REN.update({f"clavicle_{s_}": f"肩{L}", f"upperarm_{s_}": f"腕{L}", f"lowerarm_{s_}": f"ひじ{L}", f"hand_{s_}": f"手首{L}",
                 f"thigh_{s_}": f"足{L}", f"calf_{s_}": f"ひざ{L}", f"foot_{s_}": f"足首{L}", f"ball_{s_}": f"つま先{L}",
@@ -170,7 +173,12 @@ bpy.ops.wm.save_as_mainfile(filepath=OUT + "/marcus_game.blend")
 
 # ------------------------------------------------------------------ 7. export GLB (game)
 def export(path, anims):
-    bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=False, export_yup=True, export_apply=False,
+    try:                                   # keep the hair shell's fringe colour attribute (Blender 4.2+ option)
+        return _export(path, anims, export_vertex_color="ACTIVE")
+    except TypeError:
+        return _export(path, anims)
+def _export(path, anims, **extra):
+    bpy.ops.export_scene.gltf(**extra,filepath=path, export_format="GLB", use_selection=False, export_yup=True, export_apply=False,
                               export_skins=True, export_morph=True, export_morph_normal=True, export_animations=anims,
                               export_image_format="AUTO", export_texcoords=True, export_normals=True, export_tangents=False,
                               export_materials="EXPORT", export_cameras=False, export_lights=False, export_extras=False,
@@ -189,7 +197,6 @@ for f, k in [(1, 0), (30, 1), (60, 0), (90, -1), (120, 0)]:
     key("ひじ.L", f, 0.9 * abs(k)); key("ひじ.R", f, 0.9 * abs(k))
     key("ひざ.L", f, 0.8 * abs(k)); key("ひざ.R", f, 0.4 * abs(k))
     key("足.L", f, -0.5 * abs(k)); key("首", f, 0, 0.35 * k, 0); key("上半身2", f, 0.15 * k)
-    key("竿根", f, 0.35 * k); key("竿中", f, 0.12 * k)
     for s_ in (".L", ".R"):
         for jp in FING.values():
             for d in "０１２":
@@ -202,6 +209,9 @@ if sk:
                        ("pleasure", [(60, 0), (90, 1), (120, 0)]), ("body_muscle", [(1, 0), (60, 1), (120, 0)])]:
         for f, v in frames:
             if kb in sk.key_blocks: sk.key_blocks[kb].value = v; sk.key_blocks[kb].keyframe_insert("value", frame=f)
+for f, a in [(1, 0.0), (40, 1.0), (85, 1.0), (120, 0.0)]:          # arousal: soft hang -> erect -> soft
+    key("竿根", f, -1.1 * a); key("玉袋", f, 0.18 * a)
+    if sk and "aroused" in sk.key_blocks: sk.key_blocks["aroused"].value = a; sk.key_blocks["aroused"].keyframe_insert("value", frame=f)
 sc.frame_start, sc.frame_end = 1, FR
 export(PRE + f"/marcus_{int(time.time())}.glb", True)
 mine = sorted(f for f in os.listdir(PRE) if f.startswith("marcus_"))

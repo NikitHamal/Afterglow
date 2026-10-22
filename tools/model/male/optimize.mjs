@@ -1,18 +1,20 @@
-// Marcus GLB post-process (game): material modes, compact textures, strip COLOR_*, quantize, sparse morphs.
+// Marcus GLB post-process (game): material modes, compact textures, strip COLOR_* (except the hair fringe alpha), quantize.
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { prune, dedup, quantize, sparse } from '@gltf-transform/functions';
+import { prune, dedup, quantize } from '@gltf-transform/functions';
 import fs from 'fs';
 const [inp, out, texdir] = process.argv.slice(2);
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
 const doc = await io.read(inp); const root = doc.getRoot();
 const SWAP = { marcus_skin_caramel: 'skin_caramel.jpg', marcus_skin_normal: 'marcus_skin_normal_2k.jpg', marcus_skin_orm: 'marcus_skin_orm_2k.jpg', teeth: 'marcus_teeth_1k.jpg', tongue01_diffuse: 'marcus_tongue_512.jpg' };
 for (const t of root.listTextures()) { const f = SWAP[t.getName()]; if (f) t.setImage(fs.readFileSync(`${texdir}/${f}`)).setMimeType('image/jpeg').setURI(f); }
+// vertex colours are paint masks (GLTFLoader would multiply them into the albedo) — except the hair shell, whose
+// COLOR_0 is (1,1,1,fringe): albedo untouched, alpha carves the hairline
 for (const mesh of root.listMeshes()) for (const p of mesh.listPrimitives())
-  for (const sem of p.listSemantics()) if (sem.startsWith('COLOR_')) p.setAttribute(sem, null);
+  for (const sem of p.listSemantics()) if (sem.startsWith('COLOR_') && !(mesh.getName() === 'marcus_hair' && sem === 'COLOR_0')) p.setAttribute(sem, null);
 for (const m of root.listMaterials()) {
   let n = m.getName(); if (n.startsWith('marcus_genital')) { n = 'marcus_genital'; m.setName(n); }
-  if (n === 'marcus_hair') m.setAlphaMode('MASK').setAlphaCutoff(0.4).setDoubleSided(true);
+  if (n === 'marcus_hair') m.setAlphaMode('MASK').setAlphaCutoff(0.5).setDoubleSided(false);
   else if (n === 'marcus_brow' || n === 'marcus_lash') m.setAlphaMode('MASK').setAlphaCutoff(0.3).setDoubleSided(true);
   else if (n === 'marcus_eye') m.setAlphaMode('MASK').setAlphaCutoff(0.5).setDoubleSided(false);
   else m.setAlphaMode('OPAQUE').setDoubleSided(false);

@@ -24,7 +24,12 @@ const GLB_HIM = {
   model: null, order: [], meshes: [], morph: [], proc: [], headParts: [],
   anchor: null, tipBone: null, tipLocal: null, headBone: null,
   face: { blinkT: 2.5, blink: 0, effort: 0, pleasure: 0, moan: 0, kiss: 0 },
-  oralShift: null
+  oralShift: null,
+  // arousal: 0 = soft and hanging (rest geometry), 1 = erect (the 'aroused' morph + 竿 bones raised onto the
+  // procedural shaft's aim). refr = refractory seconds after he finishes, idleT = seconds without stimulation.
+  ar: 0, refr: 0, idleT: 0,
+  sackSwing: 0, sackVel: 0, prevDepth: 0,
+  tipF: null, tipE: null
 };
 
 const _ghQ = (typeof THREE !== 'undefined') ? new THREE.Quaternion() : null;
@@ -137,7 +142,18 @@ function glbHimSetup(gltf) {
   // shaft tip in 竿先's local frame: the chain sits at 0 / 0.42 / 0.78 of the length
   const tipB = bones['竿先'], midB = bones['竿中'];
   GLB_HIM.tipBone = tipB;
-  GLB_HIM.tipLocal = new THREE.Vector3(0, info.get(tipB).pos.distanceTo(info.get(midB).pos) * (0.22 / 0.36) / (tipB.getWorldScale(new THREE.Vector3()).y || 1), 0);
+  GLB_HIM.tipF = new THREE.Vector3(0, info.get(tipB).pos.distanceTo(info.get(midB).pos) * (0.22 / 0.36) / (tipB.getWorldScale(new THREE.Vector3()).y || 1), 0);
+  GLB_HIM.tipE = bones['竿端'] ? bones['竿端'].position.clone() : GLB_HIM.tipF.clone();   // erect tip marker (child of 竿先)
+  GLB_HIM.tipLocal = GLB_HIM.tipF.clone();
+  const root = bones['竿根'];
+  if (root) {                                    // shaft root: bind direction (model space) for the gravity hang
+    const I = info.get(root); I.shaft = true;
+    I.dir = info.get(midB).pos.clone().sub(I.pos).normalize();
+  }
+  if (bones['玉袋']) {
+    const I = info.get(bones['玉袋']); I.scrot = true;
+    I.dir = new THREE.Vector3(0, 1, 0).applyQuaternion(I.bind).normalize();
+  }
   GLB_HIM.headBone = bones['頭'];
   GLB_HIM.oralShift = new THREE.Vector3();
 
@@ -234,8 +250,66 @@ function glbHimFace(dt) {
   glbHimMorph('body_muscle', ch && ch.muscle != null ? ch.muscle : S.body_muscle);
   glbHimMorph('body_weight', ch && ch.weight != null ? ch.weight : S.body_weight);
   glbHimMorph('body_belly', ch && ch.belly != null ? ch.belly : S.body_belly);
-  glbHimMorph('penis_length', ch && ch.length != null ? ch.length : S.penis_length);
-  glbHimMorph('penis_girth', ch && ch.girth != null ? ch.girth : S.penis_girth);
+  const grow = 0.35 + 0.65 * GLB_HIM.ar;          // size sliders are erect-state deltas; the soft state grows less
+  glbHimMorph('penis_length', (ch && ch.length != null ? ch.length : S.penis_length) * grow);
+  glbHimMorph('penis_girth', (ch && ch.girth != null ? ch.girth : S.penis_girth) * grow);
+  glbHimMorph('aroused', GLB_HIM.ar);
+}
+
+/* ---- arousal: soft at the start and while nothing happens, hard while she touches/takes him or he thrusts,
+   peak at climax, softening (refractory) after he finishes ---- */
+function glbHimArousal(dt) {
+  const g = (typeof G !== 'undefined') ? G : {};
+  const st = g.state;
+  const oral = (g.oral || 0) > 0.03;
+  const touch = oral || (g.kissT | 0) || (g.rubT | 0) || (g.kiss || 0) > 0.05;
+  const thrust = !!(g.spaceHeld || g.dragOn) || Math.abs((g.depth || 0) - GLB_HIM.prevDepth) > 0.0015;
+  GLB_HIM.prevDepth = g.depth || 0;
+  GLB_HIM.idleT = (thrust || touch) ? 0 : GLB_HIM.idleT + dt;
+  if (st === 'finish') GLB_HIM.refr = 9; else GLB_HIM.refr = Math.max(0, GLB_HIM.refr - dt);
+  let tgt;
+  if (st === 'intro' || g.solo) tgt = 0;
+  else if (st === 'climax') tgt = 1;
+  else if (st === 'finish') tgt = 0.55;
+  else {
+    tgt = (thrust || oral) ? 1 : 0.62 + 0.3 * clamp((g.ar || 0) / 100, 0, 1);
+    if (GLB_HIM.idleT > 8) tgt = Math.min(tgt, 0.42);
+    if (GLB_HIM.refr > 0) tgt = Math.min(tgt, (thrust || oral) ? 0.82 : 0.45);
+  }
+  const rate = tgt > GLB_HIM.ar ? ((thrust || oral || st === 'climax') ? 0.9 : 0.3) : 0.14;
+  GLB_HIM.ar = clamp(GLB_HIM.ar + clamp(tgt - GLB_HIM.ar, -rate * dt, rate * dt), 0, 1);
+}
+const _ghG = (typeof THREE !== 'undefined') ? new THREE.Vector3() : null;
+const _ghD = (typeof THREE !== 'undefined') ? new THREE.Vector3() : null;
+const _ghH = (typeof THREE !== 'undefined') ? new THREE.Quaternion() : null;
+// tilt a model-space bind direction toward gravity by at most maxAng
+function glbHimGravityQ(out, dir, maxAng) {
+  _ghG.set(0, -1, 0).applyQuaternion(_ghQ3);                     // world down in model (hip) space
+  const ang = dir.angleTo(_ghG);
+  if (ang < 1e-4) return out.identity();
+  out.setFromUnitVectors(dir, _ghG);
+  if (ang > maxAng) out.slerp(_ghH.identity(), 1 - maxAng / ang);
+  return out;
+}
+// R (model space) arrives aimed like the procedural shaft; soften it toward the hanging rest pose
+function glbHimShaftBlend(R, I, parentQ) {
+  const e = GLB_HIM.ar * GLB_HIM.ar * (3 - 2 * GLB_HIM.ar);
+  if (e >= 0.999) return;
+  glbHimGravityQ(_ghW, I.dir, 0.42 * (1 - e));
+  _ghH.copy(_ghW).multiply(parentQ).multiply(I.local);           // hang = gravity tilt of the rest orientation
+  R.copy(_ghH.slerp(R, e));
+}
+// the sack sags toward gravity and swings a little with each stroke
+function glbHimSackSag(R, I) {
+  const g = (typeof G !== 'undefined') ? G : {};
+  const dt = 1 / 60, kick = ((g.depth || 0) - (GLB_HIM._sackD || 0)) * 6;
+  GLB_HIM._sackD = g.depth || 0;
+  GLB_HIM.sackVel += (-60 * GLB_HIM.sackSwing - 6 * GLB_HIM.sackVel) * dt + kick;
+  GLB_HIM.sackSwing = clamp(GLB_HIM.sackSwing + GLB_HIM.sackVel * dt, -0.35, 0.35);
+  _ghD.set(0, 1, 0).applyQuaternion(R);                        // current sack axis (bone +Y) in model space
+  glbHimGravityQ(_ghW, _ghD, 0.55);                              // up to ~31 deg of sag toward gravity
+  _ghH.setFromAxisAngle(_ghX, GLB_HIM.sackSwing);
+  R.premultiply(_ghW).multiply(_ghH);
 }
 
 /* ---- correction pass: the GLB skeleton has its own proportions, so after the
@@ -338,6 +412,9 @@ function updateGLBHim(dt) {
   if (typeof G !== 'undefined' && G.char && G.char.him && G.char.him.tone) glbHimSetTone(G.char.him.tone);
   glbHimApplyTone();
 
+  glbHimArousal(dt);
+  GLB_HIM.tipLocal.copy(GLB_HIM.tipF).lerp(GLB_HIM.tipE, GLB_HIM.ar);
+
   // root: pinned to his hips (orientation, scale, position of the pelvis anchor)
   const hips = him3.hips;
   hips.updateWorldMatrix(true, false);
@@ -360,11 +437,13 @@ function updateGLBHim(dt) {
     if (src) {
       src.getWorldQuaternion(_ghQ);
       R.copy(_ghQ3).multiply(_ghQ).multiply(I.C).multiply(I.bind);
+      if (I.shaft) glbHimShaftBlend(R, I, parentQ);
       b.quaternion.copy(_ghQ2.copy(parentQ).invert().multiply(R));
     } else {
       b.quaternion.copy(I.local);
       if (I.curl) b.quaternion.multiply(I.curl);
       R.copy(parentQ).multiply(b.quaternion);
+      if (I.scrot) { glbHimSackSag(R, I); b.quaternion.copy(_ghQ2.copy(parentQ).invert().multiply(R)); }
     }
   }
   model.updateMatrixWorld(true);
@@ -385,10 +464,12 @@ function updateGLBHim(dt) {
   const g = (typeof G !== 'undefined') ? G : {};
   const lick = (g.oral || 0) > 0.03 && !(g.oralMode === 'blow' || g.oralT === 2);
   const want = GLB_HIM._want || (GLB_HIM._want = new THREE.Vector3());
-  if (!lick && shaftTipWorld3.__orig) {
+  const hard = clamp((GLB_HIM.ar - 0.6) / 0.3, 0, 1);
+  if (!lick && hard > 0 && shaftTipWorld3.__orig) {
     const pt = shaftTipWorld3.__orig(him3), ht = glbHimTip(_ghV);
     want.copy(GLB_HIM.oralShift).add(pt).sub(ht);
     if (want.length() > 0.22) want.setLength(0.22);
+    want.multiplyScalar(hard * hard * (3 - 2 * hard));
   } else want.set(0, 0, 0);
   GLB_HIM.oralShift.lerp(want, Math.min(1, dt * 8));
 
