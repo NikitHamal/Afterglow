@@ -2,6 +2,25 @@
 
 Newest first. Any session continuing the work: read `AGENTS.md`, then this file.
 
+## 2026-10-22 (later) — v2 of both characters, customisation, performance
+
+Shipped (commits `2820e1c`, `73f586f`, `054a4f3`, plus GLB memory disposal):
+- **Vivian v2** — anatomical vulva with labia, clitoral hood, vestibule, real vaginal + anal canals,
+  per-tone mucosa paint; hair physics (12 verlet chains, body colliders shipped in the GLB,
+  `js3d/glbHair.js`); eye bones (gaze with saccades, eyes roll up at climax); breathing lips;
+  7 body-shape morphs applied from `G.char.shape`. Details: `docs/STATUS_female.md`.
+- **Marcus v2** — natural flaccid rest, `aroused` morph driven by the game (erect in sex poses,
+  soft at intro/idle, refractory after finishing), realistic scrotum with sag bone, short fitted hair,
+  subtler veins. Details: `docs/STATUS_male.md`.
+- **Customise panel** — her presets Slim / Curvy / Voluptuous / Athletic + sliders; his presets
+  Lean / Fit / Muscular / Dad bod, tone, muscle/weight/belly/length/girth.
+- **Performance** — 2D +37% fps headless (half-res rim lights, bloom every other frame, HUD diffing,
+  adaptive resolution); 3D adaptive pixel ratio, shadow map every other frame, fewer shadow casters,
+  lighter room meshes; switching women now frees the previous GLB (only one woman in memory).
+
+Next ideas: landing-strip hair as real short hair, stronger weight/butt morph ranges, hair colliders
+that follow body morphs, 2D body layer on its own canvas (saves ~5 full-screen copies).
+
 ## 2026-10-22 — realistic characters
 
 Shipped:

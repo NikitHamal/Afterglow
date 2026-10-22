@@ -510,7 +510,10 @@ function setGLBActive(active, preset) {
   }
   Object.keys(GLB_STORE).forEach(k => {
     const e = GLB_STORE[k];
-    if (e && e.model) e.model.visible = GLB_MODEL.active && (k === want || (k === '__custom' && want && !GLB_REGISTRY[want]));
+    const keep = GLB_MODEL.active && (k === want || (k === '__custom' && want && !GLB_REGISTRY[want]));
+    if (e && e.model) e.model.visible = keep;
+    // Memory: a woman you switched away from is freed (GPU buffers + textures); picking her again reloads.
+    if (e && e.loaded && e.model && !keep && k !== want) glbDisposeEntry(k);
   });
   if (want && GLB_STORE[want]) glbAlias(want);
   else if (want && GLB_REGISTRY[want]) glbAlias(want);
@@ -1493,4 +1496,25 @@ function glbJiggle3(e) {
     s.bone.rotation.x = s.bx + b;
     s.bone.rotation.z = s.bz + b * 0.25 * s.side;
   }
+}
+
+
+/* Free a loaded GLB entry: geometry, materials and textures go back to the GPU/JS heap.
+   The store entry is reset so selecting the character again simply reloads it. */
+function glbDisposeEntry(key) {
+  const e = GLB_STORE[key];
+  if (!e || !e.model) return;
+  const seen = new Set();
+  e.model.traverse(c => {
+    if (c.geometry && !seen.has(c.geometry)) { seen.add(c.geometry); c.geometry.dispose(); }
+    (Array.isArray(c.material) ? c.material : (c.material ? [c.material] : [])).forEach(m => {
+      if (seen.has(m)) return; seen.add(m);
+      for (const slot in m) { const t = m[slot]; if (t && t.isTexture && !seen.has(t)) { seen.add(t); t.dispose(); } }
+      m.dispose();
+    });
+    if (c.isSkinnedMesh && c.skeleton && c.skeleton.boneTexture) c.skeleton.boneTexture.dispose();
+  });
+  if (e.model.parent) e.model.parent.remove(e.model);
+  delete GLB_STORE[key];
+  if (GLB_MODEL.key === key) { GLB_MODEL.model = null; GLB_MODEL.loaded = false; }
 }
