@@ -12,7 +12,7 @@ SRC = {"cau": SK + "/middleage_caucasian_male/" + [f for f in os.listdir(SK + "/
        "afr": SK + "/middleage_african_male/" + [f for f in os.listdir(SK + "/middleage_african_male") if f.endswith(".png")][0]}
 RES, GRES = 4096, 1024
 def prog(*a): os.system("python3 /root/agb/progress.py " + " ".join(shlex.quote(str(x)) for x in a))
-def log(*a): print("[male]", *a, flush=True); prog("log", "[male] " + " ".join(str(x) for x in a))
+def log(*a): print("[male]", *a, flush=True); prog("log", "[M] " + " ".join(str(x) for x in a))
 t0 = time.time()
 body = bpy.data.objects["Human"]; rig = bpy.data.objects["Human.rig"]
 G = json.load(open(OUT + "/genital.json")); B, A, D = (np.array(G[k]) for k in ("B", "A", "D"))
@@ -171,10 +171,10 @@ scar = is_shaft * np.exp(-((gv - (sc_n - 0.07)) / 0.010) ** 2)
 ang = (gu / 0.62) * 2 * np.pi                                     # 0 = ventral seam
 vein = np.zeros_like(gu)
 rng = np.random.default_rng(3)
-for k in range(4):                                                # dorsal veins wandering along the shaft
+for k in range(3):                                                # dorsal veins wandering along the shaft (subtle)
     a0 = math.pi + rng.uniform(-0.9, 0.9); amp = rng.uniform(0.15, 0.35); fq = rng.uniform(1.5, 3.5); ph = rng.uniform(0, 6.3)
     path = a0 + amp * np.sin(fq * gv * 2 * np.pi + ph)
-    w_ = rng.uniform(0.045, 0.07)
+    w_ = rng.uniform(0.035, 0.055)
     vein = np.maximum(vein, np.exp(-((ang - path) / w_) ** 2) * ss(0.05, 0.2, gv) * ss(sc_n - 0.05, sc_n - 0.15, gv) * rng.uniform(0.6, 1.0))
 vein *= is_shaft
 ridge = is_shaft * np.exp(-(np.minimum(ang, 2 * np.pi - ang) / 0.35) ** 2) * (1 - glans)       # ventral raphe on the shaft
@@ -217,10 +217,10 @@ for tone, T in TONES.items():
     base = C[near].mean(0) if near.any() else C[bodym].mean(0)
     Gc = np.ones((GRES, GRES, 3), np.float32) * base * np.array([0.97, 0.93, 0.92]) ** 2.2
     Gc *= (0.9 + 0.2 * GHP[..., 2:3]); Gc *= (0.8 + 0.2 * GK["AO"])[..., None]
-    Gc = lerp3(Gc, Gc * np.array([0.84, 0.78, 0.88]) ** 2.2, vein * 0.22)
+    Gc = lerp3(Gc, Gc * np.array([0.86, 0.80, 0.88]) ** 2.2, vein * 0.12)
     Gc = lerp3(Gc, Gc * np.array([0.88, 0.80, 0.80]) ** 2.2, ridge * 0.4)
     lum = float(base.mean()) / 0.13
-    glc = 0.45 * base * np.array([0.95, 0.82, 0.86]) ** 2.2 + 0.55 * to_lin(np.array([0.60, 0.40, 0.43])) * min(1.0, 0.45 + 0.55 * lum)   # dusky rose
+    glc = 0.62 * base * np.array([0.95, 0.82, 0.86]) ** 2.2 + 0.38 * to_lin(np.array([0.56, 0.38, 0.40])) * min(1.0, 0.45 + 0.55 * lum)   # dusky rose, close to his tone
     Gc = lerp3(Gc, glc * (0.92 + 0.16 * GHP[..., 1:2]), glans)
     Gc = lerp3(Gc, Gc * np.array([0.8, 0.62, 0.66]) ** 2.2, corona * 0.5)
     Gc = lerp3(Gc, Gc * np.array([0.85, 0.75, 0.75]) ** 2.2, scar * 0.5)
@@ -248,8 +248,8 @@ def save(a, path, q):
     Image.fromarray(np.flipud(np.clip(a * 255 + 0.5, 0, 255).astype(np.uint8))).save(path, quality=q)
 save(nmap(h) * 0.5 + 0.5, TEX + "/marcus_skin_normal.jpg", 92)
 save(np.stack([np.clip(0.25 + 0.75 * AO, 0, 1), np.clip(R, 0.15, 0.9), np.zeros_like(R)], -1), TEX + "/marcus_skin_orm.jpg", 90)
-gh = 1.2 * vein + 0.6 * ridge + 0.6 * rugae * is_sack - 0.9 * raphe + 0.8 * corona - 1.5 * meatus + (GHP[..., 1] - 0.5) * 0.4
-GR = np.where(glans > 0.5, 0.36, 0.52) + 0.08 * is_sack
+gh = 0.55 * vein + 0.6 * ridge + 0.6 * rugae * is_sack - 0.9 * raphe + 0.8 * corona - 1.5 * meatus + (GHP[..., 1] - 0.5) * 0.4
+GR = np.where(glans > 0.5, 0.42, 0.54) + 0.08 * is_sack
 save(nmap(gh, 1.4) * 0.5 + 0.5, TEX + "/marcus_genital_normal.jpg", 92)
 save(np.stack([np.clip(0.3 + 0.7 * GK["AO"], 0, 1), np.clip(GR, 0.2, 0.9), np.zeros_like(GR)], -1), TEX + "/marcus_genital_orm.jpg", 90)
 log(f"normal + ORM maps ({time.time()-t0:.0f}s)")
