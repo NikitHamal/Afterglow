@@ -1,0 +1,9 @@
+#!/bin/bash
+# upload local files to molab /root/agb/: mup file...
+for f in "$@"; do
+python3 - "$f" <<'PY' | $(dirname "$0")/mx
+import sys,base64,os
+f=sys.argv[1]; b=base64.b64encode(open(f,'rb').read()).decode()
+print(f"import base64;open('/root/agb/{os.path.basename(f)}','wb').write(base64.b64decode('{b}'));print('up {os.path.basename(f)}')")
+PY
+done

@@ -1,0 +1,6 @@
+#!/bin/bash
+# start a detached shell job on molab: mbg 'cmd'
+CMD="$*" python3 - <<'PY' | $(dirname "$0")/mx
+import os,json
+print("import subprocess\nsubprocess.Popen(['bash','-c',%s],start_new_session=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)\nprint('bg started')" % json.dumps(os.environ['CMD']))
+PY

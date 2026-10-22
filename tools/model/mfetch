@@ -1,0 +1,12 @@
+#!/bin/bash
+# fetch a (large) molab file: parallel ~740 KB base64 chunks through the notebook scratchpad, md5-verified
+# usage: mfetch remote local [parallel=6]
+R="$1"; L="$2"; PAR="${3:-6}"; CH=740000
+SIZE=$($(dirname "$0")/msh "stat -c %s $R" | head -1 | tr -d '[:space:]')
+N=$(( (SIZE + CH - 1) / CH )); TMP=$(mktemp -d)
+fetch() { $(dirname "$0")/mx -c "import base64;f=open('$R','rb');f.seek($(( $1 * CH )));print('B64:'+base64.b64encode(f.read($CH)).decode())" | grep '^B64:' | sed 's/^B64://' | base64 -d > "$TMP/$(printf %05d $1)"; }
+export -f fetch; export R CH TMP
+seq 0 $((N-1)) | xargs -P "$PAR" -I{} bash -c 'fetch {}'
+cat "$TMP"/* > "$L"; rm -rf "$TMP"
+REMOTE=$($(dirname "$0")/msh "md5sum $R" | head -1 | cut -d" " -f1); LOCAL=$(md5sum "$L" | cut -d" " -f1)
+echo "$L $(stat -c %s "$L")/$SIZE bytes in $N chunks: $([ "$REMOTE" = "$LOCAL" ] && echo MD5-OK || echo MD5-MISMATCH)"
