@@ -207,19 +207,56 @@ img = np.dstack([col, col * 0.985, col * 0.97, np.clip(alp * 1.15, 0, 1)])
 Image.fromarray(np.flipud(np.clip(img * 255 + 0.5, 0, 255).astype(np.uint8)), "RGBA").save(TEX + "/vivian_hair.png")
 log("strand atlas painted")
 
+# ------------------------------------------------------------------ physics chains (12 strand groups, 4 bones each + tip leaf)
+NCH, CH_U = 12, np.array([0.22, 0.42, 0.62, 0.82, 1.0])          # chain joints along the normalized strand length
+allS = np.concatenate([L_["S"] for L_ in layers]); allR = np.concatenate([L_["roots"] for L_ in layers])
+feat = np.concatenate([allR, allS[:, -1] * 0.5], 1)                # root + tip position (tips decide where a lock hangs)
+cc = feat[rng.choice(len(feat), NCH, replace=False)]
+for _ in range(25):
+    lab_c = np.argmin(((feat[:, None] - cc[None]) ** 2).sum(-1), 1)
+    cc = np.array([feat[lab_c == k].mean(0) if (lab_c == k).any() else cc[k] for k in range(NCH)])
+CHAINS = []
+for k in range(NCH):
+    G_ = allS[lab_c == k].mean(0)                                     # guide = mean member strand
+    J = np.stack([np.interp(CH_U, uN, G_[:, d]) for d in range(3)], 1)
+    CHAINS.append(J)
+json.dump([J.tolist() for J in CHAINS], open(OUT + "/hair_chains.json", "w"))
+# each strand binds to its two nearest chains (smooth seams), linearly along the chain by u
+def strand_binding(root, tip):
+    f = np.concatenate([root, tip * 0.5]); d = np.linalg.norm(cc - f, axis=1); o = np.argsort(d)[:2]
+    w = 1.0 / np.maximum(d[o], 1e-4) ** 2; w /= w.sum(); return o, w
+SEGS = "abcd"
+def vert_weights(chs, cw, u):
+    """{group: weight} for one card vertex at normalized length u"""
+    out = {}
+    head_w = float(ss(0.27, 0.17, u))
+    if head_w > 0: out["head"] = head_w
+    rest = 1.0 - head_w
+    if rest <= 0: return out
+    f = np.clip((u - CH_U[0]) / (CH_U[-1] - CH_U[0]), 0, 0.9999) * 4.0
+    j = int(f); t = f - j
+    for ch, w in zip(chs, cw):
+        out[f"hair_{ch}_{SEGS[j]}"] = out.get(f"hair_{ch}_{SEGS[j]}", 0) + rest * w * (1 - t)
+        if t > 0 and j + 1 < 4: out[f"hair_{ch}_{SEGS[j+1]}"] = out.get(f"hair_{ch}_{SEGS[j+1]}", 0) + rest * w * t
+        elif t > 0: out[f"hair_{ch}_{SEGS[j]}"] += rest * w * t
+    return out
+
 # ------------------------------------------------------------------ card mesh
-verts, faces, uvs, wts = [], [], [], []
+verts, faces, uvs, vw = [], [], [], []
 for L_ in layers:
     S = L_["S"]; T = nrm(np.gradient(S, axis=1)); out = out_normals(S)
     for si in range(len(S)):
         P = S[si]; Bv = nrm(np.cross(T[si], out[si]))
+        tw = np.radians(rng.normal(0, 22)) + np.radians(rng.normal(0, 10)) * uN          # per-card twist breaks the flat-ribbon look
+        Bv = nrm(Bv * np.cos(tw)[:, None] + out[si] * np.sin(tw)[:, None])
         c = rng.choice(L_["cols"]); u0, u1 = (c + 0.04) / NC, (c + 0.96) / NC
         w = L_["width"] * (1 - 0.45 * uN) * rng.uniform(0.85, 1.15)
+        chs, cw = strand_binding(P[0], P[-1])
         base = len(verts)
         for k in range(NSEG + 1):
             verts += [P[k] - Bv[k] * w[k] / 2, P[k] + Bv[k] * w[k] / 2]
             uvs += [(u0, uN[k]), (u1, uN[k])]
-            hw = 1.0 - 0.6 * ss(0.3, 1.0, uN[k]); wts += [hw, hw]
+            wk = vert_weights(chs, cw, uN[k]); vw += [wk, wk]
         for k in range(NSEG):
             a = base + 2 * k; faces.append((a, a + 1, a + 3, a + 2))
 mesh = bpy.data.meshes.new("vivian_hair"); mesh.from_pydata([tuple(x) for x in verts], [], faces); mesh.update()
@@ -227,12 +264,14 @@ uvl = mesh.uv_layers.new(name="UVMap")
 loop_uv = np.array([uvs[li.vertex_index] for li in mesh.loops], np.float32); uvl.data.foreach_set("uv", loop_uv.ravel())
 for p in mesh.polygons: p.use_smooth = True
 hair = bpy.data.objects.new("vivian_hair", mesh); bpy.context.scene.collection.objects.link(hair)
-gh = hair.vertex_groups.new(name="head"); gc = hair.vertex_groups.new(name="spine_03")
-for i, w in enumerate(wts):
-    gh.add([i], float(w), "REPLACE")
-    if w < 0.999: gc.add([i], float(1 - w), "REPLACE")
+groups = {}
+for i, wk in enumerate(vw):
+    for g, w in wk.items():
+        if w < 1e-3: continue
+        vg = groups.get(g) or hair.vertex_groups.new(name=g); groups[g] = vg
+        vg.add([i], float(w), "REPLACE")
 hair.parent = rig; am = hair.modifiers.new("Armature", "ARMATURE"); am.object = rig
-log(f"hair mesh: {len(faces)} cards quads ({2*len(faces)} tris), {len(verts)} verts")
+log(f"hair mesh: {len(faces)} card quads ({2*len(faces)} tris), {len(verts)} verts, {NCH} physics chains")
 
 # material: neutral strands x tint, alpha clip
 def hex_lin(h):
@@ -250,7 +289,7 @@ m.blend_method = "HASHED"; m.use_backface_culling = False
 hair.data.materials.append(m)
 
 # ------------------------------------------------------------------ scalp paint under the hair, all tones
-z = np.load(OUT + "/bakecache4.npz"); POS, COV, MH, HP = z["POS"], z["COV"], z["MH"], z["HP"]
+z = np.load(OUT + ("/bakecache5.npz" if os.path.exists(OUT + "/bakecache5.npz") else "/bakecache4.npz")); POS, COV, MH, HP = z["POS"], z["COV"], z["MH"], z["HP"]
 hz = hairline_z(POS); phi = np.abs(phi_of(POS))
 ed = np.minimum(np.linalg.norm(POS - EARC[0], axis=-1), np.linalg.norm(POS - EARC[1], axis=-1))
 scalp = COV & (MH > 0.5) & (ed > 0.02)

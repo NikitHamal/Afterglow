@@ -11,3 +11,6 @@ Image.open(tongue).convert("RGB").resize((512, 512), Image.LANCZOS).save(T + "vi
 for t in ("honey", "caramel", "deep"):
     Image.open(T + f"vivian_skin_{t}.jpg").save(T + f"vivian_skin_{t}_game.jpg", quality=88, optimize=True, progressive=True)
 for f in sorted(os.listdir(T)): print(f, os.path.getsize(T + f))
+
+Image.open(T + "vivian_hair.png").resize((2048, 1024), Image.LANCZOS).save(T + "vivian_hair_2kx1k.png", optimize=True)
+Image.open(T + "vivian_eye.png").resize((512, 512), Image.LANCZOS).save(T + "vivian_eye_512.png", optimize=True)

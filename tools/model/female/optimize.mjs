@@ -10,11 +10,19 @@ const doc = await io.read(inp); const root = doc.getRoot();
 const SWAP = {
   vivian_skin_normal: 'vivian_skin_normal_2k.jpg', vivian_skin_orm: 'vivian_skin_orm_2k.jpg',
   teeth: 'vivian_teeth_1k.jpg', tongue01_diffuse: 'vivian_tongue_512.jpg',
+  vivian_hair: 'vivian_hair_2kx1k.png', vivian_eye: 'vivian_eye_512.png',
 };
 for (const t of root.listTextures()) {
   const f = SWAP[t.getName()];
   if (!f) continue;
-  t.setImage(fs.readFileSync(`${texdir}/${f}`)).setMimeType('image/jpeg').setURI(f);
+  t.setImage(fs.readFileSync(`${texdir}/${f}`)).setMimeType(f.endsWith('.png') ? 'image/png' : 'image/jpeg').setURI(f);
+}
+// body-shape morphs (body_*) ship without normal deltas: the shading change is negligible, the bytes are not
+for (const mesh of root.listMeshes()) {
+  const names = mesh.getExtras().targetNames || [];
+  for (const p of mesh.listPrimitives()) p.listTargets().forEach((t, i) => {
+    if (String(names[i] || '').startsWith('body_') && t.getAttribute('NORMAL')) t.setAttribute('NORMAL', null);
+  });
 }
 // vertex-colour attributes carried paint masks only; GLTFLoader would multiply them into the albedo
 for (const mesh of root.listMeshes()) for (const p of mesh.listPrimitives())
