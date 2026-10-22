@@ -1,9 +1,11 @@
 #!/bin/bash
-# upload local files to molab /root/agb/: mup file...
+# upload local files to molab /root/agb/ (chunked; any size): mup file...
 for f in "$@"; do
-python3 - "$f" <<'PY' | $(dirname "$0")/mx
-import sys,base64,os
-f=sys.argv[1]; b=base64.b64encode(open(f,'rb').read()).decode()
-print(f"import base64;open('/root/agb/{os.path.basename(f)}','wb').write(base64.b64decode('{b}'));print('up {os.path.basename(f)}')")
-PY
+  B=$(basename "$f"); T=$(mktemp -d); base64 -w0 "$f" | fold -w 90000 > "$T/all"; split -l 1 -d -a 4 "$T/all" "$T/p"
+  $(dirname "$0")/mx -c "open('/root/agb/$B.part','wb').close()" >/dev/null
+  for p in "$T"/p*; do
+    $(dirname "$0")/mx -c "import base64;open('/root/agb/$B.part','ab').write(base64.b64decode('$(cat $p)'))" >/dev/null
+  done
+  $(dirname "$0")/mx -c "import os;os.replace('/root/agb/$B.part','/root/agb/$B');print('up $B',os.path.getsize('/root/agb/$B'))"
+  rm -rf "$T"
 done
