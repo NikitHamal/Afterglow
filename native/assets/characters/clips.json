@@ -1,0 +1,1463 @@
+{
+ "version": 1,
+ "units": "m",
+ "up": "+Y",
+ "fps": 24,
+ "world": "Both characters' clips share the room's world space (bed centre x=0, z=-1.22, mattress top y=0.604); no runtime placement needed.",
+ "conventions": {
+  "depth_clips": "sample <pos>.in at t = depth * duration for BOTH characters with the same t",
+  "layers": "<pos>.rub only keys the listed bones; blend it over <pos>.in with a bone mask (rub phase loops 0..1)",
+  "embrace": "missionary.embrace is a pose layer for upper body + arms; blend weight = embrace amount",
+  "not_animated": "hair chains 髪.* and eyes 目.L/目.R are not keyed: simulate hair (colliders in node extras) and drive gaze live",
+  "morph_normals": "body-shape and hair-carry morph targets ship POSITION deltas only on the hair mesh; others include NORMAL"
+ },
+ "clips": {
+  "missionary.in": {
+   "duration": 1.0,
+   "frames": 25,
+   "kind": "depth",
+   "time": "normalized depth (0 = tip at the entrance, 1 = full)",
+   "rubHand": null,
+   "layerBones": null,
+   "stroke_m": 0.11,
+   "morphs": {
+    "vivian": {
+     "vag_open": "smoothstep(0, 0.12, depth)"
+    },
+    "marcus": {
+     "aroused": 1.0
+    }
+   },
+   "marcusHidden": false,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      -0.0078,
+      1.0028,
+      -0.9067
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      -0.0078,
+      1.0028,
+      -0.9067
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      -0.0078,
+      1.0028,
+      -0.9067
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "verify": {
+    "max_bad_tri_pairs": 10,
+    "max_depth_mm": 0.0,
+    "worst_flip_deg": 6.0,
+    "floors_mm": {
+     "vivian": [
+      -12.0,
+      -12.0,
+      -12.0,
+      -12.0,
+      -12.0
+     ],
+     "marcus": [
+      2.8,
+      2.0,
+      2.0,
+      2.0,
+      2.0
+     ]
+    }
+   }
+  },
+  "missionary.rub": {
+   "duration": 1.0,
+   "frames": 25,
+   "kind": "loop",
+   "time": "loop phase 0..1",
+   "rubHand": "vivian.R",
+   "layerBones": {
+    "vivian": "arm.R"
+   },
+   "stroke_m": 0.0,
+   "morphs": {
+    "vivian": {},
+    "marcus": {
+     "aroused": 1.0
+    }
+   },
+   "marcusHidden": false,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      -0.0078,
+      1.0028,
+      -0.9067
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      -0.0078,
+      1.0028,
+      -0.9067
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      -0.0078,
+      1.0028,
+      -0.9067
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "verify": {
+    "max_bad_tri_pairs": 0,
+    "max_depth_mm": 0.0,
+    "worst_flip_deg": 1.5,
+    "floors_mm": {
+     "vivian": [
+      -12.0,
+      -12.0,
+      -12.0,
+      -12.0,
+      -12.0
+     ],
+     "marcus": [
+      2.0,
+      2.0,
+      2.0,
+      2.0,
+      2.0
+     ]
+    }
+   }
+  },
+  "missionary.embrace": {
+   "duration": 0.0417,
+   "frames": 2,
+   "kind": "pose",
+   "time": "single pose",
+   "rubHand": null,
+   "layerBones": {
+    "vivian": "arms+head",
+    "marcus": "upper"
+   },
+   "stroke_m": 0.0,
+   "morphs": {
+    "vivian": {},
+    "marcus": {
+     "aroused": 1.0
+    }
+   },
+   "marcusHidden": false,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      -0.0078,
+      1.0028,
+      -0.9067
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      -0.0078,
+      1.0028,
+      -0.9067
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      -0.0078,
+      1.0028,
+      -0.9067
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "verify": {
+    "max_bad_tri_pairs": 598,
+    "max_depth_mm": 33.0,
+    "worst_flip_deg": 0.0,
+    "floors_mm": {
+     "vivian": [
+      -12.0
+     ],
+     "marcus": [
+      2.0
+     ]
+    }
+   }
+  },
+  "solo.rub": {
+   "duration": 1.0,
+   "frames": 25,
+   "kind": "loop",
+   "time": "loop phase 0..1",
+   "rubHand": null,
+   "layerBones": null,
+   "stroke_m": 0.0,
+   "morphs": {
+    "vivian": {},
+    "marcus": {
+     "aroused": "0..1 by arousal"
+    }
+   },
+   "marcusHidden": true,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      0.0,
+      0.785,
+      -1.02
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      0.0,
+      0.785,
+      -1.02
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      0.0,
+      0.785,
+      -1.02
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "verify": {
+    "max_bad_tri_pairs": 0,
+    "max_depth_mm": 0.0,
+    "worst_flip_deg": 3.0,
+    "floors_mm": {
+     "vivian": [
+      -13.4,
+      -13.4,
+      -13.4,
+      -13.3,
+      -13.4
+     ],
+     "marcus": [
+      -1115.6,
+      -1115.6,
+      -1115.6,
+      -1115.6,
+      -1115.6
+     ]
+    }
+   }
+  },
+  "solo.idle": {
+   "duration": 2.0,
+   "frames": 49,
+   "kind": "loop",
+   "time": "loop phase 0..1",
+   "rubHand": null,
+   "layerBones": null,
+   "stroke_m": 0.0,
+   "morphs": {
+    "vivian": {},
+    "marcus": {
+     "aroused": "0..1 by arousal"
+    }
+   },
+   "marcusHidden": true,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      0.0,
+      0.785,
+      -1.02
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      0.0,
+      0.785,
+      -1.02
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      0.0,
+      0.785,
+      -1.02
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "verify": {
+    "max_bad_tri_pairs": 0,
+    "max_depth_mm": 0.0,
+    "worst_flip_deg": 0.1,
+    "floors_mm": {
+     "vivian": [
+      -7.3,
+      -7.3,
+      -7.3,
+      -7.3,
+      -7.3
+     ],
+     "marcus": [
+      -1115.6,
+      -1115.6,
+      -1115.6,
+      -1115.6,
+      -1115.6
+     ]
+    }
+   }
+  },
+  "legsup.in": {
+   "duration": 1.0,
+   "frames": 25,
+   "kind": "depth",
+   "time": "normalized depth (0 = tip at the entrance, 1 = full)",
+   "rubHand": null,
+   "layerBones": null,
+   "stroke_m": 0.11,
+   "morphs": {
+    "vivian": {
+     "vag_open": "smoothstep(0, 0.12, depth)"
+    },
+    "marcus": {
+     "aroused": 1.0
+    }
+   },
+   "marcusHidden": false,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      -0.0049,
+      0.9808,
+      -0.8996
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      -0.0049,
+      0.9808,
+      -0.8996
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      -0.0049,
+      0.9808,
+      -0.8996
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "verify": {
+    "max_bad_tri_pairs": 538,
+    "max_depth_mm": 23.5,
+    "worst_flip_deg": 6.3,
+    "floors_mm": {
+     "vivian": [
+      -4.3,
+      -4.3,
+      -4.3,
+      -4.3,
+      -4.3
+     ],
+     "marcus": [
+      -11.5,
+      -13.0,
+      -13.0,
+      -13.0,
+      -13.0
+     ]
+    }
+   }
+  },
+  "doggy.in": {
+   "duration": 1.0,
+   "frames": 25,
+   "kind": "depth",
+   "time": "normalized depth (0 = tip at the entrance, 1 = full)",
+   "rubHand": null,
+   "layerBones": null,
+   "stroke_m": 0.11,
+   "morphs": {
+    "vivian": {
+     "vag_open": "smoothstep(0, 0.12, depth)"
+    },
+    "marcus": {
+     "aroused": 1.0
+    }
+   },
+   "marcusHidden": false,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      0.0085,
+      1.2338,
+      -0.8338
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      0.0085,
+      1.2338,
+      -0.8338
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      0.0085,
+      1.2338,
+      -0.8338
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "verify": {
+    "max_bad_tri_pairs": 195,
+    "max_depth_mm": 14.0,
+    "worst_flip_deg": 360.0,
+    "floors_mm": {
+     "vivian": [
+      -0.8,
+      -0.8,
+      -0.8,
+      -0.8,
+      -0.8
+     ],
+     "marcus": [
+      14.1,
+      14.1,
+      14.1,
+      14.1,
+      14.2
+     ]
+    }
+   }
+  },
+  "doggy.rub": {
+   "duration": 1.0,
+   "frames": 25,
+   "kind": "loop",
+   "time": "loop phase 0..1",
+   "rubHand": "vivian.R",
+   "layerBones": {
+    "vivian": "arm.R"
+   },
+   "stroke_m": 0.0,
+   "morphs": {
+    "vivian": {},
+    "marcus": {
+     "aroused": 1.0
+    }
+   },
+   "marcusHidden": false,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      0.0085,
+      1.2338,
+      -0.8338
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      0.0085,
+      1.2338,
+      -0.8338
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      0.0085,
+      1.2338,
+      -0.8338
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "verify": {
+    "max_bad_tri_pairs": 183,
+    "max_depth_mm": 10.0,
+    "worst_flip_deg": 0.3,
+    "floors_mm": {
+     "vivian": [
+      -0.8,
+      -0.8,
+      -0.8,
+      -0.8,
+      -0.8
+     ],
+     "marcus": [
+      14.1,
+      14.1,
+      14.1,
+      14.1,
+      14.1
+     ]
+    }
+   }
+  },
+  "prone.in": {
+   "duration": 1.0,
+   "frames": 25,
+   "kind": "depth",
+   "time": "normalized depth (0 = tip at the entrance, 1 = full)",
+   "rubHand": null,
+   "layerBones": null,
+   "stroke_m": 0.11,
+   "morphs": {
+    "vivian": {
+     "vag_open": "smoothstep(0, 0.12, depth)"
+    },
+    "marcus": {
+     "aroused": 1.0
+    }
+   },
+   "marcusHidden": false,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      0.015,
+      1.0161,
+      -0.8499
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      0.015,
+      1.0161,
+      -0.8499
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      0.015,
+      1.0161,
+      -0.8499
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "verify": {
+    "max_bad_tri_pairs": 875,
+    "max_depth_mm": 35.3,
+    "worst_flip_deg": 0.2,
+    "floors_mm": {
+     "vivian": [
+      -57.6,
+      -57.6,
+      -57.6,
+      -57.6,
+      -57.6
+     ],
+     "marcus": [
+      -69.4,
+      -69.8,
+      -70.3,
+      -70.8,
+      -71.2
+     ]
+    }
+   }
+  },
+  "cowgirl.in": {
+   "duration": 1.0,
+   "frames": 25,
+   "kind": "depth",
+   "time": "normalized depth (0 = tip at the entrance, 1 = full)",
+   "rubHand": null,
+   "layerBones": null,
+   "stroke_m": 0.075,
+   "morphs": {
+    "vivian": {
+     "vag_open": "smoothstep(0, 0.12, depth)"
+    },
+    "marcus": {
+     "aroused": 1.0
+    }
+   },
+   "marcusHidden": false,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      -0.0074,
+      1.0282,
+      -0.9863
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      -0.0074,
+      1.0282,
+      -0.9863
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      -0.0074,
+      1.0282,
+      -0.9863
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "verify": {
+    "max_bad_tri_pairs": 366,
+    "max_depth_mm": 36.9,
+    "worst_flip_deg": 5.7,
+    "floors_mm": {
+     "vivian": [
+      7.1,
+      -8.4,
+      -11.0,
+      -11.7,
+      -12.1
+     ],
+     "marcus": [
+      -7.6,
+      -7.6,
+      -7.6,
+      -7.6,
+      -7.5
+     ]
+    }
+   }
+  },
+  "cowgirl.rub": {
+   "duration": 1.0,
+   "frames": 25,
+   "kind": "loop",
+   "time": "loop phase 0..1",
+   "rubHand": "vivian.R",
+   "layerBones": {
+    "vivian": "arm.R"
+   },
+   "stroke_m": 0.0,
+   "morphs": {
+    "vivian": {},
+    "marcus": {
+     "aroused": 1.0
+    }
+   },
+   "marcusHidden": false,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      -0.0074,
+      1.0282,
+      -0.9863
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      -0.0074,
+      1.0282,
+      -0.9863
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      -0.0074,
+      1.0282,
+      -0.9863
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "verify": {
+    "max_bad_tri_pairs": 337,
+    "max_depth_mm": 31.9,
+    "worst_flip_deg": 1.0,
+    "floors_mm": {
+     "vivian": [
+      -11.0,
+      -11.0,
+      -11.0,
+      -11.0,
+      -11.0
+     ],
+     "marcus": [
+      -7.6,
+      -7.6,
+      -7.6,
+      -7.6,
+      -7.6
+     ]
+    }
+   }
+  },
+  "revcowgirl.in": {
+   "duration": 1.0,
+   "frames": 25,
+   "kind": "depth",
+   "time": "normalized depth (0 = tip at the entrance, 1 = full)",
+   "rubHand": null,
+   "layerBones": null,
+   "stroke_m": 0.075,
+   "morphs": {
+    "vivian": {
+     "vag_open": "smoothstep(0, 0.12, depth)"
+    },
+    "marcus": {
+     "aroused": 1.0
+    }
+   },
+   "marcusHidden": false,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      0.0074,
+      1.0282,
+      -0.889
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      0.0074,
+      1.0282,
+      -0.889
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      0.0074,
+      1.0282,
+      -0.889
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "verify": {
+    "max_bad_tri_pairs": 980,
+    "max_depth_mm": 34.3,
+    "worst_flip_deg": 0.3,
+    "floors_mm": {
+     "vivian": [
+      79.2,
+      67.3,
+      56.0,
+      45.2,
+      35.1
+     ],
+     "marcus": [
+      -6.6,
+      -6.6,
+      -6.6,
+      -6.6,
+      -6.6
+     ]
+    }
+   }
+  },
+  "revcowgirl.rub": {
+   "duration": 1.0,
+   "frames": 25,
+   "kind": "loop",
+   "time": "loop phase 0..1",
+   "rubHand": "vivian.R",
+   "layerBones": {
+    "vivian": "arm.R"
+   },
+   "stroke_m": 0.0,
+   "morphs": {
+    "vivian": {},
+    "marcus": {
+     "aroused": 1.0
+    }
+   },
+   "marcusHidden": false,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      0.0074,
+      1.0282,
+      -0.889
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      0.0074,
+      1.0282,
+      -0.889
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      0.0074,
+      1.0282,
+      -0.889
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "verify": {
+    "max_bad_tri_pairs": 914,
+    "max_depth_mm": 39.8,
+    "worst_flip_deg": 1.0,
+    "floors_mm": {
+     "vivian": [
+      56.0,
+      56.0,
+      56.0,
+      56.0,
+      56.0
+     ],
+     "marcus": [
+      -6.6,
+      -6.6,
+      -6.6,
+      -6.6,
+      -6.6
+     ]
+    }
+   }
+  },
+  "spoon.in": {
+   "duration": 1.0,
+   "frames": 25,
+   "kind": "depth",
+   "time": "normalized depth (0 = tip at the entrance, 1 = full)",
+   "rubHand": null,
+   "layerBones": null,
+   "stroke_m": 0.11,
+   "morphs": {
+    "vivian": {
+     "vag_open": "smoothstep(0, 0.12, depth)"
+    },
+    "marcus": {
+     "aroused": 1.0
+    }
+   },
+   "marcusHidden": false,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      -0.1342,
+      1.0632,
+      -0.9092
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      -0.1342,
+      1.0632,
+      -0.9092
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      -0.1342,
+      1.0632,
+      -0.9092
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "verify": {
+    "max_bad_tri_pairs": 99,
+    "max_depth_mm": 10.4,
+    "worst_flip_deg": 10.1,
+    "floors_mm": {
+     "vivian": [
+      -52.8,
+      -52.8,
+      -52.8,
+      -52.8,
+      -52.8
+     ],
+     "marcus": [
+      -75.7,
+      -83.1,
+      -84.9,
+      -86.8,
+      -88.6
+     ]
+    }
+   }
+  },
+  "spoon.rub": {
+   "duration": 1.0,
+   "frames": 25,
+   "kind": "loop",
+   "time": "loop phase 0..1",
+   "rubHand": "vivian.R",
+   "layerBones": {
+    "vivian": "arm.R"
+   },
+   "stroke_m": 0.0,
+   "morphs": {
+    "vivian": {},
+    "marcus": {
+     "aroused": 1.0
+    }
+   },
+   "marcusHidden": false,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      -0.1342,
+      1.0632,
+      -0.9092
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      -0.1342,
+      1.0632,
+      -0.9092
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      -0.1342,
+      1.0632,
+      -0.9092
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "verify": {
+    "max_bad_tri_pairs": 12,
+    "max_depth_mm": 1.0,
+    "worst_flip_deg": 0.3,
+    "floors_mm": {
+     "vivian": [
+      -52.8,
+      -52.8,
+      -52.8,
+      -52.8,
+      -52.8
+     ],
+     "marcus": [
+      -84.9,
+      -84.9,
+      -84.9,
+      -84.9,
+      -84.9
+     ]
+    }
+   }
+  },
+  "oral.in": {
+   "duration": 1.0,
+   "frames": 25,
+   "kind": "depth",
+   "time": "normalized depth (0 = tip at the entrance, 1 = full)",
+   "rubHand": null,
+   "layerBones": null,
+   "stroke_m": 0.075,
+   "morphs": {
+    "vivian": {},
+    "marcus": {
+     "aroused": 1.0
+    }
+   },
+   "marcusHidden": false,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      0.0,
+      0.9867,
+      -0.8945
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      0.0,
+      0.9867,
+      -0.8945
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      0.0,
+      0.9867,
+      -0.8945
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "verify": {
+    "max_bad_tri_pairs": 83,
+    "max_depth_mm": 19.3,
+    "worst_flip_deg": 9.8,
+    "floors_mm": {
+     "vivian": [
+      13.1,
+      13.1,
+      13.1,
+      13.1,
+      13.1
+     ],
+     "marcus": [
+      -35.7,
+      -35.7,
+      -35.7,
+      -35.7,
+      -35.7
+     ]
+    }
+   }
+  },
+  "lick.in": {
+   "duration": 1.0,
+   "frames": 25,
+   "kind": "depth",
+   "time": "normalized depth (0 = tip at the entrance, 1 = full)",
+   "rubHand": null,
+   "layerBones": null,
+   "stroke_m": 0.016,
+   "morphs": {
+    "vivian": {},
+    "marcus": {
+     "aroused": 1.0
+    }
+   },
+   "marcusHidden": false,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      -0.0038,
+      0.755,
+      -0.673
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      -0.0038,
+      0.755,
+      -0.673
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      -0.0038,
+      0.755,
+      -0.673
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "verify": {
+    "max_bad_tri_pairs": 526,
+    "max_depth_mm": 5.0,
+    "worst_flip_deg": 0.2,
+    "floors_mm": {
+     "vivian": [
+      1.1,
+      1.1,
+      1.1,
+      1.1,
+      1.1
+     ],
+     "marcus": [
+      -258.3,
+      -258.3,
+      -258.3,
+      -258.3,
+      -258.3
+     ]
+    }
+   }
+  }
+ }
+}
