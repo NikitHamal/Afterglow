@@ -77,6 +77,11 @@ private:
     void cameraForPosition(float blend);
     void drawHud();
     void drawPositionBar(float a);
+    void drawActionBar();
+    void actById(const std::string& id);
+    int nextCamMode(int cur, bool solo) const;
+    int lastAct_ = -1;
+    Rectangle actionBarRect_{0, 0, 0, 0};
     std::vector<PositionInfo> positions_;
     int posIndex_ = 0, pendingPos_ = -1;
     float posFade_ = 0.f;                 // position change dip (0..1..0)
@@ -84,13 +89,13 @@ private:
     float depth_ = 0.f, depthTarget_ = 0.f, dragDepth_ = 0.f;
     bool rhythm_ = false, rhythmToggle_ = false;
     float rhythmPhase_ = 0.f, rhythmTempo_ = 0.9f, rhythmAmp_ = 0.55f, rhythmCenter_ = 0.5f;
-    float rub_ = 0.f, rubTarget_ = 0.f, embrace_ = 0.f, embraceTarget_ = 0.f, rubPhase_ = 0.f, idlePhase_ = 0.f;
+    float rub_ = 0.f, rubTarget_ = 0.f, embrace_ = 0.f, embraceTarget_ = 0.f, rubPhase_ = 0.f, idlePhase_ = 0.f, loopPhase_ = 0.f;
     float wheelImpulse_ = 0.f;
     bool holdDepth_ = false;              // harness stills: keep the requested depth
     bool autoplay_ = false;               // harness: a simple player plays the night (end-to-end test)
     float autoLog_ = 0.f;
     void autoplayStep(float dt);
-    int camMode_ = 0;                     // 0 side, 1 front, 2 top, 3 first person
+    int camMode_ = 0;                     // 0 side, 1 front, 2 top, 3 first person, 4 her face
     bool camUser_ = false;                // player orbited: stop cinematic drift until next cut
     float cinematicT_ = 0.f, nextCut_ = 14.f;
     bool hudHidden_ = false, barOpen_ = false;
@@ -141,6 +146,7 @@ private:
     void updateAudio(float dt);
     void voice(const std::string& name, float vol = 1.f, float pitch = 1.f);
     void sfx(const std::string& prefix, float vol, float pitchJitter = 0.06f);
+    void breath(bool in, float vol);
     float ambLevel_ = 0.f, musicLevel_ = 0.f;
     float mouthT_ = 0.f, mouthDur_ = 1.f;   // her mouth follows her voice lines (open over the sample)
     // touch reactions: how much she is being touched (zone-weighted), the flinch when it starts, her arch

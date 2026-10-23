@@ -15,7 +15,9 @@ namespace ag {
 enum class Desire { None = 0, Faster, Slower, Deeper, Gentler, Touch, Kiss, Change };
 
 struct PositionInfo {
-    std::string id, name;
+    std::string id, name, group;     // group: Foreplay | Oral | Positions | Solo
+    std::string baseClip;            // "<id>.in" (depth-driven) or a loop ("<id>.idle", "<id>.loop")
+    bool depthDriven = true;         // the played depth scrubs the clip; loops run at the played tempo
     float her = 1.f, him = 1.f;      // how much each partner gets from it
     bool penetrative = true;
     bool canTouch = false, canKiss = false, solo = false;
