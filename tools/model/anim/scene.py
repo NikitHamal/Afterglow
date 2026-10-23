@@ -109,6 +109,8 @@ def interpenetration(A, Pa, allowA, B, Pb, allowB, sample=2, boneA=None, boneB=N
         if okA and okB: continue
         if any(any(za[k] for k in Pa[i]) and any(zb[k] for k in Pb[j]) for za, zb in extra): continue
         bad.append((i, j))
+    global LAST_BAD
+    LAST_BAD = bad
     depth = 0.0
     if bad:
         verts = {k for i, _ in bad for k in Pa[i]}

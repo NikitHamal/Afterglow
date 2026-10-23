@@ -215,8 +215,28 @@ for L in (".L", ".R"):
     if (wb_ > 0.5).sum() > 10: c, r = sphere(BV[wb_ > 0.5], 65); add("乳親" + L, c, r)
     wa = gw("肩" + L) + gw("腕" + L); Pa = BV[(wa > 0.5) & (BV[:, 2] > sz - 0.05)]
     if len(Pa) > 10: c, r = sphere(Pa, 55); add("腕" + L, c, r)
-arm["afterglow"] = json.dumps({"hairColliders": cols, "version": 2})
-log(f"hair colliders: {len(cols)} spheres -> glTF extras")
+# face: two spheres over the cheeks/jaw keep the face-framing tendrils outside the face
+Pf = Ph[(Ph[:, 2] < ch_[2] - 0.015) & (Ph[:, 1] < ch_[1] - 0.02)]
+for sx_ in (1, -1):
+    Q = Pf[np.sign(Pf[:, 0]) == sx_]
+    if len(Q) > 20:
+        c, r = sphere(Q, 55, pull=0.35, toward=np.array([0.0, Q[:, 1].mean(), Q[:, 2].mean()])); add("頭", c, r)
+# no collider may start out containing a hair joint (the solver would fling that strand): shrink to clear it by 6 mm
+chain_meta = []
+hb = [b for b in arm.data.bones if b.name.startswith("髪.")]
+J = np.array([np.array(arm.matrix_world @ b.head_local) for b in hb] + [np.array(arm.matrix_world @ b.tail_local) for b in hb]) if hb else np.zeros((0, 3))
+for cdef in cols:
+    c = np.array([cdef["c"][0], -cdef["c"][2], cdef["c"][1]])          # back to Blender axes
+    if len(J):
+        d = float(np.linalg.norm(J - c, axis=1).min())
+        if d < cdef["r"] + 0.006: cdef["r"] = round(max(0.01, d - 0.006), 4)
+kinds = json.load(open(OUT + "/hair_meta.json"))["kinds"] if os.path.exists(OUT + "/hair_meta.json") else []
+for n_, kind in enumerate(kinds):
+    # loose hair only: stiff, light gravity, limited swing so it frames the face but never crosses it
+    chain_meta.append({"root": f"髪.{n_}.a", "kind": kind, "stiffness": 0.82 if kind == "tendril" else 0.7,
+                       "damping": 0.55, "gravity": 0.35, "maxAngleDeg": 28 if kind == "tendril" else 40})
+arm["afterglow"] = json.dumps({"hairColliders": cols, "hairChains": chain_meta, "version": 3})
+log(f"hair colliders: {len(cols)} spheres, {len(chain_meta)} loose-hair chains -> glTF extras")
 
 # keep a .blend of the game-ready model
 bpy.ops.wm.save_as_mainfile(filepath=OUT + "/vivian_game.blend")

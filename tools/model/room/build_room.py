@@ -226,15 +226,17 @@ def pillow(name, cx, cy, cz, sx, sy, sz, tilt, material):
     for li, l in enumerate(ob.data.loops):
         c = ob.data.vertices[l.vertex_index].co; uv.data[li].uv = (c.x * 1.5, c.y * 1.5)
     return ob
-PIL_Y = by + MAT_L / 2 - 0.30
-pillow("pillow_l", bx - 0.45, PIL_Y + 0.08, MAT_TOP + 0.11, 0.72, 0.46, 0.20, -1.05, M["linen"])
-pillow("pillow_r", bx + 0.45, PIL_Y + 0.08, MAT_TOP + 0.11, 0.72, 0.46, 0.20, -1.05, M["linen"])
-pillow("pillow_head", bx, PIL_Y - 0.05, MAT_TOP + 0.065, 0.74, 0.48, 0.13, -0.12, M["sheet"])
+# pillows stand propped against the headboard, outside the play area (every clip keeps y < PLAY_Y1 on the sheet)
+PLAY_Y1 = by + MAT_L / 2 - 0.24
+pillow("pillow_l", bx - 0.43, HB_Y - 0.16, MAT_TOP + 0.24, 0.72, 0.46, 0.15, -1.30, M["linen"])
+pillow("pillow_r", bx + 0.43, HB_Y - 0.16, MAT_TOP + 0.24, 0.72, 0.46, 0.15, -1.30, M["linen"])
+pillow("pillow_accent", bx, HB_Y - 0.13, MAT_TOP + 0.17, 0.46, 0.30, 0.11, -1.22, M["velvet"])
 log("bed built")
 
-# ------------------------------------------------------------------ duvet: cloth drop over the foot of the bed
-duv = grid("duvet", 2.3, 1.15, 46, 24, M["duvet"], fn=lambda x, y: 0.03 * math.sin(x * 4.1) * math.sin(y * 5.3), loc=(bx, by - MAT_L / 2 + 0.42, MAT_TOP + 0.35), uv_scale=1.2)
-for ob in (mat_, sheet, sc.objects["bed_base"]):
+# ------------------------------------------------------------------ duvet: kicked off the bed, a heap on the floor (left side)
+duv = grid("duvet", 1.15, 2.3, 24, 46, M["duvet"], fn=lambda x, y: 0.06 * math.sin(x * 7.1 + 1.0) * math.sin(y * 3.3), loc=(bx - MAT_W / 2 - 0.72, by - 0.25, 0.70), uv_scale=1.2)
+duv.rotation_euler = (0.25, -0.35, 0.3)
+for ob in (mat_, sheet, sc.objects["bed_base"], floor):
     ob.modifiers.new("col", "COLLISION"); ob.collision.thickness_outer = 0.01
 cl = duv.modifiers.new("cloth", "CLOTH"); cs = cl.settings
 cs.quality = 6; cs.mass = 0.45; cs.tension_stiffness = 12; cs.compression_stiffness = 12; cs.bending_stiffness = 0.8
@@ -244,7 +246,7 @@ cl.point_cache.frame_start, cl.point_cache.frame_end = 1, 70
 for f in range(1, 71): sc.frame_set(f)
 bpy.ops.object.select_all(action="DESELECT"); duv.select_set(True); bpy.context.view_layer.objects.active = duv
 bpy.ops.object.modifier_apply(modifier="cloth")
-for ob in (mat_, sheet, sc.objects["bed_base"]):
+for ob in (mat_, sheet, sc.objects["bed_base"], floor):
     for m in list(ob.modifiers): ob.modifiers.remove(m)
 sol = duv.modifiers.new("thick", "SOLIDIFY"); sol.thickness = 0.03; sol.offset = 1.0
 bpy.ops.object.modifier_apply(modifier="thick")
@@ -323,7 +325,10 @@ bpy.ops.object.select_all(action="DESELECT")
 for o in lit: o.select_set(True)
 bpy.context.view_layer.objects.active = lit[0]
 bpy.ops.object.mode_set(mode="EDIT"); bpy.ops.mesh.select_all(action="SELECT")
-bpy.ops.uv.lightmap_pack(PREF_CONTEXT="ALL_FACES", PREF_PACK_IN_ONE=True, PREF_NEW_UVLAYER=False, PREF_MARGIN_DIV=0.25)
+# angle-based islands packed together across all lit objects (texel density follows surface area: the sheet and
+# headboard get real resolution instead of one tiny square per face)
+bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.004, area_weight=0.0, correct_aspect=True, scale_to_bounds=False)
+bpy.ops.uv.pack_islands(rotate=True, margin=0.004)
 bpy.ops.object.mode_set(mode="OBJECT")
 for o in lit: o.data.uv_layers["UVMap"].active = True; o.data.uv_layers["UVMap"].active_render = True
 log(f"lightmap UVs packed for {len(lit)} objects")
@@ -339,7 +344,21 @@ sc.render.engine = "CYCLES"; sc.cycles.device = "CPU"; sc.cycles.samples = BAKE_
 sc.render.bake.use_pass_direct = True; sc.render.bake.use_pass_indirect = True; sc.render.bake.use_pass_color = False
 sc.render.bake.margin = 4
 tb = time.time()
+# bake on one joined copy of every lit object (one Cycles sync instead of one per object); the bake writes through
+# the ACTIVE uv layer, so the copy's lightmap layer is made active (the originals keep UVMap active for export)
+bpy.ops.object.select_all(action="DESELECT")
+dups = []
+for o in lit:
+    d = o.copy(); d.data = o.data.copy(); sc.collection.objects.link(d); dups.append(d); o.hide_render = True
+for d in dups: d.select_set(True)
+bpy.context.view_layer.objects.active = dups[0]
+bpy.ops.object.join()
+J = bpy.context.view_layer.objects.active
+J.data.uv_layers["UVLightmap"].active = True
+bpy.ops.object.select_all(action="DESELECT"); J.select_set(True); bpy.context.view_layer.objects.active = J
 bpy.ops.object.bake(type="DIFFUSE", pass_filter={"DIRECT", "INDIRECT"}, use_clear=True, margin=4)
+bpy.data.objects.remove(J)
+for o in lit: o.hide_render = False
 log(f"lightmap baked {BAKE_RES}px x {BAKE_SAMPLES} spp in {time.time()-tb:.0f}s")
 px = np.empty(BAKE_RES * BAKE_RES * 4, np.float32); lm.pixels.foreach_get(px); px = px.reshape(BAKE_RES, BAKE_RES, 4)[..., :3]
 # light denoise: 3x3 gaussian weighted by coverage (keeps island edges)
@@ -369,7 +388,8 @@ bpy.data.images.remove(lm)
 
 # ------------------------------------------------------------------ publish layout for the engine + export
 meta = dict(version=1, units="m", up="+Y",
-            bedTop=BED_TOP, bed=dict(center=[bx, BED_TOP, -by], width=MAT_W, length=MAT_L, size=[MAT_W, MAT_L], headboard="-Z", headZ=-(by + MAT_L / 2), footZ=-(by - MAT_L / 2)),
+            bedTop=BED_TOP, playArea=dict(zMin=-(PLAY_Y1), note="characters stay on the foot side of zMin (pillows beyond)"),
+            bed=dict(center=[bx, BED_TOP, -by], width=MAT_W, length=MAT_L, size=[MAT_W, MAT_L], headboard="-Z", headZ=-(by + MAT_L / 2), footZ=-(by - MAT_L / 2)),
             lights=LIGHTS, lightmap=dict(slot="emissiveTexture", texCoord=1, encoding="sRGB", scale=scale, mode="full diffuse irradiance (direct+indirect) from all static lights; room colour = base x lightmap"),
             bedCenter=[bx, BED_TOP, -by], lamp=[lamps[1].x, lamps[1].z, -lamps[1].y],
             cameraBounds=dict(min=[-RX + 0.25, 0.15, -(RY1 - 0.25)], max=[RX - 0.25, RZ - 0.15, -(RY0 + 0.25)]),

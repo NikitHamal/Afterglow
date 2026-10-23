@@ -5,7 +5,7 @@
  "fps": 24,
  "world": "Both characters' clips share the room's world space (bed centre x=0, z=-1.22, mattress top y=0.604); no runtime placement needed.",
  "conventions": {
-  "depth_clips": "sample <pos>.in at t = depth * duration for BOTH characters with the same t; insert_m = shaft length inside her at t=0 / t=1 (cowgirl + reverse ride the upper shaft, so they never leave her)",
+  "depth_clips": "sample <pos>.in at t = depth * duration for BOTH characters with the same t; insert_m = shaft length inside her at t=0 / t=1 (in cowgirl + reverse she sits down onto him and never leaves him)",
   "contact": "verify counts triangle pairs outside the intended contact: genitals, hands, mouth (oral/lick), the shaft vs her inner thighs/buttocks within 6 cm of the entrance, and pelvis-to-pelvis flesh (her within 19 cm of the entrance, his within 22 cm of the shaft root)",
   "layers": "<pos>.rub only keys the listed bones; blend it over <pos>.in with a bone mask (rub phase loops 0..1)",
   "embrace": "missionary.embrace is a pose layer for upper body + arms; blend weight = embrace amount",
@@ -38,8 +38,8 @@
     "orbit_side": {
      "target": [
       0.0,
-      1.0072,
-      -0.9065
+      1.0218,
+      -0.9031
      ],
      "yaw": 90,
      "pitch": 18,
@@ -48,8 +48,8 @@
     "orbit_front": {
      "target": [
       0.0,
-      1.0072,
-      -0.9065
+      1.0218,
+      -0.9031
      ],
      "yaw": 200,
      "pitch": 24,
@@ -58,8 +58,8 @@
     "orbit_top": {
      "target": [
       0.0,
-      1.0072,
-      -0.9065
+      1.0218,
+      -0.9031
      ],
      "yaw": 120,
      "pitch": 55,
@@ -82,9 +82,9 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 0,
-    "max_depth_mm": 0.0,
-    "worst_flip_deg": 8.5,
+    "max_bad_tri_pairs": 38,
+    "max_depth_mm": 16.0,
+    "worst_flip_deg": 9.2,
     "floors_mm": {
      "vivian": [
       -8.0,
@@ -94,11 +94,11 @@
       -8.0
      ],
      "marcus": [
-      2.0,
-      1.6,
+      6.2,
+      5.9,
       -1.0,
-      -1.0,
-      -1.0
+      6.1,
+      7.1
      ]
     }
    }
@@ -125,8 +125,8 @@
     "orbit_side": {
      "target": [
       0.0,
-      1.0072,
-      -0.9065
+      1.0218,
+      -0.9031
      ],
      "yaw": 90,
      "pitch": 18,
@@ -135,8 +135,8 @@
     "orbit_front": {
      "target": [
       0.0,
-      1.0072,
-      -0.9065
+      1.0218,
+      -0.9031
      ],
      "yaw": 200,
      "pitch": 24,
@@ -145,8 +145,8 @@
     "orbit_top": {
      "target": [
       0.0,
-      1.0072,
-      -0.9065
+      1.0218,
+      -0.9031
      ],
      "yaw": 120,
      "pitch": 55,
@@ -213,8 +213,8 @@
     "orbit_side": {
      "target": [
       0.0,
-      1.0072,
-      -0.9065
+      1.0218,
+      -0.9031
      ],
      "yaw": 90,
      "pitch": 18,
@@ -223,8 +223,8 @@
     "orbit_front": {
      "target": [
       0.0,
-      1.0072,
-      -0.9065
+      1.0218,
+      -0.9031
      ],
      "yaw": 200,
      "pitch": 24,
@@ -233,8 +233,8 @@
     "orbit_top": {
      "target": [
       0.0,
-      1.0072,
-      -0.9065
+      1.0218,
+      -0.9031
      ],
      "yaw": 120,
      "pitch": 55,
@@ -257,15 +257,15 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 12,
-    "max_depth_mm": 3.3,
+    "max_bad_tri_pairs": 22,
+    "max_depth_mm": 7.0,
     "worst_flip_deg": 0.0,
     "floors_mm": {
      "vivian": [
       -8.0
      ],
      "marcus": [
-      2.0
+      5.8
      ]
     }
    }
@@ -339,11 +339,11 @@
     "worst_flip_deg": 3.0,
     "floors_mm": {
      "vivian": [
-      -11.4,
-      -11.4,
-      -11.4,
-      -11.4,
-      -11.4
+      -9.2,
+      -9.2,
+      -9.2,
+      -9.2,
+      -9.2
      ],
      "marcus": [
       -604.0,
@@ -465,7 +465,7 @@
     "orbit_side": {
      "target": [
       0.0,
-      0.9808,
+      0.9848,
       -0.8996
      ],
      "yaw": 90,
@@ -475,7 +475,7 @@
     "orbit_front": {
      "target": [
       0.0,
-      0.9808,
+      0.9848,
       -0.8996
      ],
      "yaw": 200,
@@ -485,7 +485,7 @@
     "orbit_top": {
      "target": [
       0.0,
-      0.9808,
+      0.9848,
       -0.8996
      ],
      "yaw": 120,
@@ -509,23 +509,23 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 31,
-    "max_depth_mm": 8.8,
-    "worst_flip_deg": 0.6,
+    "max_bad_tri_pairs": 115,
+    "max_depth_mm": 23.4,
+    "worst_flip_deg": 2.0,
     "floors_mm": {
      "vivian": [
-      -4.3,
-      -4.3,
-      -4.3,
-      -4.3,
-      -4.3
+      -2.2,
+      -2.2,
+      -2.2,
+      -1.3,
+      0.0
      ],
      "marcus": [
       1.6,
       1.6,
       1.6,
-      1.7,
-      1.5
+      1.6,
+      1.6
      ]
     }
    }
@@ -555,8 +555,8 @@
     "orbit_side": {
      "target": [
       0.0,
-      1.2405,
-      -0.8364
+      1.2408,
+      -0.8338
      ],
      "yaw": 90,
      "pitch": 18,
@@ -565,8 +565,8 @@
     "orbit_front": {
      "target": [
       0.0,
-      1.2405,
-      -0.8364
+      1.2408,
+      -0.8338
      ],
      "yaw": 200,
      "pitch": 24,
@@ -575,8 +575,8 @@
     "orbit_top": {
      "target": [
       0.0,
-      1.2405,
-      -0.8364
+      1.2408,
+      -0.8338
      ],
      "yaw": 120,
      "pitch": 55,
@@ -601,21 +601,21 @@
    "verify": {
     "max_bad_tri_pairs": 0,
     "max_depth_mm": 0.0,
-    "worst_flip_deg": 1.0,
+    "worst_flip_deg": 3.7,
     "floors_mm": {
      "vivian": [
-      -0.8,
-      -0.8,
-      -0.8,
-      -0.8,
-      -0.8
+      3.4,
+      3.4,
+      3.3,
+      2.9,
+      5.4
      ],
      "marcus": [
       -0.3,
-      -2.0,
-      -3.6,
-      -5.2,
-      -6.1
+      -1.1,
+      -1.4,
+      9.4,
+      16.9
      ]
     }
    }
@@ -642,8 +642,8 @@
     "orbit_side": {
      "target": [
       0.0,
-      1.2405,
-      -0.8364
+      1.2408,
+      -0.8338
      ],
      "yaw": 90,
      "pitch": 18,
@@ -652,8 +652,8 @@
     "orbit_front": {
      "target": [
       0.0,
-      1.2405,
-      -0.8364
+      1.2408,
+      -0.8338
      ],
      "yaw": 200,
      "pitch": 24,
@@ -662,8 +662,8 @@
     "orbit_top": {
      "target": [
       0.0,
-      1.2405,
-      -0.8364
+      1.2408,
+      -0.8338
      ],
      "yaw": 120,
      "pitch": 55,
@@ -691,18 +691,18 @@
     "worst_flip_deg": 0.3,
     "floors_mm": {
      "vivian": [
-      -0.8,
-      -0.8,
-      -0.8,
-      -0.8,
-      -0.8
+      3.3,
+      3.3,
+      3.3,
+      3.3,
+      3.3
      ],
      "marcus": [
-      -3.6,
-      -3.6,
-      -3.6,
-      -3.6,
-      -3.6
+      -1.4,
+      -1.4,
+      -1.4,
+      -1.4,
+      -1.4
      ]
     }
    }
@@ -777,8 +777,8 @@
    },
    "verify": {
     "max_bad_tri_pairs": 100,
-    "max_depth_mm": 15.3,
-    "worst_flip_deg": 0.4,
+    "max_depth_mm": 16.3,
+    "worst_flip_deg": 2.0,
     "floors_mm": {
      "vivian": [
       -9.0,
@@ -804,10 +804,10 @@
    "time": "normalized depth (0 = tip at the entrance, 1 = full)",
    "rubHand": null,
    "layerBones": null,
-   "stroke_m": 0.06,
+   "stroke_m": 0.05,
    "insert_m": [
-    0.039,
-    0.099
+    0.059,
+    0.109
    ],
    "morphs": {
     "vivian": {
@@ -822,8 +822,8 @@
     "orbit_side": {
      "target": [
       0.0,
-      1.0304,
-      -0.8986
+      1.0231,
+      -0.9003
      ],
      "yaw": 90,
      "pitch": 18,
@@ -832,8 +832,8 @@
     "orbit_front": {
      "target": [
       0.0,
-      1.0304,
-      -0.8986
+      1.0231,
+      -0.9003
      ],
      "yaw": 200,
      "pitch": 24,
@@ -842,8 +842,8 @@
     "orbit_top": {
      "target": [
       0.0,
-      1.0304,
-      -0.8986
+      1.0231,
+      -0.9003
      ],
      "yaw": 120,
      "pitch": 55,
@@ -866,23 +866,23 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 112,
-    "max_depth_mm": 37.1,
-    "worst_flip_deg": 2.3,
+    "max_bad_tri_pairs": 89,
+    "max_depth_mm": 34.0,
+    "worst_flip_deg": 3.5,
     "floors_mm": {
      "vivian": [
-      0.8,
-      0.8,
-      0.8,
-      0.8,
-      0.8
+      9.8,
+      9.1,
+      8.8,
+      7.7,
+      6.1
      ],
      "marcus": [
       -7.2,
       -7.2,
       -7.2,
       -7.2,
-      -7.2
+      -7.1
      ]
     }
    }
@@ -909,8 +909,8 @@
     "orbit_side": {
      "target": [
       0.0,
-      1.0304,
-      -0.8986
+      1.0231,
+      -0.9003
      ],
      "yaw": 90,
      "pitch": 18,
@@ -919,8 +919,8 @@
     "orbit_front": {
      "target": [
       0.0,
-      1.0304,
-      -0.8986
+      1.0231,
+      -0.9003
      ],
      "yaw": 200,
      "pitch": 24,
@@ -929,8 +929,8 @@
     "orbit_top": {
      "target": [
       0.0,
-      1.0304,
-      -0.8986
+      1.0231,
+      -0.9003
      ],
      "yaw": 120,
      "pitch": 55,
@@ -953,16 +953,16 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 60,
-    "max_depth_mm": 32.4,
+    "max_bad_tri_pairs": 68,
+    "max_depth_mm": 32.2,
     "worst_flip_deg": 1.9,
     "floors_mm": {
      "vivian": [
-      0.8,
-      0.8,
-      0.8,
-      0.8,
-      0.8
+      8.8,
+      8.8,
+      8.8,
+      8.8,
+      8.8
      ],
      "marcus": [
       -7.2,
@@ -981,10 +981,10 @@
    "time": "normalized depth (0 = tip at the entrance, 1 = full)",
    "rubHand": null,
    "layerBones": null,
-   "stroke_m": 0.06,
+   "stroke_m": 0.05,
    "insert_m": [
-    0.064,
-    0.124
+    0.069,
+    0.119
    ],
    "morphs": {
     "vivian": {
@@ -1043,16 +1043,16 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 52,
-    "max_depth_mm": 31.2,
-    "worst_flip_deg": 0.9,
+    "max_bad_tri_pairs": 72,
+    "max_depth_mm": 28.6,
+    "worst_flip_deg": 1.0,
     "floors_mm": {
      "vivian": [
-      6.6,
-      6.6,
-      6.6,
-      6.6,
-      6.6
+      9.1,
+      8.6,
+      7.1,
+      5.4,
+      4.0
      ],
      "marcus": [
       -3.9,
@@ -1130,16 +1130,16 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 14,
-    "max_depth_mm": 26.5,
+    "max_bad_tri_pairs": 18,
+    "max_depth_mm": 18.1,
     "worst_flip_deg": 1.6,
     "floors_mm": {
      "vivian": [
-      6.6,
-      6.6,
-      6.6,
-      6.6,
-      6.6
+      7.1,
+      7.1,
+      7.1,
+      7.1,
+      7.1
      ],
      "marcus": [
       -3.9,
@@ -1436,8 +1436,8 @@
     "orbit_side": {
      "target": [
       -0.0,
-      0.8437,
-      -0.9085
+      0.8815,
+      -0.8065
      ],
      "yaw": 90,
      "pitch": 18,
@@ -1446,8 +1446,8 @@
     "orbit_front": {
      "target": [
       -0.0,
-      0.8437,
-      -0.9085
+      0.8815,
+      -0.8065
      ],
      "yaw": 200,
      "pitch": 24,
@@ -1456,8 +1456,8 @@
     "orbit_top": {
      "target": [
       -0.0,
-      0.8437,
-      -0.9085
+      0.8815,
+      -0.8065
      ],
      "yaw": 120,
      "pitch": 55,
@@ -1480,23 +1480,23 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 34,
-    "max_depth_mm": 2.0,
-    "worst_flip_deg": 0.7,
+    "max_bad_tri_pairs": 22,
+    "max_depth_mm": 0.1,
+    "worst_flip_deg": 1.6,
     "floors_mm": {
      "vivian": [
-      1.1,
-      1.1,
-      1.1,
-      1.1,
-      1.1
+      -1.8,
+      -1.8,
+      -1.8,
+      -1.8,
+      -1.8
      ],
      "marcus": [
-      -9.1,
-      -9.1,
-      -9.1,
-      -9.1,
-      -9.1
+      -20.8,
+      -0.5,
+      5.3,
+      -0.5,
+      -20.8
      ]
     }
    }

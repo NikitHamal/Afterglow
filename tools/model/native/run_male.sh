@@ -7,7 +7,7 @@ R=$(cd "$(dirname "$0")/../../.." && pwd)
 M=$R/tools/model/male; N=$R/tools/model/native
 B=/root/agb/blender-4.2.3-linux-x64/blender
 mkdir -p /root/agb/male/out /root/agb/male/tex /root/agb/male/export /root/agb/out/preview
-cp -f $R/tools/model/female/progress.py /root/agb/progress.py
+[ -f /root/agb/progress.py ] || cp -f $R/tools/model/female/progress.py /root/agb/progress.py
 cd /root/agb/male
 step() { echo "=== $1 $(date +%T)"; shift; "$@"; local rc=$?; echo "=== rc=$rc $(date +%T)"; }
 [ -f /root/agb/goat_bones.json ] || step goat $B -b --python $N/dump_goat.py

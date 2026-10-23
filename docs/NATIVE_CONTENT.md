@@ -8,19 +8,19 @@ Blender (Z-up, +Y toward the headboard); the exporter converts.
 
 | File | What |
 |---|---|
-| `characters/vivian.glb` | Vivian, 1.68 m, 127 bones (MMD set + 12 hair chains `髪.<n>.a..d/z` + eyes `目.L/R`), 7 meshes, 17 clips |
+| `characters/vivian.glb` | Vivian, 1.68 m, 87 bones (MMD set + 4 loose-hair chains `髪.<n>.a..d/z` + eyes `目.L/R`), 7 meshes, 17 clips |
 | `characters/marcus.glb` | Marcus, 1.83 m, 70 bones (MMD set + `竿根/竿中/竿先/竿端` + `玉袋`), 7 meshes, 17 clips |
 | `characters/<who>_skin_{honey,caramel,deep}.jpg` | alternate 4K skin albedos (caramel is embedded); Marcus also has `marcus_genital_*.jpg` |
 | `characters/clips.json` | per-clip duration, kind, stroke, morph rules, layer bones, camera presets (orbit + his first-person eye), verification numbers |
-| `room/room.glb`, `room/room.json` | the bedroom with a Cycles-baked lightmap + light rig / bed / camera bounds (next push; the engine falls back to its procedural room) |
+| `room/room.glb`, `room/room.json` | the bedroom (bed identical to the authoring bed) with a Cycles-baked lightmap, light rig, scene extras (see Room) |
 | `audio/sfx/<group>/*.ogg`, `audio/vox/*.wav` | sound pack (CC BY-SA 4.0, `audio/sfx/LICENSE_soundpack.txt`) and voice samples |
 
 ## Morph targets (mesh `extras.targetNames`, all 0 at rest)
 
 - **Vivian faces** (body + brows/lashes/teeth/tongue carry them): `blink, moan, pleasure, oral, kiss, smile`
 - **Vivian body** (slider −1..+1 → `_dn` / `_up`): `bust_up/bust_dn` (−55 / +29 mm), `hips_up/dn` (±35 mm),
-  `waist_up/dn`, `butt_up/dn`, `weight_up/dn`, `muscle_up`, `belly_up`. The hair mesh carries `bust_up, bust_dn,
-  weight_up, weight_dn, muscle_up` so it keeps lying on her torso — apply the same weights to every mesh.
+  `waist_up/dn`, `butt_up/dn`, `weight_up/dn`, `muscle_up`, `belly_up`. The hair mesh carries `weight_up,
+  weight_dn, muscle_up` (neck/face) so it keeps sitting on her — apply the same weights to every mesh.
 - **Vivian anatomy**: `vag_open` (labia part, the opening + canal widen to his erect girth, r≈21 mm),
   `anal_open` (r≈11.5 mm). In sex clips drive `vag_open = smoothstep(0, 0.12, depth)`.
 - **Marcus faces**: `blink, effort, pleasure, moan, kiss`; **body** `muscle_up/dn, weight_up/dn, belly_up`
@@ -35,6 +35,29 @@ Blender (Z-up, +Y toward the headboard); the exporter converts.
 hair MASK 0.42 double-sided, brows/lashes MASK 0.3 double-sided, eyes MASK 0.5. No vertex colours, except
 Marcus' hair shell whose `COLOR_0.a` is a soft hairline fringe (RGB = 1).
 
+## Vivian's hair (low chignon, `tools/model/female/hair_updo.py`)
+
+Hair is pulled straight back from the hairline over an opaque scalp cap in three conforming card layers that
+follow the head's meridians into a coiled bun low at the nape, plus two face-framing tendrils (temple → jaw,
+outside the cheek) and two short nape wisps. Mesh `vivian_hair`, two primitives:
+
+- `vivian_hair` (cards, ~41k quads): strand atlas `baseColorTexture` 2048², 8 columns (0-3 dense sheets, 4-5
+  locks, 6-7 wisps). **V runs root (0) → tip (1) along every card, U across it**, so the strand tangent is
+  dPos/dV (use it for anisotropic highlights). RGB = neutral strand luminance (dark roots → lighter tips),
+  A = coverage with a clean cut (no haze below 0.08) → MASK 0.42, double-sided.
+- `vivian_hair_cap` (scalp shell 1.6 mm off the skin): tileable 512² strand texture, UV repeats (wrap = REPEAT);
+  its V also runs along the hair flow (toward the bun). Opaque in practice (A = 1).
+- Colour: both carry `baseColorFactor` = authored espresso (linear 0.042, 0.015, 0.009); the game's hair
+  presets multiply it (`kHair`), the texture stays neutral.
+- Only the loose hair moves: everything except the tendrils/wisps is weighted 100 % to `頭`, so the swept
+  sheets and the bun can never clip the body or cross the face. The armature node's `extras.afterglow`
+  (`version 3`) holds `hairColliders` (spheres on head/face/neck/chest/breasts/shoulders, shrunk so no rest
+  joint starts inside one) and `hairChains`: `[{root: "髪.0.a", kind: "tendril", stiffness, damping, gravity,
+  maxAngleDeg}]` — tendrils 0.82 / 0.55 / 0.35 / 28°, wisps 0.70 / 0.55 / 0.35 / 40°. Honour `maxAngleDeg`
+  (swing limit from the rest direction) so a tendril can never fall across her face, e.g. when she lies on her side.
+- Bind height incl. hair stays within 1 % of 1.68 m (the bun sits low at the back), so the engine's 3 %
+  auto-scale never triggers; native assets should not be rescaled at all.
+
 ## Clips (both GLBs, same names, same world)
 
 `missionary.in, missionary.rub, missionary.embrace, legsup.in, doggy.in, doggy.rub, prone.in, cowgirl.in,
@@ -43,31 +66,55 @@ cowgirl.rub, revcowgirl.in, revcowgirl.rub, spoon.in, spoon.rub, oral.in, lick.i
 - `.in`: 25 frames, normalized time = penetration depth. Sample both characters at the same t. Her canal is
   aligned to his shaft in every frame (his `竿根` is aimed along her canal axis, his pelvis rides that axis);
   knees/hands are re-planted by IK each frame so nothing slides. `clips.json → insert_m` gives the shaft length
-  inside her at t=0 and t=1: −6 → 104 mm for most positions; cowgirl 39 → 99 mm and reverse cowgirl 64 → 124 mm
-  (she rides the upper shaft and never leaves him, so `vag_open` is 1 there); oral −4 → 71 mm into her mouth.
+  inside her at t=0 and t=1: −6 → 104 mm for most positions; cowgirl 59 → 109 mm and reverse cowgirl 69 → 119 mm
+  (she sits down onto him and never leaves him, so `vag_open` is 1 there); oral −4 → 71 mm into her mouth.
+- Her body answers the depth inside the `.in` clips (k = smoothstep(0.45, 1, t)): missionary — her back arches,
+  chin lifts, knees open, fists close in the sheet; doggy — head comes up, back dips, hands clutch; cowgirl —
+  head falls back, she sits more upright; prone — fists tighten. Hands are relaxed by default (index straightest,
+  pinky most curled) and grip sheets/his arms/his hair where it makes sense.
+- Feet are posed by the sole, never by the ankle bone (which points 28° below the sole line): planted feet lie
+  flat, kneeling feet rest on the instep with toes back, lying feet relax 20-30°. No more ballet points.
 - `.rub`: 25-frame loop, only Vivian's right arm is keyed (`rubHand: "vivian.R"`): her fingertips circle on her clit.
 - `missionary.embrace`: single pose layer (he goes down on his forearms, she holds his upper arms).
 - `spoon.*`: both on their left sides, he lies behind her; she arches (pelvis tipped ~70°) so her canal opens
-  toward him; bottom arms under the pillows, his top hand on her hip.
+  toward him; bottom arms forward on the sheet, feet on their outer edges, his top hand on her hip.
 - `lick.in`: he lies on his front between her knees, chest raised on his elbows, hands holding her knees apart;
-  t is the tongue stroke (16 mm). He is flaccid here (`aroused` 0, shaft tucked under him).
+  her right hand rests in his hair, the left grips the sheet; t is the tongue stroke (16 mm). He is flaccid here
+  (`aroused` 0, shaft tucked under him).
 - `solo.*`: Marcus stands beside the bed (`marcusHidden: true` — hide him or keep him as a watcher).
 - Hair chains and eyes are never keyed: simulate the hair (colliders in the armature node's
   `extras.afterglow.hairColliders`) and drive the eyes from gaze.
 
-## How it is built (molab is gone; any Linux box with ~8 GB RAM + swap works)
+## Room (`tools/model/room/build_room.py` → `post.mjs`)
+
+Real-scale night bedroom: mattress 1.80 × 2.00 m, top (sheet) at y = 0.604, bed centre (0, 0.604, −1.22), head
+toward −Z — exactly the bed the clips are authored on (`tools/model/anim/scene.py`). Everything that could get in
+the way of a body is kept out of the play area: the pillows stand propped against the headboard (`playArea.zMin`
+in the extras: no clip goes past z = −1.98), the duvet lies kicked off on the floor left of the bed, nightstands
+are beside the bed. Lighting is a Cycles bake (diffuse direct + indirect, 1024 spp, angle-based islands packed
+across all lit objects) stored sRGB in `lightmap` and wired as each lit material's `emissiveTexture` on
+**texCoord 1** with emissive factor 1 → engine: room colour = base × emissive(uv1) × `lightmap.scale` (1.67).
+Lights (`KHR_lights_punctual`, engine units): `lamp_key` spot 120 (→ /120), `lamp_0` point 0.55, `candle_0..3`
+points 0.12 (flicker by name), `moon` directional 0.45. Scene `extras.afterglow` (= room.json): `bedTop`,
+`bedCenter`, `bed {center, size, headZ, footZ}`, `lamp`, `lights`, `lightmap`, `cameraBounds`, `window`,
+`playArea`. Every clip is verified against the real room furniture (headboard, pillows, duvet, nightstands,
+lamps): zero contacts.
+
+## How it is built (any Linux box with ~8 GB RAM + swap works; the team box has 20 cores)
 
 ```
 bash tools/model/native/setup_toolchain.sh  # Blender 4.2.3 + MPFB 2.0.18 + MakeHuman CC0 assets into /root/agb
-bash tools/model/native/run_chars.sh        # Vivian (build5 → hair → rig_export @1.68 m) then Marcus (build → genitals → paint → hair → rig_export @1.83 m)
+bash tools/model/native/run_chars.sh        # Vivian (build5 → hair_updo → rig_export @1.68 m) then Marcus (build → genitals → paint → hair → rig_export @1.83 m)
+blender -b /root/agb/out/vivian_game.blend --python tools/model/female/render_hair2.py -- <dir> front,three_q,back,top   # hair check renders
 blender -b /root/agb/male/out/marcus_game.blend --python tools/model/native/prepare.py -- marcus
 blender -b /root/agb/out/vivian_game.blend      --python tools/model/native/prepare.py -- vivian
 xvfb-run blender -b --python tools/model/anim/author.py [-- clip,clip --norender]  # bake + verify, previews in /root/agb/native/previews
+                                                    # (no GL on the box: AG_PREVIEW_ENGINE=CYCLES renders the previews with Cycles)
                                                     # (a partial run keeps the other clips' actions in anim.blend)
 blender -b /root/agb/native/anim.blend --python tools/model/native/export_chars.py
 python3 tools/model/native/textures.py && node tools/model/native/post.mjs <raw.glb> <out.glb> <who> /root/agb/native/tex/<who>
 bash tools/model/native/stage_assets.sh     # copy into native/assets + regenerate clips.json
-BAKE_RES=1536 BAKE_SAMPLES=40 blender -b --python tools/model/room/build_room.py   # room + Cycles lightmap (~2 h on 2 vCPU)
+BAKE_RES=2048 BAKE_SAMPLES=1024 blender -b --python tools/model/room/build_room.py   # room + Cycles lightmap (~2 min on 20 cores)
 node tools/model/room/post.mjs /root/agb/native/room/room_raw.glb /root/agb/native/room/room.json /root/agb/native/room
 ```
 
@@ -87,7 +134,8 @@ L/R label, and the measured canal axis is kept in the sagittal plane (the raw PC
 Each clip is checked at t = 0, .25, .5, .75, 1 (numbers in `clips.json` → `verify`, raw data in
 `/root/agb/native/verify.json`): intersecting triangle pairs between the two bodies outside the intended
 contact, the deepest such penetration, each body's lowest point vs. the mattress top (mm; − = pressed into the
-mattress, which is soft), and the largest per-bone rotation step between frames.
+soft mattress), contacts with the real room's furniture, the lowest point of her bun (rigid hair) vs. the
+mattress, and the largest per-bone rotation step between frames (IK hinges are kept continuous frame to frame).
 
 Intended contact (not counted): genitals (her `v_*` masks × his shaft/scrotum + pubic mound), hands on
 anything, her mouth (oral) / his mouth (lick), his shaft vs. her inner thighs and buttocks within 6 cm of the
@@ -95,27 +143,27 @@ entrance, and pelvis-to-pelvis flesh (her thighs/buttocks within 19 cm of the en
 upper thighs and lower belly within 22 cm of the shaft root) — that flesh compresses in every penetrative
 position, rigid meshes can only overlap there.
 
-| Clip | bad tri pairs (max) | deepest (mm) | her lowest (mm) | his lowest (mm) | max joint step (deg) |
-|---|---|---|---|---|---|
-| `missionary.in` | 0 | 0.0 | -8..-8 | -1..2 | 8.5 |
-| `missionary.rub` | 0 | 0.0 | -8..-8 | -1..-1 | 1.5 |
-| `missionary.embrace` | 12 | 3.3 | -8..-8 | 2..2 | 0.0 |
-| `legsup.in` | 31 | 8.8 | -4..-4 | 2..2 | 0.6 |
-| `doggy.in` | 0 | 0.0 | -1..-1 | -6..-0 | 1.0 |
-| `doggy.rub` | 0 | 0.0 | -1..-1 | -4..-4 | 0.3 |
-| `prone.in` | 100 | 15.3 | -9..-9 | -2..-2 | 0.4 |
-| `cowgirl.in` | 112 | 37.1 | 1..1 | -7..-7 | 2.3 |
-| `cowgirl.rub` | 60 | 32.4 | 1..1 | -7..-7 | 1.9 |
-| `revcowgirl.in` | 52 | 31.2 | 7..7 | -4..-4 | 0.9 |
-| `revcowgirl.rub` | 14 | 26.5 | 7..7 | -4..-4 | 1.6 |
-| `spoon.in` | 0 | 0.0 | -2..-2 | 1..1 | 0.4 |
-| `spoon.rub` | 0 | 0.0 | -2..-2 | 1..1 | 0.3 |
-| `oral.in` | 0 | 0.0 | -4..-3 | -7..-7 | 5.8 |
-| `lick.in` | 34 | 2.0 | 1..1 | -9..-9 | 0.7 |
-| `solo.rub` | 0 | 0.0 | -11..-11 | floor (standing) | 3.0 |
-| `solo.idle` | 0 | 0.0 | -3..-3 | floor (standing) | 0.1 |
+| Clip | bad tri pairs (max) | deepest (mm) | her lowest (mm) | his lowest (mm) | room furniture hits | bun lowest (mm) | max joint step (deg) |
+|---|---|---|---|---|---|---|---|
+| `missionary.in` | 38 | 16.0 | -8..-8 | -1..7 | 0 | -18 | 9.2 |
+| `missionary.rub` | 0 | 0.0 | -8..-8 | -1..-1 | 0 | -16 | 1.5 |
+| `missionary.embrace` | 22 | 7.0 | -8..-8 | 6..6 | 0 | -16 | 0.0 |
+| `legsup.in` | 115 | 23.4 | -2..0 | 2..2 | 0 | -13 | 2.0 |
+| `doggy.in` | 0 | 0.0 | 3..5 | -1..17 | 0 | 207 | 3.7 |
+| `doggy.rub` | 0 | 0.0 | 3..3 | -1..-1 | 0 | 207 | 0.3 |
+| `prone.in` | 100 | 16.3 | -9..-9 | -2..-2 | 0 | 144 | 2.0 |
+| `cowgirl.in` | 89 | 34.0 | 6..10 | -7..-7 | 0 | clear | 3.5 |
+| `cowgirl.rub` | 68 | 32.2 | 9..9 | -7..-7 | 0 | clear | 1.9 |
+| `revcowgirl.in` | 72 | 28.6 | 4..9 | -4..-4 | 0 | clear | 1.0 |
+| `revcowgirl.rub` | 18 | 18.1 | 7..7 | -4..-4 | 0 | clear | 1.6 |
+| `spoon.in` | 0 | 0.0 | -2..-2 | 1..1 | 0 | 271 | 0.4 |
+| `spoon.rub` | 0 | 0.0 | -2..-2 | 1..1 | 0 | 271 | 0.3 |
+| `oral.in` | 0 | 0.0 | -4..-3 | -7..-7 | 0 | clear | 5.8 |
+| `lick.in` | 22 | 0.1 | -2..-2 | -21..5 | 0 | 105 | 1.6 |
+| `solo.rub` | 0 | 0.0 | -9..-9 | room floor (standing) | 0 | -13 | 3.0 |
+| `solo.idle` | 0 | 0.0 | -3..-3 | room floor (standing) | 0 | -14 | 0.1 |
 
-Known residuals: in cowgirl / reverse cowgirl her inner mid-thighs overlap the outside of his hips by up to
-~3 cm where she straddles him (soft tissue that would squash; seen from the side it reads as her thighs
-hugging his hips). In prone at full depth his chest meets her lower back (~1.5 cm). Legs-up and lick have
-only light (≤ 9 mm) contact of his forearms with her legs. `solo.*` floors for Marcus are the room floor.
+Known residuals (next pass): cowgirl / reverse cowgirl — her inner thighs still overlap the outside of his
+hips by up to ~3 cm where she straddles him; legs-up — his upper arms brush her shins (~2 cm) while he holds her
+ankles; prone at full depth — his chest meets her lower back (~1.5 cm). When she lies on her back the bun
+presses up to ~1.8 cm into the (soft) mattress. `solo.*` floors for Marcus are the room floor.

@@ -60,12 +60,21 @@ class Body:
         r.aim2("ひざ" + s, Vector(ankle_dir), hint, r.hinge.get("ひざ" + s, Vector((1, 0, 0))))
 
     def foot(self, s, toes, up):
-        """point the foot (ankle->ball) along `toes`, dorsum toward `up`"""
-        self.rig.orient("足首" + s, forward=None, up=None)
-        r = self.rig; n = "足首" + s
-        x, y, z = r.axes(n)
-        up_local = r.loc_up[n]
-        r.aim2(n, toes, up, up_local)
+        """sole frame: `toes` = heel->toe line of the sole, `up` = dorsum side (world dirs). (The ankle bone itself
+        points ~28 deg below the sole line: aiming the bone tipped every foot into a ballet point.)"""
+        self.rig.orient("足首" + s, forward=toes, up=up)
+
+    def foot_relaxed(self, s, point_deg=20.0, splay=None):
+        """natural foot for any leg pose: neutral = sole perpendicular to the shin, toes along the shin's front,
+        then pointed by point_deg (relaxed ~15-25, lying prone ~75, kneeling on the instep ~80); `splay` (world
+        dir) turns the toes slightly that way (feet fall outward when relaxed)"""
+        r = self.rig
+        d = (r.head("足首" + s) - r.head("ひざ" + s)).normalized()          # shin, knee -> ankle
+        f0 = r.world_dir("ひざ" + s, r.loc_fwd["ひざ" + s])
+        if splay is not None: f0 = f0 + Vector(splay) * 0.35
+        f0 = (f0 - d * d.dot(f0)).normalized(); u0 = -d
+        a = math.radians(point_deg)
+        r.orient("足首" + s, forward=f0 * math.cos(a) + d * math.sin(a), up=u0 * math.cos(a) + f0 * math.sin(a))
 
     def arm_ik(self, s, wrist, elbow_pole):
         return self.rig.ik2("腕" + s, "ひじ" + s, "手首" + s, wrist, elbow_pole)
@@ -77,10 +86,11 @@ class Body:
         chains = []
         for f in FINGERS[1:]:
             chains.append([f"{f}{d}{s}" for d in "０１２３"])
-        amt = {"人指": index if index is not None else curl}
+        grad = {"人指": 0.80, "中指": 1.0, "薬指": 1.10, "小指": 1.22}     # a relaxed hand: index straightest, pinky most curled
         for ch in chains:
             nm = ch[0][:2]
-            self.rig.curl([ch], amt.get(nm, curl))
+            a = index if (index is not None and nm == "人指") else min(1.0, curl * grad.get(nm, 1.0))
+            self.rig.curl([ch], a)
         th = [f"親指{d}{s}" for d in "０１２"]
         self.rig.curl([th], curl * 0.5 if thumb is None else thumb, decay=(0.6, 0.9, 0.8))
 
