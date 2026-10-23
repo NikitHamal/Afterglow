@@ -46,7 +46,8 @@ void Game::drawTitle() {
     U.text(ui::Face::SerifItalic, U.u(30.f), "a night for two", U.W * 0.5f, ly + U.u(190.f), U.th.inkDim, ui::Center);
     float blink = 0.55f + 0.45f * std::sin(t * 2.4f);
     U.alpha = ui::easeOut((t - 1.6f) / 1.0f) * blink;
-    U.text(ui::Face::SansBold, U.u(15.f), "PRESS ANY KEY", U.W * 0.5f, U.H - U.u(120.f), U.th.ink, ui::Center, 0.32f);
+    U.glow(U.W * 0.5f, U.H - U.u(110.f), U.u(90.f), ui::withA(U.th.accent, 0.08f));
+    U.text(ui::Face::SansBold, U.u(19.f), "PRESS ANY KEY", U.W * 0.5f, U.H - U.u(122.f), U.th.ink, ui::Center, 0.32f);
     U.alpha = ui::easeOut((t - 1.6f) / 1.0f) * 0.8f;
     U.text(ui::Face::Sans, U.u(14.f), "For adults only. A work of fiction between two consenting adults.", U.W * 0.5f, U.H - U.u(56.f),
            U.th.inkFaint, ui::Center);
