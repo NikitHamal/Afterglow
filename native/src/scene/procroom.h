@@ -13,6 +13,8 @@ struct RoomInfo {
     V3 lampPos{-1.30f, 1.05f, -1.98f};
     V3 candlePos[3];
     V3 windowCenter{3.15f, 1.6f, -0.6f};
+    float bakeScale = 1.f;            // room.json lightmap.scale (baked irradiance multiplier)
+    V3 camMin{-2.6f, 0.12f, -2.6f}, camMax{2.6f, 2.7f, 3.2f};   // room.json cameraBounds
 };
 
 // Builds meshes/materials/textures into `out` (one node per object, static).

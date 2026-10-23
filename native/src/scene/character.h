@@ -69,6 +69,8 @@ public:
     M4 rootMatrix() const;
 
     // per-material texture overrides (tone swaps); 0 = use model texture
+    GLuint skinMask() const { return skinMask_; }        // content support maps (0 when absent)
+    GLuint skinDetail() const { return skinDetail_; }
     GLuint baseOverride(int material) const { return material >= 0 && material < (int)baseOverride_.size() ? baseOverride_[(size_t)material] : 0; }
 
     std::string id;
@@ -83,6 +85,7 @@ private:
     bool loaded_ = false;
     float autoScale_ = 1.f, footY_ = 0.f;
     V3 hairCenter_{0, 1.6f, 0};
+    GLuint skinMask_ = 0, skinDetail_ = 0;
     std::string dir_, tone_;
     struct Layer { int clip = -1; float t = 0.f, w = 0.f; std::string mask; };
     Layer layers_[kLayers];

@@ -111,6 +111,7 @@ void Renderer::setFrame(Program& p, Scene& s, const CameraState& cam, float time
     p.set("u_skyColor", L.sky);
     p.set("u_groundColor", L.ground);
     p.set("u_ambient", L.ambient);
+    p.set("u_bakeScale", s.bakeTint);
     V3 pp[6], pc[6]; float pi[6], pr[6];
     for (int i = 0; i < 6; ++i) { pp[i] = L.points[i].pos; pc[i] = L.points[i].color; pi[i] = L.points[i].intensity; pr[i] = L.points[i].range; }
     p.set("u_numPoints", L.numPoints);
@@ -163,6 +164,11 @@ void Renderer::bindMaterial(Program& p, const Model& m, int mi, const Character*
     bool skin = mat.shading == Shading::Skin;
     p.set("u_flush", (ch && skin) ? ch->flush : 0.f);
     p.set("u_sweat", (ch && skin) ? ch->sweat : 0.f);
+    GLuint mask = (ch && skin) ? ch->skinMask() : 0, detail = (ch && skin) ? ch->skinDetail() : 0;
+    p.set("u_hasSkinMask", mask ? 1 : 0);
+    p.set("u_hasDetailN", detail ? 1 : 0);
+    p.sampler("u_skinMask", 7, mask ? mask : white_);
+    p.sampler("u_detailN", 8, detail ? detail : flatNormal_);
     p.set("u_baked", (mat.shading == Shading::Room && mat.texEmis && mat.uvEmis == 1) ? 1 : 0);
 }
 

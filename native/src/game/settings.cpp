@@ -31,6 +31,9 @@ bool Settings::load(const std::string& path) {
     ssao = rb(j, "ssao", ssao);
     filmGrain = rb(j, "filmGrain", filmGrain);
     hairPhysics = rb(j, "hairPhysics", hairPhysics);
+    lightMood = ri(j, "lightMood", lightMood, 0, 2);
+    brightness = rd(j, "brightness", brightness, -1.f, 1.f);
+    warmth = rd(j, "warmth", warmth, -1.f, 1.f);
     master = rd(j, "master", master, 0.f, 1.f);
     voice = rd(j, "voice", voice, 0.f, 1.f);
     effects = rd(j, "effects", effects, 0.f, 1.f);
@@ -61,6 +64,9 @@ bool Settings::save(const std::string& path) const {
     j.set("ssao", Json::ofBool(ssao));
     j.set("filmGrain", Json::ofBool(filmGrain));
     j.set("hairPhysics", Json::ofBool(hairPhysics));
+    j.set("lightMood", Json::of(lightMood));
+    j.set("brightness", Json::of(brightness));
+    j.set("warmth", Json::of(warmth));
     j.set("master", Json::of(master));
     j.set("voice", Json::of(voice));
     j.set("effects", Json::of(effects));

@@ -56,6 +56,9 @@ bool Sandbox::init() {
     GuiSetStyle(DEFAULT, TEXT_COLOR_PRESSED, ColorToInt(Color{255, 255, 255, 255}));
     GuiSetStyle(DEFAULT, LINE_COLOR, ColorToInt(Color{160, 90, 110, 255}));
     cameraPreset("front", 0.f);
+    camSafety_.boundsMin = scene.info.camMin;
+    camSafety_.boundsMax = scene.info.camMax;
+    camera.solve = [this](const V3& eye, const V3& target, bool fp) { return resolveCamera(proxies_, camSafety_, eye, target, fp ? 1 : -1); };
     return true;
 }
 
@@ -222,7 +225,9 @@ void Sandbox::applySpec(const Spec& s) {
     else if (ch == "marcus") { scene.showVivian = false; scene.showMarcus = true; }
     else if (ch == "both") scene.showVivian = scene.showMarcus = true;
     if (s.has("hair")) hairSim_ = s.num("hair", 1.f) > 0.5f;
-    if (s.has("exposure")) renderer.settings.exposure = s.num("exposure", 1.f);
+    if (s.has("exposure")) lighting_.brightness = s.num("exposure", 0.f);
+    std::string mood = s.get("mood");
+    lighting_.mood = mood == "candle" ? Mood::Candlelit : (mood == "day" ? Mood::Daylight : Mood::WarmEvening);
     if (s.has("flush")) scene.vivian.flush = s.num("flush", 0.f);
     if (s.has("sweat")) scene.vivian.sweat = scene.marcus.sweat = s.num("sweat", 0.f);
     flex_ = s.num("flex", flex_);
@@ -336,6 +341,11 @@ void Sandbox::update(float dt) {
     camera.handleInput(dt);
     applyPose();
     scene.update(dt);
+    {
+        const Character* cs[2] = {&scene.vivian, &scene.marcus};
+        bool shown[2] = {scene.showVivian, scene.showMarcus};
+        proxies_.build(cs, shown, 2);
+    }
     if (camPending_) applyCameraPreset();
     else if (camFollow_ && camera.mode() == CameraRig::Mode::Orbit) {
         V3 t; float yaw, pitch, dist;
@@ -347,6 +357,7 @@ void Sandbox::update(float dt) {
 void Sandbox::render(int w, int h) {
     fbW_ = w; fbH_ = h;
     cam_ = camera.update(GetFrameTime() > 0.f ? std::min(GetFrameTime(), 0.05f) : 1.f / 60.f, (float)w / (float)std::max(1, h));
+    applyLighting(scene, renderer.settings, lighting_, cam_);
     renderer.render(scene, cam_, w, h, time_);
     if (overlay) drawOverlay(GetScreenWidth(), GetScreenHeight());
 }
@@ -393,9 +404,11 @@ void Sandbox::drawOverlay(int w, int h) {
     GuiCheckBox(Rectangle{x, y, 18, 18}, "hair sim", &hairSim_);
     GuiCheckBox(Rectangle{x + 102, y, 18, 18}, "breathing", &breathing_);
     GuiCheckBox(Rectangle{x + 204, y, 18, 18}, "look-at", &lookAt_); y += 26;
-    GuiSlider(Rectangle{x + 70, y, pw - 120, 18}, "exposure", TextFormat("%.2f", renderer.settings.exposure), &renderer.settings.exposure, 0.3f, 3.f); y += 24;
-    GuiSlider(Rectangle{x + 70, y, pw - 120, 18}, "warmth", TextFormat("%.2f", renderer.settings.warmth), &renderer.settings.warmth, -1.f, 1.f); y += 24;
-    GuiSlider(Rectangle{x + 70, y, pw - 120, 18}, "bloom", TextFormat("%.2f", renderer.settings.bloomStrength), &renderer.settings.bloomStrength, 0.f, 0.4f); y += 24;
+    int mood = (int)lighting_.mood;
+    GuiToggleGroup(Rectangle{x, y, 98, 20}, "evening;candle;day", &mood); y += 26;
+    lighting_.mood = (Mood)mood;
+    GuiSlider(Rectangle{x + 70, y, pw - 120, 18}, "bright", TextFormat("%.2f", lighting_.brightness), &lighting_.brightness, -1.f, 1.f); y += 24;
+    GuiSlider(Rectangle{x + 70, y, pw - 120, 18}, "warmth", TextFormat("%.2f", lighting_.warmth), &lighting_.warmth, -1.f, 1.f); y += 24;
     GuiSlider(Rectangle{x + 70, y, pw - 120, 18}, "flush", TextFormat("%.2f", scene.vivian.flush), &scene.vivian.flush, 0.f, 1.f); y += 24;
     float sweat = scene.vivian.sweat;
     GuiSlider(Rectangle{x + 70, y, pw - 120, 18}, "sweat", TextFormat("%.2f", sweat), &sweat, 0.f, 1.f); y += 24;
