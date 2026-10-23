@@ -199,7 +199,7 @@ def tip_gap(bvh, q):
     return 1.0 if l2 is None else (q - Vector(l2)).dot(Vector(n2))
 
 _TIPFRAME = {}
-def touch_tips(body, s, bvh, anchor, along, pole, curl=0.22, pad=0.007, lift=0.03, iters=5, frame_key=None):
+def touch_tips(body, s, bvh, anchor, along, pole, curl=0.22, pad=0.007, lift=0.03, iters=5, frame_key=None, free_pole=True):
     """fingertip pads (index + middle) on the skin at `anchor`, fingers lying `along` the surface, palm lifted `lift`
     off it (never through the belly). With frame_key the hand keeps one orientation + elbow for the whole clip
     (a rubbing hand only translates), so the wrist never flips. Returns the contact point."""
@@ -212,7 +212,7 @@ def touch_tips(body, s, bvh, anchor, along, pole, curl=0.22, pad=0.007, lift=0.0
     goal = P + n * pad
     W = goal - f * 0.15 + n * lift
     if frame_key is not None and pole_c is not None: pole = pole_c
-    else: pole = natural_pole(body, s, W, -n, (f - n * 0.35).normalized(), pole)
+    elif free_pole: pole = natural_pole(body, s, W, -n, (f - n * 0.35).normalized(), pole)
     if frame_key is not None and frame_key not in _TIPFRAME: _TIPFRAME[frame_key] = (n.copy(), f.copy(), pole.copy())
     for _ in range(iters):
         body.arm_ik(s, W, pole)
@@ -272,6 +272,10 @@ def cup(body, s, bvh, anchor, along, pole, pad=0.007, palm_lift=0.017, iters=5):
         body.hand(s, palm=-n, fingers=f); r.limit("手首" + s)
         for k_, m_ in snap.items(): r.basis[k_] = m_.copy()
         r.fk("手首" + s)
+    for _ in range(2):
+        g = hand_skin_gap(body, s, bvh)
+        if not (0.005 < g < 0.08): break
+        W = W - n * (g - 0.002); body.arm_ik(s, W, pole); pose_hand()
     lift_out(body, s, bvh, W, n, pose_hand, pole, allow=-0.004)
     return P
 
@@ -283,8 +287,9 @@ def her_rub_hand(V, s, phase, target, radius=0.011, bvh=None):
     anchor = target + (left * math.cos(a) + up * math.sin(a)) * radius + fwd * 0.01
     bvh = bvh or surface(V)
     sh = r.head("腕" + s)
-    return touch_tips(V, s, bvh, anchor, -up, sh + left * sx * 0.15 + fwd * 0.15 - up * 0.35, curl=0.22, pad=0.005, lift=0.032,
-                      frame_key=(CURRENT, "rub", s))
+    lat = sh - r.head("上半身2"); lat = (lat - fwd * fwd.dot(lat)).normalized()   # out of her torso at that shoulder
+    return touch_tips(V, s, bvh, anchor, -up, sh + lat * 0.30 - fwd * 0.05 - up * 0.30, curl=0.22, pad=0.005, lift=0.032,
+                      frame_key=(CURRENT, "rub", s), free_pole=False)
 
 def her_breast_hand(V, s, phase, nipple_lm, bvh=None):
     """her hand cups her breast from below-outside, fingers wrapping the curve, squeezing gently with the phase"""

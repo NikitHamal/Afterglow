@@ -214,15 +214,16 @@ L/R label, and the measured canal axis is kept in the sagittal plane (the raw PC
 Each clip is checked at t = 0, .25, .5, .75, 1 (numbers in `clips.json` → `verify` + `contacts`, raw data in
 `/root/agb/native/verify.json`): intersecting triangle pairs between the two bodies outside the intended contact,
 the deepest such penetration, each body's lowest point vs. the mattress top (mm; − = pressed into the soft
-mattress), contacts with the real room's furniture, how far any limited joint goes past its range (should be 0:
-every keyed frame is clamped), the largest per-bone step between frames, and every hand contact's skin gap
-(min..max over the clip; 0 = touching, − = pressing in). V/M = Vivian/Marcus, L/R = hand.
+mattress), contacts with the real room's furniture (`room_hit` names the piece), how far any limited joint goes
+past its range (0: every keyed frame is clamped), the largest per-bone step between frames, and every hand
+contact's skin gap (min..max over the clip; 0 = touching, − = pressing in). V/M = Vivian/Marcus, L/R = hand.
+Close-ups of every hand contact are rendered by `tools/model/anim/render_hands.py` and checked by eye.
 
 Intended contact (not counted): genitals (her `v_*` masks × his shaft/scrotum + pubic mound), hands on anything,
 her mouth (oral) / his mouth (lick), his shaft vs. her inner thighs and buttocks within 6 cm of the entrance,
 pelvis-to-pelvis flesh (her thighs/buttocks within 26 cm of the entrance × his groin, hips, upper thighs and lower
 belly within 28 cm of the shaft root; its depth is tracked as `pelvic_depth_mm` and the layout search penalises
-anything past 8 mm), her breasts × his shaft in titjob.
+anything past 8 mm), her breasts × his shaft in titjob, torso/hip contact in the story clips.
 
 How layouts are chosen: where a pose has several reasonable layouts `positions.best_of` poses each candidate and
 scores it with the same checks at **both** the top (t = 0) and the bottom (t = 0.85) of the stroke; the choice is
@@ -231,32 +232,30 @@ made once per clip, so it never changes between frames.
 | Clip | bad tri pairs (max) | deepest (mm) | her lowest (mm) | his lowest (mm) | furniture hits | joint-range excess (°) | max joint step (°) | hand contacts: gap mm (min..max) |
 |---|---|---|---|---|---|---|---|---|
 | `missionary.in` | 0 | 0.0 | -8..-8 | -2..6 | 0 | 0 | 9 | — |
-| `missionary.rub` | 52 | 29.4 | -8..-8 | -1..-1 | 0 | 0 | 2 | V R→hips 10..14; V R→chest -54..-51 |
+| `missionary.rub` | 0 | 0.0 | -8..-8 | -1..-1 | 0 | 0 | 1 | V R→hips -4..-3; V R→chest 4..12 |
 | `missionary.embrace` | 0 | 0.0 | -8..-8 | 6..6 | 0 | 0 | 7 | V L→chest 7..7; V R→chest 7..7 |
-| `legsup.in` | 0 | 0.0 | -0..-0 | 2..2 | 0 | 0 | 17 | V L→head 5..18; M L→thigh.R -8..-5; M L→shoulder.L -49..-30; M R→thigh.L -9..-3 |
-| `doggy.in` | 0 | 0.0 | 3..5 | -1..17 | 0 | 0 | 10 | M L→thigh.L 17..22 |
-| `doggy.rub` | 0 | 0.0 | 3..3 | -1..-1 | 0 | 0 | 2 | V R→hips -10..-6; M L→thigh.L 16..16 |
+| `legsup.in` | 0 | 0.0 | -0..-0 | 2..2 | 0 | 0 | 17 | M L→thigh.R -8..-5; M R→thigh.L -9..-3 |
+| `doggy.in` | 0 | 0.0 | 3..5 | -1..17 | 0 | 0 | 9 | M L→thigh.L 12..16; M R→thigh.R 24..24 |
+| `doggy.rub` | 0 | 0.0 | 3..3 | -1..-1 | 0 | 0 | 2 | V R→thigh.R -30..-30; M L→thigh.L 12..12 |
 | `prone.in` | 14 | 4.3 | -9..-9 | -11..-9 | 0 | 0 | 2 | V L→head 21..22 |
-| `cowgirl.in` | 31 | 15.4 | 8..10 | -7..-7 | 0 | 0 | 35 | M L→thigh.R -4..-3; M R→thigh.L -4..2 |
-| `cowgirl.rub` | 0 | 0.0 | 11..11 | 2..2 | 0 | 0 | 1 | V R→hips 7..16; M L→thigh.R -3..-3; M R→thigh.L -3..-3 |
-| `revcowgirl.in` | 32 | 12.5 | 6..8 | -4..-4 | 0 | 0 | 23 | V L→thigh.L -3..4; V R→thigh.R 18..24; V R→thigh.R 18..25; M L→thigh.L -5..-2 |
-| `revcowgirl.rub` | 12 | 0.0 | 7..7 | -4..-4 | 0 | 0 | 7 | V L→thigh.L 14..14; V R→hips 4..10; M L→thigh.L -5..-5; M R→thigh.R -17..-17 |
+| `cowgirl.in` | 31 | 15.4 | 8..10 | -7..-7 | 0 | 0 | 34 | M L→thigh.R -4..-4; M R→thigh.L -4..2 |
+| `cowgirl.rub` | 0 | 0.0 | 11..11 | 2..2 | 0 | 0 | 8 | V R→hips 12..16; M L→thigh.R -3..-3; M R→thigh.L -3..-3 |
+| `revcowgirl.in` | 32 | 12.5 | 6..8 | -4..-4 | 0 | 0 | 23 | V L→thigh.L -3..4; V R→thigh.R 9..21; V R→thigh.R -4..-3; M L→thigh.L -5..-2 |
+| `revcowgirl.rub` | 12 | 0.0 | 7..7 | -4..-4 | 0 | 0 | 7 | V L→thigh.L 15..15; V L→thigh.L -2..-2; V R→hips 13..18; M L→thigh.L -9..-9 |
 | `spoon.in` | 0 | 0.0 | -2..-2 | -4..-4 | 0 | 0 | 5 | M R→hips -8..15 |
-| `spoon.rub` | 0 | 0.0 | -2..-2 | -4..-4 | 0 | 0 | 1 | V R→hips -25..-24; V R→genitals -2..9; M R→thigh.R 7..7 |
+| `spoon.rub` | 0 | 0.0 | -2..-2 | -4..-4 | 0 | 0 | 1 | V R→hips -26..-24; V R→genitals 11..18; M R→thigh.R 7..7 |
 | `oral.in` | 0 | 0.0 | -4..-3 | -7..-7 | 0 | 0 | 6 | V L→thigh.R 7..11; V R→belly -4..-4 |
 | `lick.in` | 0 | 0.0 | -0..0 | -21..5 | 0 | 0 | 13 | M L→thigh.R -2..1; M R→thigh.L -4..-3 |
 | `handjob.in` | 0 | 0.0 | -6..-6 | -7..-7 | 0 | 0 | 20 | V L→thigh.R 4..4; V R→thigh.R -4..-2; M L→chest 6..6; M R→chest 6..6 |
 | `titjob.in` | 0 | 0.0 | -8..-6 | -7..-7 | 0 | 0 | 7 | V L→chest -3..-3; V R→chest -3..-3; M L→chest 6..6; M R→chest 6..6 |
-| `solo.rub` | 0 | 0.0 | -12..-12 | room floor | 0 | 0 | 1 | V L→chest -4..-3; V R→hips -13..-8 |
+| `solo.rub` | 0 | 0.0 | -12..-12 | room floor | 0 | 0 | 1 | V L→chest -4..-3; V R→hips -5..6 |
 | `solo.idle` | 0 | 0.0 | -3..-3 | room floor | 0 | 0 | 0 | — |
-| `stand.idle` | 0 | 0.0 | -604..-604 | room floor | 0 | 0 | 0 | V L→thigh.L -27..-23; V R→thigh.R -27..-23 |
-| `sit.bed` | 0 | 0.0 | -400..-400 | room floor | 46 | 0 | 14 | V L→thigh.L -2..-2; V R→thigh.R -4..-4; M L→thigh.L 8..8; M R→chest -5..-5 |
+| `stand.idle` | 0 | 0.0 | -604..-604 | room floor | 0 | 0 | 0 | V L→thigh.L 6..6; V R→thigh.R 6..6 |
+| `sit.bed` | 0 | 0.0 | -400..-400 | room floor | 46 | 0 | 14 | V L→thigh.L -2..-2; V R→thigh.R -4..-4; M L→thigh.L 4..4; M R→chest -5..-5 |
 
-Known residuals (next pass): missionary.rub — her reaching forearm passes under his chest (he lies low at
-mid-depth); legs-up — his hands, holding her ankles beside his head, sink into his own shoulders; spoon.rub —
-her rubbing hand presses into her own hip; doggy / reverse cowgirl — one of the holding hands hovers 1.5–2.5 cm
-off the skin; cowgirl at the very top of the stroke — inner thighs touch the sides of his waist. When she lies
-on her back the bun presses up to ~1.8 cm into the (soft) mattress. `solo.*` floors for Marcus are the room
-floor. Story clips: in `stand.idle` her hanging hands rest ~2.5 cm into the sides of her thighs and in `sit.bed`
-the backs of their knees touch the bed frame's top edge (46 small pairs) — both being fixed next. Not shipped
-yet: `facesit`, `cuddle`, `kiss.side` (authored in `positions3.py`, not clean yet).
+Known residuals (next pass): cowgirl at the very top of the stroke (t = 0) — her inner thighs touch the sides of
+his waist; reverse cowgirl — his left forearm brushes her left thigh; prone at full depth — inner thighs ≤ 4 mm;
+`sit.bed` — the backs of their knees rest on the bed frame's top edge (`bed_base`); doggy — his right hand
+hovers ~2 cm over her hip. When she lies on her back the bun presses up to ~1.8 cm into the (soft) mattress.
+`solo.*`, `stand.*`, `sit.*` floors are the room floor (y = 0). Not shipped yet: `facesit`, `cuddle`,
+`kiss.side` (authored in `positions3.py`, not clean yet).

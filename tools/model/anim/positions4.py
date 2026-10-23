@@ -3,7 +3,7 @@
 import math
 from mathutils import Vector, Matrix
 import positions as P
-from positions import V3, nrm, sides, best_of, surface, cup
+from positions import V3, nrm, sides, best_of, surface, cup, lift_out
 from positions2 import hands_to
 from scene import BED_TOP, MAT_W
 import scene as SC
@@ -22,10 +22,14 @@ def stand(body, loc_xy, face, sway=0.0):
         body.leg_ik(s, V3(H.x, H.y, 0.075) + f * 0.02, H + f * 0.4)
         body.foot(s, nrm(f + left * (0.15 if (H - r.head("下半身")).dot(left) > 0 else -0.15)), V3(0, 0, 1))
     SC.settle(body, target_z=0.0, sink=0.0, region=np.ones(len(body.obj.data.vertices), bool))
-    for s, sx in sides(body, "腕"):                                  # arms hang, a soft bend at the elbow
+    bvh = surface(body)
+    for s, sx in sides(body, "腕"):                                  # arms hang, a soft bend at the elbow, hands beside the thighs
         sh = r.head("腕" + s); side = (sh - r.head("上半身2")); side = (side - V3(0, 0, side.z)).normalized()
-        body.arm_ik(s, sh + side * 0.07 + f * 0.04 + V3(0, 0, -0.50), sh + side * 0.2 - f * 0.3)
-        body.hand(s, palm=-side, fingers=nrm(V3(0, 0, -1) + f * 0.1)); body.fingers(s, 0.35)
+        W = sh + side * 0.10 + f * 0.04 + V3(0, 0, -0.50); pole = sh + side * 0.2 - f * 0.3
+        def pose_hand(s=s, side=side):
+            body.hand(s, palm=-side, fingers=nrm(V3(0, 0, -1) + f * 0.1)); body.fingers(s, 0.35)
+        body.arm_ik(s, W, pole); pose_hand()
+        lift_out(body, s, bvh, W, side, pose_hand, pole, allow=0.006, iters=4)
 
 def stand_idle(ctx, t):
     V, M = ctx.V, ctx.M
