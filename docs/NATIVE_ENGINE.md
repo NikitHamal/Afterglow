@@ -153,7 +153,15 @@ graphics, audio, controls, game) / the night -> pause -> results.
   keep saves. Linux tarballs carry `afterglow.desktop` + `install-desktop-entry.sh`.
 - Memory/CPU: textures capped per quality (1K Low, 2K Medium, full on High; tone swaps replace the embedded
   albedo), CPU mesh copies released after upload (morph meshes keep base + sparse deltas), sparse CPU morphing,
-  frosted-glass blur only while a menu shows. F1 shows fps, frame time, draws, RAM and GPU memory.
+  frosted-glass blur only while a menu shows, heap trimmed after loading. F1 shows fps, frame time, draws, RAM
+  and GPU memory. Measured (Mesa llvmpipe, same scene): peak RSS 877 -> 727 MB; Low quality 343 MB RSS with
+  100 MB of textures vs 340 MB on High; simulation + animation + morphing ~1-1.5 ms CPU per frame.
+- Loading: a model's embedded images decode on worker threads while the main thread keeps pumping window events
+  and redrawing the loader (`Model::loadPump`); first start picks Low for software GL, Medium for integrated GPUs.
+- Audio levels (measured offline): generated room tone ~-35 dBFS, pad ~-30 dBFS; voice samples normalised with
+  per-sample gains in `Game::voice`.
+- Installer extras: offers to remove an all-users copy left by early nightlies; `licenses/OFL-*.txt` ship with
+  the embedded fonts; SIGTERM/SIGINT/SIGHUP quit gracefully on Linux/macOS.
 
 ## Harness (visual QA)
 
