@@ -135,7 +135,7 @@ vec3 shade(Surf s, vec3 L, vec3 radiance) {
         float sin1 = sqrt(max(0.0, 1.0 - th1 * th1)), sin2 = sqrt(max(0.0, 1.0 - th2 * th2));
         float dirAtten = smoothstep(-1.0, 0.0, dot(T1, H));
         // dark hair: narrow, faint white primary + broader secondary tinted by the hair colour
-        vec3 spec = vec3(0.035) * pow(sin1, 220.0) * dirAtten + s.albedo * 0.9 * pow(sin2, 48.0);
+        vec3 spec = vec3(0.05) * pow(sin1, 180.0) * dirAtten + s.albedo * 1.3 * pow(sin2, 40.0);
         float wrap = sat((NoLraw + 0.45) / 1.45);
         vec3 diff = s.albedo / PI * wrap;
         return (diff + spec * NoL * 1.6) * radiance;
