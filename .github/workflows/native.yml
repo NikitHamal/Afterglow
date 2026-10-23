@@ -1,0 +1,153 @@
+name: native
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'native/**'
+      - 'tools/qa/**'
+      - '.github/workflows/native.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: native-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AG_VERSION: 0.2.${{ github.run_number }}
+
+jobs:
+  build:
+    name: build-${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: windows, os: windows-2022 }
+          - { name: linux, os: ubuntu-22.04 }
+          - { name: macos, os: macos-14 }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev libasound2-dev
+
+      - name: Cache fetched dependencies
+        uses: actions/cache@v4
+        with:
+          path: native/build/_deps
+          key: deps-${{ matrix.name }}-raylib55-raygui40-v1
+
+      - name: Configure
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cmake -S native -B native/build -G "Visual Studio 17 2022" -A x64
+          else
+            cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release
+          fi
+
+      - name: Build
+        run: cmake --build native/build --config Release --parallel
+
+      - name: Package
+        shell: bash
+        run: |
+          set -e
+          mkdir -p dist/Afterglow
+          cp -R native/build/bin/assets dist/Afterglow/
+          cp native/installer/LICENSE-18PLUS.txt dist/Afterglow/
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cp native/build/bin/Afterglow.exe dist/Afterglow/
+            (cd dist && 7z a -tzip -mx=7 "Afterglow-windows-x64.zip" Afterglow > /dev/null)
+          elif [ "$RUNNER_OS" = "Linux" ]; then
+            cp native/build/bin/afterglow dist/Afterglow/
+            tar czf dist/Afterglow-linux-x64.tar.gz -C dist Afterglow
+          else
+            cp native/build/bin/afterglow dist/Afterglow/
+            (cd dist && zip -qr "Afterglow-macos-arm64.zip" Afterglow)
+          fi
+          ls -la dist
+
+      - name: Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup --no-progress -y; $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          & $iscc "/DAppVersion=$env:AG_VERSION" "/DSrcDir=$env:GITHUB_WORKSPACE\dist\Afterglow" "/O$env:GITHUB_WORKSPACE\dist" native\installer\afterglow.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem dist
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: afterglow-${{ matrix.name }}
+          path: |
+            dist/*.zip
+            dist/*.tar.gz
+            dist/*.exe
+          if-no-files-found: error
+
+  qa:
+    name: qa-screenshots
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: afterglow-linux
+          path: dl
+      - name: Software GL
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends xvfb xauth libgl1-mesa-dri libglx-mesa0 mesa-utils
+      - name: Render QA shots (Mesa llvmpipe)
+        run: |
+          mkdir -p game qa-out
+          tar xzf dl/Afterglow-linux-x64.tar.gz -C game
+          cd game/Afterglow
+          export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+          set +e
+          timeout 2400 xvfb-run -a -s "-screen 0 1920x1080x24" ./afterglow --shotlist "$GITHUB_WORKSPACE/tools/qa/shots.txt" --outdir "$GITHUB_WORKSPACE/qa-out" --res 1280x720 > "$GITHUB_WORKSPACE/qa-out/harness.log" 2>&1
+          echo "harness exit $?" | tee -a "$GITHUB_WORKSPACE/qa-out/harness.log"
+          tail -40 "$GITHUB_WORKSPACE/qa-out/harness.log"
+          ls -la "$GITHUB_WORKSPACE/qa-out"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qa-shots
+          path: qa-out
+          if-no-files-found: warn
+
+  release:
+    name: nightly-release
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: nightly-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: afterglow-*
+          path: rel
+          merge-multiple: true
+      - name: Publish rolling nightly
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          ls -la rel
+          gh release delete nightly --yes --cleanup-tag || true
+          gh release create nightly rel/* --prerelease --target "$GITHUB_SHA" \
+            --title "Afterglow nightly ${AG_VERSION} (${GITHUB_SHA::7})" \
+            --notes "Automated build of main @ ${GITHUB_SHA}. Windows: run Afterglow-Setup.exe (or unzip the portable build and start Afterglow.exe). Linux/macOS: unpack and run ./afterglow. Adults only (18+)."
