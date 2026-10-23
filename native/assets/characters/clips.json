@@ -2902,6 +2902,326 @@
      ]
     }
    }
+  },
+  "stand.idle": {
+   "duration": 2.0,
+   "frames": 49,
+   "kind": "loop",
+   "time": "loop phase 0..1",
+   "rubHand": null,
+   "layerBones": null,
+   "stroke_m": 0.0,
+   "insert_m": null,
+   "morphs": {
+    "vivian": {},
+    "marcus": {
+     "aroused": 0.0
+    }
+   },
+   "marcusHidden": false,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      -0.0,
+      1.1525,
+      0.535
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      -0.0,
+      1.1525,
+      0.535
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      -0.0,
+      1.1525,
+      0.535
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "contacts": [
+    {
+     "char": "vivian",
+     "effector": "hand.L",
+     "bone": "薬指２.L",
+     "offset": [
+      -0.0031,
+      0.0246,
+      -0.001
+     ],
+     "radius": 0.012,
+     "target": {
+      "char": "vivian",
+      "bone": "足.L",
+      "region": "thigh.L"
+     },
+     "gap_mm": [
+      -26.9,
+      -23.3
+     ],
+     "t": [
+      0.0,
+      1.0
+     ]
+    },
+    {
+     "char": "vivian",
+     "effector": "hand.R",
+     "bone": "薬指２.R",
+     "offset": [
+      0.0031,
+      0.0246,
+      -0.001
+     ],
+     "radius": 0.012,
+     "target": {
+      "char": "vivian",
+      "bone": "足.R",
+      "region": "thigh.R"
+     },
+     "gap_mm": [
+      -26.9,
+      -23.3
+     ],
+     "t": [
+      0.0,
+      1.0
+     ]
+    }
+   ],
+   "verify": {
+    "max_bad_tri_pairs": 0,
+    "max_depth_mm": 0.0,
+    "worst_flip_deg": 0.2,
+    "max_rom_excess_deg": 0.0,
+    "floors_mm": {
+     "vivian": [
+      -604.0,
+      -604.0,
+      -604.0,
+      -604.0,
+      -604.0
+     ],
+     "marcus": [
+      -604.0,
+      -604.0,
+      -604.0,
+      -604.0,
+      -604.0
+     ]
+    }
+   }
+  },
+  "sit.bed": {
+   "duration": 2.0,
+   "frames": 49,
+   "kind": "loop",
+   "time": "loop phase 0..1",
+   "rubHand": null,
+   "layerBones": null,
+   "stroke_m": 0.0,
+   "insert_m": null,
+   "morphs": {
+    "vivian": {},
+    "marcus": {
+     "aroused": 0.0
+    }
+   },
+   "marcusHidden": false,
+   "cameras": {
+    "orbit_side": {
+     "target": [
+      0.69,
+      1.2626,
+      -1.2
+     ],
+     "yaw": 90,
+     "pitch": 18,
+     "distance": 2.3
+    },
+    "orbit_front": {
+     "target": [
+      0.69,
+      1.2626,
+      -1.2
+     ],
+     "yaw": 200,
+     "pitch": 24,
+     "distance": 2.6
+    },
+    "orbit_top": {
+     "target": [
+      0.69,
+      1.2626,
+      -1.2
+     ],
+     "yaw": 120,
+     "pitch": 55,
+     "distance": 2.2
+    },
+    "fpv": {
+     "character": "marcus",
+     "bone": "頭",
+     "offset_local": [
+      0.0,
+      0.0394,
+      0.0951
+     ],
+     "forward_local": [
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "note": "bone-local (glTF node frame); look along forward_local"
+    }
+   },
+   "contacts": [
+    {
+     "char": "vivian",
+     "effector": "hand.L",
+     "bone": "小指２.L",
+     "offset": [
+      0.0058,
+      0.0102,
+      0.0006
+     ],
+     "radius": 0.012,
+     "target": {
+      "char": "vivian",
+      "bone": "足.L",
+      "region": "thigh.L"
+     },
+     "gap_mm": [
+      -2.4,
+      -1.6
+     ],
+     "t": [
+      0.0,
+      1.0
+     ]
+    },
+    {
+     "char": "vivian",
+     "effector": "hand.R",
+     "bone": "親指２.R",
+     "offset": [
+      0.0075,
+      0.0227,
+      0.001
+     ],
+     "radius": 0.012,
+     "target": {
+      "char": "vivian",
+      "bone": "足.R",
+      "region": "thigh.R"
+     },
+     "gap_mm": [
+      -4.2,
+      -4.1
+     ],
+     "t": [
+      0.0,
+      1.0
+     ]
+    },
+    {
+     "char": "marcus",
+     "effector": "hand.L",
+     "bone": "小指２.L",
+     "offset": [
+      0.005,
+      0.0194,
+      0.0017
+     ],
+     "radius": 0.012,
+     "target": {
+      "char": "marcus",
+      "bone": "足.L",
+      "region": "thigh.L"
+     },
+     "gap_mm": [
+      8.2,
+      8.2
+     ],
+     "t": [
+      0.0,
+      1.0
+     ]
+    },
+    {
+     "char": "marcus",
+     "effector": "hand.R",
+     "bone": "親指２.R",
+     "offset": [
+      0.0091,
+      0.0268,
+      0.0018
+     ],
+     "radius": 0.012,
+     "target": {
+      "char": "vivian",
+      "bone": "上半身2",
+      "region": "chest"
+     },
+     "gap_mm": [
+      -4.6,
+      -4.6
+     ],
+     "t": [
+      0.0,
+      1.0
+     ]
+    }
+   ],
+   "verify": {
+    "max_bad_tri_pairs": 0,
+    "max_depth_mm": 0.0,
+    "worst_flip_deg": 14.4,
+    "max_rom_excess_deg": 0.0,
+    "floors_mm": {
+     "vivian": [
+      -399.9,
+      -399.9,
+      -399.9,
+      -399.9,
+      -399.9
+     ],
+     "marcus": [
+      -454.6,
+      -454.6,
+      -454.6,
+      -454.6,
+      -454.6
+     ]
+    }
+   }
   }
  }
 }

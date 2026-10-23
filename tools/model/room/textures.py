@@ -107,3 +107,79 @@ def night_sky(path, W=2048, H=1024):
                     c = np.array([1.0, 0.75, 0.42]) * rng.uniform(0.35, 0.9)
                     sky[wy:wy + 6, wx:wx + 5] = c
     save_rgb(np.clip(sky, 0, 1), path, 92)
+
+
+# ---------------------------------------------------------------- story-location variants
+def log_wall(path, npath, S=1024):
+    """horizontal pine logs (cabin): rounded rows, knots, warm amber"""
+    y, x = np.mgrid[0:S, 0:S].astype(np.float32) / S
+    rows = 5; v = (y * rows) % 1.0; idx = np.floor(y * rows).astype(int)
+    round_ = np.sqrt(np.clip(1 - (2 * v - 1) ** 2, 0, 1))
+    grain = fbm(S, S, 3, 5, 41)
+    streak = np.asarray(Image.fromarray((grain * 255).astype(np.uint8)).resize((S, S // 16)).resize((S, S), Image.BICUBIC), np.float32) / 255
+    tone = rng.uniform(0.85, 1.12, rows)[idx % rows]
+    base = np.array([0.42, 0.25, 0.12])
+    col = base[None, None] * (0.55 + 0.45 * round_[..., None]) * (0.8 + 0.3 * streak[..., None]) * tone[..., None]
+    knots = fbm(S, S, 12, 2, 43) > 0.82
+    col[knots] *= 0.55
+    gap = v < 0.04
+    col[gap] = np.array([0.12, 0.08, 0.05])
+    save_rgb(col, path)
+    save_rgb(normal_from_height(round_ * 0.6 + streak * 0.2 - gap * 0.6, 3.0), npath)
+
+def plaster(path, npath, color=(0.86, 0.84, 0.79), S=1024):
+    """white lime plaster (villa): soft trowel marks"""
+    n = fbm(S, S, 3, 6, 51); m = fbm(S, S, 12, 3, 52)
+    col = np.array(color)[None, None] * (0.93 + 0.08 * n[..., None] + 0.03 * m[..., None])
+    save_rgb(col, path)
+    save_rgb(normal_from_height(n * 0.25 + m * 0.1, 1.5), npath)
+
+def plaid(path, npath, c1, c2, c3, S=512, seed=0):
+    """wool plaid (cabin blankets)"""
+    y, x = np.mgrid[0:S, 0:S].astype(np.float32) / S
+    bx = (np.sin(x * 2 * np.pi * 4) > 0.3); by = (np.sin(y * 2 * np.pi * 4) > 0.3)
+    thin = (np.abs(((x * 8) % 1.0) - 0.5) < 0.04) | (np.abs(((y * 8) % 1.0) - 0.5) < 0.04)
+    col = np.broadcast_to(np.array(c1), (S, S, 3)).copy()
+    col[bx ^ by] = np.array(c2) * 0.9 + np.array(c1) * 0.1
+    col[bx & by] = np.array(c2)
+    col[thin] = np.array(c3)
+    n = fbm(S, S, 16, 3, seed)
+    col *= (0.85 + 0.25 * n[..., None])
+    save_rgb(col, path)
+    save_rgb(normal_from_height(n * 0.5, 2.0), npath)
+
+def snow_night(path, W=2048, H=1024):
+    """snowy pine slope at night, falling snow (cabin window)"""
+    y, x = np.mgrid[0:H, 0:W].astype(np.float32); u, v = x / W, y / H
+    sky = np.dstack([0.03 + 0.05 * v, 0.04 + 0.06 * v, 0.08 + 0.09 * v])
+    ground = v > 0.55 + 0.08 * np.sin(u * 7)
+    sky[ground] = np.array([0.30, 0.33, 0.40]) * (0.8 + 0.3 * fbm(H, W, 10, 3, 61)[ground])[:, None]
+    for k in range(60):                                   # pines
+        cx = rng.uniform(0, W); base = H * rng.uniform(0.55, 0.7); h = rng.uniform(80, 220)
+        tri = (y < base) & (y > base - h) & (np.abs(x - cx) < (y - (base - h)) * 0.35)
+        sky[tri] = np.array([0.02, 0.035, 0.03])
+    flakes = (rng.random((H, W)) > 0.996) * rng.uniform(0.5, 1.0, (H, W))
+    sky += flakes[..., None] * 0.8
+    save_rgb(np.clip(sky, 0, 1), path, 92)
+
+def sea_day(path, W=2048, H=1024):
+    """bright Mediterranean bay: sky, sea, distant headland (villa window)"""
+    y, x = np.mgrid[0:H, 0:W].astype(np.float32); u, v = x / W, y / H
+    sky = np.dstack([0.45 + 0.35 * v, 0.68 + 0.22 * v, 0.95 + 0.03 * v])
+    sea = v > 0.52
+    s_ = fbm(H, W, 20, 3, 71)
+    sky[sea] = (np.array([0.05, 0.32, 0.50]) + 0.08 * s_[sea][:, None])
+    land = (v > 0.46) & (v < 0.53) & (u > 0.55) & (v > 0.53 - 0.05 * np.sin((u - 0.55) * 9))
+    sky[land] = np.array([0.42, 0.45, 0.30])
+    save_rgb(np.clip(sky, 0, 1), path, 92)
+
+def sea_night(path, W=2048, H=1024):
+    """the sea at night under the moon (hotel window)"""
+    night_sky(path, W, H)
+    a = np.asarray(Image.open(path), np.float32) / 255.0
+    yy = np.arange(H)[:, None] / H
+    sea = np.broadcast_to(yy > 0.6, a.shape[:2])
+    s_ = fbm(H, W, 30, 3, 81)
+    glint = np.exp(-((np.arange(W)[None, :] / W - 0.72) / 0.05) ** 2) * (s_ > 0.55)
+    a[sea] = (np.array([0.01, 0.02, 0.05]) + 0.02 * s_[sea][:, None] + 0.5 * glint[sea][:, None] * np.array([0.9, 0.92, 1.0]))
+    save_rgb(np.clip(a, 0, 1), path, 92)
