@@ -339,7 +339,7 @@ void main() {
         if (u_fabric == 0) { freq = 170.0; k = triPattern(0, freq); amt = 0.0012; fabricRough = 0.85; }
         else if (u_fabric == 1) {
             // satin: long floats, a soft anisotropic streak along the hang of the dress
-            fabricRough = 0.4; sheenAmt = 0.15; g_sheenR = 0.3; g_specW = 0.9; g_aT = 0.1; g_aB = 0.42; g_wrap = 0.1;
+            fabricRough = 0.45; sheenAmt = 0.25; g_sheenR = 0.35; g_specW = 0.7; g_aT = 0.14; g_aB = 0.5; g_wrap = 0.1;
             hemW = 0.006; foldAmt = 0.005;
         }
         else if (u_fabric == 2) {
