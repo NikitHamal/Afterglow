@@ -80,6 +80,7 @@ void Sandbox::reset() {
     applyQuality(renderer.settings, Quality::High);
     posIndex_ = 0;
     camPreset_ = "front";
+    camPending_ = camFollow_ = false;
     overlay = false;   // harness shots are clean unless the spec asks for debug=1
 }
 
@@ -97,7 +98,53 @@ static constexpr float kContentYawOffsetDeg = 180.f;
 const Json& Sandbox::clipMeta(const std::string& clip) const { return clipsMeta_["clips"][clip]; }
 
 void Sandbox::cameraPreset(const std::string& name, float blend) {
+    // applied after the next pose update, so bone-relative shots see the new pose
     camPreset_ = name;
+    camBlend_ = blend;
+    camPending_ = true;
+}
+
+// Bone-relative shots. "close": the face from the front-side, on the side away from the partner;
+// "portrait": the whole subject from its front three-quarter.
+bool Sandbox::boneShot(const std::string& name, V3& target, float& yaw, float& pitch, float& dist) const {
+    if (name != "close" && name != "portrait") return false;
+    const Character* c = scene.showVivian && scene.vivian.loaded() ? &scene.vivian : (scene.marcus.loaded() ? &scene.marcus : nullptr);
+    if (!c || c->bone("頭") < 0) return false;
+    const Character* other = c == &scene.vivian ? &scene.marcus : &scene.vivian;
+    bool otherShown = other->loaded() && (other == &scene.marcus ? scene.showMarcus : scene.showVivian);
+    V3 center, fwd, up;
+    c->headAxes(center, fwd, up);
+    V3 side = normalize(cross(up, fwd));
+    V3 d;
+    if (name == "close") {
+        target = center + fwd * 0.03f - up * 0.03f;
+        V3 ref = otherShown ? center - other->bonePos("上半身2") : cam_.eye - center;
+        if (dot(side, ref) < 0.f) side = side * -1.f;
+        d = normalize(fwd * 0.8f - up * 0.35f + side * 0.35f + V3{0, 0.3f, 0});
+        dist = 0.62f;
+    } else {
+        V3 hips = c->bonePos("下半身");
+        target = (center + hips) * 0.5f - V3{0, 0.1f, 0};
+        V3 h{fwd.x, 0.f, fwd.z};
+        if (length(h) < 0.35f) h = V3{side.x, 0.f, side.z};   // lying face-up: from the side
+        if (length(h) < 1e-3f) h = V3{0, 0, 1};
+        h = qrotate(qaxis({0, 1, 0}, 0.35f), normalize(h));
+        d = normalize(h + V3{0, 0.2f, 0});
+        dist = 3.0f;
+    }
+    if (d.y < 0.2f) d = normalize(V3{d.x, 0.2f, d.z});
+    float minY = scene.info.bedTop + 0.12f;   // never under the mattress
+    if (target.y + d.y * dist < minY) d = normalize(V3{d.x, (minY - target.y) / dist, d.z});
+    yaw = std::atan2(d.x, d.z);
+    pitch = std::min(std::asin(clampf(d.y, -1.f, 1.f)), 1.35f);
+    return true;
+}
+
+void Sandbox::applyCameraPreset() {
+    camPending_ = false;
+    camFollow_ = false;
+    const std::string name = camPreset_;
+    const float blend = camBlend_;
     std::string pos = currentPos();
     std::string clip = pos == "solo" ? "solo.idle" : pos + ".in";
     const Json& cams = clipMeta(clip)["cameras"];
@@ -119,13 +166,16 @@ void Sandbox::cameraPreset(const std::string& name, float blend) {
                         (c["yaw"].f() + kContentYawOffsetDeg) * d2r, c["pitch"].f(20.f) * d2r, dist, blend);
         return;
     }
+    V3 t; float yaw, pitch, dist;
+    if (boneShot(name, t, yaw, pitch, dist)) {
+        camera.setOrbit(t, yaw, pitch, dist, blend);
+        camFollow_ = name == "close";
+        return;
+    }
     V3 f = focusPoint();
     if (name == "side") camera.setOrbit(f, 1.45f, 0.22f, scene.hasClips ? 2.3f : 3.0f, blend);
     else if (name == "top") camera.setOrbit(f, 0.2f, 1.18f, 2.3f, blend);
-    else if (name == "close") {
-        V3 head = scene.vivian.loaded() ? scene.vivian.bonePos("頭") + V3{0, 0.04f, 0} : f;
-        camera.setOrbit(head, 0.3f, 0.08f, 0.62f, blend);
-    } else if (name == "wide") camera.setOrbit(f, 0.55f, 0.36f, 4.3f, blend);
+    else if (name == "wide") camera.setOrbit(f, 0.55f, 0.36f, 4.3f, blend);
     else camera.setOrbit(f, 0.32f, 0.26f, scene.hasClips ? 2.5f : 3.1f, blend);
 }
 
@@ -184,6 +234,8 @@ void Sandbox::applySpec(const Spec& s) {
         if (v.size() >= 6) f = {(float)std::atof(v[3].c_str()), (float)std::atof(v[4].c_str()), (float)std::atof(v[5].c_str())};
         camera.setOrbit(f, v.size() > 0 ? (float)std::atof(v[0].c_str()) : 0.3f, v.size() > 1 ? (float)std::atof(v[1].c_str()) : 0.25f,
                         v.size() > 2 ? (float)std::atof(v[2].c_str()) : 2.5f, 0.f);
+        camPending_ = camFollow_ = false;
+        camPreset_ = "orbit";
     } else {
         cameraPreset(cam, 0.f);
     }
@@ -257,6 +309,7 @@ void Sandbox::applyPose() {
     if (m.loaded()) m.setTone(kTones[mtone_]);
     // gaze: she looks at him (or the camera when alone), he looks at her face
     bool together = !pos.empty() && pos != "solo" && m.loaded() && scene.showMarcus;
+    for (Character* c : {&v, &m}) c->proc.lookWeight = together ? 0.45f : 0.9f;
     if (v.loaded()) v.proc.lookTarget = together ? m.bonePos("頭") : cam_.eye;
     if (m.loaded()) m.proc.lookTarget = v.loaded() ? v.bonePos("頭") : cam_.eye;
 }
@@ -282,7 +335,11 @@ void Sandbox::update(float dt) {
     camera.handleInput(dt);
     applyPose();
     scene.update(dt);
-    // arousal look: flush/sweat follow depth motion a little in the sandbox
+    if (camPending_) applyCameraPreset();
+    else if (camFollow_ && camera.mode() == CameraRig::Mode::Orbit) {
+        V3 t; float yaw, pitch, dist;
+        if (boneShot(camPreset_, t, yaw, pitch, dist)) camera.follow(t);
+    }
     audio.update();
 }
 
@@ -321,10 +378,10 @@ void Sandbox::drawOverlay(int w, int h) {
         GuiLabel(Rectangle{x, y, pw, 20}, "no clips yet: characters in bind pose"); y += 26;
     }
     GuiLine(Rectangle{x, y, pw, 12}, "Camera"); y += 16;
-    const char* cams[6] = {"front", "side", "top", "close", "wide", "fpv"};
-    for (int i = 0; i < 6; ++i)
+    const char* cams[7] = {"front", "side", "top", "close", "portrait", "wide", "fpv"};
+    for (int i = 0; i < 7; ++i)
         if (GuiButton(Rectangle{x + (float)(i % 3) * 102, y + (float)(i / 3) * 28, 98, 24}, cams[i])) cameraPreset(cams[i]);
-    y += 62;
+    y += 90;
     GuiLine(Rectangle{x, y, pw, 12}, "Render"); y += 16;
     int q = (int)renderer.settings.quality;
     GuiToggleGroup(Rectangle{x, y, 98, 24}, "low;medium;high", &q); y += 30;

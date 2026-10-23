@@ -74,8 +74,13 @@ bool Scene::load() {
         c->proc.floorY = info.bedTop;
         c->setTone("caramel");
     }
-    // Vivian's hair texture is neutral grey: the tint gives it its colour (rich dark chestnut)
-    if (vivian.loaded()) vivian.hairTint = {0.42f, 0.21f, 0.11f};
+    // content hair carries its colour in baseColorFactor; the legacy web hair is neutral grey with a white
+    // factor, so only that one gets a tint (rich dark chestnut)
+    if (vivian.loaded()) {
+        for (const Material& m : vivian.model.materials)
+            if (m.shading == Shading::Hair && m.baseColor.x > 0.9f && m.baseColor.y > 0.9f && m.baseColor.z > 0.9f)
+                vivian.hairTint = {0.42f, 0.21f, 0.11f};
+    }
     standingPlacement();
     particles.init();
     return vivian.loaded() || marcus.loaded();

@@ -213,6 +213,18 @@ void Character::update(float dt) {
     anim.computeGlobals(rootMatrix());
     procedural.apply(anim, dt, proc);
     anim.finish();
+    // skull centre: hair shading bends card normals around it
+    int hb = bone("頭");
+    if (hb >= 0) hairCenter_ = xformPoint(anim.global(hb), procedural.headUpLocal() * 0.085f + procedural.headForwardLocal() * 0.01f);
+}
+
+void Character::headAxes(V3& center, V3& faceFwd, V3& crownUp) const {
+    int hb = bone("頭");
+    if (hb < 0) { center = placement.translation() + V3{0, 1.5f, 0}; faceFwd = forward(); crownUp = {0, 1, 0}; return; }
+    const M4& g = anim.global(hb);
+    center = hairCenter_;
+    faceFwd = normalize(xformDir(g, procedural.headForwardLocal()));
+    crownUp = normalize(xformDir(g, procedural.headUpLocal()));
 }
 
 void Character::setBoneOffset(const std::string& name, const V3& e) {

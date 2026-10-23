@@ -23,6 +23,8 @@ public:
     // eye point + look axis given in the bone's local frame (clips.json "fpv")
     void setFirstPersonLocal(Character* c, const std::string& bone, const V3& offsetLocal, const V3& forwardLocal, float blendSeconds = 0.6f);
     void setFov(float degrees) { fovDeg_ = degrees; }
+    // keep orbiting the same way but track a moving target (bone-relative presets)
+    void follow(const V3& t) { toTarget_ = t; }
     Mode mode() const { return mode_; }
 
     // Mouse: RMB drag orbits / looks, wheel zooms, MMB drag pans.
@@ -49,7 +51,7 @@ private:
     V3 fpForwardLocal_{0, 0, 1};
     float fpYaw_ = 0.f, fpPitch_ = -0.35f, fpBlend_ = 0.f;
     V3 lastEye_{0, 1.4f, 3.f}, lastTarget_{0, 0.8f, 0};
-    float fovDeg_ = 38.f, time_ = 0.f;
+    float fovDeg_ = 38.f, fpFovDeg_ = 58.f, time_ = 0.f;
 };
 
 }  // namespace ag
