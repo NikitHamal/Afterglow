@@ -172,9 +172,24 @@ GLuint texWallpaper() {
             float du = std::fabs(std::fmod(u * 4.f + 0.5f, 1.f) - 0.5f), dv = std::fabs(std::fmod(v * 3.f + 0.5f, 1.f) - 0.5f);
             float diamond = smoothstep(0.42f, 0.38f, du + dv * 0.75f) - smoothstep(0.30f, 0.26f, du + dv * 0.75f);
             float stripe = smoothstep(0.02f, 0.0f, std::fabs(std::fmod(u * 8.f, 1.f) - 0.5f) - 0.47f);
-            V3 base{0.15f, 0.19f, 0.195f};
+            V3 base{0.23f, 0.28f, 0.285f};
             V3 c = base * (0.9f + 0.2f * fbm(u * 40.f, v * 40.f, 3)) + V3{0.07f, 0.055f, 0.03f} * (diamond * 0.6f + stripe * 0.25f);
             put(px, N, x, y, c);
+        }
+    return textureFromRGBA(px.data(), N, N, true);
+}
+GLuint texSatin() {
+    const int N = 512; Px px((size_t)N * N * 4);
+    for (int y = 0; y < N; ++y)
+        for (int x = 0; x < N; ++x) {
+            float u = (float)x / N, v = (float)y / N;
+            // integer frequencies only, so the texture tiles without seams
+            const float T = 2.f * kPi;
+            float mott = 0.5f + 0.2f * std::sin(T * 2.f * u + 1.3f * std::sin(T * v)) + 0.16f * std::sin(T * 3.f * v + 1.7f * std::sin(T * 2.f * u))
+                       + 0.08f * std::sin(T * (5.f * u + 4.f * v));
+            float weave = std::sin(T * (96.f * u + 96.f * v)) * 0.5f + 0.5f;
+            float k = 0.90f + 0.10f * mott + 0.025f * weave;
+            put(px, N, x, y, V3{k, k * 0.985f, k * 0.97f});
         }
     return textureFromRGBA(px.data(), N, N, true);
 }
@@ -260,7 +275,7 @@ void buildPlaceholderRoom(Model& out, RoomInfo& info) {
     int mPanel = mat("wainscot", {0.085f, 0.055f, 0.04f, 1}, 0.5f, 0.f);
     int mFrame = mat("bed_frame", {0.11f, 0.055f, 0.035f, 1}, 0.36f, 0.f);
     int mMattress = mat("mattress", {0.50f, 0.45f, 0.40f, 1}, 0.8f, 0.f);
-    int mSheet = mat("sheet_satin", {0.42f, 0.35f, 0.28f, 1}, 0.42f, 0.f);
+    int mSheet = mat("sheet_satin", {0.34f, 0.275f, 0.21f, 1}, 0.4f, 0.f, texSatin());
     int mPillow = mat("pillow", {0.78f, 0.73f, 0.66f, 1}, 0.7f, 0.f);
     int mHead = mat("headboard_velvet", {0.11f, 0.105f, 0.11f, 1}, 0.72f, 0.f);
     int mThrow = mat("throw", {0.30f, 0.045f, 0.07f, 1}, 0.62f, 0.f);
