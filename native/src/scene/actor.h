@@ -43,17 +43,25 @@ public:
     void postPose(Animator& a);                     // ... and postHook (head motions, after the look-at)
     void reset();
     void releaseFace();                             // hand the face morphs back (leaving the story)
+    float gestureWeight(const char* g) const { return gesture_ == g ? gestW_ * acting : 0.f; }
 
     std::map<std::string, float> expr;              // expression targets (morph -> weight), blended
     float acting = 1.f;                             // gestures / head / lean (0: an act owns the body)
     float lean = 0.f;                               // leaning in toward the partner (kiss, embrace) 0..1
+    float leanMax = 0.12f;                          // ... at most this far (radians)
+    float turn = 0.f;                               // 0..1 the upper body turns toward the partner (seated side by side)
     float sit = 0.f;                                // seated: gestures stay in the forearms
     bool eyesClosed = false;                        // kissing
+    // the kiss: the lip front goes to kissTarget (world) with weight kissW (neck + head two-bone IK), the head rolled
+    // by kissRoll (radians, toward the character's own right); mouthRest = the lip front before that, this frame
+    float kissW = 0.f, kissRoll = 0.f;
+    V3 kissTarget{0, 0, 0}, mouthRest{0, 0, 0};
 
 private:
     struct Arm { float flex = 0, abduct = 0, elbow = 0, supin = 0, shrug = 0; };
     void gestureTargets(Arm& l, Arm& r) const;
     void face(float dt);
+    void kissIK(Animator& a);
 
     Character* c_ = nullptr;
     bool female_ = true;
