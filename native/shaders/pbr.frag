@@ -117,8 +117,14 @@ float shadowFactor(vec3 wpos, vec3 n, vec3 l) {
     mat2 R = mat2(cos(ang), sin(ang), -sin(ang), cos(ang));
     float bias = 0.00035 + 0.0009 * (1.0 - nl);
     float radius = u_shadowTexel * u_shadowSoft;
+    // 4 spread taps first: where they agree (fully lit / fully shadowed, most pixels) the other 12 add nothing
     float sum = 0.0;
-    for (int i = 0; i < 16; ++i) {
+    for (int i = 0; i < 4; ++i) {
+        float d = texture(u_shadowMap, c.xy + R * POISSON[i] * radius).r;
+        sum += (c.z - bias <= d) ? 1.0 : 0.0;
+    }
+    if (sum == 0.0 || sum == 4.0) return sum * 0.25;
+    for (int i = 4; i < 16; ++i) {
         float d = texture(u_shadowMap, c.xy + R * POISSON[i] * radius).r;
         sum += (c.z - bias <= d) ? 1.0 : 0.0;
     }
@@ -266,7 +272,9 @@ void main() {
     col += shade(s, normalize(-u_fillDir), u_fillColor * u_fillIntensity);
     for (int i = 0; i < u_numPoints; ++i) {
         vec3 Lp = u_pointPos[i] - v_wpos;
-        float d = length(Lp); Lp /= max(d, 1e-4);
+        float d = length(Lp);
+        if (d >= u_pointRange[i] || u_pointIntensity[i] <= 0.0) continue;   // out of reach: no shading work
+        Lp /= max(d, 1e-4);
         float f = sat(1.0 - pow(d / max(u_pointRange[i], 0.01), 4.0));
         col += shade(s, Lp, u_pointColor[i] * u_pointIntensity[i] * f * f / (d * d + 0.05));
     }
