@@ -64,6 +64,10 @@ uniform vec3 u_skyColor;
 uniform vec3 u_groundColor;
 uniform float u_ambient;
 
+uniform sampler2D u_ssao;
+uniform int u_ssaoOn;
+uniform vec2 u_screenSize;
+
 uniform int u_numPoints;
 uniform vec3 u_pointPos[6];
 uniform vec3 u_pointColor[6];
@@ -130,10 +134,11 @@ vec3 shade(Surf s, vec3 L, vec3 radiance) {
         float th1 = dot(T1, H), th2 = dot(T2, H);
         float sin1 = sqrt(max(0.0, 1.0 - th1 * th1)), sin2 = sqrt(max(0.0, 1.0 - th2 * th2));
         float dirAtten = smoothstep(-1.0, 0.0, dot(T1, H));
-        vec3 spec = vec3(0.11) * pow(sin1, 90.0) * dirAtten + s.albedo * 0.55 * pow(sin2, 22.0);
+        // dark hair: narrow, faint white primary + broader secondary tinted by the hair colour
+        vec3 spec = vec3(0.035) * pow(sin1, 220.0) * dirAtten + s.albedo * 0.9 * pow(sin2, 48.0);
         float wrap = sat((NoLraw + 0.45) / 1.45);
         vec3 diff = s.albedo / PI * wrap;
-        return (diff + spec * NoL * 2.2) * radiance;
+        return (diff + spec * NoL * 1.6) * radiance;
     }
     float a = max(s.rough * s.rough, 0.002);
     vec3 F = F_Schlick(VoH, s.f0);
@@ -198,6 +203,7 @@ void main() {
     s.albedo = base.rgb; s.metal = metal; s.rough = clamp(rough, 0.03, 1.0); s.ao = ao; s.alpha = alpha; s.mode = u_mode;
     s.f0 = mix(vec3(u_mode == 1 ? 0.028 : 0.04), base.rgb, metal);
 
+    float ssao = u_ssaoOn == 1 ? texture(u_ssao, gl_FragCoord.xy / u_screenSize).r : 1.0;
     vec3 emis = u_emissive;
     if (u_hasEmis == 1) emis *= texture(u_texEmis, uvSel(u_uvEmis)).rgb;
 
@@ -214,7 +220,7 @@ void main() {
         vec3 lit = (u_mode == 5) ? base.rgb : base.rgb * emis;
         float keyShare = sat(dot(Ng, Lk)) * keyAtt * u_keyIntensity * 0.35;
         float darken = 1.0 - 0.6 * (1.0 - sh) * sat(keyShare);
-        vec3 c = lit * darken + ((u_mode == 5) ? vec3(0.0) : vec3(0.0));
+        vec3 c = lit * darken * mix(1.0, ssao, 0.7);
         o_color = vec4(c, u_pass == 1 ? sat(alpha / max(u_cutoff, 1e-3)) : 1.0);
         return;
     }
@@ -230,6 +236,8 @@ void main() {
         col += shade(s, Lp, u_pointColor[i] * u_pointIntensity[i] * f * f / (d * d + 0.05));
     }
 
+    col *= mix(1.0, ssao, 0.3);   // contact darkening on direct light (subtle)
+    ao *= ssao;
     // ambient: hemisphere irradiance + cheap glossy environment
     vec3 irr = mix(u_groundColor, u_skyColor, N.y * 0.5 + 0.5) * u_ambient;
     vec3 R = reflect(-V, N);
@@ -240,7 +248,7 @@ void main() {
     vec3 diffAmb = s.albedo * (1.0 - metal) * irr * ao;
     if (u_mode == 1) diffAmb *= vec3(1.0, 0.94, 0.92);
     vec3 specAmb = env * Fa * specOcc * (1.0 - s.rough * 0.7) * (u_mode == 3 ? 3.0 : 1.0);
-    if (u_mode == 2) specAmb *= 0.35;
+    if (u_mode == 2) specAmb *= 0.12;
     col += diffAmb + specAmb + emis;
 
     if (u_mode == 3) {

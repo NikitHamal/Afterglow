@@ -73,6 +73,7 @@ void Sandbox::reset() {
     for (auto& kv : mbody_) kv.second = 0.f;
     tone_ = mtone_ = 1;
     scene.showVivian = scene.showMarcus = true;
+    scene.vivian.flush = scene.vivian.sweat = scene.marcus.flush = scene.marcus.sweat = 0.f;
     hairSim_ = breathing_ = lookAt_ = true;
     applyQuality(renderer.settings, Quality::High);
     posIndex_ = 0;

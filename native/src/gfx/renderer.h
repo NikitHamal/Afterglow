@@ -18,6 +18,9 @@ struct RenderSettings {
     bool bloom = true;
     float bloomStrength = 0.07f, bloomThreshold = 1.0f, bloomKnee = 0.7f, bloomRadius = 1.0f;
     int bloomLevels = 6;
+    bool ssao = true;
+    int ssaoSamples = 16;
+    float ssaoRadius = 0.22f, ssaoIntensity = 1.25f;
     bool fxaa = true;
     bool hairSoft = true;
     float renderScale = 1.f;          // internal resolution multiplier
@@ -46,8 +49,8 @@ private:
     void fullscreen(Program& p);
     M4 computeShadowVP(const Scene& s) const;
 
-    Program pbr_, depth_, prefilter_, down_, up_, composite_, fxaa_;
-    RenderTarget hdr_, ldr_;
+    Program pbr_, depth_, prefilter_, down_, up_, composite_, fxaa_, ssao_, ssaoBlur_;
+    RenderTarget hdr_, ldr_, aoRaw_, ao_;
     RenderTarget bloom_[8];
     int bloomCount_ = 0;
     ShadowMap shadow_;
