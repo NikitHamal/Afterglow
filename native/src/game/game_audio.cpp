@@ -53,7 +53,7 @@ void ambCallback(void* buffer, unsigned int frames) {
         float hpIn = gAmb.dropLp;
         float rain = hpIn - gAmb.hp;
         gAmb.hp += (hpIn - gAmb.hp) * 0.06f;
-        float ambient = (room * 0.9f + rain * 0.10f) * gAmb.ambS * 0.55f;
+        float ambient = (room * 0.9f + rain * 0.12f) * gAmb.ambS * 0.085f;   // ~ -36 dBFS: felt more than heard
         // pad: two neighbouring chords cross-fade
         float pos = (float)(gAmb.t / chordLen);
         int c0 = (int)pos % 4, c1 = (c0 + 1) % 4;
@@ -78,7 +78,7 @@ void ambCallback(void* buffer, unsigned int frames) {
             }
             // keep the oscillators of the outgoing slot in phase with the next chord
             if (f < 0.0001f) for (int n = 0; n < 6; ++n) gAmb.ph[0][n] = gAmb.ph[1][n];
-            pad *= 0.045f * gAmb.musS * (0.85f + 0.15f * std::sin((float)gAmb.t * 0.21f));
+            pad *= 0.085f * gAmb.musS * (0.85f + 0.15f * std::sin((float)gAmb.t * 0.21f));
         }
         gAmb.padLp[0] += (pad - gAmb.padLp[0]) * 0.12f;
         float l = ambient + gAmb.padLp[0];
