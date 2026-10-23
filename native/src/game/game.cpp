@@ -36,6 +36,13 @@ bool Game::init() {
     }
     ui.init();
     if (!loadingProgress) loadingProgress = [this](float f, const char* what) { drawLoading(f, what); };
+    // while textures decode on worker threads, keep the window responsive and the loader animating
+    Model::loadPump = [this]() {
+        static double last = 0.0;
+        if (GetTime() - last < 0.05) return;
+        last = GetTime();
+        drawLoading(loadF_, loadWhat_.c_str());
+    };
     loadingProgress(0.f, "Opening the door");
     if (!renderer.init()) return false;
     applyQuality(renderer.settings, (Quality)settings.quality);
@@ -43,6 +50,7 @@ bool Game::init() {
     setTextureMaxSize(settings.quality == 0 ? 1024 : (settings.quality == 1 ? 2048 : 0));
     if (!scene.load(loadingProgress)) AG_WARN("AG: scene loaded without characters");
     loadingProgress(1.f, "");
+    Model::loadPump = nullptr;
     std::string meta = paths::findAsset({"characters/clips.json"});
     if (!meta.empty()) clipsMeta_ = Json::parse(paths::readText(meta));
     platform::trimHeap();   // loading spikes (file images, decode buffers) go back to the OS
@@ -351,6 +359,8 @@ void Game::drawLoading(float f, const char* what) {
     // drawn between loading steps: logo, a thin progress line, what is loading
     static float shown = 0.f;
     shown = std::max(shown, f);
+    loadF_ = f;
+    if (what != loadWhat_.c_str()) loadWhat_ = what ? what : "";
     ui.begin(1.f / 60.f, false);
     BeginDrawing();
     ClearBackground(Color{7, 4, 6, 255});
@@ -363,6 +373,9 @@ void Game::drawLoading(float f, const char* what) {
     b.shadow = ui.u(8.f); b.shadowCol = ui::withA(ui.th.accent, 0.4f);
     ui.box(Rectangle{x, y, std::max(ui.u(2.f), w * shown), ui.u(2.f)}, b);
     if (what && *what) ui.text(ui::Face::SerifItalic, ui.u(22.f), what, ui.W * 0.5f, y + ui.u(26.f), ui.th.inkFaint, ui::Center);
+    // a slow shimmer along the line: alive even while one step takes a while
+    float sx = x + w * std::fmod((float)GetTime() * 0.45f, 1.f);
+    ui.glow(sx, y + ui.u(1.f), ui.u(26.f), ui::withA(ui.th.accent, 0.35f));
     ui.end();
     EndDrawing();
 }

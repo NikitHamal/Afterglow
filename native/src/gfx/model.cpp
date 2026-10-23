@@ -3,6 +3,7 @@
 #include "core/log.h"
 #include "core/paths.h"
 #include "external/cgltf.h"   // implementation is compiled inside raylib (rmodels.c)
+#include <chrono>
 #include <cstring>
 #include <future>
 #include <map>
@@ -103,6 +104,7 @@ void computeTangents(const std::vector<float>& pos, const std::vector<float>& nr
     }
 }
 
+std::function<void()> Model::loadPump;
 static long long gBufBytes = 0;
 long long Model::bufferBytes() { return gBufBytes; }
 
@@ -235,7 +237,11 @@ bool Model::load(const std::string& p) {
             DecodedImage* dst = &decoded[i];
             jobs.push_back(std::async(std::launch::async, [data, size, dst] { decodeImage(data, size, *dst); }));
         }
-        for (auto& j : jobs) j.get();
+        for (auto& j : jobs) {
+            while (j.wait_for(std::chrono::milliseconds(15)) != std::future_status::ready)
+                if (loadPump) loadPump();
+            j.get();
+        }
     }
     std::map<std::pair<int, bool>, GLuint> texCache;
     auto texFor = [&](const cgltf_texture_view& v, bool srgb) -> GLuint {
