@@ -198,6 +198,9 @@ void Renderer::drawModel(Program& p, Model& m, Animator& a, const Character* ch,
             int layer = (size_t)n.mesh < outfit->meshLayer.size() ? outfit->meshLayer[(size_t)n.mesh] : 0;
             vis = outfit->visibility(layer);
             if (vis <= 0.002f) continue;   // taken off
+            // underwear stays under the clothes: while the outer layer is fully worn nothing of it is drawn (not
+            // even where it reaches past the outer layer, like a bra's band above a strapless dress)
+            if (layer == 1 && outfit->visibility(0) > 0.999f) continue;
         }
         for (size_t pi = 0; pi < mesh.prims.size(); ++pi) {
             Primitive& prim = mesh.prims[pi];
@@ -253,7 +256,11 @@ void Renderer::drawModel(Program& p, Model& m, Animator& a, const Character* ch,
                     bool under = (size_t)n.mesh < outfit->meshLayer.size() && outfit->meshLayer[(size_t)n.mesh] == 1;
                     p.set("u_fitInflate", under ? 0.0015f : 0.003f);
                 }
-                else p.set("u_fitHide", V2{worn->visibility(0) > 0.999f ? 1.f : 0.f, worn->visibility(1) > 0.999f ? 1.f : 0.f});
+                else {
+                    // skin hides under the outer layer when it is fully worn, under the underwear when that is drawn
+                    bool outerOn = worn->visibility(0) > 0.999f;
+                    p.set("u_fitHide", V2{outerOn ? 1.f : 0.f, !outerOn && worn->visibility(1) > 0.999f ? 1.f : 0.f});
+                }
             }
             p.set("u_pass", pass == 2 ? 1 : 0);
             if (mat.doubleSided || pass == 0) glDisable(GL_CULL_FACE);
