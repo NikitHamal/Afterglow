@@ -13,3 +13,6 @@ flushed|cam=close;char=vivian;flush=0.9;sweat=0.8;face=moan:0.7
 debug_overlay|cam=front;debug=1
 missionary|pos=missionary;depth=0.6;cam=side
 doggy|pos=doggy;depth=0.8;cam=side
+flex_test|cam=front;flex=1
+flex_side|cam=side;flex=0.7
+dust_beam|cam=orbit:0.9,0.2,3.6

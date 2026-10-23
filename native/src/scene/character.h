@@ -27,6 +27,10 @@ public:
     float clipDuration(const std::string& name) const;
     std::vector<std::string> clipNames() const;
 
+    // ---- bone offsets: additive local rotations applied after clips (pose tweaks) ----
+    void setBoneOffset(const std::string& bone, const V3& eulerRad);   // XYZ order, local space
+    void clearBoneOffsets() { boneOffsets_.clear(); }
+
     // ---- morph targets (by name, across all meshes that carry it) ----
     void setMorph(const std::string& name, float w);      // w < 0 releases to animated value
     float morph(const std::string& name) const;
@@ -79,6 +83,7 @@ private:
     std::unordered_map<std::string, BoneMask> masks_;
     std::unordered_map<std::string, std::vector<std::pair<int, int>>> morphIndex_;   // name -> (mesh, target)
     std::unordered_map<std::string, float> bodyValues_;
+    std::unordered_map<int, Quat> boneOffsets_;
     std::vector<GLuint> baseOverride_;
     std::unordered_map<std::string, GLuint> toneCache_;
 };

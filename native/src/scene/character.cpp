@@ -195,9 +195,17 @@ void Character::update(float dt) {
         const Clip& c = model.clips[(size_t)l.clip];
         anim.applyClip(l.clip, l.t * c.duration, l.w, mask(l.mask));
     }
+    for (auto& kv : boneOffsets_) anim.r(kv.first) = qnormalize(qmul(anim.r(kv.first), kv.second));
     anim.computeGlobals(rootMatrix());
     procedural.apply(anim, dt, proc);
     anim.finish();
+}
+
+void Character::setBoneOffset(const std::string& name, const V3& e) {
+    int b = bone(name);
+    if (b < 0) return;
+    if (std::fabs(e.x) + std::fabs(e.y) + std::fabs(e.z) < 1e-5f) { boneOffsets_.erase(b); return; }
+    boneOffsets_[b] = qnormalize(qmul(qmul(qaxis({1, 0, 0}, e.x), qaxis({0, 1, 0}, e.y)), qaxis({0, 0, 1}, e.z)));
 }
 
 V3 Character::bonePos(const std::string& name) const {
