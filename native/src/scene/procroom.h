@@ -1,5 +1,6 @@
 // Afterglow engine — procedural placeholder bedroom (used until assets/room/room.glb exists).
 #pragma once
+#include <string>
 #include "gfx/model.h"
 
 namespace ag {
@@ -15,6 +16,7 @@ struct RoomInfo {
     V3 windowCenter{3.15f, 1.6f, -0.6f};
     float bakeScale = 1.f;            // room.json lightmap.scale (baked irradiance multiplier)
     V3 camMin{-2.6f, 0.12f, -2.6f}, camMax{2.6f, 2.7f, 3.2f};   // room.json cameraBounds
+    std::string style, mood;          // story locations: hotel | cabin | villa, their default lighting mood
 };
 
 // Builds meshes/materials/textures into `out` (one node per object, static).

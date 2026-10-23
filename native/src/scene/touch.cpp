@@ -136,7 +136,7 @@ void TouchRig::init(Character& c) {
             handJointLo[s] = hi >= 0 ? lo : -1; handJointHi[s] = hi;
         }
     }
-    ready_ = zones_[(int)Zone::Vulva].valid || zones_[(int)Zone::BreastL].valid;
+    ready_ = arms_[0].wrist >= 0 || arms_[1].wrist >= 0;   // zones are optional (world goals work on anyone)
     AG_INFO("AG: touch: vulva %s, breasts %s/%s, hand joints L %d-%d R %d-%d", zones_[0].valid ? "yes" : "no",
             zones_[1].valid ? "yes" : "no", zones_[2].valid ? "yes" : "no", handJointLo[0], handJointHi[0], handJointLo[1], handJointHi[1]);
 }
@@ -161,13 +161,14 @@ void TouchRig::apply(Animator& a, const TouchGoals& goals) {
 
 void TouchRig::solveArm(Animator& a, const Arm& arm, const HandGoal& g) {
     V3 zp, zn;
-    if (!zoneWorld(a, g.zone, zp, zn)) return;
+    if (g.world) { zp = g.pos; zn = normalize(g.normal); }
+    else if (!zoneWorld(a, g.zone, zp, zn)) return;
     const Model* m = a.model();
     int chest = m->findNode("上半身2"), hips = m->findNode("下半身");
     V3 up = chest >= 0 && hips >= 0 ? normalize(P(a, chest) - P(a, hips)) : V3{0, 1, 0};
-    bool breast = g.zone != Zone::Vulva;
+    bool breast = g.world || g.zone != Zone::Vulva;   // a resting palm: fingertips a little beyond the point
     // fingers lie along the surface: toward the vulva from the belly; up over the breast toward the collarbone
-    V3 along = breast ? up : up * -1.f;
+    V3 along = g.world ? g.along : (breast ? up : up * -1.f);
     V3 f = along - zn * dot(along, zn);
     f = length(f) > 1e-4f ? normalize(f) : normalize(cross(zn, V3{1, 0, 0}));
     V3 lat = normalize(cross(zn, f));
@@ -219,14 +220,14 @@ void TouchRig::solveArm(Animator& a, const Arm& arm, const HandGoal& g) {
             for (size_t k = 0; k < arm.fingers[fi].size(); ++k)
                 rotateWorld(a, arm.fingers[fi][k], qaxis(axis, curl * (k == 0 ? 0.7f : 1.f)));
         // contact spheres at the finger pads (+ the palm for a grab)
-        for (int fi = 0; fi < 3; ++fi) {
+        for (int fi = 0; fi < 3 && g.dent; ++fi) {
             const std::vector<int>& ch = arm.fingers[fi];
             if (ch.size() < 2) continue;
             V3 a2 = P(a, ch[ch.size() - 2]), a3 = P(a, ch.back());
             V3 pad = a3 + normalize(a3 - a2) * 0.011f - palm * 0.004f;
             contacts.push_back({pad, 0.0095f});
         }
-        if (breast) contacts.push_back({P(a, arm.middle0) - palm * 0.012f, 0.026f});
+        if (breast && g.dent) contacts.push_back({P(a, arm.middle0) - palm * 0.012f, 0.026f});
     }
 }
 

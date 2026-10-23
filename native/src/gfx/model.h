@@ -14,7 +14,7 @@ namespace ag {
 
 enum class AlphaMode { Opaque = 0, Mask = 1, Blend = 2 };
 // Shading model chosen per material (by name heuristics, overridable).
-enum class Shading { Generic = 0, Skin = 1, Hair = 2, Eye = 3, Room = 4, Unlit = 5 };
+enum class Shading { Generic = 0, Skin = 1, Hair = 2, Eye = 3, Room = 4, Unlit = 5, Cloth = 6 };
 
 struct Material {
     std::string name;

@@ -37,6 +37,8 @@ bool Settings::load(const std::string& path) {
     bloom = rb(j, "bloom", bloom);
     ssao = rb(j, "ssao", ssao);
     filmGrain = rb(j, "filmGrain", filmGrain);
+    storyAuto = rb(j, "storyAuto", storyAuto);
+    depthOfField = rb(j, "depthOfField", depthOfField);
     hairPhysics = rb(j, "hairPhysics", hairPhysics);
     lightMood = ri(j, "lightMood", lightMood, 0, 2);
     brightness = rd(j, "brightness", brightness, -1.f, 1.f);
@@ -70,6 +72,8 @@ bool Settings::save(const std::string& path) const {
     j.set("bloom", Json::ofBool(bloom));
     j.set("ssao", Json::ofBool(ssao));
     j.set("filmGrain", Json::ofBool(filmGrain));
+    j.set("storyAuto", Json::ofBool(storyAuto));
+    j.set("depthOfField", Json::ofBool(depthOfField));
     j.set("hairPhysics", Json::ofBool(hairPhysics));
     j.set("lightMood", Json::of(lightMood));
     j.set("brightness", Json::of(brightness));

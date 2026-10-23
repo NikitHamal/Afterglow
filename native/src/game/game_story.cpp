@@ -11,24 +11,6 @@ namespace ag {
 
 namespace {
 float clamp01(float v) { return v < 0.f ? 0.f : (v > 1.f ? 1.f : v); }
-// first n UTF-8 characters of s
-std::string u8prefix(const std::string& s, int n) {
-    if (n <= 0) return {};
-    size_t i = 0;
-    int c = 0;
-    while (i < s.size()) {
-        unsigned char ch = (unsigned char)s[i];
-        if ((ch & 0xC0) != 0x80) { if (c == n) break; ++c; }
-        ++i;
-    }
-    return s.substr(0, i);
-}
-std::string titleCase(std::string s) {
-    for (auto& ch : s) if (ch == '_') ch = ' ';
-    bool up = true;
-    for (auto& ch : s) { if (up && std::isalpha((unsigned char)ch)) { ch = (char)std::toupper((unsigned char)ch); up = false; } else if (ch == ' ') up = true; }
-    return s;
-}
 }  // namespace
 
 // ------------------------------------------------------------------ loading + progress
@@ -36,6 +18,7 @@ void Game::loadStories() {
     stories_.clear();
     std::string dir = paths::join(paths::assetRoot(), "story");
     for (const std::string& f : paths::listFilesRecursive(dir, {".json"})) {
+        if (paths::dirname(f) != dir) continue;   // story/voice/manifest.json and friends are not stories
         Story s;
         std::string err;
         if (s.load(f, err)) { AG_INFO("AG: story '%s': %d chapters, %d nodes", s.title.c_str(), (int)s.chapters.size(), (int)s.nodes.size()); stories_.push_back(std::move(s)); }
@@ -56,11 +39,14 @@ const Story* Game::storyById(const std::string& id) const {
 void Game::beginStory(const Story* s, const std::string& node, const std::map<std::string, float>* vars, int line) {
     if (!s) return;
     stage(Stage::Night);
+    enterStoryWorld();
     story_.start(s, node, vars, line);
+    story_.autoMode = settings.storyAuto;
     storyPlaying_ = false;
     storyOverlay_ = 0;
     storyCardT_ = 0.f;
     storyLastChapter_.clear();
+    black_ = 1.f; blackDir_ = -1;   // the film fades in
     night_.begin((unsigned)(GetTime() * 1000.0) ^ 0x51ed270bu);
     go(Screen::Story, 0.8f);
 }
@@ -77,38 +63,6 @@ void Game::storyAutosave() {
     saveStorySaves(storySavesPath_, storySaves_);
 }
 
-// ------------------------------------------------------------------ staging a node
-void Game::stageStoryNode() {
-    const StoryNode* n = story_.node();
-    if (!n) return;
-    const Story* s = story_.story();
-    // progress: chapter reached, gallery, endings
-    if (!n->chapter.empty()) {
-        StoryProgress::add(storyProgress_.chapters[s->id], n->chapter);
-        if (n->chapter != storyLastChapter_) { storyLastChapter_ = n->chapter; storyCardT_ = 0.f; storyCardKind_ = 0; }
-    }
-    if (!n->gallery.empty()) StoryProgress::add(storyProgress_.gallery[s->id], n->gallery);
-    if (n->ending) StoryProgress::add(storyProgress_.endings[s->id], n->id);
-    if (!n->location.empty() && n->location != storyLocation_) {
-        storyLocation_ = n->location;
-        if (storyCardKind_ != 0 || storyCardT_ > 0.5f) { storyCardT_ = 0.f; storyCardKind_ = 1; }
-    }
-    if (!harness) storyProgress_.save(storyProgressPath_);
-    storyAutosave();
-    // lighting mood for the scene
-    if (!n->mood.empty()) storyMood_ = n->mood == "candle" ? 1 : (n->mood == "day" ? 2 : 0);
-    // who is on stage: shown AND (nude, or an outfit asset for that state exists - none ship yet)
-    if (n->showSet) { storyShow_[0] = storyShow_[1] = false; for (auto& w : n->show) { if (w == "vivian") storyShow_[0] = true; if (w == "marcus") storyShow_[1] = true; } }
-    for (auto& o : n->outfit) { if (o.first == "vivian") storyOutfit_[0] = o.second; if (o.first == "marcus") storyOutfit_[1] = o.second; }
-    // the pose: a free-play act at a depth, or a clip family
-    if (!n->act.empty()) {
-        for (size_t i = 0; i < positions_.size(); ++i)
-            if (positions_[i].id == n->act) { posIndex_ = -1; setPosition((int)i, true); break; }
-        depth_ = depthTarget_ = dragDepth_ = n->actT;
-    }
-    if (!n->cam.empty()) storyCamera(n->cam, 1.6f);
-}
-
 void Game::storyCamera(const std::string& cam, float blend) {
     if (cam == "side") camMode_ = 0;
     else if (cam == "front") camMode_ = 1;
@@ -122,119 +76,6 @@ void Game::storyCamera(const std::string& cam, float blend) {
     }
     cameraForPosition(blend);
     camUser_ = true;   // the story directs the camera: no cinematic cuts
-}
-
-bool Game::storyCharVisible(int who) const {
-    const std::string& o = storyOutfit_[who];
-    return storyShow_[who] && (o.empty() || o == "nude");   // dressed / partial: hidden until outfit assets land
-}
-
-// ------------------------------------------------------------------ update
-void Game::updateStory(float dt) {
-    if (!story_.active()) return;
-    const StoryNode* n = story_.node();
-    if (story_.nodeChanged) { story_.nodeChanged = false; stageStoryNode(); n = story_.node(); }
-    storyCardT_ += dt;
-    if (storyPlaying_) {
-        // the night runs until the node's goal, then the story continues
-        updatePlay(dt);
-        presentPlay(dt);
-        const std::string& g = n ? n->playGoal : std::string();
-        bool done = night_.finished;
-        if (g == "her") done = done || night_.herClimaxes > 0;
-        else if (g.rfind("time:", 0) == 0) done = done || night_.elapsed >= (float)std::atof(g.c_str() + 5);
-        if (done && (!night_.finished || afterT_ > 2.5f)) {
-            storyPlaying_ = false;
-            story_.vars["together"] = night_.together ? 1.f : 0.f;
-            story_.vars["herClimaxes"] = (float)night_.herClimaxes;
-            story_.vars["connection"] = night_.connection;
-            if (n && !n->playNext.empty()) story_.jump(n->playNext);
-        }
-        return;
-    }
-    // reading: the scene keeps breathing in its pose, voices and faces follow the lines
-    bool open = storyOverlay_ == 0 && !switching_;
-    if (open) {
-        if (IsKeyPressed(KEY_A)) story_.autoMode = !story_.autoMode;
-        story_.skipMode = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL) || storySkipToggle_;
-        if (IsKeyPressed(KEY_TAB) || IsKeyPressed(KEY_H)) storyOverlay_ = 1;
-        if (IsKeyPressed(KEY_ESCAPE)) storyOverlay_ = 5;
-        std::vector<int> vis = story_.visibleChoices();
-        if (story_.atChoices()) {
-            story_.skipMode = false;
-            for (size_t i = 0; i < vis.size() && i < 4; ++i) if (IsKeyPressed(KEY_ONE + (int)i)) { story_.choose(vis[i]); if (ui.onSound) ui.onSound(1); }
-        } else if (story_.atPlay()) {
-            // hand over to free play
-            storyPlaying_ = true;
-            night_.begin((unsigned)(GetTime() * 1000.0) ^ 0x9e3779b9u);
-            night_.connection = clamp01(0.45f + 0.06f * (story_.vars.count("trust") ? story_.vars["trust"] : 0.f));
-            for (size_t i = 0; i < positions_.size(); ++i) if (n && positions_[i].id == n->act) { posIndex_ = -1; setPosition((int)i, true); }
-            depth_ = depthTarget_ = dragDepth_ = 0.3f;
-            camUser_ = false; afterT_ = 0.f; slowmo_ = 1.f; together_ = false;
-            hudT_ = 0.f; hintsT_ = 0.f;
-            toasts_.push_back({0.f, "Your turn"});
-        } else if (!story_.atEnding()) {
-            bool click = ui.in.clicked && !CheckCollisionPointRec(ui.in.mouse, storyControlsRect_);
-            if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) || click || ui.in.wheel < 0.f) story_.advance();
-        }
-        story_.update(dt);
-    }
-    if (story_.lineChanged) {
-        story_.lineChanged = false;
-        if (const StoryLine* l = story_.line()) {
-            if (!l->voice.empty()) voice(l->voice, 0.8f, 1.f);
-            if (!l->sfx.empty()) sfx(l->sfx, 0.6f);
-            if (!l->cam.empty()) storyCamera(l->cam, 1.2f);
-            for (auto& e : l->expr) storyExpr_[e.first] = e.second;
-            if (l->who == "vivian") storySpeak_ = 0;
-            else if (l->who == "marcus") storySpeak_ = 1;
-        }
-    }
-    // stage presentation: poses breathe, faces follow the lines, she glances at him or at you
-    presentStory(dt);
-}
-
-void Game::presentStory(float dt) {
-    Character& v = scene.vivian;
-    Character& m = scene.marcus;
-    scene.showVivian = v.loaded() && storyCharVisible(0);
-    scene.showMarcus = m.loaded() && storyCharVisible(1);
-    // the current act's pose, held at the node's depth
-    if (posIndex_ >= 0) {
-        const PositionInfo& p = positions_[(size_t)posIndex_];
-        idlePhase_ = std::fmod(idlePhase_ + dt / 9.f, 1.f);
-        for (Character* c : {&v, &m}) if (c->loaded()) c->clearLayers();
-        if (p.solo && v.loaded()) v.setLayer(0, "solo.idle", idlePhase_, 1.f);
-        else for (Character* c : {&v, &m}) if (c->loaded()) c->setLayer(0, p.baseClip, p.depthDriven ? depth_ : idlePhase_, 1.f);
-    }
-    blinkT_ -= dt;
-    if (blinkT_ <= 0.f) { blinkV_ = 1.f; blinkT_ = 2.f + 3.f * hash1(time_ * 3.7f); }
-    blinkV_ += (0.f - blinkV_) * std::min(1.f, dt * 14.f);
-    mouthT_ = std::max(0.f, mouthT_ - dt);
-    float u = mouthDur_ > 0.f ? 1.f - mouthT_ / mouthDur_ : 1.f;
-    float talk = 0.f;
-    if (!story_.lineDone()) talk = 0.25f + 0.2f * std::sin(time_ * 19.f);   // lips move while the line is written
-    auto expr = [&](const char* k, float def) { auto it = storyExpr_.find(k); return it == storyExpr_.end() ? def : it->second; };
-    if (v.loaded()) {
-        v.setMorph("blink", clamp01(blinkV_));
-        v.setMorph("smile", clamp01(expr("smile", 0.25f)));
-        v.setMorph("pleasure", clamp01(expr("pleasure", 0.1f)));
-        float voiceOpen = mouthT_ > 0.f ? std::sin(3.14159f * std::min(1.f, u * 1.15f)) * 0.6f : 0.f;
-        v.setMorph("moan", clamp01(expr("moan", 0.f) + voiceOpen + (storySpeak_ == 0 ? talk : 0.f)));
-        v.setMorph("kiss", clamp01(expr("kiss", 0.f)));
-        v.flush = clamp01(expr("flush", 0.15f));
-        v.proc.lookWeight = 0.5f;
-        v.proc.lookTarget = scene.showMarcus ? m.bonePos("頭") : cam_.eye;
-        v.proc.breathRate = 0.22f; v.proc.breathAmp = 1.f;
-    }
-    if (m.loaded()) {
-        m.setMorph("blink", clamp01(blinkV_ * 0.9f));
-        m.setMorph("moan", clamp01(storySpeak_ == 1 ? talk * 0.6f : 0.f));
-        m.proc.lookWeight = 0.45f;
-        m.proc.lookTarget = v.loaded() ? v.bonePos("頭") : cam_.eye;
-    }
-    renderer.settings.flash = 0.f;
-    scene.update(dt);
 }
 
 // ------------------------------------------------------------------ drawing
@@ -317,150 +158,6 @@ void Game::drawStories() {
     U.alpha = 1.f;
     if (storyOverlay_ == 3) drawStorySlots(false);
     if (storyOverlay_ == 4) drawGallery();
-}
-
-void Game::drawStory() {
-    ui::Ui& U = ui;
-    if (!story_.active()) return;
-    if (storyPlaying_) {
-        drawHud();
-        const StoryNode* n = story_.node();
-        if (n) {
-            const char* g = n->playGoal == "her" ? "Bring her to her peak" : (n->playGoal == "him" ? "Let him have his moment" :
-                            (n->playGoal.rfind("time:", 0) == 0 ? "Take your time together" : "Find each other - together"));
-            U.alpha = 1.f;
-            float w = U.measure(ui::Face::SansMedium, U.u(15.f), g).x + U.u(120.f);
-            ui::Box b; b.radius = U.u(16.f); b.fill = Color{24, 14, 18, 170}; b.border = std::max(1.f, U.u(1.f)); b.borderCol = ui::withA(U.th.accent, 0.5f);
-            U.box(Rectangle{U.W * 0.5f - w * 0.5f, U.u(74.f), w, U.u(34.f)}, b);
-            U.text(ui::Face::SansBold, U.u(12.f), "STORY", U.W * 0.5f - w * 0.5f + U.u(18.f), U.u(84.f), U.th.accent, ui::Left, 0.22f);
-            U.text(ui::Face::SansMedium, U.u(15.f), g, U.W * 0.5f - w * 0.5f + U.u(80.f), U.u(82.f), U.th.ink);
-        }
-        return;
-    }
-    const StoryNode* n = story_.node();
-    const Story* s = story_.story();
-    // chapter / location card
-    if (storyCardT_ < 4.f && n) {
-        float a = clamp01(storyCardT_ * 1.6f) * clamp01((4.f - storyCardT_) * 1.2f);
-        U.alpha = a;
-        // a soft dark band behind the card: it reads over the lamp as well as over the dark
-        int ci = storyCardKind_ == 0 ? s->chapterIndex(n->chapter) : -1;
-        if (ci >= 0 || !storyLocation_.empty()) {
-            float top = U.H * 0.24f + (ci >= 0 ? -U.u(6.f) : U.u(24.f)), hgt = ci >= 0 ? U.u(160.f) : U.u(56.f);
-            ui::Box sc; sc.radius = U.u(40.f); sc.shadow = U.u(200.f); sc.shadowCol = Color{8, 4, 6, 170};
-            U.box(Rectangle{U.W * 0.5f - U.u(330.f), top, U.u(660.f), hgt}, sc);
-        }
-        if (storyCardKind_ == 0) {
-            if (ci >= 0) {
-                char b[32]; std::snprintf(b, sizeof b, "CHAPTER %d", ci + 1);
-                U.text(ui::Face::SansBold, U.u(15.f), b, U.W * 0.5f, U.H * 0.24f, U.th.accent, ui::Center, 0.3f);
-                U.text(ui::Face::Serif, U.u(68.f), s->chapters[(size_t)ci].title, U.W * 0.5f, U.H * 0.24f + U.u(30.f), U.th.ink, ui::Center);
-            }
-        }
-        if (!storyLocation_.empty())
-            U.text(ui::Face::SerifItalic, U.u(24.f), titleCase(storyLocation_), U.W * 0.5f, U.H * 0.24f + (storyCardKind_ == 0 ? U.u(118.f) : U.u(40.f)),
-                   U.th.inkDim, ui::Center);
-        U.alpha = 1.f;
-    }
-    // ending
-    if (story_.atEnding()) {
-        float a = clamp01(screenTime_);
-        U.backdrop(0.8f);
-        U.alpha = a;
-        U.text(ui::Face::SansBold, U.u(15.f), "AN ENDING", U.W * 0.5f, U.H * 0.3f, U.th.accent, ui::Center, 0.3f);
-        U.text(ui::Face::Serif, U.u(76.f), n->endTitle, U.W * 0.5f, U.H * 0.3f + U.u(34.f), U.th.ink, ui::Center);
-        U.paragraph(ui::Face::SerifItalic, U.u(26.f), n->endText, U.W * 0.5f - U.u(420.f), U.H * 0.3f + U.u(150.f), U.u(840.f), U.th.inkDim, 1.35f, ui::Center);
-        char b[64];
-        std::snprintf(b, sizeof b, "%d of %d endings found", (int)storyProgress_.endings[s->id].size(), (int)s->endings.size());
-        U.text(ui::Face::Sans, U.u(16.f), b, U.W * 0.5f, U.H * 0.3f + U.u(300.f), U.th.inkFaint, ui::Center);
-        if (U.button("end#back", "Back to stories", Rectangle{U.W * 0.5f - U.u(130.f), U.H * 0.3f + U.u(350.f), U.u(260.f), U.u(54.f)}, true)) {
-            story_.stop(); go(Screen::Stories, 0.6f);
-        }
-        U.alpha = 1.f;
-        return;
-    }
-    // choices
-    if (story_.atChoices()) {
-        std::vector<int> vis = story_.visibleChoices();
-        float cw = U.u(820.f), chh = U.u(64.f), gap = U.u(16.f);
-        float total = (float)vis.size() * (chh + gap) - gap;
-        float y = U.H * 0.5f - total * 0.5f - U.u(60.f);
-        for (size_t i = 0; i < vis.size(); ++i) {
-            const StoryChoice& c = n->choices[(size_t)vis[i]];
-            Rectangle r{U.W * 0.5f - cw * 0.5f, y + (float)i * (chh + gap), cw, chh};
-            bool over = CheckCollisionPointRec(U.in.mouse, r);
-            float h = U.anim("ch#" + std::to_string(i), over ? 1.f : 0.f, 14.f);
-            ui::Box b; b.radius = U.u(20.f); b.glass = true; b.glassTint = U.th.glass; b.glassAmt = 0.62f;
-            b.fill = ui::mixc(Color{255, 236, 224, 8}, ui::withA(U.th.accent, 0.18f), h);
-            b.border = std::max(1.f, U.u(1.2f)); b.borderCol = ui::mixc(U.th.hairline, ui::withA(U.th.accent, 0.9f), h);
-            b.shadow = U.u(18.f + 14.f * h); b.shadowCol = ui::withA(U.th.accent, 0.12f + 0.15f * h);
-            U.box(Rectangle{r.x - h * U.u(4.f), r.y, r.width + h * U.u(8.f), r.height}, b);
-            char k[4]; std::snprintf(k, sizeof k, "%d", (int)i + 1);
-            U.text(ui::Face::SansBold, U.u(14.f), k, r.x + U.u(26.f), r.y + (chh - U.u(14.f)) * 0.5f, U.th.accent);
-            U.text(ui::Face::Serif, U.u(25.f), c.text, r.x + U.u(58.f), r.y + (chh - U.u(25.f)) * 0.5f - U.u(3.f), ui::mixc(U.th.inkDim, U.th.ink, h));
-            if (over && U.in.clicked && storyOverlay_ == 0) { story_.choose(vis[i]); if (ui.onSound) ui.onSound(1); }
-        }
-    }
-    // the text box
-    const StoryLine* l = story_.line();
-    float bw = std::min(U.W - U.u(160.f), U.u(1500.f)), bh = U.u(230.f);
-    Rectangle box{U.W * 0.5f - bw * 0.5f, U.H - bh - U.u(36.f), bw, bh};
-    if (l || story_.atChoices()) {
-        ui::Box b; b.radius = U.u(26.f); b.glass = true; b.glassTint = U.th.glass; b.glassAmt = 0.66f;
-        b.fill = Color{255, 236, 224, 6}; b.border = std::max(1.f, U.u(1.f)); b.borderCol = U.th.hairline;
-        b.shadow = U.u(36.f); b.shadowCol = Color{0, 0, 0, 110};
-        U.box(box, b);
-        const StoryLine* shown = l;
-        if (!shown && !story_.history.empty()) { static StoryLine last; last.who = story_.history.back().who; last.text = story_.history.back().text; shown = &last; }
-        if (shown) {
-            bool narr = shown->who.empty() || shown->who == "narrator" || shown->who == "you";
-            if (!narr) {
-                std::string name = shown->who == "vivian" ? "Vivian" : (shown->who == "marcus" ? "Marcus" : titleCase(shown->who));
-                Color c = shown->who == "vivian" ? U.th.rose : (shown->who == "marcus" ? U.th.gold : U.th.accent);
-                float nw = U.measure(ui::Face::SerifBold, U.u(26.f), name).x + U.u(44.f);
-                ui::Box nb; nb.radius = U.u(18.f); nb.fill = Color{20, 12, 16, 220}; nb.border = std::max(1.f, U.u(1.2f)); nb.borderCol = ui::withA(c, 0.85f);
-                nb.shadow = U.u(14.f); nb.shadowCol = ui::withA(c, 0.25f);
-                U.box(Rectangle{box.x + U.u(40.f), box.y - U.u(22.f), nw, U.u(44.f)}, nb);
-                U.text(ui::Face::SerifBold, U.u(26.f), name, box.x + U.u(40.f) + nw * 0.5f, box.y - U.u(22.f) + U.u(7.f), c, ui::Center);
-            }
-            std::string txt = l ? u8prefix(shown->text, (int)story_.revealed()) : shown->text;
-            if (shown->who == "you") txt = "\xe2\x80\x94 " + txt;
-            U.paragraph(narr ? ui::Face::SerifItalic : ui::Face::Serif, U.u(30.f), txt, box.x + U.u(56.f), box.y + U.u(42.f), box.width - U.u(112.f),
-                        narr ? U.th.inkDim : U.th.ink, 1.35f);
-            if (l && story_.lineDone() && !story_.atChoices()) {
-                float bl = 0.5f + 0.5f * std::sin(time_ * 4.f);
-                U.diamond(box.x + box.width - U.u(46.f), box.y + box.height - U.u(36.f), U.u(6.f), ui::withA(U.th.accent, 0.4f + 0.6f * bl));
-            }
-        }
-        // controls
-        struct C { const char* label; bool on; int id; };
-        C cs[6] = {{"Auto", story_.autoMode, 0}, {"Skip", storySkipToggle_, 1}, {"Log", false, 2}, {"Save", false, 3}, {"Load", false, 4}, {"Menu", false, 5}};
-        float cx = box.x + box.width - U.u(40.f), cy = box.y + U.u(16.f);
-        float minX = cx;
-        for (int i = 5; i >= 0; --i) {
-            float tw = U.measure(ui::Face::SansBold, U.u(13.f), cs[i].label, 0.18f).x;
-            Rectangle r{cx - tw - U.u(10.f), cy - U.u(6.f), tw + U.u(20.f), U.u(28.f)};
-            bool over = CheckCollisionPointRec(U.in.mouse, r);
-            U.text(ui::Face::SansBold, U.u(13.f), cs[i].label, cx, cy, cs[i].on ? U.th.accent : (over ? U.th.ink : U.th.inkFaint), ui::Right, 0.18f);
-            if (over && U.in.clicked && storyOverlay_ == 0) {
-                if (ui.onSound) ui.onSound(1);
-                if (cs[i].id == 0) story_.autoMode = !story_.autoMode;
-                else if (cs[i].id == 1) storySkipToggle_ = !storySkipToggle_;
-                else if (cs[i].id == 2) storyOverlay_ = 1;
-                else if (cs[i].id == 3) storyOverlay_ = 2;
-                else if (cs[i].id == 4) storyOverlay_ = 3;
-                else storyOverlay_ = 5;
-            }
-            cx -= tw + U.u(30.f);
-            minX = r.x;
-        }
-        storyControlsRect_ = Rectangle{minX, cy - U.u(8.f), box.x + box.width - minX, U.u(32.f)};
-    }
-    // overlays
-    if (storyOverlay_ == 1) drawStoryLog();
-    else if (storyOverlay_ == 2) drawStorySlots(true);
-    else if (storyOverlay_ == 3) drawStorySlots(false);
-    else if (storyOverlay_ == 5) drawStoryMenu();
 }
 
 void Game::drawStoryLog() {

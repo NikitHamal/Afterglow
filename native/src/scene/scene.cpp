@@ -10,8 +10,62 @@ static std::string lowerS(std::string s) { for (auto& c : s) c = (char)std::tolo
 bool Scene::load(const std::function<void(float, const char*)>& progress) {
     auto step = [&](float f, const char* what) { if (progress) progress(f, what); };
     step(0.02f, "Lighting the candles");
-    // room
-    std::string roomPath = paths::findAsset({"room/room.glb"});
+    setLocation("room");
+
+    // characters (real-scale assets preferred; legacy web GLBs are fitted to real height)
+    std::string vPath = paths::findAsset({"characters/vivian.glb", "legacy/vivian/vivian.glb", "assets/vivian/vivian.glb"});
+    std::string mPath = paths::findAsset({"characters/marcus.glb", "legacy/marcus/marcus.glb", "assets/marcus/marcus.glb"});
+    step(0.12f, "Vivian");
+    if (vPath.empty() || !vivian.load("vivian", vPath, 1.68f)) AG_ERROR("AG: Vivian not found");
+    step(0.62f, "Marcus");
+    if (mPath.empty() || !marcus.load("marcus", mPath, 1.83f)) AG_ERROR("AG: Marcus not found");
+    step(0.9f, "Warming up");
+    hasClips = (vivian.loaded() && !vivian.model.clips.empty()) || (marcus.loaded() && !marcus.model.clips.empty());
+    for (Character* c : {&vivian, &marcus}) {
+        if (!c->loaded()) continue;
+        c->proc.floorY = info.bedTop;
+        c->setTone("caramel");
+    }
+    // content hair carries its colour in baseColorFactor; the legacy web hair is neutral grey with a white
+    // factor, so only that one gets a tint (rich dark chestnut)
+    if (vivian.loaded()) {
+        for (const Material& m : vivian.model.materials)
+            if (m.shading == Shading::Hair && m.baseColor.x > 0.9f && m.baseColor.y > 0.9f && m.baseColor.z > 0.9f)
+                vivian.hairTint = {0.42f, 0.21f, 0.11f};
+    }
+    standingPlacement();
+    particles.init();
+    return vivian.loaded() || marcus.loaded();
+}
+
+bool Scene::setLocation(const std::string& id) {
+    std::string key = id.empty() ? "room" : id;
+    if (key == location && (roomFromGlb || key == "room")) return true;
+    std::string glb, json;
+    if (key == "room") { glb = paths::findAsset({"room/room.glb"}); json = paths::findAsset({"room/room.json"}); }
+    else {
+        glb = paths::findAsset({"locations/" + key + "/" + key + ".glb"});
+        json = paths::findAsset({"locations/" + key + "/" + key + ".json"});
+        if (glb.empty()) return false;
+    }
+    loadRoomFrom(glb, json);
+    location = key;
+    AG_INFO("AG: location %s (%s)", key.c_str(), roomBaked ? "baked" : "live");
+    return true;
+}
+
+bool Scene::hasLocation(const std::string& id) {
+    if (id.empty() || id == "room") return true;
+    return !paths::findAsset({"locations/" + id + "/" + id + ".glb"}).empty();
+}
+
+void Scene::loadRoomFrom(const std::string& roomPath, const std::string& rj) {
+    roomAnim.destroy();
+    room.destroy();
+    roomFromGlb = roomBaked = false;
+    info = RoomInfo{};
+    lights = Lights{};
+    for (int& r : pointRole) r = 0;
     if (!roomPath.empty() && room.load(roomPath)) {
         roomFromGlb = true;
         // the lightmap rides in the emissive slot: on UV1 for textured materials and on UV0 for plain-coloured
@@ -38,7 +92,6 @@ bool Scene::load(const std::function<void(float, const char*)>& progress) {
         roomFromGlb = false;
     }
     // room.json (content pipeline): bed / lamp metadata, lenient about the exact layout
-    std::string rj = paths::findAsset({"room/room.json"});
     if (!rj.empty()) {
         Json j = Json::parse(paths::readText(rj));
         const Json& bed = j["bed"].isObject() ? j["bed"] : j;
@@ -55,6 +108,8 @@ bool Scene::load(const std::function<void(float, const char*)>& progress) {
         info.windowCenter = v3(j["window"]["center"], info.windowCenter);
         info.camMin = v3(j["cameraBounds"]["min"], info.camMin);
         info.camMax = v3(j["cameraBounds"]["max"], info.camMax);
+        info.style = j["style"].str();
+        info.mood = j["mood"].str();
     }
     roomAnim.init(&room);
     roomAnim.begin();
@@ -74,31 +129,7 @@ bool Scene::load(const std::function<void(float, const char*)>& progress) {
         }
     }
     if (roomFromGlb) lightsFromRoomGlb();
-
-    // characters (real-scale assets preferred; legacy web GLBs are fitted to real height)
-    std::string vPath = paths::findAsset({"characters/vivian.glb", "legacy/vivian/vivian.glb", "assets/vivian/vivian.glb"});
-    std::string mPath = paths::findAsset({"characters/marcus.glb", "legacy/marcus/marcus.glb", "assets/marcus/marcus.glb"});
-    step(0.12f, "Vivian");
-    if (vPath.empty() || !vivian.load("vivian", vPath, 1.68f)) AG_ERROR("AG: Vivian not found");
-    step(0.62f, "Marcus");
-    if (mPath.empty() || !marcus.load("marcus", mPath, 1.83f)) AG_ERROR("AG: Marcus not found");
-    step(0.9f, "Warming up");
-    hasClips = (vivian.loaded() && !vivian.model.clips.empty()) || (marcus.loaded() && !marcus.model.clips.empty());
-    for (Character* c : {&vivian, &marcus}) {
-        if (!c->loaded()) continue;
-        c->proc.floorY = info.bedTop;
-        c->setTone("caramel");
-    }
-    // content hair carries its colour in baseColorFactor; the legacy web hair is neutral grey with a white
-    // factor, so only that one gets a tint (rich dark chestnut)
-    if (vivian.loaded()) {
-        for (const Material& m : vivian.model.materials)
-            if (m.shading == Shading::Hair && m.baseColor.x > 0.9f && m.baseColor.y > 0.9f && m.baseColor.z > 0.9f)
-                vivian.hairTint = {0.42f, 0.21f, 0.11f};
-    }
-    standingPlacement();
-    particles.init();
-    return vivian.loaded() || marcus.loaded();
+    for (Character* c : {&vivian, &marcus}) if (c->loaded()) c->proc.floorY = info.bedTop;
 }
 
 void Scene::standingPlacement() {

@@ -197,6 +197,7 @@ void Game::enterScreen(Screen s) {
     renderer.uiBlur = s != Screen::Play;
     switch (s) {
         case Screen::Title: case Screen::Menu: case Screen::Stories:
+            if (prev == Screen::Story || prev == Screen::Settings || !place_.empty()) leaveStoryWorld();
             if (stage_ != Stage::Bedroom) stage(Stage::Bedroom);
             storyMood_ = -1;
             break;
@@ -228,6 +229,7 @@ void Game::stage(Stage st) {
         c->clearLayers();
         c->clearBoneOffsets();
         c->poseHook = nullptr;
+        c->postHook = nullptr;
         c->touchGoals = TouchGoals{};
         c->placement = M4::identity();
         c->proc.hair = settings.hairPhysics;
@@ -649,11 +651,29 @@ void Game::applySpec(const Spec& s) {
         if (st) {
             std::string nodeId = s.get("node", st->chapters[0].start);
             stage(Stage::Night);
+            enterStoryWorld();
             story_.start(st, nodeId, nullptr, (int)s.num("line", 0.f));
+            story_.autoMode = false;
             storyPlaying_ = false; storyOverlay_ = (int)s.num("overlay", 0.f);
             storyCardT_ = s.has("card") ? 0.8f : 99.f;
             story_.nodeChanged = true;
+            black_ = 0.f; blackDir_ = 0;
+            updateStory(0.f);   // stage the node and start its line now
             for (int k = 0; k < (int)s.num("reveal", 999.f); ++k) story_.update(1.f / 30.f);
+            // stills: the voice clock held mid-line (lip sync), a kiss, an undress half done, a forced shot
+            voiceHold_ = s.has("vt") ? s.num("vt", 0.f) : -1.f;
+            if (s.has("kiss")) { kiss_ = kissTarget_ = near_ = nearTarget_ = s.num("kiss", 1.f); }
+            std::string und = s.get("undress");
+            if (!und.empty()) {
+                size_t c = und.find(':');
+                std::string who = und.substr(0, c);
+                float vis = c == std::string::npos ? 0.5f : (float)std::atof(und.c_str() + c + 1);
+                Character& ch = who == "marcus" ? scene.marcus : scene.vivian;
+                if (Outfit* o = ch.outfit()) { o->hold(0, vis); }
+            }
+            std::string sh = s.get("shot");
+            if (!sh.empty()) { StoryLine fl = story_.line() ? *story_.line() : StoryLine{}; fl.cam = sh; storyShot(&fl, false); }
+            if (s.has("pose")) setStoryPose(s.get("pose"), s.num("actT", 0.3f));
         }
     }
     screen_ = target;

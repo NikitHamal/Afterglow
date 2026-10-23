@@ -345,6 +345,7 @@ void Game::drawSettings() {
             U.toggle("s_bloom", "Bloom", &settings.bloom, Rectangle{x, y, w, rowH}); y += rowH + U.u(10.f);
             U.toggle("s_ssao", "Ambient occlusion", &settings.ssao, Rectangle{x, y, w, rowH}); y += rowH + U.u(10.f);
             U.toggle("s_grain", "Film grain", &settings.filmGrain, Rectangle{x, y, w, rowH}); y += rowH + U.u(10.f);
+            U.toggle("s_dof", "Depth of field in story close-ups", &settings.depthOfField, Rectangle{x, y, w, rowH}); y += rowH + U.u(10.f);
             if (U.toggle("s_hair", "Hair physics", &settings.hairPhysics, Rectangle{x, y, w, rowH})) {
                 scene.vivian.proc.hair = scene.marcus.proc.hair = settings.hairPhysics;
             }
@@ -386,7 +387,7 @@ void Game::drawSettings() {
         }
         case 3: {
             U.slider("s_master", "Master volume", &settings.master, 0.f, 1.f, Rectangle{x, y, w, U.u(52.f)}); y += rowH + U.u(16.f);
-            U.slider("s_voice", "Her voice", &settings.voice, 0.f, 1.f, Rectangle{x, y, w, U.u(52.f)}); y += rowH + U.u(16.f);
+            U.slider("s_voice", "Voices", &settings.voice, 0.f, 1.f, Rectangle{x, y, w, U.u(52.f)}); y += rowH + U.u(16.f);
             U.slider("s_fx", "Effects", &settings.effects, 0.f, 1.f, Rectangle{x, y, w, U.u(52.f)}); y += rowH + U.u(16.f);
             U.slider("s_amb", "Room ambience", &settings.ambience, 0.f, 1.f, Rectangle{x, y, w, U.u(52.f)}); y += rowH + U.u(16.f);
             U.slider("s_mus", "Music", &settings.music, 0.f, 1.f, Rectangle{x, y, w, U.u(52.f)}); y += rowH + U.u(16.f);
@@ -410,6 +411,7 @@ void Game::drawSettings() {
         case 5: {
             U.choice("s_hints", "Her hints", &settings.hints, {"Off", "Subtle", "Clear"}, Rectangle{x, y, w, rowH}); y += rowH + U.u(10.f);
             U.toggle("s_cine", "Cinematic camera", &settings.cinematicCamera, Rectangle{x, y, w, rowH}); y += rowH + U.u(10.f);
+            U.toggle("s_sauto", "Stories play on after each voiced line", &settings.storyAuto, Rectangle{x, y, w, rowH}); y += rowH + U.u(10.f);
             U.toggle("s_unf", "Pause when the window loses focus", &settings.pauseWhenUnfocused, Rectangle{x, y, w, rowH}); y += rowH + U.u(10.f);
             U.toggle("s_upd", "Check for updates on start", &settings.checkUpdates, Rectangle{x, y, w, rowH}); y += rowH + U.u(10.f);
             char b[128];

@@ -1,11 +1,13 @@
 #version 330 core
-// Forward PBR shading for Afterglow. Modes: 0 generic, 1 skin, 2 hair, 3 eye, 4 room, 5 unlit.
+// Forward PBR shading for Afterglow. Modes: 0 generic, 1 skin, 2 hair, 3 eye, 4 room, 5 unlit, 6 cloth.
 // Output: linear HDR radiance (tonemapped later).
 in vec3 v_wpos;
 in vec3 v_nrm;
 in vec4 v_tan;
 in vec2 v_uv0;
 in vec2 v_uv1;
+in vec3 v_opos;                   // bind-space position / normal: garment patterns + the undress wipe
+in vec3 v_onrm;
 out vec4 o_color;
 
 uniform int u_mode;
@@ -43,11 +45,16 @@ uniform int u_baked;              // room: emissive(uv1) / unlit carries baked l
 uniform vec3 u_bakeScale;         // lightmap scale x lighting mood
 uniform float u_bakeMix;          // 1 = baked room light, 0 = live lights (daylight relights the night bake)
 uniform float u_bakeSat;          // saturation of the baked room (tames strongly coloured bedding)
-uniform sampler2D u_skinMask;     // content skin support map (linear): R flush, G translucency, B sweat
+uniform sampler2D u_skinMask;     // content skin support map (linear): R flush, G translucency, B sweat, A wetness
 uniform int u_hasSkinMask;
+uniform float u_wet;              // arousal wetness (her, where the mask's alpha says)
+uniform float u_dissolve;         // garments: 1 worn .. 0 taken off
+uniform vec4 u_wipe;              // garments: x,y bind-space height span, z 1 = comes off from the top
+uniform int u_fabric;             // garments: 0 cotton 1 satin 2 lace 3 knit 4 denim 5 flannel 6 linen 7 nylon 8 wool
+uniform vec3 u_fabric2;           // garments: pattern colour (plaid lines, lace)
 uniform sampler2D u_detailN;      // tileable pore/crosshatch normal (uv0 * 48)
 uniform int u_hasDetailN;
-vec3 g_mask = vec3(0.6, 0.4, 0.5);
+vec4 g_mask = vec4(0.6, 0.4, 0.5, 0.0);
 uniform vec3 u_camPos;
 uniform float u_time;
 
@@ -90,6 +97,62 @@ vec2 uvSel(int i) { return i == 1 ? v_uv1 : v_uv0; }
 float sat(float x) { return clamp(x, 0.0, 1.0); }
 float hash12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 float ign(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }
+float h3(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float vnoise3(vec3 p) {
+    vec3 i = floor(p), f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = mix(mix(h3(i), h3(i + vec3(1, 0, 0)), f.x), mix(h3(i + vec3(0, 1, 0)), h3(i + vec3(1, 1, 0)), f.x), f.y);
+    float b = mix(mix(h3(i + vec3(0, 0, 1)), h3(i + vec3(1, 0, 1)), f.x), mix(h3(i + vec3(0, 1, 1)), h3(i + vec3(1, 1, 1)), f.x), f.y);
+    return mix(a, b, f.z);
+}
+// undressing: the garment wipes away along its bind-space height with a ragged, fabric-like edge (< 0: gone)
+float undressMargin(vec3 op) {
+    if (u_dissolve >= 0.999) return 1.0;
+    float h = clamp((op.y - u_wipe.x) / max(u_wipe.y - u_wipe.x, 1e-3), 0.0, 1.0);
+    float s = u_wipe.z > 0.5 ? 1.0 - h : h;
+    float n = vnoise3(op * 38.0) * 0.6 + vnoise3(op * 110.0) * 0.4;
+    float e = 0.16;
+    return s - ((1.0 - u_dissolve) * (1.0 + e) - e * n);
+}
+// bump from a scalar height field without tangents (screen-space derivatives)
+vec3 bumpNormal(vec3 N, float h, float amount) {
+    vec3 dpdx = dFdx(v_wpos), dpdy = dFdy(v_wpos);
+    float dhdx = dFdx(h), dhdy = dFdy(h);
+    vec3 r1 = cross(dpdy, N), r2 = cross(N, dpdx);
+    float det = dot(dpdx, r1);
+    vec3 grad = sign(det) * (dhdx * r1 + dhdy * r2);
+    return normalize(abs(det) * N - amount * grad);
+}
+// fabric weave / pattern in bind-space metres, projected on the three planes (garments are skin-tight)
+vec3 g_tri = vec3(0.0);
+float triPattern(int kind, float f) {
+    vec3 p = v_opos * f;
+    vec2 q[3] = vec2[](p.zy, p.xz, p.xy);
+    float r = 0.0;
+    for (int i = 0; i < 3; ++i) {
+        vec2 c = q[i];
+        float v;
+        if (kind == 0) v = sin(c.x * 6.2831) * sin(c.y * 6.2831);                    // plain weave
+        else if (kind == 1) v = abs(sin(c.x * 3.1416));                               // ribs (knit)
+        else if (kind == 2) v = sin((c.x + c.y) * 6.2831);                            // twill (denim, wool)
+        else v = sin(c.x * 6.2831 + 1.7 * sin(c.y * 0.9)) * sin(c.y * 6.2831);       // slubby (linen)
+        r += v * g_tri[i];
+    }
+    return r;
+}
+float triPlaid(float f) {
+    vec3 p = v_opos * f;
+    vec2 q[3] = vec2[](p.zy, p.xz, p.xy);
+    float r = 0.0;
+    for (int i = 0; i < 3; ++i) {
+        vec2 c = abs(fract(q[i]) - 0.5);
+        float wide = max(smoothstep(0.36, 0.42, c.x), smoothstep(0.36, 0.42, c.y)) * 0.75;
+        float thin = max(smoothstep(0.205, 0.215, c.x) * (1.0 - smoothstep(0.225, 0.235, c.x)),
+                         smoothstep(0.205, 0.215, c.y) * (1.0 - smoothstep(0.225, 0.235, c.y)));
+        r += max(wide, thin * 0.55) * g_tri[i];
+    }
+    return r;
+}
 
 float D_GGX(float NoH, float a) { float a2 = a * a; float d = NoH * NoH * (a2 - 1.0) + 1.0; return a2 / (PI * d * d + 1e-7); }
 float V_Smith(float NoV, float NoL, float a) {
@@ -193,7 +256,15 @@ void main() {
     vec3 Tg = normalize(v_tan.xyz - Ng * dot(Ng, v_tan.xyz));
     vec3 Bg = cross(Ng, Tg) * v_tan.w;
     vec3 N = Ng;
-    if (u_mode == 1 && u_hasSkinMask == 1) g_mask = texture(u_skinMask, v_uv0).rgb;
+    if (u_mode == 1 && u_hasSkinMask == 1) g_mask = texture(u_skinMask, v_uv0);
+    float clothSheen = 0.0, undressRim = 0.0;
+    if (u_mode == 6) {
+        float m = undressMargin(v_opos);
+        if (m < 0.0) discard;
+        undressRim = u_dissolve < 0.999 ? 1.0 - smoothstep(0.0, 0.035, m) : 0.0;
+        vec3 w = pow(abs(normalize(v_onrm)), vec3(4.0));
+        g_tri = w / max(w.x + w.y + w.z, 1e-4);
+    }
     if (u_hasNormal == 1) {
         vec3 tn = texture(u_texNormal, uvSel(u_uvNormal)).xyz * 2.0 - 1.0;
         tn.xy *= u_normalScale;
@@ -213,13 +284,55 @@ void main() {
         N = normalize(N + (vec3(fract(q.x) - 0.5, fract(q.y) - 0.5, 0.0)) * bead * 0.6);
     }
 
+    float fabricRough = -1.0;
+    if (u_mode == 6) {
+        // weave and pattern; the micro bump fades out before it would shimmer (period under ~2 px)
+        float fpx = length(fwidth(v_opos));
+        float k = 0.0, amt = 0.0, freq = 1.0;
+        if (u_fabric == 0) { freq = 170.0; k = triPattern(0, freq); amt = 0.0012; fabricRough = 0.82; clothSheen = 0.18; }
+        else if (u_fabric == 1) { fabricRough = 0.3; clothSheen = 0.32; }
+        else if (u_fabric == 2) {
+            // lace: a floral-ish net over the skin; holes only while the cells are a few pixels wide
+            freq = 140.0;
+            vec3 p = v_opos * freq;
+            vec2 q[3] = vec2[](p.zy, p.xz, p.xy);
+            float hole = 0.0;
+            for (int i = 0; i < 3; ++i) {
+                vec2 c = fract(q[i]) - 0.5;
+                float d = length(c), petals = 0.27 + 0.06 * cos(atan(c.y, c.x) * 5.0);
+                hole += (smoothstep(petals - 0.03, petals, d) * (1.0 - smoothstep(0.42, 0.47, d))) * g_tri[i];
+            }
+            float cellPx = (1.0 / freq) / max(fpx, 1e-6);
+            if (hole > 0.5 && cellPx > 5.0) discard;
+            base.rgb = mix(base.rgb, u_fabric2, 0.5 * (1.0 - hole));
+            fabricRough = 0.55; clothSheen = 0.25;
+        }
+        else if (u_fabric == 3) { freq = 260.0; k = triPattern(1, freq) * (0.75 + 0.25 * sin(v_opos.y * 1900.0)); amt = 0.0022; fabricRough = 0.92; clothSheen = 0.45; }
+        else if (u_fabric == 4) {
+            freq = 300.0; k = triPattern(2, freq); amt = 0.0012; fabricRough = 0.8; clothSheen = 0.12;
+            base.rgb *= 0.86 + 0.28 * vnoise3(v_opos * 45.0) * vnoise3(v_opos * 9.0 + 3.1);   // worn indigo
+        }
+        else if (u_fabric == 5) {
+            base.rgb = mix(base.rgb, u_fabric2, clamp(triPlaid(16.0), 0.0, 1.0));
+            freq = 170.0; k = triPattern(0, freq); amt = 0.001; fabricRough = 0.86; clothSheen = 0.4;
+        }
+        else if (u_fabric == 6) { freq = 120.0; k = triPattern(3, freq); amt = 0.0016; fabricRough = 0.8; clothSheen = 0.2;
+                                  base.rgb *= 0.93 + 0.1 * vnoise3(v_opos * 60.0); }
+        else if (u_fabric == 7) { fabricRough = 0.36; clothSheen = 0.15; }
+        else { freq = 420.0; k = triPattern(2, freq); amt = 0.0007; fabricRough = 0.74; clothSheen = 0.14; }
+        float fade = 1.0 - smoothstep(0.25, 0.6, fpx * freq);
+        if (amt > 0.0 && fade > 0.0) N = bumpNormal(N, k * fade, amt * freq * 0.5);
+        base.rgb *= 1.0 - 0.45 * undressRim;   // the edge where it lifts off reads as a shadowed fold
+    }
+
     vec3 V = normalize(u_camPos - v_wpos);
     float metal = u_metallic, rough = u_roughness, ao = 1.0;
     if (u_hasMR == 1) { vec4 mr = texture(u_texMR, uvSel(u_uvMR)); rough *= mr.g; metal *= mr.b; }
     if (u_hasOcc == 1 && u_baked == 0) ao = mix(1.0, texture(u_texOcc, uvSel(u_uvOcc)).r, u_occStrength);
+    if (fabricRough > 0.0) { rough = fabricRough; metal = 0.0; }
     if (u_mode == 1) {
         rough = max(rough, 0.44);
-        rough = clamp(rough * (1.0 - 0.38 * u_sweat * g_mask.b), 0.26, 1.0);
+        rough = clamp(rough * (1.0 - 0.38 * u_sweat * g_mask.b) * (1.0 - 0.6 * g_mask.a * u_wet), 0.2, 1.0);
         base.rgb *= mix(vec3(1.0), vec3(1.0, 0.84, 0.83), sat(u_flush) * 0.6 * g_mask.r);
     }
     if (u_mode == 3) rough = min(rough, 0.08);
@@ -293,6 +406,8 @@ void main() {
     vec3 specAmb = env * Fa * specOcc * (1.0 - s.rough * 0.7) * (u_mode == 3 ? 3.0 : 1.0);
     if (u_mode == 2) specAmb *= 0.12;
     col += diffAmb + specAmb + emis;
+    // fabric sheen: fibres catch light at grazing angles (velvety knit / flannel, the glow along satin folds)
+    if (u_mode == 6) col += s.albedo * (irr + u_keyColor * u_keyIntensity * keyAtt * sh * 0.3) * clothSheen * pow(1.0 - NoV, 3.0) * 1.6;
     if (bakedRoom) col = mix(col, bakedCol, u_bakeMix);
 
     if (u_mode == 3) {

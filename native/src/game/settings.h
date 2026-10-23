@@ -28,6 +28,8 @@ struct Settings {
     // game
     int hints = 2;                 // 0 off, 1 subtle (voice + face only), 2 clear
     bool cinematicCamera = true;
+    bool storyAuto = true;         // story lines go on by themselves after the voice
+    bool depthOfField = true;      // shallow focus in story close-ups
     bool checkUpdates = true;
     bool pauseWhenUnfocused = true;
     std::string skippedVersion;

@@ -16,7 +16,7 @@ struct CameraState {
 
 class CameraRig {
 public:
-    enum class Mode { Orbit, FirstPerson };
+    enum class Mode { Orbit, FirstPerson, Direct };
 
     // Orbit around target: yaw 0 looks from +Z toward -Z, pitch up positive (radians).
     void setOrbit(const V3& target, float yaw, float pitch, float dist, float blendSeconds = 0.8f);
@@ -24,6 +24,9 @@ public:
     // eye point + look axis given in the bone's local frame (clips.json "fpv")
     void setFirstPersonLocal(Character* c, const std::string& bone, const V3& offsetLocal, const V3& forwardLocal, float blendSeconds = 0.6f);
     void setFov(float degrees) { fovDeg_ = degrees; }
+    // a directed shot (story mode): eye, target and lens given each frame; cut = no easing into it
+    void setDirect(const V3& eye, const V3& target, float fovDeg, bool cut);
+    float fovDegrees() const { return fovDeg_; }
     // keep orbiting the same way but track a moving target (bone-relative presets)
     void follow(const V3& t) { toTarget_ = t; }
     Mode mode() const { return mode_; }
@@ -56,6 +59,9 @@ private:
     V3 lastEye_{0, 1.4f, 3.f}, lastTarget_{0, 0.8f, 0};
     float fovDeg_ = 38.f, fpFovDeg_ = 58.f, time_ = 0.f;
     V3 corr_{0, 0, 0};
+    V3 dEye_{0, 1.5f, 3.f}, dTarget_{0, 1.2f, 0};
+    float dFov_ = 34.f;
+    bool dCut_ = false;
 };
 
 }  // namespace ag

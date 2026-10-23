@@ -36,13 +36,14 @@ bool Renderer::reloadShaders() {
     ok = fxaa_.build("fxaa", fsv, shaderSource("fxaa.frag")) && ok;
     ok = ssao_.build("ssao", fsv, shaderSource("ssao.frag")) && ok;
     ok = ssaoBlur_.build("ssao_blur", fsv, shaderSource("ssao_blur.frag")) && ok;
+    ok = dof_.build("dof", fsv, shaderSource("dof.frag")) && ok;
     if (!ok) AG_ERROR("AG: shader build failed");
     return ok;
 }
 
 void Renderer::shutdown() {
-    for (Program* p : {&pbr_, &depth_, &prefilter_, &down_, &up_, &composite_, &fxaa_, &ssao_, &ssaoBlur_}) p->destroy();
-    hdr_.destroy(); ldr_.destroy(); aoRaw_.destroy(); ao_.destroy();
+    for (Program* p : {&pbr_, &depth_, &prefilter_, &down_, &up_, &composite_, &fxaa_, &ssao_, &ssaoBlur_, &dof_}) p->destroy();
+    hdr_.destroy(); ldr_.destroy(); aoRaw_.destroy(); ao_.destroy(); dofOut_.destroy();
     for (auto& b : bloom_) b.destroy();
     for (auto& b : blur_) b.destroy();
     shadow_.destroy();
@@ -56,6 +57,7 @@ void Renderer::ensureTargets(int w, int h) {
     w_ = w; h_ = h;
     hdr_.create(w, h, GL_RGBA16F, true, true, GL_LINEAR);      // depth as texture (SSAO)
     ldr_.create(w, h, GL_RGBA8, false, false, GL_LINEAR);
+    dofOut_.destroy();   // made on first use (story close-ups only)
     aoRaw_.create(std::max(1, w / 2), std::max(1, h / 2), GL_R8, false, false, GL_LINEAR);
     ao_.create(std::max(1, w / 2), std::max(1, h / 2), GL_R8, false, false, GL_LINEAR);
     for (auto& b : bloom_) b.destroy();
@@ -140,6 +142,7 @@ void Renderer::bindMaterial(Program& p, const Model& m, int mi, const Character*
     p.set("u_cutoff", mat.cutoff);
     p.set("u_hasBase", base ? 1 : 0);
     p.sampler("u_texBase", 0, base ? base : white_);
+    p.set("u_dissolve", 1.f);   // garments set their own (undressing)
     if (shadowPass) return;
     p.set("u_uvBase", mat.uvBase);
     p.set("u_mode", (int)mat.shading);
@@ -169,6 +172,7 @@ void Renderer::bindMaterial(Program& p, const Model& m, int mi, const Character*
     bool skin = mat.shading == Shading::Skin;
     p.set("u_flush", (ch && skin) ? ch->flush : 0.f);
     p.set("u_sweat", (ch && skin) ? ch->sweat : 0.f);
+    p.set("u_wet", (ch && skin) ? ch->wet : 0.f);
     GLuint mask = (ch && skin) ? ch->skinMask() : 0, detail = (ch && skin) ? ch->skinDetail() : 0;
     p.set("u_hasSkinMask", mask ? 1 : 0);
     p.set("u_hasDetailN", detail ? 1 : 0);
@@ -177,15 +181,28 @@ void Renderer::bindMaterial(Program& p, const Model& m, int mi, const Character*
     p.set("u_baked", (mat.shading == Shading::Room && mat.baked && mat.texEmis) ? 1 : 0);
 }
 
-void Renderer::drawModel(Program& p, Model& m, Animator& a, const Character* ch, int pass) {
-    // pass: 0 shadow, 1 opaque + alpha-test, 2 soft hair edges
+void Renderer::drawCharacter(Program& p, Character& c, int pass) {
+    drawModel(p, c.model, c.anim, &c, pass);
+    if (Outfit* o = c.outfit()) if (o->loaded() && pass != 2) drawModel(p, o->model, c.anim, &c, pass, o);
+}
+
+void Renderer::drawModel(Program& p, Model& m, Animator& a, const Character* ch, int pass, const Outfit* outfit) {
+    // pass: 0 shadow, 1 opaque + alpha-test, 2 soft hair edges, 3 depth prepass
     bool bonesBound = false;
     for (size_t ni = 0; ni < m.nodes.size(); ++ni) {
         const Node& n = m.nodes[ni];
         if (n.mesh < 0) continue;
         Mesh& mesh = m.meshes[(size_t)n.mesh];
+        float vis = 1.f;
+        if (outfit) {
+            int layer = (size_t)n.mesh < outfit->meshLayer.size() ? outfit->meshLayer[(size_t)n.mesh] : 0;
+            vis = outfit->visibility(layer);
+            if (vis <= 0.002f) continue;   // taken off
+        }
         for (Primitive& prim : mesh.prims) {
             const Material& mat = m.materials[(size_t)std::max(0, prim.material)];
+            // his genitals stay out of sight while he still wears something
+            if (ch && ch->hideGenitals && !outfit && mat.shading == Shading::Skin && mat.name.find("genital") != std::string::npos) continue;
             if (pass == 0 && (!mat.castShadow || mat.alpha == AlphaMode::Blend)) continue;
             if (pass == 3 && mat.alpha == AlphaMode::Blend) continue;
             if (pass == 2 && !(mat.alpha == AlphaMode::Mask && mat.shading == Shading::Hair)) continue;
@@ -211,6 +228,16 @@ void Renderer::drawModel(Program& p, Model& m, Animator& a, const Character* ch,
                 p.set("u_skinned", 0);
             }
             bindMaterial(p, m, prim.material, ch, pass == 0 || pass == 3);
+            if (outfit) {
+                size_t mi = (size_t)std::max(0, prim.material);
+                p.set("u_dissolve", vis);
+                V2 hr = mi < outfit->heightRange.size() ? outfit->heightRange[mi] : V2{0.f, 1.8f};
+                p.set("u_wipe", V4{hr.x, hr.y, mi < outfit->wipeDown.size() ? (float)outfit->wipeDown[mi] : 1.f, 0.f});
+                if (pass != 0 && pass != 3) {
+                    p.set("u_fabric", mi < outfit->fabric.size() ? outfit->fabric[mi] : 0);
+                    p.set("u_fabric2", mi < outfit->pattern.size() ? outfit->pattern[mi] : V3{0, 0, 0});
+                }
+            }
             p.set("u_pass", pass == 2 ? 1 : 0);
             if (mat.doubleSided || pass == 0) glDisable(GL_CULL_FACE);
             else { glEnable(GL_CULL_FACE); glCullFace(GL_BACK); }
@@ -243,7 +270,7 @@ void Renderer::render(Scene& s, const CameraState& cam, int fbW, int fbH, float 
         depth_.use();
         depth_.set("u_viewProj", shadowVP_);
         if (!s.roomBaked) drawModel(depth_, s.room, s.roomAnim, nullptr, 0);
-        for (auto& c : chars) if (c.second && c.first->loaded()) drawModel(depth_, c.first->model, c.first->anim, c.first, 0);
+        for (auto& c : chars) if (c.second && c.first->loaded()) drawCharacter(depth_, *c.first, 0);
         glDisable(GL_POLYGON_OFFSET_FILL);
     }
 
@@ -260,7 +287,7 @@ void Renderer::render(Scene& s, const CameraState& cam, int fbW, int fbH, float 
         depth_.use();
         depth_.set("u_viewProj", cam.viewProj);
         drawModel(depth_, s.room, s.roomAnim, nullptr, 3);
-        for (auto& c : chars) if (c.second && c.first->loaded()) drawModel(depth_, c.first->model, c.first->anim, c.first, 3);
+        for (auto& c : chars) if (c.second && c.first->loaded()) drawCharacter(depth_, *c.first, 3);
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
         glDisable(GL_DEPTH_TEST);
         glDisable(GL_CULL_FACE);
@@ -293,12 +320,12 @@ void Renderer::render(Scene& s, const CameraState& cam, int fbW, int fbH, float 
     pbr_.set("u_screenSize", V2{(float)hdr_.w, (float)hdr_.h});
     pbr_.sampler("u_ssao", 7, ssaoOn ? ao_.color : white_);
     drawModel(pbr_, s.room, s.roomAnim, nullptr, 1);
-    for (auto& c : chars) if (c.second && c.first->loaded()) drawModel(pbr_, c.first->model, c.first->anim, c.first, 1);
+    for (auto& c : chars) if (c.second && c.first->loaded()) drawCharacter(pbr_, *c.first, 1);
     if (settings.hairSoft) {
         glEnable(GL_BLEND);
         glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
         glDepthMask(GL_FALSE);
-        for (auto& c : chars) if (c.second && c.first->loaded()) drawModel(pbr_, c.first->model, c.first->anim, c.first, 2);
+        for (auto& c : chars) if (c.second && c.first->loaded()) drawCharacter(pbr_, *c.first, 2);
         glDepthMask(GL_TRUE);
         glDisable(GL_BLEND);
     }
@@ -354,8 +381,9 @@ void Renderer::render(Scene& s, const CameraState& cam, int fbW, int fbH, float 
     composite_.set("u_resolution", V2{(float)ldr_.w, (float)ldr_.h});
     fullscreen(composite_);
 
-    // ---- blurred copy for frosted UI panels (menus only) ----
-    if (uiBlur) {
+    // ---- blurred copy for frosted UI panels (menus) and depth of field (story close-ups) ----
+    bool dofOn = settings.dofAmount > 0.01f;
+    if (uiBlur || dofOn) {
         int bw = std::max(2, ldr_.w / 2), bh = std::max(2, ldr_.h / 2);
         if (blur_[0].w != bw || blur_[0].h != bh || !blur_[0].fbo) {
             for (int i = 0; i < 3; ++i) { blur_[i].create(bw, bh, GL_RGBA8, false, false, GL_LINEAR); bw = std::max(1, bw / 2); bh = std::max(1, bh / 2); }
@@ -378,12 +406,29 @@ void Renderer::render(Scene& s, const CameraState& cam, int fbW, int fbH, float 
         fullscreen(up_);
     }
 
+    // ---- depth of field ----
+    const RenderTarget* finalSrc = &ldr_;
+    if (dofOn) {
+        if (dofOut_.w != ldr_.w || dofOut_.h != ldr_.h || !dofOut_.fbo) dofOut_.create(ldr_.w, ldr_.h, GL_RGBA8, false, false, GL_LINEAR);
+        dofOut_.bind();
+        dof_.use();
+        dof_.sampler("u_sharp", 0, ldr_.color);
+        dof_.sampler("u_blur", 1, blur_[3].color);
+        dof_.sampler("u_depth", 2, hdr_.depth);
+        dof_.set("u_near", cam.znear);
+        dof_.set("u_far", cam.zfar);
+        dof_.set("u_focus", settings.dofFocus);
+        dof_.set("u_amount", settings.dofAmount);
+        fullscreen(dof_);
+        finalSrc = &dofOut_;
+    }
+
     // ---- FXAA -> backbuffer ----
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, fbW, fbH);
     fxaa_.use();
-    fxaa_.sampler("u_src", 0, ldr_.color);
-    fxaa_.set("u_texel", V2{1.f / (float)ldr_.w, 1.f / (float)ldr_.h});
+    fxaa_.sampler("u_src", 0, finalSrc->color);
+    fxaa_.set("u_texel", V2{1.f / (float)finalSrc->w, 1.f / (float)finalSrc->h});
     fxaa_.set("u_enabled", settings.fxaa ? 1 : 0);
     fullscreen(fxaa_);
 
