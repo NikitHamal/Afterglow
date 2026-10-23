@@ -49,6 +49,9 @@ folder, branches in local worktrees):
   unit-tested, never rendered. `task/agentD/look_tuning_UNTESTED.patch`: bloom from HDR 1.05 (whites stop glowing),
   daylight mood toned down (villa overexposed). `task/agentD/skirt_spec.md`: the evening dress wraps each thigh (reads
   as shorts) — what the outfit builder must change.
+- `task/places/0001*.patch` (branch `places-wip`): the `spa_suite` recipe for `build_place.py` (treatment bed on the
+  authoring bed's footprint, shoji wall, lantern key, candles) + `tiles` / `paper_screen` textures — written, never
+  baked. Bake with `AG_PLACE=spa_suite ... AG_PREVIEW=1`, look at the previews, then post + stage like cabin_living.
 - Still open from the passes: gestures point / reach / wave unchecked; strapless tops' 1–2 px dark slivers;
   salt_and_sun siesta: cyan bikini cups show through her back in the two-shot (not the fit weights; cause open).
 
