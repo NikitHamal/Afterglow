@@ -98,6 +98,20 @@ const BoneMask* Character::mask(const std::string& name) {
     auto it = masks_.find(name);
     if (it != masks_.end()) return &it->second;
     std::vector<std::string> roots;
+    if (name.find('+') != std::string::npos) {           // union, e.g. "arms+head"
+        BoneMask u(model.nodes.size(), 0.f);
+        size_t i = 0;
+        while (i <= name.size()) {
+            size_t j = name.find('+', i);
+            if (j == std::string::npos) j = name.size();
+            const BoneMask* part = mask(name.substr(i, j - i));
+            if (!part) { std::fill(u.begin(), u.end(), 1.f); break; }
+            for (size_t k = 0; k < u.size() && k < part->size(); ++k) u[k] = std::max(u[k], (*part)[k]);
+            i = j + 1;
+        }
+        auto res = masks_.emplace(name, std::move(u));
+        return &res.first->second;
+    }
     if (name == "arm.L") roots = {"肩.L"};
     else if (name == "arm.R") roots = {"肩.R"};
     else if (name == "arms") roots = {"肩.L", "肩.R"};

@@ -4,11 +4,13 @@
 
 namespace ag {
 
+// Matches the content pipeline's authoring bed (tools/model/anim/scene.py): centre (0, 0.604, -1.22),
+// mattress 1.80 x 2.00 m, headboard toward -Z.
 struct RoomInfo {
-    float bedTop = 0.556f;
-    V3 bedCenter{0.f, 0.556f, 0.05f};
-    V3 bedHalf{0.95f, 0.f, 1.15f};
-    V3 lampPos{-1.35f, 1.02f, -0.85f};
+    float bedTop = 0.604f;
+    V3 bedCenter{0.f, 0.604f, -1.22f};
+    V3 bedHalf{0.90f, 0.f, 1.00f};
+    V3 lampPos{-1.30f, 1.05f, -1.98f};
     V3 candlePos[3];
     V3 windowCenter{3.15f, 1.6f, -0.6f};
 };

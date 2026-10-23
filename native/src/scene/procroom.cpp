@@ -247,10 +247,13 @@ void buildPlaceholderRoom(Model& out, RoomInfo& info) {
         out.materials[(size_t)material].castShadow = out.materials[(size_t)material].castShadow && cast;
     };
 
-    const float bedTop = 0.556f;
+    // ---- layout (matches the content authoring bed: centre (0, 0.604, -1.22), 1.80 x 2.00 m, head at -Z) ----
+    const float bedTop = 0.604f, CZ = -1.22f, HW = 0.90f, HL = 1.00f;
+    const float headZ = CZ - HL, footZ = CZ + HL;
+    const float backZ = -2.75f, sideX = 3.0f;
     info.bedTop = bedTop;
-    info.bedCenter = {0.f, bedTop, 0.05f};
-    info.bedHalf = {0.95f, 0.f, 1.15f};
+    info.bedCenter = {0.f, bedTop, CZ};
+    info.bedHalf = {HW, 0.f, HL};
 
     int mWood = mat("floor_wood", {1, 1, 1, 1}, 0.42f, 0.f, texWood());
     int mWall = mat("wallpaper", {1, 1, 1, 1}, 0.85f, 0.f, texWallpaper());
@@ -274,52 +277,51 @@ void buildPlaceholderRoom(Model& out, RoomInfo& info) {
     out.materials[(size_t)mShade].castShadow = false;
     out.materials[(size_t)mWindow].castShadow = false;
 
-    // floor + walls
-    add("floor", facing(grid(1, 1, [](float u, float v) { return V3{-4.f + u * 8.f, 0.f, 4.f - v * 7.5f}; }, 4.f, 3.75f), {0, 1, 0}), mWood, false);
-    add("wall_back", facing(grid(1, 1, [](float u, float v) { return V3{-4.f + u * 8.f, v * 3.2f, -2.4f}; }, 10.f, 4.f), {0, 0, 1}), mWall, false);
-    add("wall_left", facing(grid(1, 1, [](float u, float v) { return V3{-3.4f, v * 3.2f, 4.f - u * 6.4f}; }, 8.f, 4.f), {1, 0, 0}), mWall, false);
-    add("wall_right", facing(grid(1, 1, [](float u, float v) { return V3{3.4f, v * 3.2f, -2.4f + u * 6.4f}; }, 8.f, 4.f), {-1, 0, 0}), mWall, false);
-    MeshData wain = box({0.f, 0.45f, -2.37f}, {8.f, 0.9f, 0.05f});
-    append(wain, box({-3.37f, 0.45f, 0.8f}, {0.05f, 0.9f, 6.4f}));
-    append(wain, box({3.37f, 0.45f, 0.8f}, {0.05f, 0.9f, 6.4f}));
+    // floor + walls (floor runs from the back wall to well past the foot of the bed)
+    add("floor", facing(grid(1, 1, [&](float u, float v) { return V3{-sideX + u * 2.f * sideX, 0.f, 3.5f - v * (3.5f - backZ)}; }, 4.f, 4.f), {0, 1, 0}), mWood, false);
+    add("wall_back", facing(grid(1, 1, [&](float u, float v) { return V3{-sideX + u * 2.f * sideX, v * 3.2f, backZ}; }, 8.f, 4.f), {0, 0, 1}), mWall, false);
+    add("wall_left", facing(grid(1, 1, [&](float u, float v) { return V3{-sideX, v * 3.2f, 3.5f - u * (3.5f - backZ)}; }, 8.f, 4.f), {1, 0, 0}), mWall, false);
+    add("wall_right", facing(grid(1, 1, [&](float u, float v) { return V3{sideX, v * 3.2f, backZ + u * (3.5f - backZ)}; }, 8.f, 4.f), {-1, 0, 0}), mWall, false);
+    MeshData wain = box({0.f, 0.45f, backZ + 0.03f}, {2.f * sideX, 0.9f, 0.05f});
+    append(wain, box({-sideX + 0.03f, 0.45f, (3.5f + backZ) * 0.5f}, {0.05f, 0.9f, 3.5f - backZ}));
+    append(wain, box({sideX - 0.03f, 0.45f, (3.5f + backZ) * 0.5f}, {0.05f, 0.9f, 3.5f - backZ}));
     add("wainscot", wain, mPanel, false);
 
-    // bed
-    MeshData frame = box({0.f, 0.22f, 0.05f}, {2.04f, 0.30f, 2.40f});
-    for (int i = 0; i < 4; ++i) append(frame, box({(i & 1) ? 0.96f : -0.96f, 0.05f, (i & 2) ? 1.2f : -1.1f}, {0.09f, 0.1f, 0.09f}));
+    // bed: frame + mattress (top at 0.60, sheet at 0.604)
+    MeshData frame = box({0.f, 0.25f, CZ}, {2.f * HW + 0.14f, 0.30f, 2.f * HL + 0.12f});
+    for (int i = 0; i < 4; ++i) append(frame, box({(i & 1) ? HW + 0.03f : -HW - 0.03f, 0.05f, (i & 2) ? footZ + 0.03f : headZ - 0.03f}, {0.09f, 0.1f, 0.09f}));
     add("bed_frame", frame, mFrame);
-    add("mattress", box({0.f, 0.46f, 0.05f}, {1.90f, 0.18f, 2.26f}), mMattress);
-    // satin sheet: gentle wrinkles on top, draped over the sides
-    add("sheet", facing(grid(70, 80, [&](float u, float v) {
-        float x = -1.08f + u * 2.16f, z = -1.13f + v * 2.42f;
-        float edgeX = std::max(0.f, std::fabs(x) - 0.95f), edgeZ = std::max(0.f, z - 1.18f);
+    add("mattress", box({0.f, 0.50f, CZ}, {2.f * HW, 0.20f, 2.f * HL}), mMattress);
+    add("sheet", facing(grid(72, 84, [&](float u, float v) {
+        float x = -(HW + 0.12f) + u * 2.f * (HW + 0.12f), z = headZ - 0.02f + v * (2.f * HL + 0.16f);
+        float edgeX = std::max(0.f, std::fabs(x) - HW), edgeZ = std::max(0.f, z - footZ);
         float drop = (edgeX + edgeZ) * 1.9f;
-        float wr = (fbm(x * 2.2f, z * 2.2f, 4) - 0.5f) * 0.018f + std::sin(x * 9.f + fbm(z * 3.f, x, 2) * 4.f) * 0.004f;
-        float y = bedTop + 0.004f + wr - drop * drop * 0.9f - drop * 0.12f;
+        float wr = (fbm(x * 2.2f, z * 2.2f, 4) - 0.5f) * 0.010f + std::sin(x * 9.f + fbm(z * 3.f, x, 2) * 4.f) * 0.0025f;
+        float y = bedTop + wr - drop * drop * 0.9f - drop * 0.12f;
         float pinch = 1.f - std::min(1.f, drop * 0.9f);
-        return V3{x * (0.92f + 0.08f * pinch), std::max(y, 0.30f), z};
+        return V3{x * (0.94f + 0.06f * pinch), std::max(y, 0.36f), z};
     }, 6.f, 6.f), V3{0, 1, 0}), mSheet);
-    // pillows + duvet + headboard
     for (int s = -1; s <= 1; s += 2)
-        add(s < 0 ? "pillow_l" : "pillow_r", superEllipsoid({0.44f * (float)s, bedTop + 0.075f, -0.86f}, {0.33f, 0.085f, 0.21f}, 0.45f, 0.3f, 18,
-            [](V3 p) { p.y *= 1.f - 0.25f * std::fabs(p.x) / 0.33f; return p; }), mPillow);
-    add("duvet", superEllipsoid({0.f, bedTop + 0.045f, 0.98f}, {0.98f, 0.06f, 0.30f}, 0.35f, 0.25f, 22,
+        add(s < 0 ? "pillow_l" : "pillow_r", superEllipsoid({0.42f * (float)s, bedTop + 0.075f, headZ + 0.30f}, {0.32f, 0.085f, 0.20f}, 0.45f, 0.3f, 18,
+            [](V3 p) { p.y *= 1.f - 0.25f * std::fabs(p.x) / 0.32f; return p; }), mPillow);
+    add("duvet", superEllipsoid({0.f, bedTop + 0.045f, footZ - 0.18f}, {0.92f, 0.055f, 0.24f}, 0.35f, 0.25f, 22,
         [](V3 p) { p.y += std::sin(p.x * 7.f) * 0.008f; return p; }), mDuvet);
     add("headboard", facing(grid(48, 30, [&](float u, float v) {
-        float x = -1.06f + u * 2.12f, y = 0.40f + v * 1.25f;
+        float x = -(HW + 0.10f) + u * 2.f * (HW + 0.10f), y = 0.42f + v * 1.25f;
         float tuft = std::cos(x * 26.f) * std::cos(y * 26.f + (std::fmod(std::floor(y * 4.1f), 2.f) * 3.14f));
-        return V3{x, y, -1.20f + 0.018f * tuft * 0.5f + 0.04f * std::sin(u * kPi)};
+        return V3{x, y, headZ - 0.06f + 0.009f * tuft + 0.04f * std::sin(u * kPi)};
     }, 3.f, 2.f), V3{0, 0, 1}), mHead);
-    add("headboard_back", box({0.f, 1.02f, -1.26f}, {2.18f, 1.30f, 0.08f}), mFrame);
+    add("headboard_back", box({0.f, 1.04f, headZ - 0.12f}, {2.f * HW + 0.30f, 1.30f, 0.08f}), mFrame);
 
-    // nightstands, lamp, candles
-    for (int s = -1; s <= 1; s += 2) add(s < 0 ? "nightstand_l" : "nightstand_r", box({1.36f * (float)s, 0.29f, -0.86f}, {0.56f, 0.58f, 0.46f}), mStand);
-    MeshData lampBase = cylinder({-1.36f, 0.58f, -0.86f}, 0.085f, 0.05f, 0.08f, 24, true);
-    append(lampBase, cylinder({-1.36f, 0.66f, -0.86f}, 0.018f, 0.018f, 0.26f, 12, false));
+    // nightstands, lamp (left), candles (right)
+    const float nsZ = headZ + 0.25f, nsX = HW + 0.45f, nsTop = 0.62f;
+    for (int s = -1; s <= 1; s += 2) add(s < 0 ? "nightstand_l" : "nightstand_r", box({nsX * (float)s, nsTop * 0.5f, nsZ}, {0.56f, nsTop, 0.46f}), mStand);
+    MeshData lampBase = cylinder({-nsX, nsTop, nsZ}, 0.085f, 0.05f, 0.08f, 24, true);
+    append(lampBase, cylinder({-nsX, nsTop + 0.08f, nsZ}, 0.018f, 0.018f, 0.26f, 12, false));
     add("lamp_base", lampBase, mBrass);
-    add("lamp_shade", cylinder({-1.36f, 0.88f, -0.86f}, 0.21f, 0.14f, 0.24f, 32, false), mShade, false);
-    info.lampPos = {-1.36f, 1.0f, -0.86f};
-    const V3 cpos[3] = {{1.22f, 0.58f, -0.80f}, {1.40f, 0.58f, -0.92f}, {1.52f, 0.58f, -0.76f}};
+    add("lamp_shade", cylinder({-nsX, nsTop + 0.30f, nsZ}, 0.21f, 0.14f, 0.24f, 32, false), mShade, false);
+    info.lampPos = {-nsX, nsTop + 0.42f, nsZ};
+    const V3 cpos[3] = {{nsX - 0.14f, nsTop, nsZ + 0.06f}, {nsX + 0.04f, nsTop, nsZ - 0.06f}, {nsX + 0.16f, nsTop, nsZ + 0.10f}};
     const float ch[3] = {0.16f, 0.11f, 0.08f};
     MeshData wax, flame;
     for (int i = 0; i < 3; ++i) {
@@ -331,20 +333,20 @@ void buildPlaceholderRoom(Model& out, RoomInfo& info) {
     add("candles", wax, mWax);
     add("candle_flames", flame, mFlame, false);
 
-    // window (night sky) + curtains on the right wall
-    add("window", facing(grid(1, 1, [](float u, float v) { return V3{3.38f, 0.95f + v * 1.45f, 0.15f - u * 1.5f}; }, 1.f, 1.f), {-1, 0, 0}), mWindow, false);
-    info.windowCenter = {3.38f, 1.67f, -0.6f};
+    // window (night sky) + curtains on the right wall, beside the bed
+    add("window", facing(grid(1, 1, [&](float u, float v) { return V3{sideX - 0.02f, 0.95f + v * 1.45f, -0.4f - u * 1.5f}; }, 1.f, 1.f), {-1, 0, 0}), mWindow, false);
+    info.windowCenter = {sideX - 0.02f, 1.67f, -1.15f};
     MeshData curtain;
     for (int s = 0; s < 2; ++s) {
-        float z0 = s ? -1.45f : 0.35f;
+        float z0 = s ? -1.95f : -0.15f;
         append(curtain, facing(grid(24, 8, [&](float u, float v) {
             float z = z0 - u * 0.55f, y = 0.05f + v * 2.95f;
-            return V3{3.33f - 0.035f * (std::sin(u * 18.f) * 0.5f + 0.5f), y, z};
+            return V3{sideX - 0.07f - 0.035f * (std::sin(u * 18.f) * 0.5f + 0.5f), y, z};
         }, 2.f, 3.f), V3{-1, 0, 0}));
     }
     add("curtains", curtain, mCurtain);
 
-    add("rug", facing(grid(1, 1, [](float u, float v) { return V3{-1.6f + u * 3.2f, 0.004f, 2.5f - v * 2.9f}; }, 1.f, 1.f), {0, 1, 0}), mRug, false);
+    add("rug", facing(grid(1, 1, [&](float u, float v) { return V3{-1.6f + u * 3.2f, 0.004f, footZ + 1.6f - v * 2.6f}; }, 1.f, 1.f), {0, 1, 0}), mRug, false);
 }
 
 }  // namespace ag

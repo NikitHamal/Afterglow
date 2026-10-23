@@ -1,18 +1,25 @@
 # Afterglow visual QA — rendered on CI by the harness under Mesa llvmpipe (1280x720).
-# Format: name|scene spec   (keys: see docs/NATIVE_ENGINE.md, "Harness")
-overview|cam=wide
-front|cam=front
-side|cam=side
-vivian_close|cam=close;char=vivian
-vivian_pleasure|cam=close;char=vivian;face=pleasure:0.85
-vivian_smile|cam=close;char=vivian;face=smile:0.8;tone=honey
-vivian_deep|cam=front;char=vivian;tone=deep
-vivian_curvy|cam=front;char=vivian;body=bust:1,hips:0.8,butt:0.8,waist:0.6
-marcus_front|cam=front;char=marcus
-flushed|cam=close;char=vivian;flush=0.9;sweat=0.8;face=moan:0.7
-debug_overlay|cam=front;debug=1
-missionary|pos=missionary;depth=0.6;cam=side
+# Format: name|scene spec   (keys: docs/NATIVE_ENGINE.md, "Harness"). Cameras: content presets from clips.json.
+missionary_side|pos=missionary;depth=0.75;cam=side
+missionary_front|pos=missionary;depth=0.75;cam=front
+missionary_top|pos=missionary;depth=0.75;cam=top
+missionary_fpv|pos=missionary;depth=0.75;cam=fpv
+missionary_rub|pos=missionary;depth=0.5;rub=1;cam=side
+missionary_embrace|pos=missionary;depth=0.6;embrace=1;cam=side
+legsup|pos=legsup;depth=0.8;cam=side
 doggy|pos=doggy;depth=0.8;cam=side
-flex_test|cam=front;flex=1
-flex_side|cam=side;flex=0.7
-dust_beam|cam=orbit:0.9,0.2,3.6
+prone|pos=prone;depth=0.8;cam=side
+cowgirl|pos=cowgirl;depth=0.7;cam=side
+revcowgirl|pos=revcowgirl;depth=0.7;cam=side
+spoon|pos=spoon;depth=0.7;cam=side
+oral|pos=oral;depth=0.6;cam=side
+lick|pos=lick;depth=0.5;cam=side
+solo|pos=solo;rub=1;cam=side
+wide|pos=missionary;depth=0.7;cam=wide
+vivian_face|pos=missionary;depth=0.3;cam=close
+vivian_pleasure|pos=missionary;depth=0.9;cam=close;face=pleasure:0.9;flush=0.7;sweat=0.6
+vivian_deep|pos=solo;cam=side;tone=deep
+vivian_curvy|pos=solo;cam=side;body=bust:1,hips:0.8,butt:0.8,waist:0.6
+vivian_slim|pos=solo;cam=side;body=bust:-1,hips:-0.6,weight:-0.8
+marcus_soft|pos=solo;char=marcus;aroused=0;cam=wide
+debug_overlay|pos=missionary;depth=0.6;cam=side;debug=1
