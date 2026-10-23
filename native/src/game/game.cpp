@@ -6,6 +6,8 @@
 #include "gfx/gl.h"
 #include "gfx/texture.h"
 #include "raylib.h"
+#include "rlgl.h"
+#include <ctime>
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -284,6 +286,8 @@ void Game::update(float dt) {
     introT_ += dt;
     ui.begin(dt, true);
     if (IsKeyPressed(KEY_F1)) debug_ = !debug_;
+    if (IsKeyPressed(KEY_F12) && !harness) shotPending_ = true;
+    shotToastT_ = std::max(0.f, shotToastT_ - dt);
     if (IsKeyPressed(KEY_F5)) renderer.reloadShaders();
 
     // fades between screens
@@ -347,6 +351,30 @@ void Game::render(int w, int h) {
         case Screen::Results: drawResults(); break;
     }
     if (debug_) drawDebug();
+    if (shotPending_) {
+        // the frame as the player sees it (UI included), into <user>/screenshots
+        shotPending_ = false;
+        rlDrawRenderBatchActive();
+        Image img = LoadImageFromScreen();
+        char name[64];
+        std::snprintf(name, sizeof name, "afterglow-%lld.png", (long long)(GetTime() * 1000.0) + (long long)time(nullptr) * 1000LL);
+        std::string dir = paths::join(paths::userDir(), "screenshots");
+        paths::writeText(paths::join(dir, ".keep"), "");
+        std::string file = paths::join(dir, name);
+        bool ok = ExportImage(img, file.c_str());
+        UnloadImage(img);
+        shotToast_ = ok ? "Screenshot saved" : "Couldn't save the screenshot";
+        shotToastT_ = 2.2f;
+        AG_INFO("AG: screenshot %s %s", file.c_str(), ok ? "saved" : "failed");
+    }
+    if (shotToastT_ > 0.f) {
+        ui.alpha = std::min(1.f, shotToastT_ * 2.f);
+        float tw = ui.measure(ui::Face::SansMedium, ui.u(16.f), shotToast_).x + ui.u(40.f);
+        ui::Box b; b.radius = ui.u(18.f); b.fill = Color{24, 14, 18, 200}; b.border = std::max(1.f, ui.u(1.f)); b.borderCol = ui.th.hairline;
+        ui.box(Rectangle{ui.W - tw - ui.u(40.f), ui.H - ui.u(84.f), tw, ui.u(38.f)}, b);
+        ui.text(ui::Face::SansMedium, ui.u(16.f), shotToast_, ui.W - tw * 0.5f - ui.u(40.f), ui.H - ui.u(75.f), ui.th.ink, ui::Center);
+        ui.alpha = 1.f;
+    }
     // screen fade + position-change dip
     float black = std::max(fade_, posFade_);
     if (black > 0.001f) {
