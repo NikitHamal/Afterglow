@@ -74,6 +74,7 @@ void Sandbox::reset() {
     tone_ = mtone_ = 1;
     scene.showVivian = scene.showMarcus = true;
     scene.vivian.flush = scene.vivian.sweat = scene.marcus.flush = scene.marcus.sweat = 0.f;
+    flex_ = 0.f;
     hairSim_ = breathing_ = lookAt_ = true;
     applyQuality(renderer.settings, Quality::High);
     posIndex_ = 0;
@@ -138,6 +139,7 @@ void Sandbox::applySpec(const Spec& s) {
     if (s.has("exposure")) renderer.settings.exposure = s.num("exposure", 1.f);
     if (s.has("flush")) scene.vivian.flush = s.num("flush", 0.f);
     if (s.has("sweat")) scene.vivian.sweat = scene.marcus.sweat = s.num("sweat", 0.f);
+    flex_ = s.num("flex", flex_);
     applyPose();
     scene.update(0.f);   // settle poses so camera focus uses them
     std::string cam = s.get("cam", "front");
@@ -187,6 +189,23 @@ void Sandbox::applyPose() {
     for (auto& kv : body_) if (v.loaded()) v.setBody(kv.first, kv.second);
     for (auto& kv : mbody_) if (m.loaded()) m.setBody(kv.first, kv.second);
     if (m.loaded() && m.hasMorph("aroused")) m.setMorph("aroused", aroused_);
+    // deformation test pose (QA): bend elbows, knees, hips, spine, curl fingers
+    for (Character* c : {&v, &m}) {
+        if (!c->loaded()) continue;
+        c->clearBoneOffsets();
+        if (flex_ <= 0.f) continue;
+        const float f = flex_;
+        for (const char* sd : {".L", ".R"}) {
+            std::string S = sd;
+            c->setBoneOffset("ひじ" + S, {1.7f * f, 0.f, 0.f});
+            c->setBoneOffset("ひざ" + S, {1.4f * f, 0.f, 0.f});
+            c->setBoneOffset("足" + S, {-0.9f * f, 0.f, 0.f});
+            for (const char* fg : {"人指", "中指", "薬指", "小指"})
+                for (const char* k : {"０", "１", "２"}) c->setBoneOffset(std::string(fg) + k + S, {0.9f * f, 0.f, 0.f});
+        }
+        c->setBoneOffset("上半身", {0.25f * f, 0.f, 0.f});
+        c->setBoneOffset("首", {0.2f * f, 0.f, 0.f});
+    }
     if (v.loaded()) v.setTone(kTones[tone_]);
     if (m.loaded()) m.setTone(kTones[mtone_]);
     // gaze: she looks at the camera (or him), he looks at her face

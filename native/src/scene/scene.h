@@ -2,6 +2,7 @@
 #pragma once
 #include "scene/character.h"
 #include "scene/procroom.h"
+#include "gfx/particles.h"
 #include <string>
 
 namespace ag {
@@ -39,12 +40,16 @@ public:
     Lights lights;
     float time = 0.f;
     bool hasClips = false;                  // content clips present (placement baked in clips)
+    Particles particles;                    // shared FX (dust motes are maintained by the scene)
+    bool dust = true;
+    int dustTarget = 140;
 
     // Stand both characters beside the bed (used when no clips exist yet).
     void standingPlacement();
 
 private:
     void lightsFromRoomGlb();
+    void updateDust(float dt);
 };
 
 }  // namespace ag

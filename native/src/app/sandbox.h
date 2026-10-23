@@ -40,7 +40,7 @@ private:
 
     std::vector<std::string> positions_;
     int posIndex_ = 0;
-    float depth_ = 0.55f, rub_ = 0.f, embrace_ = 0.f, aroused_ = 1.f;
+    float depth_ = 0.55f, rub_ = 0.f, embrace_ = 0.f, aroused_ = 1.f, flex_ = 0.f;
     bool autoThrust_ = false;
     float thrustRate_ = 1.1f, thrustPhase_ = 0.f, rubPhase_ = 0.f, idlePhase_ = 0.f;
     std::map<std::string, float> face_, mface_, body_, mbody_;

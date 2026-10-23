@@ -62,6 +62,7 @@ bool Scene::load() {
     // Vivian's hair texture is neutral grey: the tint gives it its colour (rich dark chestnut)
     if (vivian.loaded()) vivian.hairTint = {0.20f, 0.095f, 0.05f};
     if (!hasClips) standingPlacement();
+    particles.init();
     return vivian.loaded() || marcus.loaded();
 }
 
@@ -103,6 +104,7 @@ void Scene::lightsFromRoomGlb() {
 }
 
 void Scene::destroy() {
+    particles.destroy();
     vivian.destroy();
     marcus.destroy();
     roomAnim.destroy();
@@ -119,6 +121,38 @@ void Scene::update(float dt) {
     }
     if (vivian.loaded() && showVivian) vivian.update(dt);
     if (marcus.loaded() && showMarcus) marcus.update(dt);
+    if (dust) updateDust(dt);
+    particles.update(dt, info.bedTop);
+}
+
+// Floating dust motes, bright only where the lamp's cone reaches them (light catching the dust).
+void Scene::updateDust(float dt) {
+    static float acc = 0.f;
+    acc += dt;
+    int want = dustTarget - particles.count();
+    if (want <= 0 || acc < 0.02f) return;
+    acc = 0.f;
+    V3 a = lights.keyPos, b = info.bedCenter + V3{0.f, 0.35f, 0.f};
+    V3 dir = normalize(lights.keyDir);
+    float cosOuter = std::cos(lights.keyOuter), cosInner = std::cos(lights.keyInner);
+    for (int i = 0; i < std::min(want, 6); ++i) {
+        float u = hash1(time * 17.3f + (float)i * 3.1f), v = hash1(time * 11.7f + (float)i * 5.3f), w = hash1(time * 7.1f + (float)i * 9.7f);
+        V3 p = lerp(a, b, 0.25f + 0.75f * u) + V3{(v - 0.5f) * 1.6f, (w - 0.5f) * 1.0f, (u - 0.5f) * 1.4f};
+        V3 L = p - lights.keyPos;
+        float d = length(L);
+        float spot = smoothstep(cosOuter, cosInner, dot(L / std::max(d, 1e-3f), dir));
+        float bright = spot * lights.keyIntensity * 0.18f / (d * d + 0.3f);
+        if (bright < 0.02f) continue;
+        EmitParams e;
+        e.pos = p;
+        e.vel = {(v - 0.5f) * 0.012f, (w - 0.5f) * 0.006f, (u - 0.5f) * 0.012f};
+        e.life = 9.f + 6.f * w; e.lifeJitter = 0.2f;
+        e.size0 = e.size1 = 0.0011f + 0.0009f * v;
+        e.color0 = {lights.keyColor.x * bright, lights.keyColor.y * bright, lights.keyColor.z * bright, 0.9f};
+        e.color1 = {e.color0.x, e.color0.y, e.color0.z, 0.f};
+        e.additive = true;
+        particles.emit(e);
+    }
 }
 
 Character* Scene::character(const std::string& id) {

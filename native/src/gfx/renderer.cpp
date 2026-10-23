@@ -276,6 +276,7 @@ void Renderer::render(Scene& s, const CameraState& cam, int fbW, int fbH, float 
         glDepthMask(GL_TRUE);
         glDisable(GL_BLEND);
     }
+    s.particles.render(cam);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
 
