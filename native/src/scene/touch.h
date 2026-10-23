@@ -50,6 +50,8 @@ public:
     // zones from the bind mesh (needs the model's CPU vertex data: call before releaseCpuData)
     void init(Character& c);
     bool zoneWorld(const Animator& a, Zone z, V3& pos, V3& normal) const;
+    // the zone on the skin's rest shape (bind space): where a garment's own bind shape is measured against it
+    bool zoneBind(Zone z, V3& pos, V3& normal) const;
     // the lip front with the kiss pucker at `kissMorph` (lips pushed forward)
     bool mouthWorld(const Animator& a, float kissMorph, V3& pos) const;
     // signed distance (m, + outside) from a world point to this character's face around the mouth and nose
@@ -71,6 +73,7 @@ private:
     };
     void solveArm(Animator& a, const Arm& arm, const HandGoal& g);
     BodyZone zones_[(int)Zone::Count];
+    V3 bindPos_[(int)Zone::Count], bindNrm_[(int)Zone::Count];
     Arm arms_[2];
     V3 kissDelta_{0, 0, 0};              // the lip front's move under the kiss morph (head frame)
     std::vector<V3> faceP_, faceN_;      // face surface samples around mouth and nose (head frame)
