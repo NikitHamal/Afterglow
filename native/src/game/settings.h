@@ -47,7 +47,7 @@ constexpr int kSkinToneCount = 8;
 constexpr float kMinAge = 21.f, kMaxAge = 60.f;   // adults only: nothing below 21, ever
 
 struct HerLook {
-    float bust = 0.f, hips = 0.f, waist = 0.f, butt = 0.f, weight = 0.f, muscle = 0.f, belly = 0.f;   // -1..1 (muscle/belly 0..1)
+    float bust = 0.f, hips = 0.f, waist = 0.f, butt = 0.f, weight = 0.f, muscle = 0.f, belly = 0.f;   // -1..1 (belly 0..1)
     int tone = 4;                  // skin tone index (caramel)
     int hair = 0;                  // index into the hair colour table
     float age = 42.f;              // years, 21..60

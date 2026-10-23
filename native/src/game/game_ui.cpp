@@ -16,6 +16,44 @@ const Color kToneSwatch[8] = {{246, 214, 196, 255}, {238, 200, 172, 255}, {214, 
                               {170, 108, 72, 255}, {150, 96, 62, 255}, {104, 62, 44, 255}, {66, 40, 30, 255}};
 const Color kHairSwatch[6] = {{52, 32, 24, 255}, {104, 56, 34, 255}, {132, 52, 28, 255}, {150, 44, 30, 255}, {24, 20, 22, 255}, {196, 140, 82, 255}};
 const char* kHairLabel[6] = {"Espresso", "Chestnut", "Copper", "Auburn", "Raven", "Honey"};
+
+// preset chips sized to their names, in as few rows as the width allows and spread evenly over them (no lone chip on
+// the last row); several rows are each justified to the full width. *bottom = y below the last row (pitch included).
+std::vector<Rectangle> chipFlow(ui::Ui& U, const std::vector<std::string>& labels, float x, float y, float w, float* bottom) {
+    const float pad = U.u(18.f), gap = U.u(10.f);
+    std::vector<float> cw;
+    for (auto& l : labels) cw.push_back(U.measure(ui::Face::SansMedium, U.u(16.f), l, 0.04f).x + 2.f * pad);
+    auto rowEnds = [&](float wrap) {   // greedy line breaks at this width: one past each row's last chip
+        std::vector<size_t> ends;
+        for (size_t i = 0; i < cw.size();) {
+            size_t j = i + 1;
+            for (float used = cw[i]; j < cw.size() && used + gap + cw[j] <= wrap; ++j) used += gap + cw[j];
+            ends.push_back(j);
+            i = j;
+        }
+        return ends;
+    };
+    std::vector<size_t> ends = rowEnds(w);
+    if (ends.size() > 1) {   // the narrowest wrap that keeps the row count evens the rows out
+        float lo = *std::max_element(cw.begin(), cw.end()), hi = w;
+        for (int it = 0; it < 20; ++it) {
+            float mid = 0.5f * (lo + hi);
+            if (rowEnds(mid).size() <= ends.size()) hi = mid; else lo = mid;
+        }
+        ends = rowEnds(hi);
+    }
+    std::vector<Rectangle> out(cw.size());
+    size_t i = 0;
+    for (size_t e : ends) {
+        float used = gap * (float)(e - i - 1);
+        for (size_t k = i; k < e; ++k) used += cw[k];
+        float extra = ends.size() > 1 ? (w - used) / (float)(e - i) : 0.f;
+        for (float cx = x; i < e; ++i) { out[i] = Rectangle{cx, y, cw[i] + extra, U.u(32.f)}; cx += cw[i] + extra + gap; }
+        y += U.u(40.f);
+    }
+    *bottom = y;
+    return out;
+}
 }  // namespace
 
 void Game::heroLogo(float cx, float y, float size, float a) {
@@ -174,11 +212,11 @@ void Game::drawCustomize() {
     U.panel(Rectangle{px + (1.f - ea) * U.u(40.f), py, pw, ph}, 28.f, 0.6f);
     float x = px + U.u(48.f) + (1.f - ea) * U.u(40.f), w = pw - U.u(96.f), y = py + U.u(40.f);
     U.text(ui::Face::Serif, U.u(56.f), "Customize", x, y, U.th.ink);
-    y += U.u(84.f);
+    y += U.u(78.f);
     int before = custTab_;
     U.tabs("cust#tabs", &custTab_, {"VIVIAN", "MARCUS"}, Rectangle{x, y, w, U.u(44.f)});
     if (custTab_ != before) { showcaseWho_ = custTab_; stage(Stage::Showcase); }
-    y += U.u(70.f);
+    y += U.u(64.f);
     bool changed = false;
     std::vector<Color> toneCols(kToneSwatch, kToneSwatch + 8);
     std::vector<std::string> toneNames(kToneLabel, kToneLabel + 8);
@@ -199,8 +237,11 @@ void Game::drawCustomize() {
         // body types: the content's presets (characters/presets.json), with their skin tone and age
         const Json& pr = clipsPresets_["vivian"]["presets"];
         static const char* kSl[8] = {"bust", "hips", "waist", "butt", "weight", "muscle", "belly", "age"};
-        int np = 0;
-        float cw = (w - U.u(4.f * 10.f)) / 5.f;
+        std::vector<std::string> names;
+        for (auto& kv : pr.obj) names.push_back(kv.first);
+        float bottom = y;
+        std::vector<Rectangle> rects = chipFlow(U, names, x, y, w, &bottom);
+        size_t np = 0;
         for (auto& kv : pr.obj) {
             const Json& sl = kv.second["sliders"];
             float want[7];
@@ -210,33 +251,32 @@ void Game::drawCustomize() {
             for (int k = 0; k < 7; ++k) d += std::fabs(cur[k] - want[k]);
             int toneWant = skinToneIndex(kv.second["tone"].str());
             bool act = d < 0.05f && (toneWant < 0 || toneWant == h.tone);
-            Rectangle r{x + (float)(np % 5) * (cw + U.u(10.f)), y + (float)(np / 5) * U.u(40.f), cw, U.u(32.f)};
-            if (U.chip(std::string("hp#") + kv.first, kv.first, r, act)) {
+            if (U.chip(std::string("hp#") + kv.first, kv.first, rects[np], act)) {
                 h.bust = want[0]; h.hips = want[1]; h.waist = want[2]; h.butt = want[3]; h.weight = want[4];
-                h.muscle = std::max(0.f, want[5]); h.belly = std::max(0.f, want[6]);
+                h.muscle = want[5]; h.belly = std::max(0.f, want[6]);
                 if (toneWant >= 0) h.tone = toneWant;
                 if (sl["age"].isNumber()) { float a = sl["age"].f(); h.age = a < 0.f ? 42.f + a * 17.f : 42.f + a * 18.f; }
                 changed = true;
             }
             ++np;
         }
-        y += U.u(40.f) * (float)((np + 4) / 5) + U.u(14.f);
+        y = bottom + U.u(14.f);
         U.sectionLabel("FIGURE", x, y, w);
         y += U.u(30.f);
         struct S { const char* id; const char* label; float* v; float lo; };
         const S sl[] = {{"h_bust", "Bust", &h.bust, -1.f}, {"h_hips", "Hips", &h.hips, -1.f}, {"h_waist", "Waist", &h.waist, -1.f},
-                        {"h_butt", "Bottom", &h.butt, -1.f}, {"h_weight", "Weight", &h.weight, -1.f}, {"h_muscle", "Tone", &h.muscle, 0.f},
+                        {"h_butt", "Bottom", &h.butt, -1.f}, {"h_weight", "Weight", &h.weight, -1.f}, {"h_muscle", "Tone", &h.muscle, -1.f},
                         {"h_belly", "Belly", &h.belly, 0.f}};
         float colW = (w - U.u(48.f)) * 0.5f;
         for (int i = 0; i < 7; ++i) {
-            float sx = x + (i % 2) * (colW + U.u(48.f)), sy = y + (float)(i / 2) * U.u(54.f);
+            float sx = x + (i % 2) * (colW + U.u(48.f)), sy = y + (float)(i / 2) * U.u(52.f);
             changed |= U.slider(sl[i].id, sl[i].label, sl[i].v, sl[i].lo, 1.f, Rectangle{sx, sy, colW, U.u(46.f)}, sl[i].lo < 0.f);
         }
         // adults only: 21 to 60 years
         std::snprintf(agebuf, sizeof agebuf, "%d years", (int)std::lround(h.age));
-        changed |= U.slider("h_age", "Age", &h.age, kMinAge, kMaxAge, Rectangle{x + colW + U.u(48.f), y + 3.f * U.u(54.f), colW, U.u(46.f)}, false, agebuf);
-        soonTag(scene.vivian, x + colW + U.u(48.f), y + 3.f * U.u(54.f));
-        y += U.u(4.f * 54.f + 6.f);
+        changed |= U.slider("h_age", "Age", &h.age, kMinAge, kMaxAge, Rectangle{x + colW + U.u(48.f), y + 3.f * U.u(52.f), colW, U.u(46.f)}, false, agebuf);
+        soonTag(scene.vivian, x + colW + U.u(48.f), y + 3.f * U.u(52.f));
+        y += U.u(4.f * 52.f + 6.f);
         U.sectionLabel("SKIN & HAIR", x, y, w);
         y += U.u(30.f);
         changed |= U.swatches("h_tone", "Skin tone", &h.tone, toneCols, toneNames, Rectangle{x, y, w, U.u(72.f)});
@@ -252,14 +292,16 @@ void Game::drawCustomize() {
         y += U.u(30.f);
         // builds: the content's presets (characters/presets.json)
         const Json& pr = clipsPresets_["marcus"]["presets"];
-        float cw = (w - U.u(40.f)) / 5.f;
-        int np = 0;
+        std::vector<std::string> names;
+        for (auto& kv : pr.obj) names.push_back(kv.first);
+        float bottom = y;
+        std::vector<Rectangle> rects = chipFlow(U, names, x, y, w, &bottom);
+        size_t np = 0;
         for (auto& kv : pr.obj) {
             const Json& sl = kv.second["sliders"];
             float mu = sl["muscle"].f(0.f), we = sl["weight"].f(0.f), be = std::max(0.f, sl["belly"].f(0.f));
             bool act = std::fabs(h.muscle - mu) + std::fabs(h.weight - we) + std::fabs(h.belly - be) < 0.05f;
-            Rectangle r{x + (float)(np % 5) * (cw + U.u(10.f)), y + (float)(np / 5) * U.u(40.f), cw, U.u(32.f)};
-            if (U.chip(std::string("mp#") + kv.first, kv.first, r, act)) {
+            if (U.chip(std::string("mp#") + kv.first, kv.first, rects[np], act)) {
                 h.muscle = mu; h.weight = we; h.belly = be;
                 if (sl["length"].isNumber()) h.length = sl["length"].f();
                 if (sl["girth"].isNumber()) h.girth = sl["girth"].f();
@@ -267,8 +309,7 @@ void Game::drawCustomize() {
             }
             ++np;
         }
-        y += U.u(40.f) * (float)((np + 4) / 5) - U.u(40.f);
-        y += U.u(60.f);
+        y = bottom + U.u(20.f);
         float colW = (w - U.u(48.f)) * 0.5f;
         changed |= U.slider("m_muscle", "Muscle", &h.muscle, -1.f, 1.f, Rectangle{x, y, colW, U.u(46.f)}, true);
         changed |= U.slider("m_weight", "Weight", &h.weight, -1.f, 1.f, Rectangle{x + colW + U.u(48.f), y, colW, U.u(46.f)}, true);

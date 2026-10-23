@@ -105,7 +105,7 @@ bool Profile::load(const std::string& path) {
     her.waist = rd(h, "waist", 0.f, -1.f, 1.f);
     her.butt = rd(h, "butt", 0.f, -1.f, 1.f);
     her.weight = rd(h, "weight", 0.f, -1.f, 1.f);
-    her.muscle = rd(h, "muscle", 0.f, 0.f, 1.f);
+    her.muscle = rd(h, "muscle", 0.f, -1.f, 1.f);
     her.belly = rd(h, "belly", 0.f, 0.f, 1.f);
     // skin by name; profiles from before the seven tones stored 0 honey / 1 caramel / 2 deep
     auto tone = [&](const Json& o) {
