@@ -462,6 +462,7 @@ void Game::applySpec(const Spec& s) {
         night_.elapsed = s.num("elapsed", 140.f);
         night_.score = s.num("score", 1840.f);
         introCard_ = s.has("intro") ? 8.f : 0.f;
+        hudT_ = hintsT_ = 1.f;   // stills: the HUD has already faded in
         autoplay_ = s.has("autoplay");
         if (autoplay_) { night_.her = 0.f; night_.him = 0.f; night_.elapsed = 0.f; night_.score = 0.f; night_.connection = 0.5f; autoLog_ = 0.f; }
         depth_ = depthTarget_ = dragDepth_ = s.num("depth", 0.6f);
