@@ -173,13 +173,21 @@ class Rig:
         hinge = (E - S).cross(W - E)
         if hinge.length < 1e-8: hinge = dn.cross(pv)
         hinge.normalize()
+        last = getattr(self, "_last_hinge", None)
+        if last is None: last = self._last_hinge = {}
         for b, seg in ((upper, E - S), (lower, None)):
             if seg is None: seg = W - self.head(lower)
             hl = self.hinge.get(b, Vector((1, 0, 0)))
-            # keep the anatomical sense of the hinge continuous with the bone's current frame
-            R_cur = self.P[b].to_3x3().normalized()
-            R_min = self.axes(b)[1].rotation_difference(seg.normalized()).to_matrix() @ R_cur
-            h = hinge if hinge.dot(R_min @ hl) >= 0 else -hinge
+            if b in last:
+                # continuous with the previous solve of this limb (frame to frame): a sign chosen against the
+                # rest frame alone can flip when the bend plane is ~90 deg from rest (arms overhead) = 180 deg twist pops
+                h = hinge if hinge.dot(last[b]) >= 0 else -hinge
+            else:
+                # first solve: keep the anatomical sense of the hinge continuous with the bone's current frame
+                R_cur = self.P[b].to_3x3().normalized()
+                R_min = self.axes(b)[1].rotation_difference(seg.normalized()).to_matrix() @ R_cur
+                h = hinge if hinge.dot(R_min @ hl) >= 0 else -hinge
+            last[b] = h.copy()
             self.aim2(b, seg, h, hl)
         return (self.head(end) - T).length
 

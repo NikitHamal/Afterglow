@@ -27,14 +27,14 @@ def best_of(key, variants, apply, bodies):
     if k not in _BEST:
         if SCORE is None: _BEST[k] = 0
         else:
-            snaps = [b.rig.snapshot() for b in bodies]; best = None
+            snaps = [b.rig.snapshot() for b in bodies]; best = None; scores = []
             for i, v in enumerate(variants):
                 for b, sn in zip(bodies, snaps): b.rig.restore(sn)
-                apply(v); sc = SCORE()
+                apply(v); sc = SCORE(); scores.append(round(sc, 1))
                 if best is None or sc < best[0]: best = (sc, i)
             for b, sn in zip(bodies, snaps): b.rig.restore(sn)
             _BEST[k] = best[1]
-            print("[anim]   best_of", CURRENT, key, variants[best[1]], round(best[0], 1), flush=True)
+            print("[anim]   best_of", CURRENT, key, variants[best[1]], round(best[0], 1), "| all", scores, flush=True)
     apply(variants[_BEST[k]]); return variants[_BEST[k]]
 
 LINS = 0.110            # insertion at depth 1 (m); her canal is opened to his girth by vag_open
@@ -87,27 +87,36 @@ def align_pelvis_to(M, D, up_hint):
     M.place(r.head("下半身"), f, u)
 
 # ---------------------------------------------------------------- shared limb recipes
-def supine_her(V, pelvis_y, tilt=-15.0, knees_w=0.40, feet_w=0.40, feet_back=0.40, head_target=None):
+def supine_her(V, pelvis_y, tilt=-15.0, knees_w=0.40, feet_w=0.40, feet_back=0.40, head_target=None, arch=0.0):
+    """on her back; arch (0..1) lifts her chest off the sheet (back arching as he goes deep)"""
     r = V.rig; r.reset()
     f = nrm(yz(90 + tilt)); u = nrm(yz(tilt))                     # front up (tilted toward the feet), head toward +y
     V.place(V3(0, pelvis_y, BED_TOP + 0.10), f, u)
-    V.spine(forward=V3(0, 0.05, 1), up=V3(0, 1, -0.05), chest_forward=V3(0, 0.12, 1), chest_up=V3(0, 1, -0.12))
+    V.spine(forward=nrm(V3(0, 0.05 + 0.10 * arch, 1)), up=nrm(V3(0, 1, -0.05 - 0.10 * arch)),
+            chest_forward=nrm(V3(0, 0.12 + 0.22 * arch, 1)), chest_up=nrm(V3(0, 1, -0.12 - 0.22 * arch)))
     SC.settle(V, sink=0.008)                                     # back + pelvis on the sheet, before the feet are planted
     for s, sx in sides(V, "足"):
         H = r.head("足" + s)
         A = V3(sx * feet_w, pelvis_y - feet_back, BED_TOP + 0.075)
         V.leg_ik(s, A, H + V3(sx * knees_w, -0.05, 0.55))
-        V.foot(s, nrm(V3(sx * 0.25, -1.0, -0.35)), V3(sx * 0.1, -0.25, 1))
+        V.foot(s, nrm(V3(sx * 0.22, -1.0, 0.0)), V3(sx * 0.06, 0, 1))          # sole flat on the sheet
     if head_target is not None: V.look(head_target)
 
-def her_arms_overhead(V):
+def her_arms_overhead(V, grip=0.0, reach=0.24):
+    """hands up beside her head; grip > 0: palms down, fingers clutching the sheet (tightens with grip)"""
     r = V.rig
     for s, sx in sides(V, "腕"):
         sh = r.head("腕" + s)
-        W = V3(sx * 0.27, sh.y + 0.24, BED_TOP + 0.10)
-        V.arm_ik(s, W, sh + V3(sx * 0.45, 0.05, -0.1))
-        V.hand(s, palm=V3(-sx * 0.3, -0.2, 1), fingers=nrm(V3(sx * 0.15, 1, 0.1)))
-        V.fingers(s, 0.45)
+        if grip <= 0:
+            W = V3(sx * 0.27, sh.y + reach, BED_TOP + 0.10)
+            V.arm_ik(s, W, sh + V3(sx * 0.45, 0.05, -0.1))
+            V.hand(s, palm=V3(-sx * 0.3, -0.2, 1), fingers=nrm(V3(sx * 0.15, 1, 0.1)))
+            V.fingers(s, 0.42)
+        else:
+            W = V3(sx * 0.30, sh.y + reach - 0.03, BED_TOP + 0.085)
+            V.arm_ik(s, W, sh + V3(sx * 0.45, 0.0, -0.05))
+            V.hand(s, palm=V3(0, 0, -1), fingers=nrm(V3(sx * 0.2, 1, -0.15)))
+            V.fingers(s, 0.42 + 0.26 * grip, thumb=0.40 + 0.25 * grip)
 
 def her_rub_hand(V, s, phase, target, radius=0.011):
     """her hand on a point (clit): fingertip pads circle on the skin; returns the fingertip target"""
@@ -144,7 +153,7 @@ def kneel_his_legs(M, knee_w=0.17, knee_z=0.055, shin_dir=V3(0, -1, 0.04)):
         dy = math.sqrt(max(1e-4, L * L - dz * dz - (sx * knee_w - H.x) ** 2))
         K = V3(sx * knee_w, H.y - dy, BED_TOP + knee_z)
         M.leg_aim(s, K, shin_dir)
-        M.foot(s, nrm(V3(0, -1, -0.15)), V3(0, 0.1, -1))
+        M.foot_relaxed(s, 78)                                   # on the instep
 
 def lean_to_reach(M, targets, pelvis_up_deg, angles=range(0, 75, 3), bend=0.9):
     """choose the chest pitch (degrees above horizontal, facing +y/down) so both shoulders reach their hand
@@ -175,10 +184,12 @@ def his_hands_on_bed(M, y, w=0.31):
 # ---------------------------------------------------------------- MISSIONARY
 def missionary(ctx, t, rub=None, embrace=0.0):
     V, M = ctx.V, ctx.M
-    head_pt = V3(0, 1.62, BED_TOP + 0.55)
-    supine_her(V, pelvis_y=0.98 + 0.012 * t, tilt=-24, knees_w=0.95, feet_w=0.62, feet_back=0.30, head_target=head_pt)
+    k = ss(0.45, 1.0, t)                                               # how hard he is in: her body answers
+    head_pt = V3(0.55 - 0.10 * k, 1.75 + 0.20 * k, BED_TOP + 0.50 + 0.10 * k)  # face turned toward the room, chin lifts as he goes deep
+    supine_her(V, pelvis_y=0.98 + 0.004 * t + 0.012 * k, tilt=-24 - 3 * k, knees_w=0.95 + 0.08 * k, feet_w=0.62, feet_back=0.30,
+               head_target=head_pt, arch=0.6 * k)
     SC.settle(V, sink=0.008)
-    her_arms_overhead(V)
+    her_arms_overhead(V, grip=0.25 + 0.75 * k)
     if rub is not None:
         her_rub_hand(V, ".R", rub, V.lm("clit"))
     E, D = ctx.entrance()

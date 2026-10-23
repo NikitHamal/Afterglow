@@ -90,6 +90,28 @@ her_vulva_zone = np.linalg.norm(B - E0, axis=1) < 0.06                    # inne
 her_seat = (np.linalg.norm(B - E0, axis=1) < 0.19) & np.array([b.startswith(("足", "下半身")) for b in SC.dominant_bone(body)])
 his_seat = (np.linalg.norm(MB - np.array(root0), axis=1) < 0.22) & np.array([b.startswith(("足", "下半身", "上半身")) for b in SC.dominant_bone(mb)])
 
+# room furniture the bodies must never enter (the sheet/mattress are the support: checked by the floors instead)
+ROOM_HIT = ("headboard", "pillow", "duvet", "nightstand", "lamp", "bed_base", "candle", "book", "wine", "drawer", "knob")
+ROOM = None
+rv, rp = [], []
+for o in list(bpy.context.scene.objects):
+    if o.type == "MESH" and o.name.startswith(ROOM_HIT):
+        Vo, Po = SC.evaluated(o); base = len(rv); rv.extend(map(tuple, Vo)); rp.extend(tuple(base + i for i in f) for f in Po)
+if rv:
+    from mathutils.bvhtree import BVHTree as _BVH
+    ROOM = _BVH.FromPolygons(rv, rp)
+log(f"room furniture for checks: {len(rp)} faces" if ROOM else "no room loaded: furniture checks skipped")
+PLAY_Y1 = SC.HEAD_Y - 0.24                                           # pillows stand beyond this line
+hair_o = objs.get("vivian_hair")
+hair_head = None
+if hair_o is not None:
+    hg = hair_o.vertex_groups.get("頭")
+    hair_head = np.zeros(len(hair_o.data.vertices), bool)
+    if hg is not None:
+        for v in hair_o.data.vertices:
+            for g in v.groups:
+                if g.group == hg.index and g.weight > 0.99: hair_head[v.index] = True
+
 def keys_for(clip, t):
     sex = clip.split(".")[0] not in ("solo",)
     pen = sex and not clip.startswith(("oral", "lick"))
@@ -116,14 +138,40 @@ def verify(clip, t):
     extra = [(her_vulva_zone, his_shaft), (her_seat, his_seat | his_shaft)] if pen else []
     pairs, bad, depth, worst = SC.interpenetration(A, Pa, allowA, Bm, Pb, allowB, boneA=her_bones, boneB=his_bones,
                                                    handA=her_hand, handB=his_hand, extra=extra)
+    if os.environ.get("DIAG") and bad:
+        ia = np.array(sorted({k for i, _ in SC.LAST_BAD for k in Pa[i]})); ib = np.array(sorted({k for _, j in SC.LAST_BAD for k in Pb[j]}))
+        dA = np.linalg.norm(B[ia] - E0, axis=1); dB = np.linalg.norm(MB[ib] - np.array(root0), axis=1)
+        log(f"   DIAG {clip} t={t}: her dist-from-entrance cm p10/50/90 {np.round(np.percentile(dA, [10, 50, 90]) * 100, 1)} "
+            f"his dist-from-root {np.round(np.percentile(dB, [10, 50, 90]) * 100, 1)} | her world z-bed cm {np.round(np.percentile(A[ia, 2] - SC.BED_TOP, [10, 50, 90]) * 100, 1)} "
+            f"x {np.round(np.percentile(np.abs(A[ia, 0]), [10, 50, 90]) * 100, 1)}")
+    room_pairs = 0
+    if ROOM is not None:
+        from mathutils.bvhtree import BVHTree as _BVH
+        for P_, F_ in ((A, Pa), (Bm, Pb)):
+            room_pairs += len(ROOM.overlap(_BVH.FromPolygons([tuple(v) for v in P_], F_)))
+    hair_floor = hair_his = None
+    if hair_o is not None:
+        Hv, Hp = SC.evaluated(hair_o)
+        hair_floor = round((float(Hv[hair_head, 2].min()) - SC.BED_TOP) * 1000, 1) if hair_head.any() else None
+        from mathutils.bvhtree import BVHTree as _BVH
+        Hp_rigid = [f for f in Hp if all(hair_head[i] for i in f)]
+        hair_his = len(_BVH.FromPolygons([tuple(v) for v in Hv], Hp_rigid).overlap(_BVH.FromPolygons([tuple(v) for v in Bm], Pb))) if Hp_rigid else 0
     her_min = float(A[:, 2].min()); his_min = float(Bm[:, 2].min())
     low = (her_bones[int(A[:, 2].argmin())], his_bones[int(Bm[:, 2].argmin())])
     return dict(t=round(t, 2), pairs=pairs, bad=bad, depth_mm=round(depth * 1000, 1), worst=[f"{a}x{b}:{n}" for (a, b), n in worst],
-                her_floor_mm=round((her_min - SC.BED_TOP) * 1000, 1), his_floor_mm=round((his_min - SC.BED_TOP) * 1000, 1), lowest=list(low))
+                her_floor_mm=round((her_min - SC.BED_TOP) * 1000, 1), his_floor_mm=round((his_min - SC.BED_TOP) * 1000, 1), lowest=list(low),
+                extent_y=[round(float(min(A[:, 1].min(), Bm[:, 1].min())), 3), round(float(max(A[:, 1].max(), Bm[:, 1].max())), 3)],
+                extent_x=[round(float(min(A[:, 0].min(), Bm[:, 0].min())), 3), round(float(max(A[:, 0].max(), Bm[:, 0].max())), 3)],
+                room_pairs=room_pairs, hair_floor_mm=hair_floor, hair_vs_him=hair_his,
+                beyond_play_mm=round(max(0.0, float(max(A[:, 1].max(), Bm[:, 1].max())) - PLAY_Y1) * 1000, 1))
 
+PRE_T = 0.85                                                       # layout choices are made near full depth
 def _score():
-    r_ = verify(PO.CURRENT, 0.5)
-    return r_["bad"] + 3.0 * r_["depth_mm"] + 8.0 * max(0.0, -10.0 - r_["her_floor_mm"]) + 8.0 * max(0.0, -10.0 - r_["his_floor_mm"])
+    r_ = verify(PO.CURRENT, PRE_T)
+    sc = r_["bad"] + 3.0 * r_["depth_mm"] + 8.0 * max(0.0, -10.0 - r_["her_floor_mm"]) + 8.0 * max(0.0, -10.0 - r_["his_floor_mm"])
+    sc += 4.0 * r_["room_pairs"] + 2.0 * r_["beyond_play_mm"] + 2.0 * (r_["hair_vs_him"] or 0)
+    if r_["hair_floor_mm"] is not None: sc += 4.0 * max(0.0, -15.0 - r_["hair_floor_mm"])
+    return sc
 PO.SCORE = _score
 
 mouth_mask = np.zeros(len(B), bool)
@@ -133,6 +181,16 @@ mouth_mask |= (np.abs(B[:, 0]) < 0.03) & (B[:, 2] < hb.z + 0.02) & (B[:, 2] > hb
 # ---------------------------------------------------------------- render setup (workbench, fast)
 def setup_render():
     sc = bpy.context.scene
+    if os.environ.get("AG_PREVIEW_ENGINE") == "CYCLES":             # headless boxes without GL: fast denoised Cycles
+        sc.render.engine = "CYCLES"; sc.cycles.device = "CPU"; sc.cycles.samples = 12; sc.cycles.use_denoising = True
+        sc.render.resolution_x, sc.render.resolution_y = 960, 540
+        if sc.world is None: sc.world = bpy.data.worlds.new("prev")
+        sc.world.use_nodes = True; sc.world.node_tree.nodes["Background"].inputs[0].default_value = (0.6, 0.6, 0.62, 1)
+        sc.world.node_tree.nodes["Background"].inputs[1].default_value = 1.0
+        cam = bpy.data.cameras.get("prev") or bpy.data.cameras.new("prev"); cam.lens = 30
+        co = bpy.data.objects.get("prev_cam") or bpy.data.objects.new("prev_cam", cam)
+        if co.name not in sc.objects: sc.collection.objects.link(co)
+        sc.camera = co; return co
     try:
         sc.render.engine = "BLENDER_WORKBENCH"
         sh = sc.display.shading; sh.light = "STUDIO"; sh.color_type = "TEXTURE"; sh.show_shadows = True; sh.show_cavity = True
@@ -161,7 +219,9 @@ for clip in only:
         act = bpy.data.actions.new(nm); act.use_fake_user = True
         body_.arm.animation_data_create(); body_.arm.animation_data.action = act; acts[who] = act
     PO.CURRENT = clip
-    fn(ctx, 0.5)                                       # best_of choices are made once, at mid-stroke
+    for b_ in (V, M): b_.rig._last_hinge = {}         # limb hinges stay continuous within a clip, fresh per clip
+    fn(ctx, PRE_T if kind == "depth" else 0.5)       # best_of choices are made once (near full depth)
+    fn(ctx, 0.0)                                       # ...then the hinge memory starts from the first frame
     prev = {"VIV": None, "MAR": None}; worst_flip = (0.0, None)
     for f in range(frames):
         t = f / (frames - 1) if kind != "loop" else f / (frames - 1)
