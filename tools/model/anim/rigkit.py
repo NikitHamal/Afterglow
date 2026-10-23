@@ -240,10 +240,17 @@ class Rig:
     SKIP_KEY = ("髪", "目", "竿端")       # hair chains + eyes are driven live by the engine (sim/gaze); 竿端 is a marker
 
     def key(self, frame, bones=None):
+        """key every authored bone; quaternions are kept sign-continuous with the previous key so interpolation
+        never takes the long way round (q and -q are the same rotation but blend 360 degrees apart)"""
         pbs = self.arm.pose.bones
+        last = getattr(self, "_lastq", None)
+        if last is None or frame <= 1: last = self._lastq = {}
         for n in (bones or [b for b in self.order if not b.startswith(self.SKIP_KEY)]):
             pb = pbs[n]; pb.rotation_mode = "QUATERNION"
             pb.matrix_basis = self.basis[n]
+            q = pb.rotation_quaternion.copy()
+            if n in last and last[n].dot(q) < 0: q.negate(); pb.rotation_quaternion = q
+            last[n] = q
             pb.keyframe_insert("location", frame=frame, group=n)
             pb.keyframe_insert("rotation_quaternion", frame=frame, group=n)
 
