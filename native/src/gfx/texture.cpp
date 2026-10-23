@@ -103,6 +103,33 @@ GLuint textureFromMemory(const unsigned char* data, int size, bool srgb, int* ou
     return t;
 }
 
+bool decodeImage(const unsigned char* data, int size, DecodedImage& out) {
+    int w = 0, h = 0, n = 0;
+    unsigned char* px = stbi_load_from_memory(data, size, &w, &h, &n, 4);
+    if (!px) return false;
+    if (std::max(w, h) > gMaxTex) {
+        std::vector<unsigned char> cur(px, px + (size_t)w * h * 4);
+        stbi_image_free(px);
+        while (std::max(w, h) > gMaxTex) {
+            int nw, nh;
+            std::vector<unsigned char> next = halve(cur.data(), w, h, nw, nh);
+            cur.swap(next);
+            w = nw; h = nh;
+        }
+        out.px.swap(cur);
+    } else {
+        out.px.assign(px, px + (size_t)w * h * 4);
+        stbi_image_free(px);
+    }
+    out.w = w; out.h = h;
+    return true;
+}
+
+GLuint textureFromDecoded(const DecodedImage& img, bool srgb) {
+    if (img.w <= 0 || img.px.empty()) return 0;
+    return upload(img.px.data(), img.w, img.h, srgb);
+}
+
 GLuint textureFromFile(const std::string& path, bool srgb, int* outW, int* outH) {
     std::string bytes = paths::readText(path);
     if (bytes.empty()) { AG_WARN("AG: missing texture %s", path.c_str()); return 0; }

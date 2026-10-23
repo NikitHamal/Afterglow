@@ -2,6 +2,7 @@
 #pragma once
 #include "gfx/gl.h"
 #include <string>
+#include <vector>
 
 namespace ag {
 
@@ -11,6 +12,10 @@ GLuint textureFromFile(const std::string& path, bool srgb, int* outW = nullptr, 
 GLuint textureSolid(unsigned char r, unsigned char g, unsigned char b, unsigned char a);
 GLuint textureFromRGBA(const unsigned char* rgba, int w, int h, bool srgb);   // procedural textures
 void textureDestroy(GLuint& tex);
+// CPU decode (thread-safe; applies the size policy) and GPU upload split, for parallel loading
+struct DecodedImage { std::vector<unsigned char> px; int w = 0, h = 0; };
+bool decodeImage(const unsigned char* data, int size, DecodedImage& out);
+GLuint textureFromDecoded(const DecodedImage& img, bool srgb);
 // texture detail policy: decoded maps larger than this are halved before upload (0 = no limit)
 void setTextureMaxSize(int px);
 int textureMaxSize();

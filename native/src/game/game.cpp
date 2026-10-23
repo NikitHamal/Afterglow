@@ -120,6 +120,7 @@ void Game::go(Screen s, float t) {
 void Game::enterScreen(Screen s) {
     Screen prev = screen_;
     screen_ = s;
+    if (s != Screen::Play && !harness && IsCursorHidden()) ShowCursor();
     screenTime_ = 0.f;
     ui.resetFocus();
     confirmQuit_ = confirmNew_ = false;

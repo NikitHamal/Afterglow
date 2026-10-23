@@ -71,6 +71,15 @@ file(WRITE ${AG_GEN_DIR}/embedded_fonts.h.in
   "static const int kEmbeddedFontCount = ${AG_FONT_COUNT};\n")
 configure_file(${AG_GEN_DIR}/embedded_fonts.h.in ${AG_GEN_DIR}/embedded_fonts.h COPYONLY)
 
+# window icon for Linux/macOS (Windows takes GLFW_ICON from the resource file)
+file(READ ${CMAKE_CURRENT_SOURCE_DIR}/installer/afterglow.png icon_hex HEX)
+file(SIZE ${CMAKE_CURRENT_SOURCE_DIR}/installer/afterglow.png icon_size)
+string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," icon_hex "${icon_hex}")
+file(WRITE ${AG_GEN_DIR}/embedded_icon.h.in
+  "// generated from native/installer/afterglow.png by CMake - do not edit\n#pragma once\n"
+  "static const unsigned char kAppIconPng[] = {${icon_hex}};\nstatic const int kAppIconPngSize = ${icon_size};\n")
+configure_file(${AG_GEN_DIR}/embedded_icon.h.in ${AG_GEN_DIR}/embedded_icon.h COPYONLY)
+
 # ---- version (CI passes -DAG_VERSION=0.<run>.0; local builds are "dev" and never self-update) ----
 set(AG_VERSION "0.0.0-dev" CACHE STRING "Game version")
 set(AG_VER_MAJOR 0)

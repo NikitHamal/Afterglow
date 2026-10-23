@@ -34,13 +34,16 @@ void Game::heroLogo(float cx, float y, float size, float a) {
 void Game::drawTitle() {
     ui::Ui& U = ui;
     float t = screenTime_;
-    // soft vignette band so the type sits on the scene
-    ui::Box band; band.fill = Color{6, 3, 5, 0}; band.fill2 = Color{6, 3, 5, 170}; band.grad = 2;
-    U.box(Rectangle{0.f, U.H * 0.45f, U.W, U.H * 0.55f}, band);
+    // soft vignette bands so the type sits on the scene (logo in the dark above the bed, prompt below)
+    ui::Box top; top.fill = Color{6, 3, 5, 200}; top.fill2 = Color{6, 3, 5, 0}; top.grad = 2;
+    U.box(Rectangle{0.f, 0.f, U.W, U.H * 0.42f}, top);
+    ui::Box band; band.fill = Color{6, 3, 5, 0}; band.fill2 = Color{6, 3, 5, 150}; band.grad = 2;
+    U.box(Rectangle{0.f, U.H * 0.7f, U.W, U.H * 0.3f}, band);
     float a = ui::easeOut(t / 1.6f);
-    heroLogo(U.W * 0.5f, U.H * 0.56f - U.u(20.f) * (1.f - a), U.u(150.f), a);
+    float ly = U.H * 0.12f;
+    heroLogo(U.W * 0.5f, ly - U.u(20.f) * (1.f - a), U.u(150.f), a);
     U.alpha = ui::easeOut((t - 0.8f) / 1.2f);
-    U.text(ui::Face::SerifItalic, U.u(30.f), "a night for two", U.W * 0.5f, U.H * 0.56f + U.u(190.f), U.th.inkDim, ui::Center);
+    U.text(ui::Face::SerifItalic, U.u(30.f), "a night for two", U.W * 0.5f, ly + U.u(190.f), U.th.inkDim, ui::Center);
     float blink = 0.55f + 0.45f * std::sin(t * 2.4f);
     U.alpha = ui::easeOut((t - 1.6f) / 1.0f) * blink;
     U.text(ui::Face::SansBold, U.u(15.f), "PRESS ANY KEY", U.W * 0.5f, U.H - U.u(120.f), U.th.ink, ui::Center, 0.32f);
