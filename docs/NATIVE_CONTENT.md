@@ -11,6 +11,7 @@ Blender (Z-up, +Y toward the headboard); the exporter converts.
 | `characters/vivian.glb` | Vivian, 1.68 m, 87 bones (MMD set + 4 loose-hair chains `髪.<n>.a..d/z` + eyes `目.L/R`), 7 meshes, 17 clips |
 | `characters/marcus.glb` | Marcus, 1.83 m, 70 bones (MMD set + `竿根/竿中/竿先/竿端` + `玉袋`), 7 meshes, 17 clips |
 | `characters/<who>_skin_{honey,caramel,deep}.jpg` | alternate 4K skin albedos (caramel is embedded); Marcus also has `marcus_genital_*.jpg` |
+| `characters/<who>_skin_mask.png`, `characters/skin_detail_n.png` | optional skin support maps (see "Skin support maps") |
 | `characters/clips.json` | per-clip duration, kind, stroke, morph rules, layer bones, camera presets (orbit + his first-person eye), verification numbers |
 | `room/room.glb`, `room/room.json` | the bedroom (bed identical to the authoring bed) with a Cycles-baked lightmap, light rig, scene extras (see Room) |
 | `audio/sfx/<group>/*.ogg`, `audio/vox/*.wav` | sound pack (CC BY-SA 4.0, `audio/sfx/LICENSE_soundpack.txt`) and voice samples |
@@ -34,6 +35,23 @@ Blender (Z-up, +Y toward the headboard); the exporter converts.
 `*_skin` OPAQUE (baseColor 4K + normal 2K + ORM 2K: R=AO, G=roughness, B=0), teeth/tongue OPAQUE,
 hair MASK 0.42 double-sided, brows/lashes MASK 0.3 double-sided, eyes MASK 0.5. No vertex colours, except
 Marcus' hair shell whose `COLOR_0.a` is a soft hairline fringe (RGB = 1).
+
+## Skin support maps (optional, `tools/model/native/skin_maps.py`)
+
+All on the body's uv0 (same layout as the skin albedo), **linear** data (load without sRGB decode):
+
+- `<who>_skin_mask.png` (1024², RGB):
+  - **R = flush**: where blood shows first — cheeks, nose tip, ears, neck + décolleté, breasts (his chest),
+    genitals. Use it as the weight of the existing `u_flush` tint: `base.rgb *= mix(1, flushTint, u_flush * mask.r)`
+    (instead of tinting the whole body).
+  - **G = translucency** = exp(−thickness / 10 mm), thickness ray-cast through the mesh: ears ≈ 0.6-0.9,
+    nose/eyelids ≈ 0.3-0.5, fingers/toes ≈ 0.2-0.4, torso 0. Scale the back-lit `trans` term by it
+    (`trans *= mask.g * 2.5`) so light bleeds through ears/fingers only, not through the torso.
+  - **B = sweat / sheen**: forehead, temples, upper lip, neck, sternum, under the breasts, lower back. Multiply
+    `u_sweat` by it (beads + roughness drop only where people actually sweat).
+- `skin_detail_n.png` (512², tileable tangent-space normal, +Y up / OpenGL convention): pores + fine crosshatch.
+  Sample at `uv0 * 48` (≈ 3.5 cm per tile on the body), blend with the 2K normal by adding xy
+  (`n.xy += d.xy * 0.35 * (1 - mask.b * u_sweat)`), fade it out with distance (it only matters in close-ups).
 
 ## Vivian's hair (low chignon, `tools/model/female/hair_updo.py`)
 
@@ -113,6 +131,8 @@ xvfb-run blender -b --python tools/model/anim/author.py [-- clip,clip --norender
                                                     # (a partial run keeps the other clips' actions in anim.blend)
 blender -b /root/agb/native/anim.blend --python tools/model/native/export_chars.py
 python3 tools/model/native/textures.py && node tools/model/native/post.mjs <raw.glb> <out.glb> <who> /root/agb/native/tex/<who>
+blender -b /root/agb/out/vivian_s4.blend --python tools/model/native/skin_maps.py -- vivian      # skin masks + detail normal
+blender -b /root/agb/male/out/marcus_b.blend --python tools/model/native/skin_maps.py -- marcus
 bash tools/model/native/stage_assets.sh     # copy into native/assets + regenerate clips.json
 BAKE_RES=2048 BAKE_SAMPLES=1024 blender -b --python tools/model/room/build_room.py   # room + Cycles lightmap (~2 min on 20 cores)
 node tools/model/room/post.mjs /root/agb/native/room/room_raw.glb /root/agb/native/room/room.json /root/agb/native/room
@@ -139,23 +159,30 @@ mattress, and the largest per-bone rotation step between frames (IK hinges are k
 
 Intended contact (not counted): genitals (her `v_*` masks × his shaft/scrotum + pubic mound), hands on
 anything, her mouth (oral) / his mouth (lick), his shaft vs. her inner thighs and buttocks within 6 cm of the
-entrance, and pelvis-to-pelvis flesh (her thighs/buttocks within 19 cm of the entrance × his groin, hips,
-upper thighs and lower belly within 22 cm of the shaft root) — that flesh compresses in every penetrative
-position, rigid meshes can only overlap there.
+entrance, and pelvis-to-pelvis flesh (her thighs/buttocks within 26 cm of the entrance × his groin, hips,
+upper thighs and lower belly within 28 cm of the shaft root). That flesh compresses in every penetrative
+position; rigid meshes can only overlap there, so its depth is tracked separately (`pelvic_depth_mm`) and the
+layout search penalises anything deeper than 8 mm.
+
+How layouts are chosen: where a pose has several reasonable layouts (her knee width and seat in cowgirl,
+leg spread + where his hands hold her ankles in legs-up, his straddle vs. kneeling between her legs in prone,
+her arms in the embrace, his hands in lick and reverse cowgirl) `positions.best_of` poses each candidate and
+scores it with the same checks at **both** the top (t = 0) and the bottom (t = 0.85) of the stroke; the
+choice is made once per clip, so it never changes between frames.
 
 | Clip | bad tri pairs (max) | deepest (mm) | her lowest (mm) | his lowest (mm) | room furniture hits | bun lowest (mm) | max joint step (deg) |
 |---|---|---|---|---|---|---|---|
-| `missionary.in` | 38 | 16.0 | -8..-8 | -1..7 | 0 | -18 | 9.2 |
+| `missionary.in` | 0 | 0.0 | -8..-8 | -1..7 | 0 | -18 | 9.2 |
 | `missionary.rub` | 0 | 0.0 | -8..-8 | -1..-1 | 0 | -16 | 1.5 |
 | `missionary.embrace` | 22 | 7.0 | -8..-8 | 6..6 | 0 | -16 | 0.0 |
-| `legsup.in` | 115 | 23.4 | -2..0 | 2..2 | 0 | -13 | 2.0 |
+| `legsup.in` | 0 | 0.0 | -2..0 | 2..2 | 0 | -13 | 2.0 |
 | `doggy.in` | 0 | 0.0 | 3..5 | -1..17 | 0 | 207 | 3.7 |
 | `doggy.rub` | 0 | 0.0 | 3..3 | -1..-1 | 0 | 207 | 0.3 |
-| `prone.in` | 100 | 16.3 | -9..-9 | -2..-2 | 0 | 144 | 2.0 |
-| `cowgirl.in` | 89 | 34.0 | 6..10 | -7..-7 | 0 | clear | 3.5 |
-| `cowgirl.rub` | 68 | 32.2 | 9..9 | -7..-7 | 0 | clear | 1.9 |
-| `revcowgirl.in` | 72 | 28.6 | 4..9 | -4..-4 | 0 | clear | 1.0 |
-| `revcowgirl.rub` | 18 | 18.1 | 7..7 | -4..-4 | 0 | clear | 1.6 |
+| `prone.in` | 14 | 4.3 | -9..-9 | -2..-2 | 0 | 144 | 2.0 |
+| `cowgirl.in` | 31 | 15.4 | 8..10 | -7..-7 | 0 | clear | 3.5 |
+| `cowgirl.rub` | 0 | 0.0 | 11..11 | -7..-7 | 0 | clear | 1.9 |
+| `revcowgirl.in` | 0 | 0.0 | 7..9 | -4..-4 | 0 | clear | 1.8 |
+| `revcowgirl.rub` | 0 | 0.0 | 7..7 | -4..-4 | 0 | clear | 1.3 |
 | `spoon.in` | 0 | 0.0 | -2..-2 | 1..1 | 0 | 271 | 0.4 |
 | `spoon.rub` | 0 | 0.0 | -2..-2 | 1..1 | 0 | 271 | 0.3 |
 | `oral.in` | 0 | 0.0 | -4..-3 | -7..-7 | 0 | clear | 5.8 |
@@ -163,7 +190,8 @@ position, rigid meshes can only overlap there.
 | `solo.rub` | 0 | 0.0 | -9..-9 | room floor (standing) | 0 | -13 | 3.0 |
 | `solo.idle` | 0 | 0.0 | -3..-3 | room floor (standing) | 0 | -14 | 0.1 |
 
-Known residuals (next pass): cowgirl / reverse cowgirl — her inner thighs still overlap the outside of his
-hips by up to ~3 cm where she straddles him; legs-up — his upper arms brush her shins (~2 cm) while he holds her
-ankles; prone at full depth — his chest meets her lower back (~1.5 cm). When she lies on her back the bun
-presses up to ~1.8 cm into the (soft) mattress. `solo.*` floors for Marcus are the room floor.
+Known residuals: cowgirl at the very top of the stroke (t = 0, she rises highest) — her inner thighs touch
+the sides of his waist (31 small triangle pairs, ≤ 15 mm, gone from t = 0.25 on); embrace — her elbows touch
+each other behind his neck; lick — his elbows rest against her inner knees (surface contact, ≤ 0.1 mm);
+prone at full depth — inner thighs ≤ 4 mm. When she lies on her back the bun presses up to ~1.8 cm into the
+(soft) mattress. `solo.*` floors for Marcus are the room floor.
