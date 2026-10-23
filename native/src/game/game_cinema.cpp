@@ -198,6 +198,9 @@ void Game::storyStage(const StoryNode* n) {
         camSafety_.boundsMin = scene.info.camMin; camSafety_.boundsMax = scene.info.camMax;
     }
     if (newPlace) { place_ = place; director_.newScene(); shotCount_ = 0; }
+    // a new pose restages them (standing face to face -> sitting side by side): the camera picks its side again
+    std::string pose = !n->pose.empty() ? n->pose : (!n->act.empty() ? n->act : (pose_.empty() ? std::string("stand") : pose_));
+    if (!newPlace && pose != pose_) director_.newScene();
     // light and sound of the scene
     if (!n->mood.empty()) storyMood_ = moodIndex(n->mood);
     else if (newPlace) storyMood_ = moodIndex(!scene.info.mood.empty() ? scene.info.mood : s->mood);
@@ -224,7 +227,6 @@ void Game::storyStage(const StoryNode* n) {
         if (Outfit* o = c.outfit()) o->setDress(dressFromName(storyOutfit_[w]), 0.f);
     }
     // the pose
-    std::string pose = !n->pose.empty() ? n->pose : (!n->act.empty() ? n->act : (pose_.empty() ? std::string("stand") : pose_));
     setStoryPose(pose, n->actT);
     // the opening shot: an establishing view of a new place, else what the node asks for
     if (newPlace && actIndex(pose_) < 0) director_.shot("establish", -1, true, 6.f);

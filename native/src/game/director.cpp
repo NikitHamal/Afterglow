@@ -41,9 +41,11 @@ ShotFrame Director::frame(float dt, const ActorView& her, const ActorView& him, 
     V3 axis = both ? flat(him.head - her.head) : flat(cross(S.face, up));
     V3 perp = normalize(cross(up, axis));
     if (!sideSet_) {
-        // in front of them when their bodies face the same way (sitting side by side), else on the open side
+        // in front of them when their bodies face the same way (sitting side by side) or of the one on stage, else
+        // on the open side (face to face: the room's side, the furniture behind them)
         float s1 = dot(perp, flat(her.body) * (her.shown ? 1.f : 0.f) + flat(him.body) * (him.shown ? 1.f : 0.f));
-        side_ = std::fabs(s1) > 0.35f ? (s1 > 0.f ? 1.f : -1.f) : (dot(perp, room - mid) >= 0.f ? 1.f : -1.f);
+        bool facing = both ? dot(flat(her.body), flat(him.body)) > 0.3f : std::fabs(s1) > 0.35f;
+        side_ = facing ? (s1 > 0.f ? 1.f : -1.f) : (dot(perp, room - mid) >= 0.f ? 1.f : -1.f);
         sideSet_ = true;
     }
     V3 side = perp * side_;
