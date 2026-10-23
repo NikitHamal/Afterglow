@@ -1,6 +1,8 @@
 #include "gfx/texture.h"
 #include "core/log.h"
 #include "core/paths.h"
+#include <algorithm>
+#include <unordered_map>
 #include <vector>
 
 // Private stb_image instance (static linkage avoids clashing with raylib's internal copy).
@@ -29,6 +31,29 @@ static float maxAniso() {
     return a;
 }
 
+static int gMaxTex = 1 << 14;
+static long long gTexBytes = 0;
+static std::unordered_map<GLuint, long long> gTexSizes;
+
+void setTextureMaxSize(int px) { gMaxTex = px > 0 ? px : (1 << 14); }
+int textureMaxSize() { return gMaxTex; }
+long long textureBytes() { return gTexBytes; }
+
+// 2x2 box downsample (sRGB data averaged in gamma space: fine for albedo detail at half size)
+static std::vector<unsigned char> halve(const unsigned char* src, int w, int h, int& ow, int& oh) {
+    ow = std::max(1, w / 2); oh = std::max(1, h / 2);
+    std::vector<unsigned char> out((size_t)ow * (size_t)oh * 4);
+    for (int y = 0; y < oh; ++y)
+        for (int x = 0; x < ow; ++x)
+            for (int c = 0; c < 4; ++c) {
+                int x0 = std::min(w - 1, x * 2), x1 = std::min(w - 1, x * 2 + 1), y0 = std::min(h - 1, y * 2), y1 = std::min(h - 1, y * 2 + 1);
+                int sum = src[((size_t)y0 * w + x0) * 4 + c] + src[((size_t)y0 * w + x1) * 4 + c] +
+                          src[((size_t)y1 * w + x0) * 4 + c] + src[((size_t)y1 * w + x1) * 4 + c];
+                out[((size_t)y * ow + x) * 4 + c] = (unsigned char)((sum + 2) / 4);
+            }
+    return out;
+}
+
 static GLuint upload(const unsigned char* rgba, int w, int h, bool srgb) {
     GLuint t = 0;
     glGenTextures(1, &t);
@@ -43,6 +68,9 @@ static GLuint upload(const unsigned char* rgba, int w, int h, bool srgb) {
     float a = maxAniso();
     if (a > 1.f) glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, a < 8.f ? a : 8.f);
     glBindTexture(GL_TEXTURE_2D, 0);
+    long long bytes = (long long)w * h * 4 * 4 / 3;   // + mip chain
+    gTexBytes += bytes;
+    gTexSizes[t] = bytes;
     return t;
 }
 
@@ -50,8 +78,26 @@ GLuint textureFromMemory(const unsigned char* data, int size, bool srgb, int* ou
     int w = 0, h = 0, n = 0;
     unsigned char* px = stbi_load_from_memory(data, size, &w, &h, &n, 4);
     if (!px) { AG_WARN("AG: texture decode failed: %s", stbi_failure_reason()); return 0; }
-    GLuint t = upload(px, w, h, srgb);
-    stbi_image_free(px);
+    GLuint t = 0;
+    if (std::max(w, h) > gMaxTex) {
+        // quality policy: large maps are halved until they fit (Low 1K, Medium 2K, High full size)
+        std::vector<unsigned char> cur;
+        const unsigned char* src = px;
+        int cw = w, ch = h;
+        while (std::max(cw, ch) > gMaxTex) {
+            int nw, nh;
+            std::vector<unsigned char> next = halve(src, cw, ch, nw, nh);
+            cur.swap(next);
+            src = cur.data(); cw = nw; ch = nh;
+        }
+        stbi_image_free(px);
+        px = nullptr;
+        t = upload(cur.data(), cw, ch, srgb);
+        w = cw; h = ch;
+    } else {
+        t = upload(px, w, h, srgb);
+        stbi_image_free(px);
+    }
     if (outW) *outW = w;
     if (outH) *outH = h;
     return t;
@@ -71,7 +117,13 @@ GLuint textureSolid(unsigned char r, unsigned char g, unsigned char b, unsigned 
 
 GLuint textureFromRGBA(const unsigned char* rgba, int w, int h, bool srgb) { return upload(rgba, w, h, srgb); }
 
-void textureDestroy(GLuint& t) { if (t) glDeleteTextures(1, &t); t = 0; }
+void textureDestroy(GLuint& t) {
+    if (!t) return;
+    auto it = gTexSizes.find(t);
+    if (it != gTexSizes.end()) { gTexBytes -= it->second; gTexSizes.erase(it); }
+    glDeleteTextures(1, &t);
+    t = 0;
+}
 
 static GLenum baseFormatFor(GLenum internal) {
     switch (internal) {

@@ -55,6 +55,7 @@ void Game::startNight(bool resume) {
     hintsT_ = 0.f; hudT_ = 0.f;
     camUser_ = false; cinematicT_ = 0.f; nextCut_ = 16.f;
     toasts_.clear();
+    introCard_ = (!resume && profile.stats.nights == 0) ? 14.f : 0.f;
     profile.night.valid = false;
 }
 
@@ -138,6 +139,11 @@ void Game::updatePlay(float dt) {
     if (dt <= 0.f || posIndex_ < 0) return;
     const PositionInfo& p = positions_[(size_t)posIndex_];
     hudT_ += dt; hintsT_ += dt;
+    if (introCard_ > 0.f) {
+        introCard_ -= dt;
+        if (night_.sinceStroke < 0.5f && introCard_ > 3.f && night_.elapsed > 4.f) introCard_ = 3.f;   // they've got it
+        if (IsKeyPressed(KEY_ENTER)) introCard_ = std::min(introCard_, 0.6f);
+    }
     bool overUi = barOpen_ && ui.in.mouse.y > ui.H - ui.u(190.f);
 
     if (!night_.finished) {
@@ -528,6 +534,7 @@ void Game::drawHud() {
         }
     }
     U.alpha = 1.f;
+    if (introCard_ > 0.f && !hudHidden_) drawIntroCard(clamp01(std::min(introCard_ / 0.6f, (14.f - introCard_) / 0.8f)));
     barT_ = approach(barT_, barOpen_ ? 1.f : 0.f, 10.f, frameDt_);
     if (barT_ > 0.01f) drawPositionBar(barT_);
     // climax veil
@@ -535,6 +542,22 @@ void Game::drawHud() {
         U.alpha = 1.f;
         U.glow(U.W * 0.5f, U.H * 0.5f, U.W * 0.45f * climaxGlow_, ui::withA(Color{255, 200, 170, 255}, 0.12f * climaxGlow_));
     }
+}
+
+void Game::drawIntroCard(float a) {
+    ui::Ui& U = ui;
+    U.alpha = a;
+    float w = U.u(620.f), h = U.u(250.f), x = U.W * 0.5f - w * 0.5f, y = U.H * 0.5f - h * 0.5f - U.u(40.f) + (1.f - a) * U.u(16.f);
+    U.panel(Rectangle{x, y, w, h}, 24.f, 0.6f);
+    U.text(ui::Face::SansBold, U.u(13.f), "YOUR FIRST NIGHT", x + w * 0.5f, y + U.u(26.f), U.th.accent, ui::Center, 0.24f);
+    U.paragraph(ui::Face::SerifItalic, U.u(25.f), "Move together, then listen. She'll tell you what she wants â and he'll tell you when to slow down.",
+                x + U.u(40.f), y + U.u(58.f), w - U.u(80.f), U.th.ink, 1.3f, ui::Center);
+    float hx = x + U.u(44.f), hy = y + h - U.u(64.f);
+    hx += U.keyHint(hx, hy, "Drag", "Move", 16.f) + U.u(24.f);
+    hx += U.keyHint(hx, hy, "Space", "Rhythm", 16.f) + U.u(24.f);
+    hx += U.keyHint(hx, hy, "Tab", "Positions", 16.f) + U.u(24.f);
+    U.keyHint(hx, hy, "Enter", "Got it", 16.f);
+    U.alpha = 1.f;
 }
 
 void Game::drawPositionBar(float a) {

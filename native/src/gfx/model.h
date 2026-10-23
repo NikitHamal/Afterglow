@@ -37,7 +37,11 @@ struct Primitive {
     int material = -1;
     bool skinned = false, hasUv1 = false, dynamic = false;
     std::vector<float> pos, nrm, tan;                 // base data (pos/nrm kept for morphing + bounds)
-    std::vector<std::vector<float>> dPos, dNrm;       // per morph target (may be empty vectors)
+    std::vector<std::vector<float>> dPos, dNrm;       // per morph target while loading (dense, then packed)
+    // packed morph targets: only the vertices a target moves (face shapes touch a few hundred of ~40k)
+    struct Sparse { std::vector<uint32_t> idx; std::vector<float> dp, dn; };
+    std::vector<Sparse> targets;
+    int targetCount = 0;
     std::vector<float> scratchPos, scratchNrm;
     std::vector<uint16_t> joints;                     // 4 per vertex (CPU queries)
     std::vector<float> weights;                       // 4 per vertex
@@ -100,6 +104,9 @@ public:
     static void uploadPrimitive(Primitive& p, const std::vector<float>& uv0, const std::vector<float>& uv1);
     // Re-upload morphed positions/normals (dynamic primitives only).
     static void updateMorph(Primitive& p, const float* weights, int count);
+    // after load-time queries: drop CPU copies the GPU already has (keeps what morphing needs)
+    void releaseCpuData();
+    static long long bufferBytes();      // GPU vertex/index bytes uploaded by all models
 
     int findNode(const std::string& name) const;
     int findClip(const std::string& name) const;

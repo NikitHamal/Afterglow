@@ -143,9 +143,9 @@ void Night::climaxes() {
         herClimaxAge = 0.f;
         float intensity = 0.6f + 0.4f * connection;
         events.push_back({NightEvent::HerClimax, intensity, Desire::None});
-        score += 400.f * (0.5f + connection) * (herClimaxes == 1 ? 1.f : 0.7f);
+        score += 600.f * (0.5f + connection) * (herClimaxes == 1 ? 1.f : 0.7f);
         connection = clamp01(connection + 0.12f);
-        her = 0.42f;                       // she can come again: the glow stays
+        her = 0.5f;                        // she can come again: the glow stays
         desire = Desire::None; nextDesire = 9.f;
         if (him > 0.88f) { him = 1.f; }    // carried over the edge with her
     }
@@ -160,7 +160,7 @@ void Night::climaxes() {
         events.push_back({NightEvent::HisClimax, 0.7f + 0.3f * connection, Desire::None});
         if (together) {
             events.push_back({NightEvent::Together, 1.f, Desire::None});
-            score += 1200.f * (0.5f + connection);
+            score += 2000.f * (0.5f + connection);
         } else if (herClimaxes == 0) {
             score *= 0.85f;                // too soon
         }
@@ -210,8 +210,8 @@ void Night::update(float dt, const Input& in) {
     }
     stim += 0.45f * in.rub * (p.canTouch ? 1.f : 0.f) * (p.solo ? 0.f : 1.f);
     stim += 0.18f * in.embrace;
-    herRate = stim * fresh * liked * (0.65f + 0.7f * connection) * 0.0115f;
-    if (stim < 0.05f) herRate = -0.006f;
+    herRate = stim * fresh * liked * (0.65f + 0.7f * connection) * 0.0062f;
+    if (stim < 0.05f) herRate = -0.004f;
     if (herClimaxAge < 4.f) herRate *= 0.2f;     // afterglow of her climax
     her = clamp01(her + herRate * dt);
 
@@ -219,10 +219,10 @@ void Night::update(float dt, const Input& in) {
     float push = std::pow(std::min(1.2f, energy / 1.1f), 1.35f);
     if (p.solo) himRate = -0.01f;
     else if (p.id == "lick") himRate = 0.0012f * (0.5f + her) - 0.002f;
-    else if (p.id == "oral") himRate = (0.004f + 0.009f * sync) * (0.4f + push) * p.him;
-    else himRate = (0.0016f + 0.0058f * push) * p.him * (0.75f + 0.5f * her) * (0.85f + 0.3f * connection);
-    if (energy < 0.25f && !p.solo) himRate -= 0.008f;   // slowing down lets him cool off
-    if (herClimaxAge < 2.5f) himRate += 0.02f;           // her climax is hard to resist
+    else if (p.id == "oral") himRate = (0.0022f + 0.005f * sync) * (0.4f + push) * p.him;
+    else himRate = (0.0009f + 0.0031f * push) * p.him * (0.75f + 0.5f * her) * (0.85f + 0.3f * connection);
+    if (energy < 0.25f && !p.solo) himRate -= 0.006f;   // slowing down lets him cool off
+    if (herClimaxAge < 2.5f) himRate += 0.012f;          // her climax is hard to resist
     him = clamp01(him + himRate * dt);
 
     // ---- edging: close, then slowing down on purpose ----
@@ -230,7 +230,7 @@ void Night::update(float dt, const Input& in) {
     if (close && himRate < 0.f) {
         if (!edging) { edging = true; edgeTime = 0.f; events.push_back({NightEvent::EdgeStart, him, Desire::None}); }
         edgeTime += dt;
-        score += dt * 14.f;
+        score += dt * 10.f;
         connection = clamp01(connection + dt * 0.004f);
     } else if (!close) edging = false;
 
@@ -248,7 +248,7 @@ void Night::update(float dt, const Input& in) {
         desireHold = desireSatisfied(in) ? desireHold + dt : std::max(0.f, desireHold - dt * 2.f);
         if (desireHold > 1.1f || (desire == Desire::Change && desireHold > 0.f)) {
             ++desiresMet; ++streak; bestStreak = std::max(bestStreak, streak);
-            score += 60.f * (1.f + 0.25f * (float)std::min(streak, 8));
+            score += 100.f * (1.f + 0.25f * (float)std::min(streak, 8));
             connection = clamp01(connection + 0.05f);
             her = clamp01(her + 0.025f);
             events.push_back({NightEvent::DesireMet, (float)streak, desire});
@@ -267,7 +267,7 @@ void Night::update(float dt, const Input& in) {
         events.push_back({NightEvent::Favorite, 0.f, Desire::None});
     }
 
-    score += dt * (2.f + 18.f * sync * (0.5f + connection)) * (stroking || p.solo ? 1.f : 0.2f);
+    score += dt * (0.5f + 6.f * sync * (0.5f + connection)) * (stroking || p.solo ? 1.f : 0.2f);
     climaxes();
 }
 

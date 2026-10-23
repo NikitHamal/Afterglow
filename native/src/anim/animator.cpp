@@ -30,7 +30,7 @@ void Animator::init(Model* m) {
     morphLast_.assign(m->meshes.size(), {});
     for (size_t i = 0; i < m->meshes.size(); ++i) {
         size_t tc = m->meshes[i].targetNames.size();
-        for (auto& p : m->meshes[i].prims) tc = std::max(tc, p.dPos.size());
+        for (auto& p : m->meshes[i].prims) tc = std::max(tc, (size_t)p.targetCount);
         morphAnim_[i].assign(tc, 0.f);
         for (size_t k = 0; k < tc && k < m->meshes[i].defaultWeights.size(); ++k) morphAnim_[i][k] = m->meshes[i].defaultWeights[k];
         morphUser_[i].assign(tc, -1.f);

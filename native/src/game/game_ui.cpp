@@ -1,6 +1,7 @@
 #include "game/game.h"
 #include "app/updater.h"
 #include "app/platform.h"
+#include "gfx/texture.h"
 #include "raylib.h"
 #include <algorithm>
 #include <cmath>
@@ -112,6 +113,7 @@ void Game::drawUpdateCard(float x, float y, float w) {
     Updater::State s = updater->state();
     if (s != Updater::State::Available && s != Updater::State::Downloading && s != Updater::State::Ready &&
         !(s == Updater::State::Failed && !updater->latest().empty())) return;
+    if (s == Updater::State::Available && updater->latest() == settings.skippedVersion) return;   // "Later" for this one
     float a = U.anim("upd#a", 1.f, 3.f);
     U.alpha = a;
     float h = U.u(170.f);
@@ -148,7 +150,7 @@ void Game::drawUpdateCard(float x, float y, float w) {
             updater->install();
 #endif
         }
-        if (U.button("upd#later", "Later", b2)) { settings.skippedVersion = updater->latest(); saveAll(); updater->shutdown(); }
+        if (U.button("upd#later", "Later", b2)) { settings.skippedVersion = updater->latest(); saveAll(); }
     }
     U.alpha = 1.f;
 }
@@ -315,9 +317,12 @@ void Game::drawSettings() {
                 scene.vivian.proc.hair = scene.marcus.proc.hair = settings.hairPhysics;
             }
             y += rowH + U.u(10.f);
-            const char* qd[3] = {"Low: 1K shadows, no ambient occlusion, 85% resolution. For integrated graphics.",
-                                 "Medium: 2K shadows, lighter ambient occlusion.", "High: 4K shadows, full ambient occlusion, soft hair edges."};
-            U.paragraph(ui::Face::Sans, U.u(15.f), qd[settings.quality], x, y + U.u(6.f), w, U.th.inkFaint);
+            const char* qd[3] = {"Low: 1K shadows and textures, no ambient occlusion, 85% resolution. For integrated graphics.",
+                                 "Medium: 2K shadows and textures, lighter ambient occlusion.",
+                                 "High: 4K shadows and skin, full ambient occlusion, soft hair edges."};
+            float used = U.paragraph(ui::Face::Sans, U.u(15.f), qd[settings.quality], x, y + U.u(6.f), w, U.th.inkFaint);
+            if (settings.quality != before.quality || textureMaxSize() != (settings.quality == 0 ? 1024 : (settings.quality == 1 ? 2048 : (1 << 14))))
+                U.text(ui::Face::SansMedium, U.u(15.f), "Texture detail changes apply the next time you start the game.", x, y + U.u(14.f) + used, U.th.accent);
             break;
         }
         case 2: {

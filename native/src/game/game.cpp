@@ -24,6 +24,8 @@ bool Game::init() {
     loadingProgress(0.f, "Opening the door");
     if (!renderer.init()) return false;
     applyQuality(renderer.settings, (Quality)settings.quality);
+    // texture detail by quality: 1K maps on Low, 2K on Medium, full 4K skin on High
+    setTextureMaxSize(settings.quality == 0 ? 1024 : (settings.quality == 1 ? 2048 : 0));
     if (!scene.load(loadingProgress)) AG_WARN("AG: scene loaded without characters");
     loadingProgress(1.f, "");
     std::string meta = paths::findAsset({"characters/clips.json"});
@@ -66,7 +68,8 @@ bool Game::init() {
     enterScreen(Screen::Title);
     fade_ = 1.f; fadeDir_ = -1.f; fadeTime_ = 1.2f;   // fade in from black
     if (updater && settings.checkUpdates && !harness && !Updater::isDevBuild()) updater->checkAsync();
-    AG_INFO("AG: game ready: %d positions, RSS %.0f MB", (int)positions_.size(), (double)platform::residentBytes() / 1048576.0);
+    AG_INFO("AG: game ready: %d positions, RSS %.0f MB, textures %.0f MB, meshes %.0f MB (GPU)", (int)positions_.size(),
+            (double)platform::residentBytes() / 1048576.0, (double)textureBytes() / 1048576.0, (double)Model::bufferBytes() / 1048576.0);
     return true;
 }
 
@@ -346,9 +349,10 @@ void Game::drawLoading(float f, const char* what) {
 
 void Game::drawDebug() {
     char b[256];
-    std::snprintf(b, sizeof b, "%d fps  %.2f ms  draws %d  tris %ldk  RSS %.0f MB  %s",
+    std::snprintf(b, sizeof b, "%d fps  %.2f ms  draws %d  tris %ldk  RAM %.0f MB  VRAM~%.0f MB  %s",
                   GetFPS(), (double)GetFrameTime() * 1000.0, renderer.drawCalls, renderer.triangles / 1000,
-                  (double)platform::residentBytes() / 1048576.0, Updater::current().c_str());
+                  (double)platform::residentBytes() / 1048576.0, (double)(textureBytes() + Model::bufferBytes()) / 1048576.0,
+                  Updater::current().c_str());
     ui.alpha = 1.f;
     ui.fillRect(Rectangle{ui.u(16.f), ui.H - ui.u(44.f), ui.measure(ui::Face::Sans, ui.u(15.f), b).x + ui.u(24.f), ui.u(30.f)}, Color{0, 0, 0, 150}, ui.u(8.f));
     ui.text(ui::Face::Sans, ui.u(15.f), b, ui.u(28.f), ui.H - ui.u(37.f), ui.th.ink);
@@ -423,6 +427,7 @@ void Game::applySpec(const Spec& s) {
         night_.connection = s.num("connection", night_.connection);
         night_.elapsed = s.num("elapsed", 140.f);
         night_.score = s.num("score", 1840.f);
+        introCard_ = s.has("intro") ? 8.f : 0.f;
         depth_ = depthTarget_ = dragDepth_ = s.num("depth", 0.6f);
         holdDepth_ = true;
         if (s.has("rhythm")) { rhythm_ = true; rhythmToggle_ = true; rhythmTempo_ = s.num("tempo", 1.1f); }

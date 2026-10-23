@@ -11,6 +11,10 @@ GLuint textureFromFile(const std::string& path, bool srgb, int* outW = nullptr, 
 GLuint textureSolid(unsigned char r, unsigned char g, unsigned char b, unsigned char a);
 GLuint textureFromRGBA(const unsigned char* rgba, int w, int h, bool srgb);   // procedural textures
 void textureDestroy(GLuint& tex);
+// texture detail policy: decoded maps larger than this are halved before upload (0 = no limit)
+void setTextureMaxSize(int px);
+int textureMaxSize();
+long long textureBytes();       // GPU bytes held by textures created through this module (incl. mips)
 
 // Colour (+ optional depth) framebuffer.
 struct RenderTarget {
