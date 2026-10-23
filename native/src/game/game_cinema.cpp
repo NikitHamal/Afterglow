@@ -480,8 +480,8 @@ void Game::applyStoryPose(float dt) {
     // around toward her back. Each hand on the partner's side facing it (her left on his right: arms never cross),
     // on the real surface (anchors found on the bind mesh), over the clothes' thickness when dressed; elbows low
     TouchGoals tv, tm;
-    auto cloth = [](const Character& c) { const Outfit* o = c.outfit(); return o && o->loaded() && o->visibility(1) > 0.5f ? 0.012f : 0.004f; };
-    if (nr > 0.05f && !sit && both) {
+    float hw = smoothstep(0.5f, 1.f, std::max(near_, kiss_));   // hands come with the embrace, not with a half step
+    if (hw > 0.01f && !sit && both) {
         V3 hc = m.bonePos("上半身2"), hr = flatv(m.bonePos("腕.R") - m.bonePos("腕.L"));
         V3 hf = flatv(cross(V3{0, 1, 0}, hr));
         V3 vc = v.bonePos("下半身"), vr = flatv(v.bonePos("腕.R") - v.bonePos("腕.L"));
@@ -490,9 +490,10 @@ void Game::applyStoryPose(float dt) {
             float sg = s ? 1.f : -1.f;   // the hand's own side: -1 left, +1 right
             V3 zp, zn;
             HandGoal g;
-            g.active = true; g.world = true; g.flat = true; g.dent = false; g.weight = nr; g.curl = 0.12f; g.press = 0.f;
+            g.active = true; g.world = true; g.flat = true; g.dent = false; g.weight = hw; g.curl = 0.12f; g.press = 0.f;
             g.palmLift = 0.017f;
-            if (m.touch.zoneWorld(m.anim, s ? Zone::ChestL : Zone::ChestR, zp, zn)) { g.pos = zp + zn * cloth(m); g.normal = zn; }
+            Zone hz = s ? Zone::ChestL : Zone::ChestR, vz = s ? Zone::WaistL : Zone::WaistR;
+            if (m.touch.zoneWorld(m.anim, hz, zp, zn)) { g.pos = zp + zn * clothOver(1, hz); g.normal = zn; }
             else { g.pos = hc + hf * 0.12f + V3{0.f, 0.1f, 0.f} - hr * (0.085f * sg); g.normal = hf; }
             g.along = normalize(V3{0.f, 1.f, 0.f} + flatv(g.pos - hc) * 0.35f);
             g.elbowHint = normalize(V3{0.f, -1.f, 0.f} + vr * (0.5f * sg) - vf * 0.25f);
@@ -500,7 +501,7 @@ void Game::applyStoryPose(float dt) {
             HandGoal h = g;
             h.palmLift = 0.02f;
             h.curl = 0.2f;
-            if (v.touch.zoneWorld(v.anim, s ? Zone::WaistL : Zone::WaistR, zp, zn)) { h.pos = zp + zn * cloth(v); h.normal = zn; }
+            if (v.touch.zoneWorld(v.anim, vz, zp, zn)) { h.pos = zp + zn * clothOver(0, vz); h.normal = zn; }
             else { h.pos = vc + V3{0.f, 0.06f, 0.f} - vr * (0.15f * sg) - vf * 0.02f; h.normal = vr * -sg; }
             h.along = normalize(vf * -1.f + V3{0.f, -0.2f, 0.f});
             h.elbowHint = normalize(V3{0.f, -1.f, 0.f} + hr * (0.6f * sg) - hf * 0.3f);
@@ -519,7 +520,7 @@ void Game::applyStoryPose(float dt) {
         HandGoal g;
         g.active = true; g.world = true; g.flat = true; g.dent = false; g.weight = gw; g.curl = 0.15f; g.press = 0.f;
         g.palmLift = w ? 0.02f : 0.017f;
-        g.pos = zp - cr * 0.025f + zn * cloth(c);
+        g.pos = zp - cr * 0.025f + zn * clothOver(w, Zone::Sternum);
         g.normal = zn;
         g.along = normalize(V3{0.f, 1.f, 0.f} - cr * 0.45f);
         g.elbowHint = normalize(V3{0.f, -1.f, 0.f} + cr * 0.6f + flatv(cross(V3{0, 1, 0}, cr)) * 0.2f);
@@ -527,6 +528,44 @@ void Game::applyStoryPose(float dt) {
     }
     v.touchGoals = tv;
     m.touchGoals = tm;
+}
+
+// how far the worn clothes stand off the skin at a body zone: the topmost shown layer's bind shape measured along the
+// zone's normal (garments follow the skin, so the rest-shape offset holds in a pose), plus the clearance the renderer
+// gives the cloth (u_fitInflate) and a little air. Bare skin: a few mm for the palm's own surface.
+float Game::clothOver(int who, Zone z) {
+    Character& c = who ? scene.marcus : scene.vivian;
+    const Outfit* o = c.outfit();
+    if (!o || !o->loaded() || o->visibility(1) < 0.5f) return 0.004f;
+    int layers = (o->visibility(0) > 0.5f ? 2 : 0) | 1;
+    ClothAt& ca = clothAt_[who];
+    if (ca.outfit != o || ca.layers != layers) {
+        ca.outfit = o;
+        ca.layers = layers;
+        for (int zi = 0; zi < (int)Zone::Count; ++zi) {
+            V3 bp, bn;
+            ca.off[zi] = -1.f;
+            if (!c.touch.zoneBind((Zone)zi, bp, bn)) continue;
+            for (float r : {0.015f, 0.03f}) {   // the cloth over the zone: vertices around its normal line
+                float best = -1.f;
+                for (size_t mi = 0; mi < o->model.meshes.size(); ++mi) {
+                    int layer = mi < o->meshLayer.size() ? o->meshLayer[mi] : 0;
+                    if (layer == 0 && !(layers & 2)) continue;
+                    for (const Primitive& p : o->model.meshes[mi].prims)
+                        for (size_t k = 0; k + 2 < p.pos.size(); k += 3) {
+                            V3 d = V3{p.pos[k], p.pos[k + 1], p.pos[k + 2]} - bp;
+                            float t = dot(d, bn);
+                            if (t < -0.005f || t > 0.06f) continue;
+                            V3 lat = d - bn * t;
+                            if (dot(lat, lat) <= r * r) best = std::max(best, t);
+                        }
+                }
+                if (best >= 0.f) { ca.off[zi] = best; break; }
+            }
+        }
+    }
+    float off = ca.off[(int)z];
+    return off >= 0.f ? off + ((layers & 2) ? 0.003f : 0.0015f) + 0.002f : 0.012f;
 }
 
 void Game::presentStory(float dt) {

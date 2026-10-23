@@ -243,12 +243,24 @@ void TouchRig::init(Character& c) {
     anchor(Zone::WaistL, "下半身", V3{0.f, 0.10f, 0.f}, normalize(V3{1.f, 0.f, 0.15f}));    // the natural waist
     anchor(Zone::WaistR, "下半身", V3{0.f, 0.10f, 0.f}, normalize(V3{-1.f, 0.f, 0.15f}));
     anchor(Zone::Sternum, "上半身2", V3{0.f, 0.29f, 0.f}, V3{0.f, 0.f, 1.f});
+    for (int z = 0; z < (int)Zone::Count; ++z) {   // the animator still holds the bind pose
+        if (!zones_[z].valid) continue;
+        bindPos_[z] = xformPoint(a.global(zones_[z].bone), zones_[z].local);
+        bindNrm_[z] = normalize(xformDir(a.global(zones_[z].bone), zones_[z].normalLocal));
+    }
     static const char* kZoneName[(int)Zone::Count] = {"vulva", "breast.L", "breast.R", "chest.L", "chest.R", "waist.L", "waist.R",
                                                       "sternum", "mouth", "nose"};
     std::string zs;
     for (int z = 0; z < (int)Zone::Count; ++z) if (zones_[z].valid) zs += std::string(zs.empty() ? "" : " ") + kZoneName[z];
     AG_INFO("AG: touch: zones %s, face %d pts, hand joints L %d-%d R %d-%d", zs.c_str(), (int)faceP_.size(), handJointLo[0], handJointHi[0],
             handJointLo[1], handJointHi[1]);
+}
+
+bool TouchRig::zoneBind(Zone z, V3& pos, V3& normal) const {
+    if (!zones_[(int)z].valid) return false;
+    pos = bindPos_[(int)z];
+    normal = bindNrm_[(int)z];
+    return true;
 }
 
 bool TouchRig::zoneWorld(const Animator& a, Zone z, V3& pos, V3& normal) const {

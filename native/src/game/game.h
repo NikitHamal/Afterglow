@@ -213,6 +213,11 @@ private:
     float letterbox_ = 0.f;
     float kiss_ = 0.f, kissTarget_ = 0.f, near_ = 0.f, nearTarget_ = 0.f;
     float step_ = 0.f;                  // how far each has stepped (slid, seated) toward the other this frame (m)
+    // how far the worn clothes stand off the skin at each body zone, per character (bind shapes: the cloth follows the
+    // skin), rebuilt when the outfit or its shown layers change; an embracing hand rests on the cloth, not in it
+    struct ClothAt { const Outfit* outfit = nullptr; int layers = -1; float off[(int)Zone::Count] = {}; };
+    ClothAt clothAt_[2];
+    float clothOver(int who, Zone z);
     std::string beatNode_, beatWho_, beatText_;
     int beatLine_ = -1;
     float beatT_ = 0.f, beatCool_ = 0.f, beatMouth_ = 0.f;
