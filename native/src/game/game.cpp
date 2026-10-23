@@ -104,7 +104,8 @@ void Game::saveAll() {
 }
 
 void Game::shutdown() {
-    if (screen_ == Screen::Play || screen_ == Screen::Pause) profile.night = night_.snapshot();
+    bool inNight = screen_ == Screen::Play || screen_ == Screen::Pause || (screen_ == Screen::Settings && settingsReturn_ == Screen::Pause);
+    if (inNight && !night_.finished) profile.night = night_.snapshot();
     saveAll();
     shutdownAudio();
     ui.shutdown();
