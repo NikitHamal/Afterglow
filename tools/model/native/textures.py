@@ -3,6 +3,7 @@
 import os, json
 from PIL import Image
 OUT = "/root/agb/native/tex"
+TONES = ("porcelain", "fair", "honey", "olive", "caramel", "bronze", "deep", "ebony")     # lightest -> darkest (missing ones are skipped)
 SRC = {"vivian": "/root/agb/out/tex", "marcus": "/root/agb/male/tex"}
 for who, src in SRC.items():
     d = f"{OUT}/{who}"; os.makedirs(d, exist_ok=True); swaps = {}
@@ -15,7 +16,7 @@ for who, src in SRC.items():
                 o = f.rsplit(".", 1)[0] + "_2k.jpg"
                 im.convert("RGB").resize((2048, 2048), Image.LANCZOS).save(f"{d}/{o}", quality=90)
                 swaps[f.rsplit(".", 1)[0]] = o
-        for tone in ("honey", "caramel", "deep"):
+        for tone in TONES:
             if f.startswith(f"{who}_skin_{tone}") and low.endswith(".jpg") and "game" not in low:
                 Image.open(p).convert("RGB").save(f"{d}/{who}_skin_{tone}.jpg", quality=88, optimize=True, progressive=True)
             if f.startswith(f"{who}_genital_{tone}") and low.endswith(".jpg"):

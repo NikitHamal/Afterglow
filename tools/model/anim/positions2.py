@@ -4,7 +4,7 @@
 import math
 from mathutils import Vector, Matrix
 import positions as P
-from positions import V3, nrm, yz, ss, LINS, TIP_OUT, sides, supine_her, her_arms_overhead, her_rub_hand, align_pelvis_to, best_of
+from positions import V3, nrm, yz, ss, LINS, TIP_OUT, sides, supine_her, her_arms_overhead, her_rub_hand, align_pelvis_to, best_of, surface, cup, touch_tips
 from scene import BED_TOP, MAT_W
 import scene as SC
 
@@ -72,13 +72,13 @@ def doggy(ctx, t, rub=None):
     chest_fwd = chest_up.cross(V3(1, 0, 0)).normalized()
     if chest_fwd.z > 0: chest_fwd = -chest_fwd
     V.spine(forward=nrm(yz(-100)), up=nrm(yz(-10)), chest_forward=chest_fwd, chest_up=chest_up)
-    kneel(V, 0.27, -1, lambda sx: nrm(V3(sx * 0.12, -1, 0.05)), knee_z=0.065)
+    kneel(V, 0.27, -1, lambda sx: nrm(V3(sx * 0.12, -1, 0.05)), knee_z=0.045)
     for s, sx in sides(V, "腕"):
         sh = r.head("腕" + s)
         if rub is not None and s == ".R":
             her_rub_hand(V, s, rub, V.lm("clit")); continue
         hands_to(V, s, V3(sx * 0.15, sh.y + 0.24, BED_TOP + 0.085), V3(0, 0, -1), nrm(V3(sx * 0.1, 1, -0.1)), sh + V3(sx * 0.2, -0.1, -0.6), 0.45 + 0.25 * k)
-    V.look(V3(0.15 * k, 2.6, BED_TOP + 0.6 + 0.45 * k))
+    V.look(V3(0.06 * k, r.head("頭").y + 0.55 + 0.15 * k, BED_TOP + 0.02 + 0.10 * k))   # the sheet ahead of her hands
     E, D = ctx.entrance()
     m = M.rig; m.reset()
     M.place(E - D * 0.25, V3(0, 1, -0.2), V3(0, 0.2, 1))
@@ -86,9 +86,10 @@ def doggy(ctx, t, rub=None):
     M.spine(forward=nrm(yz(-20)), up=nrm(yz(70)), chest_forward=nrm(yz(-28)), chest_up=nrm(yz(62)))
     ctx.penetrate(t)
     kneel(M, 0.12, -1, V3(0, -1, 0.04), knee_z=0.045)
+    bvhV = surface(V); her_hip = dict(sides(V, "足"))
     for s, sx in sides(M, "腕"):
-        hp = V.lm("hip" + s)
-        hands_to(M, s, hp + V3(sx * 0.02, -0.03, 0.07), V3(-sx, 0, -0.3), nrm(V3(-sx * 0.2, 0.5, -1)), m.head("腕" + s) + V3(sx * 0.5, -0.2, -0.1), 0.55)
+        hp = V.lm("hip" + (".L" if her_hip[".L"] == sx else ".R"))
+        cup(M, s, bvhV, hp + V3(0, -0.02, 0.04), nrm(V3(-sx * 0.3, 0.6, -1)), m.head("腕" + s) + V3(sx * 0.5, -0.2, -0.1))
     M.look(r.head("上半身2"))
 
 # ---------------------------------------------------------------- COWGIRL / REVERSE COWGIRL
@@ -121,21 +122,24 @@ def cowgirl(ctx, t, reverse=False, rub=None):
         best_of("seat", [(tl, ln, w) for tl, ln in ((-0.22, 18), (0.05, 26), (0.30, 36)) for w in (0.20, 0.23, 0.26, 0.29)], seat, (V, M))
     else:
         best_of("seat", [(tl, 18, w, f) for tl in (0.30, 0.50) for w in (0.24, 0.30, 0.36) for f in (0.5, 0.9)], seat, (V, M))
+    bvhM = surface(M); bvhV_self = None
+    his_leg = dict(sides(M, "足"))
     for s, sx in sides(V, "腕"):
         if rub is not None and s == ".R":
             her_rub_hand(V, s, rub, V.lm("clit")); continue
         sh = r.head("腕" + s)
         if reverse:                                         # her hands on his thighs, each on her own side
-            T = M.lm("thigh" + (".L" if dict(sides(M, "足"))[".L"] == sx else ".R")) + V3(0, 0, 0.05)
-            hands_to(V, s, T, V3(0, 0, -1), nrm(V3(0, -1, -0.2)), sh + V3(sx * 0.4, 0.1, 0), 0.45)
+            T = M.lm("thigh" + (".L" if his_leg[".L"] == sx else ".R")) + V3(0, 0, 0.05)
+            cup(V, s, bvhM, T, nrm(V3(0, -1, -0.2)), sh + V3(sx * 0.4, 0.1, 0))
         else:
             T = M.lm("chest" + (".R" if s == ".L" else ".L")) + V3(0, 0, 0.035)
-            hands_to(V, s, T, V3(0, 0, -1), nrm(V3(-sx * 0.2, 1, -0.2)), sh + V3(sx * 0.5, -0.2, 0), 0.3)
+            cup(V, s, bvhM, T, nrm(V3(-sx * 0.2, 1, -0.2)), sh + V3(sx * 0.5, -0.2, 0))
     V.look((m.head("頭") + V3(0.08 * k, 0, 0.45 * k)) if not reverse else V3(0.2 * k, -1.5, 1.0 + 0.6 * k))
+    bvhV = surface(V); her_hip = dict(sides(V, "足"))
     def rev_arms(pole):
         for s, sx in sides(M, "腕"):
-            hp = V.lm("hip" + (".L" if dict(sides(V, "足"))[".L"] == sx else ".R"))
-            hands_to(M, s, hp + V3(sx * 0.03, 0.02, 0.05), V3(-sx, 0, 0), nrm(V3(0, -0.3, 1)), m.head("腕" + s) + V3(sx * pole[0], pole[1], pole[2]), 0.5)
+            hp = V.lm("hip" + (".L" if her_hip[".L"] == sx else ".R"))
+            cup(M, s, bvhV, hp + V3(0, 0.02, 0.03), nrm(V3(0, -0.3, 1)), m.head("腕" + s) + V3(sx * pole[0], pole[1], pole[2]))
     if reverse:
         def rev_arms_any(v):
             if v[0] == "hips": return rev_arms(v[1])
@@ -149,8 +153,8 @@ def cowgirl(ctx, t, reverse=False, rub=None):
         if reverse:
             continue
         else:
-            hp = V.lm("hip" + (".R" if s == ".L" else ".L"))
-            hands_to(M, s, hp + V3(sx * 0.03, 0, 0.03), V3(-sx, 0, 0), nrm(V3(0, 0.3, 1)), m.head("腕" + s) + V3(sx * 0.4, -0.2, -0.3), 0.55)
+            hp = V.lm("hip" + (".L" if her_hip[".L"] == sx else ".R"))
+            cup(M, s, bvhV, hp + V3(0, 0, 0.02), nrm(V3(0, 0.3, 1)), m.head("腕" + s) + V3(sx * 0.4, -0.2, -0.3))
     M.look(r.head("頭"))
 
 # ---------------------------------------------------------------- LEGS UP (her legs raised in a V, he holds her ankles)
@@ -177,10 +181,10 @@ def legsup(ctx, t):
             H = r.head("足" + s)
             V.leg_ik(s, m.head("頭") + V3(sx * spread, 0.04, up), H + V3(sx * 0.4, 0.2, 0.3))
             V.foot_relaxed(s, 28, splay=V3(sx, 0, 0))
+        bvhV = surface(V)
         for s, sx in sides(M, "腕"):
             A = r.head("足首" + (".L" if her_leg[".L"] == sx else ".R"))
-            hands_to(M, s, A + V3(sx * side_off, -0.03, -0.05), V3(-sx, 0.2, 0), nrm(V3(0, 0, 1)),
-                     m.head("腕" + s) + V3(sx * pole[0], pole[1], pole[2]), 0.75)
+            cup(M, s, bvhV, A + V3(sx * side_off, -0.03, -0.05), nrm(V3(0, 0, 1)), m.head("腕" + s) + V3(sx * pole[0], pole[1], pole[2]))
     best_of("legs", [(sp, up, o, p) for sp in (0.44, 0.54, 0.64) for up in (0.16, 0.30) for o in (-0.04, 0.04)
                      for p in ((0.5, -0.2, -0.2), (0.2, 0.2, -0.6))], legs_and_hands, (V, M))
     M.look(r.head("頭"))
@@ -188,7 +192,7 @@ def legsup(ctx, t):
 # ---------------------------------------------------------------- ORAL (she kneels between his legs) / LICK
 def oral(ctx, t):
     V, M = ctx.V, ctx.M
-    supine_him(M, pelvis_y=1.20, feet_w=0.58, knees=0.22)
+    supine_him(M, pelvis_y=1.20, feet_w=0.66, knees=0.08)
     m = M.rig
     S = nrm(V3(0, 0.28, 0.96)); m.aim("竿根", S)
     R0 = m.head("竿根")
@@ -211,15 +215,20 @@ def oral(ctx, t):
     r.orient("首", forward=nrm(face + V3(0, 0.4, 0)), up=up); r.orient("頭", forward=face, up=up)
     V.move(mouth_target - V.lm("mouth"))
     kneel(V, 0.13, -1, V3(0, -1, 0.04), knee_z=0.045)
+    bvhM = surface(M)
+    his_leg = dict(sides(M, "足"))
     for s, sx in sides(V, "腕"):
         sh = r.head("腕" + s)
-        if s == ".R":
-            hands_to(V, s, R0 + S * 0.035 + V3(-0.035, -0.015, 0), V3(1, 0, 0), S, sh + V3(-0.3, -0.25, -0.2), 0.75)
-        else:
-            hands_to(V, s, M.lm("thigh.L") + V3(0.03, 0, 0.06), V3(0, 0, -1), nrm(V3(0.3, 1, 0)), sh + V3(0.4, -0.2, -0.2), 0.35)
+        if s == ".R":                                   # grip low on the shaft, fingers around it
+            side = V3(sx, 0, 0); around = S.cross(side).normalized()
+            cup(V, s, bvhM, R0 + S * 0.06 + side * 0.03, around, sh + V3(sx * 0.3, -0.25, -0.2))
+        else:                                           # the other hand on his inner thigh, near the groin
+            hs = ".L" if his_leg[".L"] == sx else ".R"
+            H = M.rig.head("足" + hs); K = M.rig.head("ひざ" + hs)
+            cup(V, s, bvhM, H + (K - H) * 0.40 + V3(0, 0, 0.08), (K - H).normalized(), sh + V3(sx * 0.4, -0.2, -0.2))
     for s, sx in sides(M, "腕"):
         sh = m.head("腕" + s)
-        hands_to(M, s, V3(sx * 0.36, sh.y + 0.05, BED_TOP + 0.065), V3(0, 0, -1), nrm(V3(sx, 0.2, 0)), sh + V3(sx * 0.3, -0.3, 0.1), 0.2)
+        hands_to(M, s, V3(sx * 0.36, sh.y + 0.05, BED_TOP + 0.075), V3(0, 0, -1), nrm(V3(sx, 0.2, 0)), sh + V3(sx * 0.3, -0.3, 0.1), 0.08)
     M.look(r.head("頭"))
 
 def lick(ctx, t):
@@ -248,6 +257,7 @@ def lick(ctx, t):
     kneel(M, 0.16, -1, nrm(V3(0, -0.35, 1)), knee_z=0.065, point_deg=38)
     tuck_shaft(M, "lick")
     her = dict(sides(V, "足"))
+    bvhV = surface(V)
     def hands(v):                                                    # his hands hold her inner thighs open (same world side)
         f, pole = v
         for s, sx in sides(M, "腕"):
@@ -259,12 +269,10 @@ def lick(ctx, t):
             H = r.head("足" + hs); K = r.head("ひざ" + hs); ax = (K - H).normalized()
             n_in = V3(-sx, 0, 0); n_in = (n_in - ax * n_in.dot(ax)).normalized()
             T = H + (K - H) * f + n_in * 0.095
-            hands_to(M, s, T, -n_in, ax, sh + V3(sx * pole[0], pole[1], pole[2]), 0.35)
-    best_of("hands", [(f, p) for f in (0.5, 0.65, 0.8) for p in ((0.3, -0.3, -0.1), (0.0, -0.4, -0.2), (-0.2, -0.2, -0.3), (-0.1, -0.3, -0.4))] +
-            [(None, (0.5, -0.3, 0.1)), (None, (0.3, -0.4, 0.3))], hands, (M,))
+            cup(M, s, bvhV, T, ax, sh + V3(sx * pole[0], pole[1], pole[2]))
+    best_of("hands", [(f, p) for f in (0.7, 0.8, 0.9) for p in ((0.3, -0.3, -0.1), (0.0, -0.4, -0.2), (-0.2, -0.2, -0.3))], hands, (M,))
     hh = m.head("頭"); sh = r.head("腕.R"); sxr = dict(sides(V, "腕"))[".R"]      # her right hand rests in his hair
-    V.arm_ik(".R", hh + V3(sxr * 0.02, -0.02, 0.10), sh + V3(sxr * 0.3, -0.1, -0.2))
-    V.hand(".R", palm=V3(0, 0, -1), fingers=nrm(V3(0, -1, -0.2))); V.fingers(".R", 0.45)
+    pass                                                              # (both hands stay in the sheet)
     V.look(m.head("頭"))
 
 _TUCK = {}
@@ -343,7 +351,7 @@ def spoon(ctx, t, rub=None):
         M.leg_ik(s, V3(K.x - 0.10, K.y + ay, BED_TOP + az), K + V3(0.4, 0, 0.05))
         M.foot(s, nrm(V3(0.45, -0.9, 0.0)), nrm(V3(1.0, 0.45, 0.0)))
     sh = m.head("腕" + mlo)                             # his bottom arm up under the pillow, above her head
-    hands_to(M, mlo, V3(sh.x + 0.06, sh.y + 0.34, BED_TOP + 0.065), V3(0, 0, -1), nrm(V3(0.2, 1, 0)), sh + V3(0.3, 0.0, 0.15), 0.08)
+    hands_to(M, mlo, V3(sh.x + 0.06, sh.y + 0.34, BED_TOP + 0.095), V3(0, 0, -1), nrm(V3(0.2, 1, 0)), sh + V3(0.3, 0.0, 0.15), 0.02)
     her_hi = hi
     def his_top_hand(where):
         sh_ = m.head("腕" + mhi)
@@ -351,7 +359,7 @@ def spoon(ctx, t, rub=None):
             hands_to(M, mhi, V.lm("nipple" + her_hi) + V3(0.035, -0.05, 0.03), V3(-1, 0, 0), nrm(V3(0.2, 1, 0)), sh_ + V3(0, -0.3, 0.3), 0.45)
         else:
             T = V.lm("hip" + her_hi) + V3(0.0, 0.0, 0.04)
-            hands_to(M, mhi, T, V3(0, 0, -1), nrm(V3(1, 0.3, 0)), sh_ + V3(-0.1, -0.2, 0.4), 0.4)
+            cup(M, mhi, surface(V), T, nrm(V3(1, 0.3, 0)), sh_ + V3(-0.1, -0.2, 0.4))
     best_of("hand", ["breast", "hip"], his_top_hand, (M,))
     M.look(r.head("頭"))
 
@@ -383,7 +391,7 @@ def prone(ctx, t):
     best_of("legs", [(0.05, 0.46), (0.05, 0.52), (0.05, 0.58), (0.32, 0.12), (0.40, 0.15), (0.48, 0.18)], legs, (V, M))
     for s, sx in sides(M, "腕"):
         sh = m.head("腕" + s)
-        hands_to(M, s, V3(sx * 0.32, sh.y + 0.10, BED_TOP + 0.065), V3(0, 0, -1), nrm(V3(sx * 0.2, 1, 0)), sh + V3(sx * 0.5, -0.2, 0.3), 0.2)
+        hands_to(M, s, V3(sx * 0.32, sh.y + 0.10, BED_TOP + 0.085), V3(0, 0, -1), nrm(V3(sx * 0.2, 1, 0)), sh + V3(sx * 0.5, -0.2, 0.3), 0.05)
     M.look(r.head("頭"))
 
 P.CLIPS.update({

@@ -2,6 +2,25 @@
 
 Newest first. Any session continuing the work: read `AGENTS.md`, then this file.
 
+## 2026-10-23 — content lead: Vivian v3, hands that really touch, new acts
+
+Shipped (`native/assets/characters`, see `docs/NATIVE_CONTENT.md`):
+- **Vivian v3** — 10 new expressions (bite_lip, bliss, gasp, smirk, pout, orgasm, wink, shy, lids_down/up for gaze),
+  full adult body ranges (skinny↔BBW with real fat distribution, small↔very large bust with sag, hips, butt,
+  muscle up/down, belly) and an adults-only age morph (25 → 42 → 60 y, built from MakeHuman's adult range only),
+  eight skin tones (porcelain, fair, honey, olive, caramel, bronze, deep, ebony), natural genital pigmentation +
+  `vag_aroused` + a wetness mask, `presets.json` (Petite … Ebony goddess, Marcus Lean … Heavy).
+- **Hands/feet/necks (issue #5)** — every intended hand contact is solved on the real skin (cup + finger wrap,
+  fingertip rubbing with the palm off the belly), anatomical joint ranges enforced on every frame (neck, head,
+  wrists, ankles), doggy looks at the sheet ahead (no impossible neck extension), feet posed by the sole.
+- **Contacts for the engine's touch simulation** in `clips.json → contacts` + soft bones (his scrotum, her breasts)
+  in the armature extras.
+- New acts: `handjob.in`, `titjob.in` (verified clean). `facesit`, `cuddle`, `kiss.side` are authored but held back.
+
+Still open on the content side: petite height (needs per-clip retargeting), more hairstyles (long waves, bob,
+ponytail), story locations (cabin, villa, hotel), outfits with undress layers, standing/lap/side/69/fingering clips,
+Marcus v3, the residuals listed under Verification in `docs/NATIVE_CONTENT.md`.
+
 ## 2026-10-23 — the native game (C++ / raylib): engine + game lead
 
 The shipping product is now the native game in `native/` (Windows installer, Linux tarball, macOS zip on the

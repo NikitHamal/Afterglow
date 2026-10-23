@@ -9,6 +9,7 @@ import scene as SC
 from body import Body
 import positions as PO
 import positions2                                      # registers the remaining positions into PO.CLIPS
+import positions3                                      # more acts: handjob, titjob, face-riding, cuddle, make-out
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 only = [a for a in argv if not a.startswith("--")]
@@ -21,7 +22,7 @@ t0 = time.time()
 objs = SC.load_scene(room=True)
 if set(only) != set(PO.CLIPS) and os.path.exists(NAT + "/anim.blend"):     # partial run: keep the other clips' actions
     with bpy.data.libraries.load(NAT + "/anim.blend", link=False) as (src, dst):
-        dst.actions = [a for a in src.actions if "|" in a and a.split("|", 1)[1] not in only]
+        dst.actions = [a for a in src.actions if "|" in a and a.split("|", 1)[1] not in only and a.split("|", 1)[1] in PO.CLIPS]
     for a in dst.actions:
         if a is not None: a.use_fake_user = True
 V = Body(objs["VivianRig"], objs["vivian_body"], "vivian")
@@ -75,6 +76,11 @@ his_allow = SC.vgroup_mask(mb, ("竿根", "竿中", "竿先", "玉袋"), 0.2)
 his_hand = SC.vgroup_mask(mb, [n for n in mb.vertex_groups.keys() if n.startswith(("手首", "親指", "人指", "中指", "薬指", "小指"))], 0.3)
 MB = np.array([tuple(v.co) for v in mb.data.vertices], np.float32)
 her_bones = SC.dominant_bone(body); his_bones = SC.dominant_bone(mb)
+LIMB = ("腕", "ひじ", "手首", "親指", "人指", "中指", "薬指", "小指")
+her_limb = np.array([b.startswith(LIMB) for b in her_bones]); his_limb = np.array([b.startswith(LIMB) for b in his_bones])
+def side_mask(bones, base, side): return np.array([b.startswith(LIMB[2:]) and b.endswith(side) for b in bones]) & base
+EFFECTORS = {"vivian": {"hand.L": side_mask(her_bones, her_hand, ".L"), "hand.R": side_mask(her_bones, her_hand, ".R")},
+             "marcus": {"hand.L": side_mask(his_bones, his_hand, ".L"), "hand.R": side_mask(his_bones, his_hand, ".R")}}
 V.core = np.array([b in SC.CORE_BONES for b in her_bones]); M.core = np.array([b in SC.CORE_BONES for b in his_bones])
 his_head = np.array([b in ("頭", "首") for b in his_bones])
 HM = np.array([tuple(v.co) for v in mb.data.vertices], np.float32)
@@ -83,6 +89,10 @@ his_mouth = his_head & (HM[:, 2] < hh0.z + 0.06) & (HM[:, 1] < hh0.y - 0.05)
 root0 = Vector(mb.parent.data.bones["竿根"].head_local)
 his_allow |= np.linalg.norm(MB - np.array(root0), axis=1) < 0.07          # pubic mound around the shaft root
 his_shaft = SC.vgroup_mask(mb, ("竿根", "竿中", "竿先", "玉袋"), 0.2)
+her_breast = SC.vgroup_mask(body, ("乳親.L", "乳親.R"), 0.3)
+TRUNK = ("上半身", "上半身2", "乳親", "腕", "肩", "首")
+her_trunk = np.array([b.startswith(TRUNK) for b in SC.dominant_bone(body)])
+his_trunk = np.array([b.startswith(TRUNK) for b in SC.dominant_bone(mb)])
 E0 = np.array(viv_meas["vagina"]["entrance"], np.float32)
 her_vulva_zone = np.linalg.norm(B - E0, axis=1) < 0.06                    # inner thighs / buttocks squeezing the shaft
 # pelvis-to-pelvis contact (her buttocks / inner thighs on his groin, hips, upper thighs): flesh that compresses in
@@ -112,14 +122,16 @@ if hair_o is not None:
             for g in v.groups:
                 if g.group == hg.index and g.weight > 0.99: hair_head[v.index] = True
 
+NONPEN = ("oral", "lick", "handjob", "titjob", "facesit", "cuddle", "kiss")
+AROUSED = {"lick": 0.0, "cuddle": 0.0, "kiss": 0.35, "facesit": 0.8}
 def keys_for(clip, t):
     sex = clip.split(".")[0] not in ("solo",)
-    pen = sex and not clip.startswith(("oral", "lick"))
+    pen = sex and not clip.startswith(NONPEN)
     if not pen: vo = 0.0
     elif clip.startswith(("cowgirl", "revcowgirl")) or not clip.endswith(".in"): vo = 1.0   # always inserted (rides / rub / embrace)
     else: vo = PO.ss(0.0, 0.12, t)
     viv = {"vag_open": vo}
-    mar = {"aroused": 1.0 if sex and not clip.startswith("lick") else 0.0}     # lick: he lies on it, flaccid + tucked
+    mar = {"aroused": AROUSED.get(clip.split(".")[0], 1.0) if sex else 0.0}   # lick: he lies on it, flaccid + tucked
     return viv, mar
 
 def evaluate(clip, t):
@@ -133,9 +145,13 @@ def verify(clip, t):
     A, Pa, Bm, Pb = evaluate(clip, t)
     allowA = her_allow | her_hand; allowB = his_allow | his_hand
     if clip.startswith("oral"): allowA = allowA | mouth_mask
-    if clip.startswith("lick"): allowB = allowB | his_mouth
-    pen = not clip.startswith(("oral", "lick", "solo"))
+    if clip.startswith(("lick", "facesit")): allowB = allowB | his_mouth
+    if clip.startswith("kiss"): allowA = allowA | mouth_mask; allowB = allowB | his_mouth
+    pen = not clip.startswith(("solo",) + NONPEN)
     extra = [(her_vulva_zone, his_shaft), (her_seat, his_seat | his_shaft)] if pen else []
+    if clip.startswith("titjob"): extra = [(her_breast, his_shaft), (her_breast, his_seat)]
+    if clip.startswith("facesit"): extra = [(her_seat, his_head)]
+    if clip.startswith(("cuddle", "kiss")): extra = [(her_trunk, his_trunk), (her_seat, his_seat)]
     pairs, bad, depth, worst = SC.interpenetration(A, Pa, allowA, Bm, Pb, allowB, boneA=her_bones, boneB=his_bones,
                                                    handA=her_hand, handB=his_hand, extra=extra)
     if os.environ.get("DIAG") and bad:
@@ -156,6 +172,32 @@ def verify(clip, t):
         from mathutils.bvhtree import BVHTree as _BVH
         Hp_rigid = [f for f in Hp if all(hair_head[i] for i in f)]
         hair_his = len(_BVH.FromPolygons([tuple(v) for v in Hv], Hp_rigid).overlap(_BVH.FromPolygons([tuple(v) for v in Bm], Pb))) if Hp_rigid else 0
+    from mathutils.bvhtree import BVHTree as _BVH
+    surf = {"vivian": (A, Pa, her_limb, her_bones, B), "marcus": (Bm, Pb, his_limb, his_bones, MB)}
+    full = {w: _BVH.FromPolygons([tuple(v) for v in X], F) for w, (X, F, _, _, _) in surf.items()}
+    trunk = {w: _BVH.FromPolygons([tuple(v) for v in X], [f for f in F if not any(lm[i] for i in f)]) for w, (X, F, lm, _, _) in surf.items()}
+    contacts = []
+    for who, effs in EFFECTORS.items():
+        X = surf[who][0]
+        for eff, msk in effs.items():
+            idx = np.where(msk)[0][::2]
+            if not len(idx): continue
+            for tgt in ("vivian", "marcus"):
+                if eff == "mouth" and tgt == who: continue
+                bvh = trunk[tgt] if tgt == who else full[tgt]
+                best = (1e9, None, None)
+                for i in idx:
+                    loc, nrm_, fi, _ = bvh.find_nearest(Vector(X[i]))
+                    if loc is None: continue
+                    d = (Vector(X[i]) - loc).dot(nrm_)
+                    if d < best[0]: best = (d, i, loc)
+                if best[1] is None or best[0] > 0.025: continue
+                Xt, _, lmt, bt, Rt = surf[tgt]
+                cand = np.where(~lmt)[0]                       # a region of the body, never the hand itself
+                j = int(cand[np.argmin(np.linalg.norm(Xt[cand] - np.array(best[2]), axis=1))])
+                contacts.append(dict(char=who, effector=eff, vert=int(best[1]), gap_mm=round(best[0] * 1000, 1),
+                                     target=dict(char=tgt, bone=bt[j], region=region(tgt, bt[j], Rt[j]))))
+    rom = max(max(b_.rig.rom_excess(n) for n in b_.rig.ROM) for b_ in (V, M))
     her_min = float(A[:, 2].min()); his_min = float(Bm[:, 2].min())
     low = (her_bones[int(A[:, 2].argmin())], his_bones[int(Bm[:, 2].argmin())])
     return dict(t=round(t, 2), pairs=pairs, bad=bad, depth_mm=round(depth * 1000, 1), worst=[f"{a}x{b}:{n}" for (a, b), n in worst],
@@ -163,7 +205,7 @@ def verify(clip, t):
                 extent_y=[round(float(min(A[:, 1].min(), Bm[:, 1].min())), 3), round(float(max(A[:, 1].max(), Bm[:, 1].max())), 3)],
                 extent_x=[round(float(min(A[:, 0].min(), Bm[:, 0].min())), 3), round(float(max(A[:, 0].max(), Bm[:, 0].max())), 3)],
                 room_pairs=room_pairs, hair_floor_mm=hair_floor, hair_vs_him=hair_his,
-                pelvic_depth_mm=round(SC.LAST_ZONE_DEPTH * 1000, 1),
+                pelvic_depth_mm=round(SC.LAST_ZONE_DEPTH * 1000, 1), contacts=contacts, rom_excess_deg=round(rom, 1),
                 beyond_play_mm=round(max(0.0, float(max(A[:, 1].max(), Bm[:, 1].max())) - PLAY_Y1) * 1000, 1))
 
 PRE_T = 0.85                                                       # layout choices are made near full depth...
@@ -184,6 +226,7 @@ def _score_at(clip, t_):
     sc = r_["bad"] + 3.0 * r_["depth_mm"] + 8.0 * max(0.0, -10.0 - r_["her_floor_mm"]) + 8.0 * max(0.0, -10.0 - r_["his_floor_mm"])
     sc += 4.0 * r_["room_pairs"] + 2.0 * r_["beyond_play_mm"] + 2.0 * (r_["hair_vs_him"] or 0)
     sc += 4.0 * max(0.0, r_["pelvic_depth_mm"] - 8.0)             # flesh may press, not sink through
+    sc += 3.0 * r_["rom_excess_deg"]
     if r_["hair_floor_mm"] is not None: sc += 4.0 * max(0.0, -15.0 - r_["hair_floor_mm"])
     return sc
 PO.SCORE = _score
@@ -191,6 +234,18 @@ PO.SCORE = _score
 mouth_mask = np.zeros(len(B), bool)
 hb = V.rig.rest["頭"].translation
 mouth_mask |= (np.abs(B[:, 0]) < 0.03) & (B[:, 2] < hb.z + 0.02) & (B[:, 2] > hb.z - 0.08) & (B[:, 1] < hb.y - 0.06)
+lip_v = V.lm("mouth"); lip_m = M.lm("mouth")
+EFFECTORS["vivian"]["mouth"] = np.linalg.norm(B - np.array(V.rig.rest["頭"].translation) * 0 - np.array(lip_v), axis=1) < 0.025
+EFFECTORS["marcus"]["mouth"] = np.linalg.norm(MB - np.array(lip_m), axis=1) < 0.025
+def region(who, bone, P_rest):
+    if who == "vivian":
+        if np.linalg.norm(P_rest - E0) < 0.045: return "vulva"
+        if bone.startswith("乳親"): return "breast" + bone[-2:]
+    if who == "marcus" and bone.startswith(("竿", "玉袋")): return "genitals"
+    for k, v in (("下半身", "hips"), ("上半身2", "chest"), ("上半身", "belly"), ("足", "thigh"), ("ひざ", "shin"), ("足首", "foot"),
+                 ("頭", "head"), ("首", "neck"), ("腕", "upper_arm"), ("ひじ", "forearm"), ("肩", "shoulder")):
+        if bone.startswith(k): return v + (bone[-2:] if bone[-2:] in (".L", ".R") else "")
+    return bone
 
 # ---------------------------------------------------------------- render setup (workbench, fast)
 def setup_render():
@@ -233,13 +288,14 @@ for clip in only:
         act = bpy.data.actions.new(nm); act.use_fake_user = True
         body_.arm.animation_data_create(); body_.arm.animation_data.action = act; acts[who] = act
     PO.CURRENT = clip
-    for b_ in (V, M): b_.rig._last_hinge = {}         # limb hinges stay continuous within a clip, fresh per clip
+    for b_ in (V, M): b_.rig._last_hinge = {}; b_.rig._last_twist = {}; b_.rig._last_curl = {}; b_.rig._last_pole = {}   # continuity within a clip
     fn(ctx, PRE_T if kind == "depth" else 0.5)       # best_of choices are made once (near full depth)
     fn(ctx, 0.0)                                       # ...then the hinge memory starts from the first frame
     prev = {"VIV": None, "MAR": None}; worst_flip = (0.0, None)
     for f in range(frames):
         t = f / (frames - 1) if kind != "loop" else f / (frames - 1)
         fn(ctx, t)
+        for b_ in (V, M): b_.rig.limit_all()                  # anatomical range of motion, always
         for who, body_ in (("VIV", V), ("MAR", M)):
             snap = body_.rig.snapshot()
             if prev[who] is not None:
@@ -250,9 +306,30 @@ for clip in only:
     samples = [0.0, 0.25, 0.5, 0.75, 1.0] if kind != "pose" else [0.0]
     res = []
     for t in samples:
-        fn(ctx, t); res.append(verify(clip, t))
+        fn(ctx, t)
+        for b_ in (V, M): b_.rig.limit_all()
+        res.append(verify(clip, t))
     rep = dict(frames=frames, kind=kind, samples=res, worst_flip_deg=round(worst_flip[0], 1), flip_bone=worst_flip[1],
                max_bad_pairs=max(r["bad"] for r in res), max_depth_mm=max(r["depth_mm"] for r in res))
+    # contact tracks for the engine: one per (character, effector, target character), offset in the effector bone's
+    # rest frame (bone-local, same convention as clips.json fpv.offset_local), with the gap range over the samples
+    tracks = {}
+    for r_ in res:
+        for c in r_["contacts"]:
+            k_ = (c["char"], c["effector"], c["target"]["char"])
+            tr = tracks.setdefault(k_, dict(char=c["char"], effector=c["effector"], target=c["target"], gaps=[], ts=[], verts=[]))
+            tr["gaps"].append(c["gap_mm"]); tr["ts"].append(r_["t"]); tr["verts"].append(c["vert"])
+    out_tracks = []
+    for (who, eff, tgt), tr in tracks.items():
+        vi = tr["verts"][len(tr["verts"]) // 2]
+        bones_, Rest = (her_bones, B) if who == "vivian" else (his_bones, MB)
+        bn = bones_[vi]; body_ = V if who == "vivian" else M
+        loc_ = body_.rig.rest[bn].inverted() @ Vector(Rest[vi])
+        rad = 0.02 if eff == "mouth" else (0.012 if bn.startswith(("親指", "人指", "中指", "薬指", "小指")) else 0.035)
+        out_tracks.append(dict(char=who, effector=eff, bone=bn, offset=[round(loc_.x, 4), round(loc_.y, 4), round(loc_.z, 4)], radius=rad,
+                               target=tr["target"], gap_mm=[min(tr["gaps"]), max(tr["gaps"])], t=[min(tr["ts"]), max(tr["ts"])]))
+    rep["contacts"] = out_tracks
+    rep["max_rom_excess_deg"] = max(r_["rom_excess_deg"] for r_ in res)
     report[clip] = rep
     log(f"{clip}: {frames}f in {time.time()-tc:.0f}s | bad pairs max {rep['max_bad_pairs']} depth {rep['max_depth_mm']} mm | "
         f"floors her {[r['her_floor_mm'] for r in res]} his {[r['his_floor_mm'] for r in res]} | flip {rep['worst_flip_deg']} {rep['flip_bone']}")

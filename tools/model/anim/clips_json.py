@@ -5,6 +5,7 @@ from mathutils import Vector
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 import positions as PO
 import positions2  # noqa: F401  (registers clips)
+import positions3  # noqa: F401
 out = sys.argv[sys.argv.index("--") + 1]
 NAT = "/root/agb/native"
 ver = json.load(open(NAT + "/verify.json")) if os.path.exists(NAT + "/verify.json") else {}
@@ -40,13 +41,13 @@ for name, (fn, frames, kind) in PO.CLIPS.items():
         rubHand=("vivian.R" if lay.get("vivian") == "arm.R" else None),
         layerBones=lay or None,
         stroke_m=(0.0 if kind != "depth" else (0.05 if name.startswith(("cowgirl", "revcowgirl")) else (0.075 if name.startswith("oral") else (0.016 if name.startswith("lick") else (positions2.PRONE_LINS if name.startswith("prone") else PO.LINS))))),
-        insert_m=(None if kind != "depth" or name.startswith("lick") else
+        insert_m=(None if kind != "depth" or name.startswith(("lick", "handjob", "titjob")) else
                   ([0.059, 0.109] if name.startswith("cowgirl") else [0.069, 0.119] if name.startswith("revcowgirl") else
                    [-0.004, 0.071] if name.startswith("oral") else
                    [-PO.TIP_OUT, round(positions2.PRONE_LINS - PO.TIP_OUT, 3)] if name.startswith("prone") else [-PO.TIP_OUT, round(PO.LINS - PO.TIP_OUT, 3)])),
         morphs=dict(vivian=({"vag_open": 1.0} if name.startswith(("cowgirl", "revcowgirl")) and kind == "depth" else
-                            {"vag_open": "smoothstep(0, 0.12, depth)"} if kind == "depth" and not name.startswith(("oral", "lick")) else {}),
-                    marcus=({"aroused": "0..1 by arousal"} if solo else ({"aroused": 0.0} if name.startswith("lick") else {"aroused": 1.0}))),
+                            {"vag_open": "smoothstep(0, 0.12, depth)"} if kind == "depth" and not name.startswith(("oral", "lick", "handjob", "titjob")) else {}),
+                    marcus=({"aroused": "0..1 by arousal"} if solo else {"aroused": {"lick": 0.0, "cuddle": 0.0, "kiss": 0.35, "facesit": 0.8}.get(name.split(".")[0], 1.0)})),
         marcusHidden=solo,
         cameras=dict(
             orbit_side=orbit(90 if side.x else 0, 18, 2.3),
@@ -55,7 +56,9 @@ for name, (fn, frames, kind) in PO.CLIPS.items():
             fpv=dict(character="marcus", bone="頭", offset_local=[round(eye_local.x, 4), round(eye_local.y, 4), round(eye_local.z, 4)],
                      forward_local=[round(fwd_local.x, 4), round(fwd_local.y, 4), round(fwd_local.z, 4)], note="bone-local (glTF node frame); look along forward_local"),
         ),
+        contacts=rep.get("contacts", []),
         verify=dict(max_bad_tri_pairs=rep.get("max_bad_pairs"), max_depth_mm=rep.get("max_depth_mm"), worst_flip_deg=rep.get("worst_flip_deg"),
+                    max_rom_excess_deg=rep.get("max_rom_excess_deg"),
                     floors_mm=dict(vivian=[s["her_floor_mm"] for s in rep.get("samples", [])], marcus=[s["his_floor_mm"] for s in rep.get("samples", [])])),
     )
 doc = dict(version=1, units="m", up="+Y", fps=24,
@@ -66,7 +69,10 @@ doc = dict(version=1, units="m", up="+Y", fps=24,
                layers="<pos>.rub only keys the listed bones; blend it over <pos>.in with a bone mask (rub phase loops 0..1)",
                embrace="missionary.embrace is a pose layer for upper body + arms; blend weight = embrace amount",
                not_animated="hair chains 髪.* and eyes 目.L/目.R are not keyed: simulate hair (colliders in node extras) and drive gaze live",
-               morph_normals="body-shape and hair-carry morph targets ship POSITION deltas only on the hair mesh; others include NORMAL"),
+               morph_normals="body-shape targets (bust/hips/waist/butt/weight/muscle/belly/age/length/girth _up/_dn) and every hair-mesh target ship POSITION deltas only; expressions and anatomy (vag_open, vag_aroused, anal_open, aroused) include NORMAL",
+               contacts="per clip: where a hand / mouth touches skin. {char, effector, bone, offset (bone-local, like fpv.offset_local), "
+                        "radius, target {char, bone, region}, gap_mm [min, max] over the clip (0 = touching, - = pressing in), t [first, last] "
+                        "normalized time}. Contact point each frame = bone world matrix x offset; deform/react around target.bone/region."),
            clips=clips)
 json.dump(doc, open(out, "w"), indent=1, ensure_ascii=False)
 print("clips.json:", len(clips), "clips ->", out)

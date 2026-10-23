@@ -108,8 +108,9 @@ class Body:
         up = Vector(up_hint) if up_hint is not None else r.world_dir("上半身2", r.loc_up["上半身2"])
         f_chest = r.world_dir("上半身2", r.loc_fwd["上半身2"])
         f_neck = (f_chest * (1 - neck_share) + f_head * neck_share).normalized()
-        r.orient("首", forward=f_neck, up=up)
-        r.orient("頭", forward=f_head, up=up)
+        r.orient("首", forward=f_neck, up=up); r.limit("首")
+        up_n = r.world_dir("首", r.loc_up["首"])                 # head rolls with the neck: no twist to clamp
+        r.orient("頭", forward=f_head, up=up_n); r.limit("頭")
 
     # ---------------------------------------------------------------- helpers
     def bone_dir(self, n, local_vec):

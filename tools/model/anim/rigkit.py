@@ -12,7 +12,7 @@
 #   key(frame)                           write matrix_basis of every bone as keyframes on the active action
 # Armature objects are expected at identity transform (rig_export leaves them there).
 import bpy, math
-from mathutils import Matrix, Vector, Quaternion
+from mathutils import Quaternion, Matrix, Vector, Quaternion
 
 WORLD_FWD, WORLD_UP, WORLD_LEFT = Vector((0, -1, 0)), Vector((0, 0, 1)), Vector((1, 0, 0))  # character rest frame (faces -Y)
 
@@ -261,6 +261,59 @@ class Rig:
             last[n] = q
             pb.keyframe_insert("location", frame=frame, group=n)
             pb.keyframe_insert("rotation_quaternion", frame=frame, group=n)
+
+    # ---------------------------------------------------------------- anatomical range of motion
+    # swing = rotation of the bone axis away from its rest direction, twist = rotation about the bone axis;
+    # both relative to the parent (the rest pose is the anatomical neutral: standing, arms relaxed down)
+    # wrist twist = forearm pronation/supination (the IK locks the forearm roll to the elbow hinge)
+    ROM = {"首": (40.0, 45.0), "頭": (32.0, 38.0), "手首.L": (65.0, 85.0), "手首.R": (65.0, 85.0),
+           "足首.L": (82.0, 35.0), "足首.R": (82.0, 35.0)}             # ankle incl. midfoot + foot roll
+
+    def swing_twist(self, n):
+        q = self.basis[n].to_quaternion(); q.normalize()
+        if q.w < 0: q = -q                                        # shortest-arc hemisphere
+        tw = Quaternion((q.w, 0.0, q.y, 0.0))
+        if tw.magnitude < 1e-8: tw = Quaternion()
+        tw.normalize()
+        if tw.w < 0: tw = -tw
+        sw = q @ tw.inverted()
+        if sw.w < 0: sw = -sw
+        def ang(x): return math.degrees(2 * math.acos(max(-1.0, min(1.0, x.w))))
+        ta = ang(tw) * (1.0 if tw.y >= 0 else -1.0)
+        return ang(sw), ta, sw, tw
+
+    def rom_excess(self, n):
+        if n not in self.ROM or n not in self.basis: return 0.0
+        smax, tmax = self.ROM[n]; sa, ta, _, _ = self.swing_twist(n)
+        return max(0.0, sa - smax) + max(0.0, abs(ta) - tmax)
+
+    def limit(self, n, carry_twist_to=None):
+        """clamp bone n to its ROM; excess twist of a wrist is handed to the forearm (pronation/supination)"""
+        if n not in self.ROM: return
+        smax, tmax = self.ROM[n]; sa, ta, sw, tw = self.swing_twist(n)
+        if not hasattr(self, "_last_twist"): self._last_twist = {}
+        last = self._last_twist.get(n)
+        if last is not None and abs(ta - last) > 180.0: ta += math.copysign(360.0, last - ta)   # clamp toward last frame's side
+        self._last_twist[n] = max(-tmax, min(tmax, ta))
+        changed = False
+        if sa > smax:
+            ax, an = sw.to_axis_angle()
+            if an > math.pi: an -= 2 * math.pi
+            sw = Quaternion(ax, math.radians(smax) * (1 if an >= 0 else -1)); changed = True
+        if abs(ta) > tmax:
+            excess = math.radians(ta - math.copysign(tmax, ta))
+            tw = Quaternion((0.0, 1.0, 0.0), math.radians(math.copysign(tmax, ta))); changed = True
+            if carry_twist_to is not None and carry_twist_to in self.basis:
+                self.basis[carry_twist_to] = self.basis[carry_twist_to] @ Quaternion((0.0, 1.0, 0.0), excess).to_matrix().to_4x4()
+        if changed:
+            self.basis[n] = (sw @ tw).to_matrix().to_4x4()
+            self.fk(carry_twist_to if carry_twist_to in self.basis else n)
+
+    def limit_all(self):
+        for n in ("首", "頭"): self.limit(n)
+        for s in (".L", ".R"):
+            self.limit("手首" + s)
+            self.limit("足首" + s)
 
     def snapshot(self):
         return {n: m.copy() for n, m in self.basis.items()}

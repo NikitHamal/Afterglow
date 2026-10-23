@@ -3,6 +3,7 @@
 #       R = flush (where blood shows first: cheeks, nose, ears, neck, décolleté, breasts / his chest, genitals)
 #       G = translucency (exp(-thickness / 10 mm), thickness ray-cast through the mesh: ears, nose, fingers, toes)
 #       B = sweat / sheen (forehead, temples, upper lip, neck, chest centre, under the breasts, lower back)
+#       A = arousal wetness (Vivian: vestibule, inner labia, canal entrances, fading over the outer labia and perineum)
 #   skin_detail_n.png    512² tileable tangent-space micro normal (pores + fine crosshatch), linear; tile ~48x on uv0
 #   blender -b <stage blend with "Human" + "Human.rig"> --python skin_maps.py -- vivian|marcus
 import bpy, sys, os, json, math, time
@@ -70,7 +71,11 @@ sw = np.maximum(sw, g(np.array([0, (NIP[0][1] + NIP[1][1]) / 2 + 0.03, nz + 0.01
 for n_ in NIP: sw = np.maximum(sw, g(n_ + np.array([0, 0.035, -0.075]), 0.035, 0.6 if who == "vivian" else 0.35))  # under the breasts
 back = ss(-0.1, -0.5, fwd) * ss(PEL[2] + 0.02, PEL[2] + 0.08, P[..., 2]) * ss(PEL[2] + 0.30, PEL[2] + 0.20, P[..., 2])
 sw = np.maximum(sw, back * np.exp(-P[..., 0] ** 2 / (2 * 0.07 ** 2)) * 0.6)                      # lower back
-img = np.stack([np.clip(fl, 0, 1) * C, np.clip(tr, 0, 1), np.clip(sw, 0, 1) * C], -1)
+wet = np.zeros(P.shape[:2])
+if "VM" in z.files:                      # vulva masks baked by build5: v_muc, v_min, v_maj, v_clit, v_anus, v_pub, v_cav
+    VMd = z["VM"][:, ::R_, ::R_].astype(np.float64)
+    wet = np.maximum.reduce([VMd[0], 0.85 * VMd[1], 0.35 * VMd[2], 0.6 * VMd[3], VMd[6], 0.25 * VMd[4]])
+img = np.stack([np.clip(fl, 0, 1) * C, np.clip(tr, 0, 1), np.clip(sw, 0, 1) * C, np.clip(wet, 0, 1) * C], -1)
 # grow the islands a few texels so bilinear sampling at seams never reads black
 for _ in range(4):
     m = img.max(-1) > 0
@@ -79,7 +84,7 @@ for _ in range(4):
         sh = np.roll(np.roll(img, di, 0), dj, 1); sm = np.roll(np.roll(m, di, 0), dj, 1)
         acc += sh * sm[..., None]; cnt += sm
     fill = (~m) & (cnt > 0); img[fill] = acc[fill] / cnt[fill][:, None]
-Image.fromarray(np.flipud(np.clip(img * 255 + 0.5, 0, 255).astype(np.uint8)), "RGB").save(f"{OUTD}/{who}_skin_mask.png", optimize=True)
+Image.fromarray(np.flipud(np.clip(img * 255 + 0.5, 0, 255).astype(np.uint8)), "RGBA").save(f"{OUTD}/{who}_skin_mask.png", optimize=True)
 print(f"[skin] {who}: mask written ({time.time()-t0:.0f}s), translucent texels {(tr > 0.3).sum()}", flush=True)
 # ---------------------------------------------------------------- shared tileable detail normal
 dn = "/root/agb/native/tex/skin_detail_n.png"

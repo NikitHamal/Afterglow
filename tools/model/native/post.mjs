@@ -24,8 +24,19 @@ for (const mesh of root.listMeshes()) {
   const isHair = /hair/.test(mesh.getName());
   for (const p of mesh.listPrimitives()) p.listTargets().forEach((tg, i) => {
     const nm = names[i] || '';
-    if (isHair) { const n = tg.getAttribute('NORMAL'); if (n) tg.setAttribute('NORMAL', null); }
+    const shape = /^(bust|hips|waist|butt|weight|muscle|belly|age|length|girth)_(up|dn)$/.test(nm);
+    if (isHair || shape) { const n = tg.getAttribute('NORMAL'); if (n) tg.setAttribute('NORMAL', null); }
   });
+}
+// the hair only needs the body morphs that move the scalp/neck (head fat); every other target is dropped there
+for (const mesh of root.listMeshes()) {
+  if (!/hair/.test(mesh.getName())) continue;
+  const names = (mesh.getExtras() && mesh.getExtras().targetNames) || [];
+  const keep = names.map((n, i) => (/^weight_(up|dn)$/.test(n) ? i : -1)).filter(i => i >= 0);
+  if (keep.length === names.length) continue;
+  for (const p of mesh.listPrimitives()) p.listTargets().forEach((t, i) => { if (!keep.includes(i)) p.removeTarget(t); });
+  mesh.setWeights(keep.map(() => 0));
+  mesh.setExtras({ ...(mesh.getExtras() || {}), targetNames: keep.map(i => names[i]) });
 }
 for (const m of root.listMaterials()) {
   const n = m.getName().toLowerCase();
@@ -48,6 +59,23 @@ for (const mesh of root.listMeshes()) {
     if (sem.startsWith('COLOR_') && !keep) p.setAttribute(sem, null);
 }
 root.getAsset().extras = { afterglow: { character: who, units: 'm', up: '+Y', version: 1 } };
+// soft bones the engine may simulate as damped springs around their animated pose (same solver as hair tips):
+// his scrotum sags/swings, her breasts jiggle. stiffness 0..1 (1 = rigid), gravity scale, swing limit in degrees.
+const SOFT = {
+  marcus: [{ bone: '玉袋', stiffness: 0.45, damping: 0.35, gravity: 1.0, maxAngleDeg: 28 }],
+  vivian: [{ bone: '乳親.L', stiffness: 0.72, damping: 0.30, gravity: 0.6, maxAngleDeg: 10 },
+           { bone: '乳親.R', stiffness: 0.72, damping: 0.30, gravity: 0.6, maxAngleDeg: 10 }],
+};
+const skinRoot = root.listSkins()[0]?.listJoints()[0];
+const armNode = root.listNodes().find(n => n.listChildren().includes(skinRoot)) || skinRoot;
+if (armNode && SOFT[who]) {
+  const ex = armNode.getExtras() || {};
+  let ag = ex.afterglow;
+  if (typeof ag === 'string') ag = JSON.parse(ag);
+  ag = ag || {};
+  ag.softBones = SOFT[who]; ag.version = Math.max(3, ag.version || 0);
+  armNode.setExtras({ ...ex, afterglow: JSON.stringify(ag) });
+}
 await doc.transform(dedup(), prune({ keepLeaves: true }));
 await io.write(out, doc);
 const anims = root.listAnimations().map(a => a.getName());
