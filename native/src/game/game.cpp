@@ -461,7 +461,7 @@ void Game::applySpec(const Spec& s) {
             subtitle_ = Night::desireLine((Desire)i, true); subtitleT_ = 0.6f; subtitleDur_ = 30.f;
             shownDesire_ = (Desire)i;
         }
-        if (d.empty()) night_.nextDesire = 999.f;
+        if (d.empty() && !s.has("autoplay")) night_.nextDesire = 999.f;
         std::string cm = s.get("cam", "side");
         camMode_ = cm == "front" ? 1 : (cm == "top" ? 2 : (cm == "fpv" ? 3 : 0));
         cameraForPosition(0.f);

@@ -209,7 +209,7 @@ void Game::updateAudio(float dt) {
     }
     moanT_ -= dt;
     if (moanT_ <= 0.f && p.id != "oral") {
-        bool active = night_.sinceStroke < 1.5f || p.solo || rub_ > 0.5f;
+        bool active = night_.stroking() || p.solo || rub_ > 0.5f;
         if (her > 0.18f && active) voice("moan02", 0.25f + 0.65f * her, 0.9f + 0.18f * frand() + 0.06f * her);
         if (her > 0.6f && (night_.desire == Desire::Deeper || night_.desire == Desire::Faster) && frand() < 0.35f) voice("takeme", 0.7f, 1.f);
         moanT_ = (9.f - 6.4f * her) * (0.75f + 0.5f * frand());
