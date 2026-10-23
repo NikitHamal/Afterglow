@@ -128,6 +128,9 @@ private:
     int custTab_ = 0, setTab_ = 0;
     bool confirmQuit_ = false, confirmNew_ = false;
     bool debug_ = false;
+    bool shotPending_ = false;            // F12: capture after this frame's UI
+    std::string shotToast_;
+    float shotToastT_ = 0.f;
 
     // ---- audio ----
     void initAudio();
