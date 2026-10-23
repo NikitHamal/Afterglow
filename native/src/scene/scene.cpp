@@ -60,7 +60,7 @@ bool Scene::load() {
         c->setTone("caramel");
     }
     // Vivian's hair texture is neutral grey: the tint gives it its colour (rich dark chestnut)
-    if (vivian.loaded()) vivian.hairTint = {0.20f, 0.095f, 0.05f};
+    if (vivian.loaded()) vivian.hairTint = {0.42f, 0.21f, 0.11f};
     if (!hasClips) standingPlacement();
     particles.init();
     return vivian.loaded() || marcus.loaded();
@@ -141,13 +141,13 @@ void Scene::updateDust(float dt) {
         V3 L = p - lights.keyPos;
         float d = length(L);
         float spot = smoothstep(cosOuter, cosInner, dot(L / std::max(d, 1e-3f), dir));
-        float bright = spot * lights.keyIntensity * 0.18f / (d * d + 0.3f);
+        float bright = spot * lights.keyIntensity * 0.32f / (d * d + 0.3f);
         if (bright < 0.02f) continue;
         EmitParams e;
         e.pos = p;
         e.vel = {(v - 0.5f) * 0.012f, (w - 0.5f) * 0.006f, (u - 0.5f) * 0.012f};
         e.life = 9.f + 6.f * w; e.lifeJitter = 0.2f;
-        e.size0 = e.size1 = 0.0011f + 0.0009f * v;
+        e.size0 = e.size1 = 0.0018f + 0.0016f * v;
         e.color0 = {lights.keyColor.x * bright, lights.keyColor.y * bright, lights.keyColor.z * bright, 0.9f};
         e.color1 = {e.color0.x, e.color0.y, e.color0.z, 0.f};
         e.additive = true;

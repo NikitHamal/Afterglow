@@ -16,9 +16,9 @@ struct Lights {
     V3 moonDir{-0.80f, -0.42f, 0.42f}, moonColor{0.60f, 0.70f, 1.0f};
     float moonIntensity = 0.75f;
     V3 fillDir{0.10f, -0.30f, -0.95f}, fillColor{1.0f, 0.88f, 0.84f};     // soft camera-side fill so faces read
-    float fillIntensity = 0.32f;
-    V3 sky{0.36f, 0.30f, 0.34f}, ground{0.13f, 0.09f, 0.08f};
-    float ambient = 0.55f;
+    float fillIntensity = 0.42f;
+    V3 sky{0.36f, 0.32f, 0.34f}, ground{0.13f, 0.10f, 0.09f};
+    float ambient = 0.6f;
     PointLight points[6];
     int numPoints = 0;
 };
