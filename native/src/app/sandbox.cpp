@@ -121,6 +121,7 @@ bool Sandbox::boneShot(const std::string& name, V3& target, float& yaw, float& p
         V3 ref = otherShown ? center - other->bonePos("上半身2") : cam_.eye - center;
         if (dot(side, ref) < 0.f) side = side * -1.f;
         d = normalize(fwd * 0.8f - up * 0.35f + side * 0.35f + V3{0, 0.3f, 0});
+        if (fwd.y < -0.45f) d = normalize(side * 0.8f + fwd * 0.15f + V3{0, 0.45f, 0});   // face down: from the side
         dist = 0.62f;
     } else {
         V3 hips = c->bonePos("下半身");
@@ -129,7 +130,7 @@ bool Sandbox::boneShot(const std::string& name, V3& target, float& yaw, float& p
         if (length(h) < 0.35f) h = V3{side.x, 0.f, side.z};   // lying face-up: from the side
         if (length(h) < 1e-3f) h = V3{0, 0, 1};
         h = qrotate(qaxis({0, 1, 0}, 0.35f), normalize(h));
-        d = normalize(h + V3{0, 0.2f, 0});
+        d = normalize(h + V3{0, 0.45f, 0});   // high enough to see over the bed edge
         dist = 3.0f;
     }
     if (d.y < 0.2f) d = normalize(V3{d.x, 0.2f, d.z});

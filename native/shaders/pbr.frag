@@ -138,7 +138,7 @@ vec3 shade(Surf s, vec3 L, vec3 radiance) {
         float sin1 = sqrt(max(0.0, 1.0 - th1 * th1)), sin2 = sqrt(max(0.0, 1.0 - th2 * th2));
         float dirAtten = smoothstep(-1.0, 0.0, th1);
         vec3 trt = sqrt(max(s.albedo, vec3(1e-4)));
-        vec3 spec = vec3(0.06) * pow(sin1, 110.0) * dirAtten + trt * 0.16 * pow(sin2, 26.0) * s.strand;
+        vec3 spec = vec3(0.05) * pow(sin1, 160.0) * dirAtten + trt * 0.11 * pow(sin2, 44.0) * s.strand;
         float wrap = sat((NoLraw + 0.4) / 1.4);
         vec3 diff = s.albedo / PI * wrap;
         return (diff + spec * sat(NoLraw * 0.7 + 0.3)) * radiance;
@@ -208,7 +208,7 @@ void main() {
         // volume with a coherent highlight band instead of per-card noise; strands run along +V (Bg)
         if (u_hairShape == 1) N = normalize(normalize(v_wpos - u_hairCenter) * 0.7 + N * 0.3);
         Tg = normalize(Bg - N * dot(N, Bg));
-        s.strand = mix(0.55, 1.35, smoothstep(0.04, 0.55, dot(texS.rgb, vec3(0.3333))));
+        s.strand = mix(0.7, 1.2, smoothstep(0.04, 0.55, dot(texS.rgb, vec3(0.3333))));
     }
     s.N = N; s.V = V; s.T = Tg; s.B = Bg;
     s.albedo = base.rgb; s.metal = metal; s.rough = clamp(rough, 0.03, 1.0); s.ao = ao; s.alpha = alpha; s.mode = u_mode;
