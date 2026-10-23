@@ -326,7 +326,9 @@ void Game::presentPlay(float dt) {
     sweat_ = clamp01(std::max(sweat_, std::min(0.5f, night_.elapsed / 700.f + 0.22f * her)));   // a dewy glow, not oil
 
     // ---- layers ----
-    rubPhase_ = std::fmod(rubPhase_ + dt * (0.8f + 0.9f * her), 1.f);
+    // her touch keeps time with you when she is alone, with her own pace otherwise
+    float rubRate = p.solo ? std::max(0.5f, std::min(2.2f, night_.tempo + 0.2f)) : 0.8f + 0.9f * her;
+    rubPhase_ = std::fmod(rubPhase_ + dt * rubRate, 1.f);
     idlePhase_ = std::fmod(idlePhase_ + dt / 9.f, 1.f);
     auto charOf = [&](const std::string& id) -> Character* { return id == "vivian" ? &v : (id == "marcus" ? &m : nullptr); };
     auto layered = [&](int layer, const std::string& clip, float t, float w, const char* defChar, const char* defMask) {

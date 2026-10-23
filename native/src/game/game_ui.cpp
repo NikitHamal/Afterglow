@@ -51,7 +51,9 @@ void Game::drawTitle() {
     U.text(ui::Face::Sans, U.u(14.f), "For adults only. A work of fiction between two consenting adults.", U.W * 0.5f, U.H - U.u(56.f),
            U.th.inkFaint, ui::Center);
     U.alpha = 1.f;
-    if (t > 0.6f && !switching_ && (GetKeyPressed() != 0 || U.in.clicked)) go(Screen::Menu, 0.45f);
+    int key = GetKeyPressed();
+    bool anyKey = key != 0 && key != KEY_F1 && key != KEY_F5 && key != KEY_F11 && key != KEY_LEFT_ALT && key != KEY_RIGHT_ALT;
+    if (t > 0.6f && !switching_ && (anyKey || U.in.clicked)) go(Screen::Menu, 0.45f);
 }
 
 // ------------------------------------------------------------------ main menu
@@ -370,6 +372,11 @@ void Game::drawSettings() {
             std::snprintf(b, sizeof b, "Version %s%s%s", Updater::current().c_str(), st[0] ? "  \xc2\xb7  " : "", st);
             U.text(ui::Face::Sans, U.u(16.f), b, x, y + U.u(18.f), U.th.inkFaint);
             if (updater && U.button("s_check", "Check now", Rectangle{x + w - U.u(170.f), y + U.u(6.f), U.u(170.f), U.u(44.f)})) updater->checkAsync();
+            y += U.u(84.f);
+            U.paragraph(ui::Face::Sans, U.u(14.f),
+                        "Sound: \"Lewd Sound Pack\" by Shinlalala (CC BY-SA 4.0). Fonts: Cormorant Garamond and Inter (SIL OFL 1.1). "
+                        "Engine: raylib, cgltf, stb. Characters made with MPFB / MakeHuman (CC0). Adults only; all characters are consenting adults.",
+                        x, y, w, U.th.inkFaint);
             break;
         }
     }

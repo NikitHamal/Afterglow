@@ -22,6 +22,9 @@ void installCrashHandler();
 void installQuitSignals();
 bool quitRequested();
 
+// hand freed heap pages back to the OS (after loading: decode buffers, file images)
+void trimHeap();
+
 // resident memory of this process in bytes (0 when unknown)
 long long residentBytes();
 long long peakResidentBytes();

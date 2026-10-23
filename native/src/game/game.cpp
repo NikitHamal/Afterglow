@@ -45,6 +45,7 @@ bool Game::init() {
     loadingProgress(1.f, "");
     std::string meta = paths::findAsset({"characters/clips.json"});
     if (!meta.empty()) clipsMeta_ = Json::parse(paths::readText(meta));
+    platform::trimHeap();   // loading spikes (file images, decode buffers) go back to the OS
 
     // positions the night can use (only those the content ships clips for)
     struct Def { const char* id; const char* name; float her, him; bool pen; };

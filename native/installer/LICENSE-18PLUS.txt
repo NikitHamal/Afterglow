@@ -9,11 +9,14 @@ By installing it you confirm that:
 Afterglow is a work of fiction. Every character in it is an adult (Vivian, about 42; Marcus, about 40)
 and is depicted as a consenting partner.
 
-The game runs entirely offline. It collects no data and makes no network connections.
+The game runs offline and collects no data. Its only network access is an optional update check against the
+project's GitHub releases (Settings > Game > "Check for updates on start"), which sends no personal information.
 
 Credits
   * Engine: raylib (zlib licence), cgltf (MIT), stb_image (public domain / MIT), raygui (zlib licence).
   * Characters generated with MPFB 2 / MakeHuman (CC0 assets).
   * Sound effects: "Lewd Sound Pack" by Shinlalala, licensed CC BY-SA 4.0.
+  * Fonts: Cormorant Garamond (The Cormorant Project Authors) and Inter (The Inter Project Authors), both under
+    the SIL Open Font License 1.1 (OFL-CormorantGaramond.txt, OFL-Inter.txt).
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.

@@ -28,6 +28,9 @@ namespace ag::platform { void winActivateExisting(); }
 #include <unistd.h>
 #if defined(__APPLE__)
 #include <mach/mach.h>
+#include <malloc/malloc.h>
+#elif defined(__GLIBC__) || defined(__linux__)
+#include <malloc.h>
 #endif
 #endif
 
@@ -148,6 +151,16 @@ void installQuitSignals() {
 }
 #endif
 bool quitRequested() { return gQuit != 0; }
+
+void trimHeap() {
+#if defined(_WIN32)
+    HeapCompact(GetProcessHeap(), 0);
+#elif defined(__APPLE__)
+    malloc_zone_pressure_relief(nullptr, 0);
+#elif defined(__GLIBC__)
+    malloc_trim(0);
+#endif
+}
 
 long long residentBytes() {
 #if defined(_WIN32)

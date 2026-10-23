@@ -78,6 +78,31 @@ Type: files; Name: "{userappdata}\Afterglow\.instance.lock"
 Type: dirifempty; Name: "{app}"
 
 [Code]
+const
+  OldKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{8C3C2D7E-5B1A-4E5F-9A41-AF7E2C0B1A11}_is1';
+
+// Early nightlies installed for all users (Program Files). This build installs per user so it can update
+// itself without admin rights: offer to remove the old copy so there aren't two Afterglows.
+function InitializeSetup(): Boolean;
+var
+  Uninst: String;
+  Code: Integer;
+begin
+  Result := True;
+  if WizardSilent then
+    Exit;
+  if RegQueryStringValue(HKLM64, OldKey, 'UninstallString', Uninst) or RegQueryStringValue(HKLM32, OldKey, 'UninstallString', Uninst) then
+  begin
+    if MsgBox('An older Afterglow is installed for all users.' + #13#10 + #13#10 +
+              'This version installs just for you and keeps itself up to date. Remove the old copy now?' + #13#10 +
+              '(Windows will ask for permission. Your saves are kept.)', mbConfirmation, MB_YESNO) = IDYES then
+    begin
+      Uninst := RemoveQuotes(Uninst);
+      ShellExec('runas', Uninst, '/SILENT /NORESTART', '', SW_SHOW, ewWaitUntilTerminated, Code);
+    end;
+  end;
+end;
+
 function ShouldRelaunch(): Boolean;
 var
   I: Integer;
