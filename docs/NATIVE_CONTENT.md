@@ -194,6 +194,10 @@ blender -b /root/agb/male/out/marcus_b.blend --python tools/model/native/skin_ma
 bash tools/model/native/stage_assets.sh     # copy into native/assets + regenerate clips.json
 BAKE_RES=2048 BAKE_SAMPLES=1024 blender -b --python tools/model/room/build_room.py   # room + Cycles lightmap (~2 min on 20 cores)
 AG_ROOM_STYLE=cabin|villa|hotel AG_ROOM_OUT=<dir> blender -b --python tools/model/room/build_room.py   # story bedrooms
+AG_PLACE=cabin_living AG_ROOM_OUT=<dir> [AG_PREVIEW=1|only] BAKE_SAMPLES=512 blender -b --python tools/model/room/build_place.py
+                                                    # story places without a bed (kit.py): <id>_raw.glb + <id>.json, Cycles
+                                                    # previews, and <id>_view.glb (lit colour baked in, for plain glTF viewers)
+node tools/model/room/post.mjs <dir>/<id>_raw.glb <dir>/<id>.json <dir>/post   # -> room.glb / room.json = locations/<id>/<id>.*
 blender -b /root/agb/native/<who>_native.blend --python tools/model/native/outfits.py -- <who> <out_dir>
 node tools/model/room/post.mjs /root/agb/native/room/room_raw.glb /root/agb/native/room/room.json /root/agb/native/room
 ```

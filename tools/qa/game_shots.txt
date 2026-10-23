@@ -45,6 +45,7 @@ story_kiss|screen=story;story=old_flames;node=c4_kiss;line=1;kiss=1
 story_undress|screen=story;story=old_flames;node=c5_room;line=6;undress=vivian:0.45;shot=two
 story_lace|screen=story;story=old_flames;node=c5_room;line=8;undress=vivian:0;shot=medium
 story_storm|screen=story;story=the_storm;node=c3_dark;line=3;shot=two
+story_cabin_establish|screen=story;story=the_storm;node=c2_fire;line=0;shot=establish
 story_storm_sweater|screen=story;story=the_storm;node=c6_night;line=3;undress=vivian:0.5;shot=two
 story_villa|screen=story;story=salt_and_sun;node=c4_terrace;line=3;shot=ots
 story_massage|screen=story;story=the_massage;node=c3_lesson;line=3;shot=two

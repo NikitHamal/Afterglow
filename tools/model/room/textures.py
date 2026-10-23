@@ -110,8 +110,8 @@ def night_sky(path, W=2048, H=1024):
 
 
 # ---------------------------------------------------------------- story-location variants
-def log_wall(path, npath, S=1024):
-    """horizontal pine logs (cabin): rounded rows, knots, warm amber"""
+def log_wall(path, npath, S=1024, knots=0.55):
+    """horizontal pine logs (cabin): rounded rows, knots (darkening factor), warm amber"""
     y, x = np.mgrid[0:S, 0:S].astype(np.float32) / S
     rows = 5; v = (y * rows) % 1.0; idx = np.floor(y * rows).astype(int)
     round_ = np.sqrt(np.clip(1 - (2 * v - 1) ** 2, 0, 1))
@@ -120,8 +120,8 @@ def log_wall(path, npath, S=1024):
     tone = rng.uniform(0.85, 1.12, rows)[idx % rows]
     base = np.array([0.42, 0.25, 0.12])
     col = base[None, None] * (0.55 + 0.45 * round_[..., None]) * (0.8 + 0.3 * streak[..., None]) * tone[..., None]
-    knots = fbm(S, S, 12, 2, 43) > 0.82
-    col[knots] *= 0.55
+    knot = fbm(S, S, 12, 2, 43) > 0.82
+    col[knot] *= knots
     gap = v < 0.04
     col[gap] = np.array([0.12, 0.08, 0.05])
     save_rgb(col, path)
@@ -183,3 +183,39 @@ def sea_night(path, W=2048, H=1024):
     glint = np.exp(-((np.arange(W)[None, :] / W - 0.72) / 0.05) ** 2) * (s_ > 0.55)
     a[sea] = (np.array([0.01, 0.02, 0.05]) + 0.02 * s_[sea][:, None] + 0.5 * glint[sea][:, None] * np.array([0.9, 0.92, 1.0]))
     save_rgb(np.clip(a, 0, 1), path, 92)
+
+def fieldstone(path, npath, S=1024, seed=7):
+    """rounded fieldstones in grey-brown mortar (hearths, chimney breasts); tileable"""
+    r = np.random.default_rng(seed)
+    pts = r.random((64, 2)) * S
+    yy, xx = np.mgrid[0:S, 0:S].astype(np.float32)
+    d1 = np.full((S, S), 1e9, np.float32); d2 = d1.copy(); idx = np.zeros((S, S), np.int32)
+    for i, (px, py) in enumerate(pts):
+        for ox in (-S, 0, S):
+            for oy in (-S, 0, S):
+                d = np.hypot(xx - (px + ox), (yy - (py + oy)) * 1.35)          # stones wider than tall
+                closer = d < d1
+                d2 = np.where(closer, d1, np.minimum(d2, d)); idx = np.where(closer, i, idx); d1 = np.where(closer, d, d1)
+    edge = (d2 - d1) * 0.5                                               # distance to the stone's border (px)
+    mortar = np.clip(1.0 - edge / 5.0, 0, 1)
+    dome = np.sqrt(np.clip(edge / 26.0, 0, 1))
+    n = fbm(S, S, 24, 4, seed + 1)
+    tint = r.uniform(0.75, 1.15, (64, 3)) * np.array([1.0, 0.96, 0.9])
+    stone = np.array([0.36, 0.33, 0.30])[None, None] * tint[idx] * (0.8 + 0.35 * n[..., None]) * (0.75 + 0.25 * dome[..., None])
+    col = stone * (1 - mortar[..., None]) + np.array([0.20, 0.18, 0.16]) * (0.8 + 0.3 * n[..., None]) * mortar[..., None]
+    save_rgb(np.clip(col, 0, 1), path)
+    save_rgb(normal_from_height(dome * 0.9 * (1 - mortar) + n * 0.15, 4.0), npath)
+
+
+def flame(path, W=256, H=256):
+    """three flame tongues on black (emissive card, not tiled): orange edges, gold core, tapering to tips"""
+    y, x = np.mgrid[0:H, 0:W].astype(np.float32); u = x / W; v = 1 - y / H
+    out = np.zeros((H, W), np.float32)
+    for c, hgt, wid in ((0.5, 0.96, 0.17), (0.28, 0.66, 0.12), (0.73, 0.76, 0.13)):
+        t = np.clip(v / hgt, 0, 1)
+        w = wid * (1 - t) ** 0.75 * (0.6 + 0.4 * np.sin(np.pi * np.minimum(t * 1.7, 1)))
+        d = np.abs(u - c - 0.035 * np.sin(t * 5 + c * 9) * t) / np.maximum(w, 1e-3)
+        out = np.maximum(out, np.clip(1 - d, 0, 1) ** 1.2 * (v < hgt) * np.clip(v * 12, 0, 1))
+    core = out ** 2.2
+    col = np.dstack([np.clip(out * 1.15, 0, 1), np.clip(out ** 1.6 * 0.7 + core * 0.25, 0, 1), np.clip(core * 0.4, 0, 1)])
+    save_rgb(col, path, 92)

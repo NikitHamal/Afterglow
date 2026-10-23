@@ -70,13 +70,17 @@ kiss two-shot). Beat nodes are spoken over the play (start, a new desire, his ed
 Legend: ✅ in the game · ⏳ wanted (the engine falls back meanwhile)
 
 **Locations** (`locations/<id>/<id>.glb` + `.json`, room.json schema; rooms without a bed are fine — standing
-scenes use the floor at y = 0 and the foot-of-bed marks of `stand.idle`):
+scenes use the floor at y = 0 and the foot-of-bed marks of `stand.idle`; places without a bed are built by
+`tools/model/room/build_place.py`, whose header spells out the staging contract; a missing place falls back to a
+built sibling of its family first, e.g. `spa_*` → `spa_suite`, then the family's bedroom):
 
 - ✅ `hotel_room`, `cabin_bedroom`, `villa_bedroom`
+- ✅ `cabin_living` (`tools/model/room/build_place.py`): fieldstone hearth with a flickering fire light (`fire_0`), an
+  inglenook dais under an oatmeal sofa at the 0.604 m seat (sit.bed works on it), iron candle chandelier over the
+  rug where they stand, reading corner, snow at three windows. `cabin_door` scenes fall back to it.
 - ⏳ `hotel_ballroom` (warm chandeliers, a bar, a dance floor), `hotel_terrace` (stone balustrade over the sea at night,
   paper lanterns), `hotel_corridor` (carpet, numbered doors, wall sconces)
-- ⏳ `cabin_living` (stone hearth with a live fire light, rug, couch, snow at the windows), `cabin_door` (the porch
-  and door from inside)
+- ⏳ `cabin_door` (the porch and door from inside)
 - ⏳ `villa_terrace` (white walls, blue shutters, table for two, the bay below), `villa_beach` (a sand crescent,
   rocks, moonlight variant)
 - ⏳ `spa_lobby`, `spa_steam` (tiled steam room, benches), `spa_suite` (candles, a wide padded treatment bed —
