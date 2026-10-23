@@ -196,22 +196,20 @@ GLuint fitTex(const std::vector<float>& a, const std::vector<float>& b) {
 // smooth borders for every garment surface; the under layer and the wearer's skin hidden where an opaque garment of
 // the layer above covers them (lace and other see-through fabrics cover nothing)
 void Outfit::computeFit(const Character& owner) {
+    // each garment mesh is one layer, taken whole (seams between its primitives are not borders): a clean cut along
+    // every border, outer layers draped; the edited bind shape goes back to the GPU
     std::vector<std::vector<std::vector<float>>> border(model.meshes.size());
     for (size_t mi = 0; mi < model.meshes.size(); ++mi) {
-        border[mi].resize(model.meshes[mi].prims.size());
-        for (size_t pi = 0; pi < model.meshes[mi].prims.size(); ++pi) {
-            Primitive& p = model.meshes[mi].prims[pi];
-            border[mi][pi] = borderDistance(p.pos, p.nrm, p.idx);
-            // the cloth drapes over the skin's small detail (its border stays where it is)
-            if (p.idx.empty() || p.pos.empty() || !p.vbo[0]) continue;
-            std::vector<float> before = p.pos;
-            drape(p.pos, p.idx, border[mi][pi]);
-            float moved = 0.f, edge = 0.f;
-            size_t trimmed = 0;
-            for (size_t i = 0; i < p.pos.size(); ++i) moved = std::max(moved, std::fabs(p.pos[i] - before[i]));
-            for (float b : border[mi][pi]) { edge += b < 0.03f; trimmed += b < 0.0005f; }
-            AG_INFO("AG: outfit %s drape mesh %d prim %d: %zu verts, moved up to %.1f mm, %.0f near the border, %zu trimmed",
-                    style.c_str(), (int)mi, (int)pi, p.pos.size() / 3, moved * 1000.f, edge, trimmed);
+        Mesh& me = model.meshes[mi];
+        std::vector<FitPart> parts;
+        for (Primitive& p : me.prims) parts.push_back(FitPart{&p.pos, &p.nrm, &p.idx, {}});
+        std::string report = fitGarment(parts, meshLayer[mi] == 0);
+        AG_INFO("AG: outfit %s %s: %s", style.c_str(), meshLayer[mi] ? "under" : "outer", report.c_str());
+        border[mi].resize(me.prims.size());
+        for (size_t pi = 0; pi < me.prims.size(); ++pi) {
+            Primitive& p = me.prims[pi];
+            border[mi][pi] = std::move(parts[pi].border);
+            if (p.pos.empty() || !p.vbo[0]) continue;
             glBindBuffer(GL_ARRAY_BUFFER, p.vbo[0]);
             glBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)(p.pos.size() * sizeof(float)), p.pos.data());
             p.scratchPos.clear();
