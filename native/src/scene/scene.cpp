@@ -59,6 +59,8 @@ bool Scene::load() {
         c->proc.floorY = info.bedTop;
         c->setTone("caramel");
     }
+    // Vivian's hair texture is neutral grey: the tint gives it its colour (rich dark chestnut)
+    if (vivian.loaded()) vivian.hairTint = {0.20f, 0.095f, 0.05f};
     if (!hasClips) standingPlacement();
     return vivian.loaded() || marcus.loaded();
 }

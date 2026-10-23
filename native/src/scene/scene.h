@@ -9,14 +9,14 @@ namespace ag {
 struct PointLight { V3 pos, color; float intensity = 0.f, range = 3.f, flicker = 0.f, base = 0.f; };
 
 struct Lights {
-    V3 keyPos{-1.36f, 1.0f, -0.86f}, keyDir{0.8f, -0.25f, 0.55f}, keyColor{1.0f, 0.70f, 0.42f};
-    float keyIntensity = 7.f, keyInner = 0.55f, keyOuter = 1.15f, keyRange = 7.f;   // angles in radians (half-cone)
+    V3 keyPos{-1.36f, 1.0f, -0.86f}, keyDir{0.8f, -0.25f, 0.55f}, keyColor{1.0f, 0.80f, 0.62f};   // ~3200K bulb
+    float keyIntensity = 9.f, keyInner = 0.55f, keyOuter = 1.15f, keyRange = 7.f;   // angles in radians (half-cone)
     bool keyShadow = true;
-    V3 moonDir{-0.80f, -0.42f, 0.42f}, moonColor{0.55f, 0.66f, 1.0f};
-    float moonIntensity = 0.55f;
-    V3 fillDir{0.15f, -0.35f, -0.92f}, fillColor{0.95f, 0.72f, 0.80f};
-    float fillIntensity = 0.12f;
-    V3 sky{0.30f, 0.20f, 0.24f}, ground{0.10f, 0.05f, 0.05f};
+    V3 moonDir{-0.80f, -0.42f, 0.42f}, moonColor{0.60f, 0.70f, 1.0f};
+    float moonIntensity = 0.75f;
+    V3 fillDir{0.10f, -0.30f, -0.95f}, fillColor{1.0f, 0.88f, 0.84f};     // soft camera-side fill so faces read
+    float fillIntensity = 0.32f;
+    V3 sky{0.36f, 0.30f, 0.34f}, ground{0.13f, 0.09f, 0.08f};
     float ambient = 0.55f;
     PointLight points[6];
     int numPoints = 0;

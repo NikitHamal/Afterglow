@@ -156,7 +156,7 @@ GLuint texWood() {
             float shift = hash2(plank, 3) * 3.f;
             float gx = (float)x / N * 2.f + shift;
             float grain = std::sin((gx * 22.f + fbm(gx * 3.f, fy * 9.f, 4) * 6.f)) * 0.5f + 0.5f;
-            V3 c = lerp(V3{0.13f, 0.065f, 0.04f}, V3{0.22f, 0.12f, 0.07f}, hash2(plank, 7) * 0.7f + grain * 0.3f);
+            V3 c = lerp(V3{0.30f, 0.17f, 0.10f}, V3{0.46f, 0.28f, 0.17f}, hash2(plank, 7) * 0.7f + grain * 0.3f);
             c = c * (0.85f + 0.3f * fbm(gx * 8.f, fy * 30.f, 3));
             float seam = smoothstep(0.0f, 0.03f, inPlank) * smoothstep(1.0f, 0.97f, inPlank);
             float joint = std::fabs(std::fmod(gx + hash2(plank, 11) * 2.f, 1.f) - 0.5f) > 0.495f ? 0.5f : 1.f;
@@ -172,8 +172,8 @@ GLuint texWallpaper() {
             float du = std::fabs(std::fmod(u * 4.f + 0.5f, 1.f) - 0.5f), dv = std::fabs(std::fmod(v * 3.f + 0.5f, 1.f) - 0.5f);
             float diamond = smoothstep(0.42f, 0.38f, du + dv * 0.75f) - smoothstep(0.30f, 0.26f, du + dv * 0.75f);
             float stripe = smoothstep(0.02f, 0.0f, std::fabs(std::fmod(u * 8.f, 1.f) - 0.5f) - 0.47f);
-            V3 base{0.115f, 0.035f, 0.05f};
-            V3 c = base * (0.9f + 0.2f * fbm(u * 40.f, v * 40.f, 3)) + V3{0.06f, 0.03f, 0.025f} * (diamond * 0.8f + stripe * 0.4f);
+            V3 base{0.33f, 0.115f, 0.145f};
+            V3 c = base * (0.9f + 0.2f * fbm(u * 40.f, v * 40.f, 3)) + V3{0.14f, 0.07f, 0.05f} * (diamond * 0.8f + stripe * 0.4f);
             put(px, N, x, y, c);
         }
     return textureFromRGBA(px.data(), N, N, true);
@@ -187,7 +187,7 @@ GLuint texRug() {
             float border = smoothstep(0.08f, 0.075f, b) - smoothstep(0.045f, 0.04f, b);
             float r = length(V3{(u - 0.5f) * 1.4f, (v - 0.5f), 0});
             float med = smoothstep(0.24f, 0.22f, r) * (0.5f + 0.5f * std::sin(std::atan2(v - 0.5f, u - 0.5f) * 8.f + r * 30.f));
-            V3 c{0.20f, 0.035f, 0.045f};
+            V3 c{0.42f, 0.08f, 0.10f};
             c = c * (0.85f + 0.3f * fbm(u * 90.f, v * 90.f, 2));
             c = lerp(c, V3{0.55f, 0.38f, 0.18f}, border * 0.8f + med * 0.35f);
             put(px, N, x, y, c);
@@ -254,14 +254,14 @@ void buildPlaceholderRoom(Model& out, RoomInfo& info) {
 
     int mWood = mat("floor_wood", {1, 1, 1, 1}, 0.42f, 0.f, texWood());
     int mWall = mat("wallpaper", {1, 1, 1, 1}, 0.85f, 0.f, texWallpaper());
-    int mPanel = mat("wainscot", {0.075f, 0.03f, 0.035f, 1}, 0.55f, 0.f);
-    int mFrame = mat("bed_frame", {0.07f, 0.035f, 0.025f, 1}, 0.38f, 0.f);
-    int mMattress = mat("mattress", {0.62f, 0.55f, 0.50f, 1}, 0.9f, 0.f);
-    int mSheet = mat("sheet_satin", {0.26f, 0.045f, 0.075f, 1}, 0.32f, 0.f);
+    int mPanel = mat("wainscot", {0.10f, 0.04f, 0.045f, 1}, 0.5f, 0.f);
+    int mFrame = mat("bed_frame", {0.11f, 0.055f, 0.035f, 1}, 0.36f, 0.f);
+    int mMattress = mat("mattress", {0.30f, 0.07f, 0.10f, 1}, 0.8f, 0.f);
+    int mSheet = mat("sheet_satin", {0.30f, 0.065f, 0.095f, 1}, 0.3f, 0.f);
     int mPillow = mat("pillow", {0.78f, 0.70f, 0.64f, 1}, 0.7f, 0.f);
-    int mHead = mat("headboard_velvet", {0.22f, 0.03f, 0.06f, 1}, 0.75f, 0.f);
+    int mHead = mat("headboard_velvet", {0.24f, 0.05f, 0.08f, 1}, 0.72f, 0.f);
     int mDuvet = mat("duvet", {0.40f, 0.10f, 0.13f, 1}, 0.62f, 0.f);
-    int mStand = mat("nightstand", {0.06f, 0.03f, 0.022f, 1}, 0.35f, 0.f);
+    int mStand = mat("nightstand", {0.10f, 0.05f, 0.032f, 1}, 0.33f, 0.f);
     int mBrass = mat("brass", {0.62f, 0.45f, 0.22f, 1}, 0.28f, 1.f);
     int mShade = mat("lamp_shade", {0.95f, 0.78f, 0.55f, 1}, 0.8f, 0.f, 0, {5.5f, 3.4f, 1.6f});
     int mWax = mat("candle_wax", {0.85f, 0.78f, 0.66f, 1}, 0.6f, 0.f, 0, {0.25f, 0.12f, 0.04f});
@@ -269,7 +269,7 @@ void buildPlaceholderRoom(Model& out, RoomInfo& info) {
     int mRug = mat("rug", {1, 1, 1, 1}, 0.95f, 0.f, texRug());
     GLuint night = texNight();
     int mWindow = mat("window_night", {0, 0, 0, 1}, 1.f, 0.f, 0, {1.4f, 1.4f, 1.4f}, night);
-    int mCurtain = mat("curtain_velvet", {0.16f, 0.025f, 0.045f, 1}, 0.8f, 0.f);
+    int mCurtain = mat("curtain_velvet", {0.22f, 0.04f, 0.06f, 1}, 0.78f, 0.f);
     out.materials[(size_t)mFlame].castShadow = false;
     out.materials[(size_t)mShade].castShadow = false;
     out.materials[(size_t)mWindow].castShadow = false;

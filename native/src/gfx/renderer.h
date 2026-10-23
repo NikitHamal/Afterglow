@@ -21,7 +21,7 @@ struct RenderSettings {
     bool fxaa = true;
     bool hairSoft = true;
     float renderScale = 1.f;          // internal resolution multiplier
-    float exposure = 1.0f, warmth = 0.18f, saturation = 1.05f, contrast = 1.05f, vignette = 0.34f, grain = 0.028f;
+    float exposure = 1.1f, warmth = 0.06f, saturation = 1.0f, contrast = 1.04f, vignette = 0.26f, grain = 0.024f;
     float flash = 0.f;                // climax flash 0..1
 };
 void applyQuality(RenderSettings& s, Quality q);

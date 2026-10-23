@@ -2,6 +2,7 @@
 #include "core/paths.h"
 #include "core/log.h"
 #include "raylib.h"
+#include "rlgl.h"
 #include <cstdlib>
 #include <cstring>
 #include <sstream>
@@ -64,6 +65,7 @@ int runHarness(const HarnessArgs& a, const std::function<std::unique_ptr<App>()>
             BeginDrawing();
             app->render(GetRenderWidth(), GetRenderHeight());
             if (f == frames - 1) {
+                rlDrawRenderBatchActive();   // flush raylib's 2D batch (UI) before reading pixels
                 Image img = LoadImageFromScreen();
                 if (!ExportImage(img, out.c_str())) { AG_ERROR("AG: harness: cannot write %s", out.c_str()); ++failures; }
                 else AG_INFO("AG: harness: wrote %s", out.c_str());
