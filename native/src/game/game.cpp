@@ -418,6 +418,22 @@ void Game::render(int w, int h) {
     ls.mood = (Mood)settings.lightMood; ls.brightness = settings.brightness; ls.warmth = settings.warmth;
     if ((screen_ == Screen::Story || (screen_ == Screen::Settings && settingsReturn_ == Screen::Story)) && storyMood_ >= 0) ls.mood = (Mood)storyMood_;
     applyLighting(scene, rs, ls, cam_);
+    if (screen_ == Screen::Story && !storyPlaying_ && actIndex(pose_) < 0 && (scene.showVivian || scene.showMarcus)) {
+        // story staging: the bake was lit for the bed and the actors stand away from the lamps; a film key from the
+        // camera side lights their faces, and the room itself comes up a little so scenes read in the dark moods
+        Lights& L = scene.lights;
+        V3 hv = scene.vivian.bonePos("\xe9\xa0\xad"), hm = scene.marcus.bonePos("\xe9\xa0\xad");
+        V3 mid = scene.showVivian && scene.showMarcus ? (hv + hm) * 0.5f : (scene.showVivian ? hv : hm);
+        V3 toCam = cam_.eye - mid;
+        toCam.y = 0.f;
+        toCam = length(toCam) > 1e-3f ? normalize(toCam) : V3{0, 0, 1};
+        V3 right = normalize(cross(V3{0, 1, 0}, toCam));
+        L.keyPos = mid + toCam * 1.4f + right * 1.0f + V3{0.f, 0.85f, 0.f};
+        L.keyDir = normalize(mid - V3{0.f, 0.15f, 0.f} - L.keyPos);
+        L.keyInner = 0.45f; L.keyOuter = 0.95f;
+        L.keyIntensity *= ls.mood == Mood::Daylight ? 0.6f : 0.85f;
+        if (ls.mood != Mood::Daylight) { scene.bakeTint = scene.bakeTint * 1.6f; L.ambient *= 1.3f; }
+    }
     bool night = screen_ == Screen::Play || screen_ == Screen::Pause || screen_ == Screen::Results ||
                  (screen_ == Screen::Settings && settingsReturn_ == Screen::Pause) || (screen_ == Screen::Story && storyPlaying_);
     if (night) {

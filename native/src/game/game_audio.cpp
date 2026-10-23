@@ -17,8 +17,8 @@ float frand() { return (float)GetRandomValue(0, 10000) / 10000.f; }
 struct Svf { float lp = 0.f, bp = 0.f; float run(float x, float f, float q) { lp += f * bp; float hp = x - lp - q * bp; bp += f * hp; return bp; } };
 
 // places: 0 the bedroom at night, 1 party (murmur, glasses), 2 sea (waves, breeze), 3 storm (rain, wind, thunder),
-// 4 fire (crackling hearth), 5 city (distant traffic), 6 spa (trickling water, chimes)
-enum AmbScene { kAmbNight = 0, kAmbParty, kAmbSea, kAmbStorm, kAmbFire, kAmbCity, kAmbSpa, kAmbCount };
+// 4 fire (crackling hearth), 5 city (distant traffic), 6 spa (trickling water, chimes), 7 wind (a blizzard round the walls)
+enum AmbScene { kAmbNight = 0, kAmbParty, kAmbSea, kAmbStorm, kAmbFire, kAmbCity, kAmbSpa, kAmbWind, kAmbCount };
 
 struct AmbState {
     std::atomic<float> amb{0.f}, music{0.f}, duck{0.f};
@@ -30,7 +30,8 @@ struct AmbState {
     float ph[3][6] = {};
     float padLp[2] = {0.f, 0.f};
     float ambS = 0.f, musS = 0.f, duckS = 0.f;
-    float lay[kAmbCount] = {1.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f};   // smoothed layer gains
+    float lay[kAmbCount] = {1.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f};   // smoothed layer gains
+    Svf windF, whistleF; float windPh = 0.f, windPh2 = 0.f, windLp = 0.f;
     // party: murmuring voices (formant band-pass on noise, syllable + phrase gates), glasses now and then
     Svf voiceF[6]; float vForm[6] = {420, 560, 380, 700, 500, 640}, vSyl[6] = {}, vSylRate[6] = {4.1f, 3.6f, 5.2f, 4.6f, 3.9f, 4.8f};
     float vPhrase[6] = {}, vGate[6] = {}, vPan[6] = {0.2f, 0.8f, 0.4f, 0.65f, 0.3f, 0.75f};
@@ -167,6 +168,19 @@ void ambCallback(void* buffer, unsigned int frames) {
             chime *= gAmb.chimeEnv * 0.03f; gAmb.chimeEnv *= 0.99993f;
             float s = (water * 0.3f + chime) * gAmb.lay[kAmbSpa] * 0.12f;
             placeL += s; placeR += s * 0.92f;
+        }
+        if (gAmb.lay[kAmbWind] > 0.001f) {
+            // a blizzard against the walls: two slow gust cycles over low noise, a thin whistle on the strongest
+            gAmb.windPh += dt1 * 0.061f; if (gAmb.windPh >= 1.f) gAmb.windPh -= 1.f;
+            gAmb.windPh2 += dt1 * 0.137f; if (gAmb.windPh2 >= 1.f) gAmb.windPh2 -= 1.f;
+            float g1 = gAmb.sine[(int)(gAmb.windPh * 2048.f) & 2047] * 0.5f + 0.5f;
+            float g2 = gAmb.sine[(int)(gAmb.windPh2 * 2048.f) & 2047] * 0.5f + 0.5f;
+            float gust = 0.25f + 0.75f * g1 * (0.6f + 0.4f * g2);
+            gAmb.windLp += (wn() - gAmb.windLp) * 0.08f;
+            float body = gAmb.windF.run(gAmb.windLp, 0.02f + 0.03f * gust, 0.5f) * 1.8f;
+            float whistle = gAmb.whistleF.run(wn(), 0.09f + 0.05f * gust, 0.04f) * std::max(0.f, gust - 0.7f) * 0.25f;
+            float s = (body * gust + whistle) * gAmb.lay[kAmbWind] * 0.13f;
+            placeL += s; placeR += s * (0.85f + 0.15f * g2);
         }
         gAmb.duckS += (gAmb.duck.load(std::memory_order_relaxed) - gAmb.duckS) * 0.0008f;
         float duckA = 1.f - 0.45f * gAmb.duckS;
@@ -316,6 +330,7 @@ void Game::setAmbience(const std::string& places) {
         else if (p == "fire" || p == "hearth") mask |= 1 << kAmbFire;
         else if (p == "city") mask |= 1 << kAmbCity;
         else if (p == "spa" || p == "water") mask |= 1 << kAmbSpa;
+        else if (p == "wind" || p == "snow" || p == "blizzard") mask |= 1 << kAmbWind;
         i = j + 1;
     }
     if (mask != gAmb.scene.load(std::memory_order_relaxed) && harness) AG_INFO("AG: audio ambience %s", places.empty() ? "night" : places.c_str());

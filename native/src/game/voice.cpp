@@ -90,6 +90,7 @@ bool VoiceBank::load(const std::string& dir) {
         t.delivery = f.second["delivery"].str();
         t.dur = f.second["dur"].f(0.f);
         t.env = b64decode(f.second["env"].str());
+        t.text = f.second["text"].str();
         const Json& w = f.second["words"];
         for (size_t i = 0; i < w.size(); ++i) if (w[i].size() >= 2) t.words.push_back({w[i][0].f(), w[i][1].f()});
         files_[f.first] = std::move(t);
@@ -98,7 +99,22 @@ bool VoiceBank::load(const std::string& dir) {
     return !files_.empty();
 }
 
-const VoiceBank::Take* VoiceBank::take(const std::string& story, const std::string& node, int line, std::string* key) const {
+namespace {
+// letters and digits only, lower case: the synthesiser's text cleaning (quotes, dashes) doesn't matter
+std::string gist(const std::string& t, size_t n) {
+    std::string out;
+    for (unsigned char c : t) {
+        if (!std::isalnum(c)) continue;
+        char l = (char)std::tolower(c);
+        if (out.empty() || out.back() != l) out += l;   // "Mm" and "Mmm" read the same
+        if (out.size() >= n) break;
+    }
+    return out;
+}
+}  // namespace
+
+const VoiceBank::Take* VoiceBank::take(const std::string& story, const std::string& node, int line, std::string* key,
+                                       const std::string* lineText) const {
     auto s = lines_.find(story);
     if (s == lines_.end()) return nullptr;
     auto n = s->second.find(node);
@@ -107,6 +123,7 @@ const VoiceBank::Take* VoiceBank::take(const std::string& story, const std::stri
     if (k.empty()) return nullptr;
     auto f = files_.find(k);
     if (f == files_.end()) return nullptr;
+    if (lineText && !f->second.text.empty() && gist(*lineText, 24) != gist(f->second.text, 24)) return nullptr;
     if (key) *key = k;
     return &f->second;
 }

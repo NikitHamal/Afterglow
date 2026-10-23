@@ -18,12 +18,15 @@ public:
         float dur = 0.f;
         std::vector<unsigned char> env;              // loudness at envFps, 0..255
         std::vector<std::pair<float, float>> words;  // start / end seconds
+        std::string text;                            // the start of the voiced text (manifest), to catch stale takes
     };
     bool load(const std::string& voiceDir);          // reads manifest.json; false when there are no voices
     bool ready() const { return !files_.empty(); }
     int lineCount() const { return (int)files_.size(); }
     // the take for a story line (nullptr: silent line, or not voiced yet)
-    const Take* take(const std::string& story, const std::string& node, int line, std::string* key = nullptr) const;
+    // (the take must still say this text: a script edited after the voices were made stays silent until revoiced)
+    const Take* take(const std::string& story, const std::string& node, int line, std::string* key = nullptr,
+                     const std::string* lineText = nullptr) const;
     std::string file(const std::string& key) const { return dir_ + "/" + key + ".ogg"; }
 
     // ---- lip sync helpers ----

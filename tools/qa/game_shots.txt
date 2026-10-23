@@ -2,7 +2,8 @@
 # Format: name|spec. Keys: screen=title|menu|customize|settings|play|pause|results, tab=her|him, settab=0..4,
 # pos, depth, her, him, connection, desire, rub, embrace, cam=side|front|top|fpv|face|touch, bar=1, climax=her|him|together,
 # result=together|soon, body/mbody/tone/mtone/hair, quality, hints, mood=evening|candle|day, bright, warm,
-# story=<id>;node=<node>;line=<n>;overlay=1..5;card=1;reveal=<frames>, t (seconds into the screen).
+# story=<id>;node=<node>;line=<n>;overlay=1..5;card=1;reveal=<frames>, t (seconds into the screen),
+# shot=<kind> (forced camera), vt=<s> (voice clock held: lip sync mid-word), kiss=<0..1>, undress=<who>:<0..1>.
 title|screen=title;t=4
 menu|screen=menu;t=3
 customize_her|screen=customize;tab=her;t=2
@@ -36,9 +37,20 @@ face_oral|screen=play;pos=oral;depth=0.5;her=0.3;him=0.6;cam=face
 pause|screen=pause;pos=missionary;depth=0.5;her=0.4;him=0.3
 stories|screen=stories;t=2
 story_card|screen=story;story=the_storm;node=c1_knock;card=1;line=0;reveal=20
-story_reading|screen=story;story=old_flames;node=c1_reception;line=4
+story_establish|screen=story;story=old_flames;node=c1_reception;line=0;shot=establish
+story_two|screen=story;story=old_flames;node=c1_reception;line=3;shot=two
+story_close_lipsync|screen=story;story=old_flames;node=c1_reception;line=4;shot=close;vt=0.55
+story_ots|screen=story;story=old_flames;node=c1_reception;line=6;shot=ots
+story_kiss|screen=story;story=old_flames;node=c4_kiss;line=1;kiss=1
+story_undress|screen=story;story=old_flames;node=c5_room;line=6;undress=vivian:0.45;shot=two
+story_lace|screen=story;story=old_flames;node=c5_room;line=8;undress=vivian:0;shot=close
+story_storm|screen=story;story=the_storm;node=c3_dark;line=3;shot=two
+story_storm_sweater|screen=story;story=the_storm;node=c6_night;line=3;undress=vivian:0.5;shot=two
+story_villa|screen=story;story=salt_and_sun;node=c4_terrace;line=3;shot=ots
+story_massage|screen=story;story=the_massage;node=c3_lesson;line=3;shot=two
+story_neighbours|screen=story;story=neighbours;node=c4_balcony;line=2;shot=close
 story_choice|screen=story;story=old_flames;node=c1_reception;line=99
-story_intimate|screen=story;story=salt_and_sun;node=c6_bed;line=2
+story_intimate|screen=story;story=salt_and_sun;node=c6_bed;line=5
 story_menu|screen=story;story=old_flames;node=c2_terrace;line=2;overlay=5
 story_ending|screen=story;story=the_storm;node=c7_dawn;line=99
 results|screen=results;result=together

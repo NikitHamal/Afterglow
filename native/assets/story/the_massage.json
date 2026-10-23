@@ -1,0 +1,811 @@
+{
+ "id": "the_massage",
+ "title": "The Massage",
+ "tagline": "A birthday spa day for two. Then the therapist leaves them alone with the warm oil.",
+ "setting": "A HOTEL SPA · AN AFTERNOON FOR TWO",
+ "mood": "candle",
+ "cast": {
+  "vivian": {
+   "wardrobe": "sundress_bikini"
+  },
+  "marcus": {
+   "wardrobe": "linen_shirt_shorts"
+  }
+ },
+ "vars": {
+  "close": 0,
+  "trust": 0,
+  "bold": 0
+ },
+ "chapters": [
+  {
+   "id": "c1",
+   "title": "The Booking",
+   "start": "c1_lobby"
+  },
+  {
+   "id": "c2",
+   "title": "Steam",
+   "start": "c2_steam"
+  },
+  {
+   "id": "c3",
+   "title": "The Lesson",
+   "start": "c3_lesson"
+  },
+  {
+   "id": "c4",
+   "title": "Your Turn",
+   "start": "c4_turn"
+  },
+  {
+   "id": "c5",
+   "title": "Do Not Disturb",
+   "start": "c5_alone"
+  },
+  {
+   "id": "c6",
+   "title": "Warm Oil",
+   "start": "c6_oil"
+  },
+  {
+   "id": "c7",
+   "title": "Tea and Robes",
+   "start": "c7_tea"
+  }
+ ],
+ "gallery": {
+  "g_hands": "His hands",
+  "g_oil": "Warm oil",
+  "g_tea": "Tea and robes"
+ },
+ "nodes": {
+  "c1_lobby": {
+   "chapter": "c1",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "The spa at the Hotel Ilios smells of eucalyptus and warm stone. Somewhere a fountain trickles. Everyone speaks in the kind of voice you use in churches and libraries."
+    },
+    {
+     "who": "narrator",
+     "text": "Vivian has had the worst quarter of her career. Marcus has noticed, and has said nothing, and has quietly booked this: a couples' afternoon for her birthday, the full ritual, three hours."
+    },
+    {
+     "who": "vivian",
+     "text": "Three hours? Marcus, I have forty emails waiting.",
+     "gesture": "open",
+     "expr": {
+      "pout": 0.3
+     }
+    },
+    {
+     "who": "marcus",
+     "text": "You have forty emails and one birthday. Phone in the locker. That's the deal.",
+     "delivery": "playful",
+     "gesture": "point"
+    },
+    {
+     "who": "vivian",
+     "text": "You're very bossy for a man in linen.",
+     "delivery": "playful",
+     "expr": {
+      "smirk": 0.5
+     }
+    },
+    {
+     "who": "marcus",
+     "text": "The linen gives me courage.",
+     "react": "laugh",
+     "gesture": "shrug"
+    }
+   ],
+   "place": "spa_lobby",
+   "location": "the spa at the Hotel Ilios",
+   "mood": "day",
+   "ambience": "spa",
+   "show": [
+    "vivian",
+    "marcus"
+   ],
+   "outfit": {
+    "vivian": "dressed",
+    "marcus": "dressed"
+   },
+   "pose": "stand",
+   "choices": [
+    {
+     "text": "Hand him your phone. \"Fine. I'm yours.\"",
+     "next": "c1_yield",
+     "set": {
+      "trust": "+1"
+     }
+    },
+    {
+     "text": "\"One email. Then I'm yours.\"",
+     "next": "c1_one"
+    }
+   ]
+  },
+  "c1_yield": {
+   "chapter": "c1",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Fine. Take it. I'm yours for three hours.",
+     "delivery": "soft",
+     "action": "step_in",
+     "expr": {
+      "smile": 0.4
+     }
+    },
+    {
+     "who": "marcus",
+     "text": "Only three?",
+     "delivery": "playful",
+     "react": "smile"
+    },
+    {
+     "who": "narrator",
+     "text": "He kisses her temple, and something in her shoulders that has been clenched since March lets go a quarter of an inch."
+    }
+   ],
+   "next": "c2_steam"
+  },
+  "c1_one": {
+   "chapter": "c1",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "One email. Just one, and then I'm yours.",
+     "gesture": "explain"
+    },
+    {
+     "who": "marcus",
+     "text": "Vivian.",
+     "delivery": "soft",
+     "head": "tilt"
+    },
+    {
+     "who": "vivian",
+     "text": "Fine. Fine! Zero emails.",
+     "expr": {
+      "smile": 0.5
+     },
+     "gesture": "shrug"
+    },
+    {
+     "who": "narrator",
+     "text": "She hands it over with the face of a woman surrendering a sword. He pockets it with the face of a man who has won a war."
+    }
+   ],
+   "next": "c2_steam",
+   "set": {
+    "bold": "+1"
+   }
+  },
+  "c2_steam": {
+   "chapter": "c2",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "The steam room is tiled in blue and so thick with heat that the world ends a metre away. They sit side by side on the warm bench in their swimwear, sweating, silly with it."
+    },
+    {
+     "who": "vivian",
+     "text": "I can't see you. Are you even still there?",
+     "delivery": "playful"
+    },
+    {
+     "who": "marcus",
+     "text": "I'm here. I'm melting, but I'm here.",
+     "react": "laugh"
+    },
+    {
+     "who": "narrator",
+     "text": "Her hand finds his knee in the fog. It stays there. His thumb traces the back of her fingers, idly, the way you'd touch something you're sure of."
+    },
+    {
+     "who": "marcus",
+     "text": "When did you last take a whole day? For you?",
+     "delivery": "soft"
+    },
+    {
+     "who": "vivian",
+     "text": "I genuinely can't remember. Is that bad?",
+     "delivery": "soft",
+     "look": "down"
+    }
+   ],
+   "place": "spa_steam",
+   "location": "the steam room",
+   "mood": "candle",
+   "ambience": "spa",
+   "pose": "sit",
+   "outfit": {
+    "vivian": "partial",
+    "marcus": "partial"
+   },
+   "choices": [
+    {
+     "text": "\"Thank you for noticing. Nobody else did.\"",
+     "next": "c2_thanks",
+     "set": {
+      "close": "+1",
+      "trust": "+1"
+     }
+    },
+    {
+     "text": "\"Is that your hand on my thigh, Mr Hale?\"",
+     "next": "c2_tease",
+     "set": {
+      "bold": "+1"
+     }
+    }
+   ]
+  },
+  "c2_thanks": {
+   "chapter": "c2",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Thank you for noticing. That I wasn't all right. Nobody else did.",
+     "delivery": "tender",
+     "look": "partner"
+    },
+    {
+     "who": "marcus",
+     "text": "I always notice. I just don't always know what to do about it. Today I knew.",
+     "delivery": "soft",
+     "gesture": "chest"
+    }
+   ],
+   "next": "c3_lesson"
+  },
+  "c2_tease": {
+   "chapter": "c2",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Is that your hand on my thigh, Mr Hale? In a public steam room?",
+     "delivery": "playful",
+     "expr": {
+      "smirk": 0.6
+     }
+    },
+    {
+     "who": "marcus",
+     "text": "It's very foggy. It could be anyone's hand.",
+     "delivery": "playful",
+     "react": "laugh"
+    },
+    {
+     "who": "vivian",
+     "text": "Then whoever it is, tell him not to stop.",
+     "delivery": "whisper",
+     "expr": {
+      "bite_lip": 0.4
+     }
+    }
+   ],
+   "next": "c3_lesson"
+  },
+  "c3_lesson": {
+   "chapter": "c3",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "The treatment suite is warm and dim, candles in glass along the walls, a wide padded bed covered in white towels. The therapist, Ana, has a voice like a slow river."
+    },
+    {
+     "who": "narrator",
+     "text": "Today is a lesson, she explains. She will show them, and then they will do it for each other. Warm the oil in your hands first. Never take your hands away all at once. Breathe when they breathe."
+    },
+    {
+     "who": "narrator",
+     "text": "Vivian lies down first. Marcus warms the oil between his palms, and lays his hands on her shoulders, and she makes a small, shocked sound that she will deny later."
+    },
+    {
+     "who": "marcus",
+     "text": "Too much?",
+     "delivery": "soft"
+    },
+    {
+     "who": "vivian",
+     "text": "No. Don't you dare stop.",
+     "delivery": "whisper",
+     "expr": {
+      "bliss": 0.5
+     }
+    },
+    {
+     "who": "narrator",
+     "text": "He works the knots out of her shoulders, slowly, his thumbs following the long muscles down either side of her spine. Ana murmurs approval and corrections. After a while, Vivian stops hearing her."
+    }
+   ],
+   "place": "spa_suite",
+   "location": "the private treatment suite",
+   "mood": "candle",
+   "ambience": "spa",
+   "pose": "sit",
+   "outfit": {
+    "vivian": "partial",
+    "marcus": "partial"
+   },
+   "gallery": "g_hands",
+   "choices": [
+    {
+     "text": "Melt. Let him take his time.",
+     "next": "c3_melt",
+     "set": {
+      "close": "+1"
+     }
+    },
+    {
+     "text": "Catch his eye, and smile in a way that is not about shoulders.",
+     "next": "c3_look",
+     "set": {
+      "bold": "+1"
+     }
+    }
+   ]
+  },
+  "c3_melt": {
+   "chapter": "c3",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "She melts. Every stroke of his hands takes a little of the year away with it. When he stops, she realises she has been nearly asleep and perfectly awake at the same time."
+    },
+    {
+     "who": "vivian",
+     "text": "Where did you learn to do that?",
+     "delivery": "soft",
+     "expr": {
+      "bliss": 0.3
+     }
+    },
+    {
+     "who": "marcus",
+     "text": "Thirty seconds ago. From Ana.",
+     "delivery": "playful",
+     "react": "laugh"
+    }
+   ],
+   "next": "c4_turn"
+  },
+  "c3_look": {
+   "chapter": "c3",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "She turns her head on the towel and catches his eye, and smiles, slow, in a way that has absolutely nothing to do with her shoulders."
+    },
+    {
+     "who": "marcus",
+     "text": "Ana's still here, Viv.",
+     "delivery": "whisper",
+     "look": "away",
+     "react": "shy"
+    },
+    {
+     "who": "vivian",
+     "text": "I know. Isn't it awful?",
+     "delivery": "whisper",
+     "expr": {
+      "smirk": 0.6
+     }
+    }
+   ],
+   "next": "c4_turn"
+  },
+  "c4_turn": {
+   "chapter": "c4",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "They swap. He lies down, broad back to the candlelight, and she warms the oil the way she was taught and lays her hands on him."
+    },
+    {
+     "who": "vivian",
+     "text": "You're so tense. You've been carrying me all year, haven't you.",
+     "delivery": "soft"
+    },
+    {
+     "who": "marcus",
+     "text": "Somebody had to. You were carrying everything else.",
+     "delivery": "soft",
+     "look": "down"
+    },
+    {
+     "who": "narrator",
+     "text": "She works down his back with the heels of her hands. He groans, low, and doesn't apologise for it. Ana smiles, and gathers her things, and says the most beautiful sentence in the language."
+    },
+    {
+     "who": "narrator",
+     "text": "The suite is yours for the next hour. Nobody will disturb you."
+    }
+   ],
+   "place": "spa_suite",
+   "location": "the private treatment suite",
+   "mood": "candle",
+   "ambience": "spa",
+   "pose": "sit",
+   "outfit": {
+    "vivian": "partial",
+    "marcus": "partial"
+   },
+   "next": "c5_alone"
+  },
+  "c5_alone": {
+   "chapter": "c5",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "The door clicks shut. The fountain trickles. The candles lean in their glasses."
+    },
+    {
+     "who": "vivian",
+     "text": "An hour.",
+     "delivery": "whisper",
+     "expr": {
+      "bite_lip": 0.4
+     }
+    },
+    {
+     "who": "marcus",
+     "text": "An hour.",
+     "delivery": "whisper"
+    },
+    {
+     "who": "narrator",
+     "text": "She doesn't move her hands from his back. Then she does, slowly, down his sides, oil-slick and warm, and he turns over beneath her.",
+     "action": "step_in"
+    }
+   ],
+   "place": "spa_suite",
+   "location": "the private treatment suite",
+   "mood": "candle",
+   "ambience": "spa",
+   "pose": "sit",
+   "outfit": {
+    "vivian": "partial",
+    "marcus": "partial"
+   },
+   "choices": [
+    {
+     "text": "Kiss him.",
+     "next": "c5_kiss",
+     "set": {
+      "close": "+1"
+     }
+    },
+    {
+     "text": "\"Untie me.\" Turn your back to him.",
+     "next": "c5_untie",
+     "if": "bold >= 1 || close >= 2",
+     "set": {
+      "bold": "+1"
+     }
+    },
+    {
+     "text": "\"We're in a spa, Marcus.\" Laugh.",
+     "next": "c5_laugh"
+    }
+   ]
+  },
+  "c5_kiss": {
+   "chapter": "c5",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "She kisses him, and he tastes of eucalyptus and salt. His oiled hands slide up her back and find the knot of her bikini and pause there, asking.",
+     "action": "kiss"
+    },
+    {
+     "who": "vivian",
+     "text": "Yes.",
+     "delivery": "whisper"
+    }
+   ],
+   "next": "c6_oil"
+  },
+  "c5_untie": {
+   "chapter": "c5",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Untie me.",
+     "delivery": "whisper",
+     "look": "away",
+     "expr": {
+      "smirk": 0.4
+     }
+    },
+    {
+     "who": "narrator",
+     "text": "She turns her back to him and lifts her hair. His fingers are slow on the knot at her neck. The string slides loose. She hears him breathe out, and smiles.",
+     "action": "undress:vivian:under"
+    }
+   ],
+   "next": "c6_oil"
+  },
+  "c5_laugh": {
+   "chapter": "c5",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "We're in a spa, Marcus. There's a woman called Ana just down the hall.",
+     "expr": {
+      "smile": 0.6
+     },
+     "gesture": "open"
+    },
+    {
+     "who": "marcus",
+     "text": "Ana said nobody would disturb us. I trust Ana completely.",
+     "delivery": "playful",
+     "react": "laugh"
+    },
+    {
+     "who": "vivian",
+     "text": "You're terrible. Kiss me.",
+     "delivery": "playful",
+     "action": "kiss"
+    }
+   ],
+   "next": "c6_oil"
+  },
+  "c6_oil": {
+   "chapter": "c6",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "What's left of the swimwear ends up on the floor with the towels. Everything is warm, and slick, and slow. Ana was right. Never take your hands away all at once.",
+     "action": "undress:both:all"
+    },
+    {
+     "who": "narrator",
+     "text": "He pours oil into his palm and lays her down on her front and kisses the length of her spine, and his hand slides down between her thighs, and she pushes back against it with a long, shaking breath.",
+     "action": "to_bed"
+    },
+    {
+     "who": "vivian",
+     "text": "Marcus. Please. Now.",
+     "delivery": "breathless",
+     "expr": {
+      "pleasure": 0.6
+     },
+     "vox": "moan02"
+    },
+    {
+     "who": "narrator",
+     "text": "He covers her body with his, his weight warm along her back, and slides into her slowly, both of them gasping at how easy it is."
+    }
+   ],
+   "place": "spa_suite",
+   "location": "the private treatment suite",
+   "mood": "candle",
+   "ambience": "spa",
+   "pose": "sit",
+   "outfit": {
+    "vivian": "partial",
+    "marcus": "partial"
+   },
+   "act": "prone",
+   "actT": 0.2,
+   "gallery": "g_oil",
+   "play": {
+    "act": "prone",
+    "goal": "together",
+    "next": "c7_tea",
+    "acts": [
+     "prone",
+     "doggy",
+     "spoon",
+     "missionary"
+    ],
+    "beats": {
+     "start": "c6_b_start",
+     "desire": "c6_b_desire",
+     "edge": "c6_b_edge",
+     "her_peak": "c6_b_peak"
+    }
+   }
+  },
+  "c6_b_start": {
+   "beat": true,
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Slowly. Like Ana said.",
+     "delivery": "breathless"
+    }
+   ]
+  },
+  "c6_b_desire": {
+   "beat": true,
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Your hands. Don't take your hands away.",
+     "delivery": "breathless"
+    }
+   ]
+  },
+  "c6_b_edge": {
+   "beat": true,
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Not yet. Breathe with me.",
+     "delivery": "whisper"
+    }
+   ]
+  },
+  "c6_b_peak": {
+   "beat": true,
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Oh... oh my god.",
+     "delivery": "breathless"
+    },
+    {
+     "who": "marcus",
+     "text": "Happy birthday.",
+     "delivery": "whisper"
+    }
+   ]
+  },
+  "c7_tea": {
+   "chapter": "c7",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "Later, much later, they sit side by side in the relaxation room in white towels, with mint tea neither of them is drinking, pink and dazed and helplessly pleased with themselves."
+    },
+    {
+     "who": "vivian",
+     "text": "I think we broke at least four spa rules.",
+     "delivery": "playful",
+     "expr": {
+      "smile": 0.6
+     }
+    },
+    {
+     "who": "marcus",
+     "text": "Five. I counted.",
+     "react": "laugh",
+     "gesture": "shrug"
+    },
+    {
+     "who": "vivian",
+     "text": "Thank you. For today. For noticing.",
+     "delivery": "tender",
+     "look": "partner"
+    }
+   ],
+   "place": "spa_lounge",
+   "location": "the relaxation room",
+   "mood": "day",
+   "ambience": "spa",
+   "pose": "sit",
+   "outfit": {
+    "vivian": "partial",
+    "marcus": "partial"
+   },
+   "gallery": "g_tea",
+   "choices": [
+    {
+     "text": "\"Every month. This. Promise me.\"",
+     "next": "c7_ritual",
+     "if": "close >= 2"
+    },
+    {
+     "text": "\"Move in with me. I'm tired of saying goodnight at the door.\"",
+     "next": "c7_ask",
+     "if": "trust >= 2 || bold >= 2"
+    },
+    {
+     "text": "\"Best birthday in years.\" Rest your head on his shoulder.",
+     "next": "c7_lovely"
+    }
+   ]
+  },
+  "c7_ritual": {
+   "chapter": "c7",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Every month. This. Not the spa. Us, a whole day, phones in a locker. Promise me.",
+     "gesture": "explain",
+     "delivery": "soft"
+    },
+    {
+     "who": "marcus",
+     "text": "Every month. I'll book it before you can open your laptop.",
+     "head": "nod",
+     "react": "smile"
+    },
+    {
+     "who": "narrator",
+     "text": "They keep it. Some months it's a spa, some months it's a picnic, once it's a whole day in bed. The phones always go in a drawer."
+    }
+   ],
+   "end": {
+    "title": "The Ritual",
+    "text": "Love needs looking after, like anything that matters. They decided to look after it on purpose."
+   }
+  },
+  "c7_ask": {
+   "chapter": "c7",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Move in with me. I'm tired of saying goodnight at your door.",
+     "delivery": "soft",
+     "look": "down",
+     "expr": {
+      "shy": 0.4
+     }
+    },
+    {
+     "who": "marcus",
+     "text": "Are you asking me that because of the massage?",
+     "delivery": "playful",
+     "head": "tilt"
+    },
+    {
+     "who": "vivian",
+     "text": "I'm asking because of the noticing. The massage just helped.",
+     "expr": {
+      "smile": 0.6
+     }
+    },
+    {
+     "who": "marcus",
+     "text": "Yes. Obviously yes.",
+     "delivery": "tender",
+     "action": "kiss"
+    }
+   ],
+   "end": {
+    "title": "Something to Ask",
+    "text": "She went in for a massage and came out with a co-signer on her lease. Happy birthday, Vivian."
+   }
+  },
+  "c7_lovely": {
+   "chapter": "c7",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Best birthday in years.",
+     "delivery": "soft",
+     "expr": {
+      "bliss": 0.3
+     }
+    },
+    {
+     "who": "marcus",
+     "text": "Best birthday you've had with me, at least.",
+     "delivery": "playful"
+    },
+    {
+     "who": "vivian",
+     "text": "That's what I said.",
+     "delivery": "soft",
+     "react": "laugh"
+    },
+    {
+     "who": "narrator",
+     "text": "She falls asleep on his shoulder in the relaxation room, and the staff are kind enough to let her."
+    }
+   ],
+   "end": {
+    "title": "A Lovely Day",
+    "text": "Some days don't change your life. They just remind you what it's for."
+   }
+  }
+ }
+}
