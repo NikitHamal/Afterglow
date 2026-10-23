@@ -20,3 +20,5 @@ play_solo|screen=play;pos=solo;depth=0.6;her=0.4;cam=side
 pause|screen=pause;pos=missionary;depth=0.5;her=0.4;him=0.3
 results|screen=results;result=together
 results_soon|screen=results;result=soon
+autoplay_60s|screen=play;pos=missionary;autoplay=1;frames=3600;render_from=3594;cam=side
+autoplay_150s|screen=play;pos=missionary;autoplay=1;frames=9000;render_from=8994;cam=front

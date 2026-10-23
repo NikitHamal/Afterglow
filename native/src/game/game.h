@@ -86,6 +86,9 @@ private:
     float rub_ = 0.f, rubTarget_ = 0.f, embrace_ = 0.f, embraceTarget_ = 0.f, rubPhase_ = 0.f, idlePhase_ = 0.f;
     float wheelImpulse_ = 0.f;
     bool holdDepth_ = false;              // harness stills: keep the requested depth
+    bool autoplay_ = false;               // harness: a simple player plays the night (end-to-end test)
+    float autoLog_ = 0.f;
+    void autoplayStep(float dt);
     int camMode_ = 0;                     // 0 side, 1 front, 2 top, 3 first person
     bool camUser_ = false;                // player orbited: stop cinematic drift until next cut
     float cinematicT_ = 0.f, nextCut_ = 14.f;
