@@ -102,6 +102,7 @@ void Game::setPosition(int index, bool instant) {
         posFade_ = 0.0001f;
         return;
     }
+    if (posIndex_ >= 0 && posIndex_ != index) lastAct_ = posIndex_;
     posIndex_ = index;
     const PositionInfo& p = positions_[(size_t)index];
     if (!p.canTouch) rubTarget_ = rub_ = 0.f;
@@ -117,14 +118,24 @@ void Game::setPosition(int index, bool instant) {
 
 void Game::cameraForPosition(float blend) {
     const PositionInfo& p = positions_[(size_t)std::max(0, posIndex_)];
-    std::string clip = p.solo ? "solo.idle" : p.id + ".in";
-    const Json& cams = clipsMeta_["clips"][clip]["cameras"];
+    const Json& cams = clipsMeta_["clips"][p.baseClip]["cameras"];
     if (camMode_ == 3 && !p.solo && scene.marcus.loaded()) {
         const Json& f = cams["fpv"];
         if (f.isObject() && f["offset_local"].isArray())
             camera.setFirstPersonLocal(&scene.marcus, f["bone"].str("頭"), {f["offset_local"][0].f(), f["offset_local"][1].f(), f["offset_local"][2].f()},
                                        {f["forward_local"][0].f(), f["forward_local"][1].f(), f["forward_local"][2].f(1.f)}, blend);
         else camera.setFirstPerson(&scene.marcus, "頭", {0.f, 0.07f, 0.09f}, blend);
+        return;
+    }
+    if (camMode_ == 4 && scene.vivian.loaded()) {
+        // her face: from the front-side, away from him, slightly above, following her head
+        V3 hc, hf, hu;
+        scene.vivian.headAxes(hc, hf, hu);
+        V3 side = normalize(cross(hu, hf));
+        if (scene.showMarcus && dot(side, hc - scene.marcus.bonePos("上半身2")) < 0.f) side = side * -1.f;
+        V3 d = normalize(hf * 0.85f - hu * 0.1f + side * 0.45f + V3{0.f, 0.25f, 0.f});
+        if (d.y < 0.15f) d = normalize(V3{d.x, 0.15f, d.z});
+        camera.setOrbit(hc, std::atan2(d.x, d.z), std::min(std::asin(clampf(d.y, -1.f, 1.f)), 1.3f), 0.78f, blend);
         return;
     }
     const char* names[3] = {"orbit_side", "orbit_front", "orbit_top"};
@@ -139,6 +150,27 @@ void Game::cameraForPosition(float blend) {
     }
 }
 
+void Game::actById(const std::string& id) {
+    if (posIndex_ >= 0 && positions_[(size_t)posIndex_].id == id) {
+        if (lastAct_ >= 0 && lastAct_ != posIndex_) setPosition(lastAct_);
+        return;
+    }
+    for (size_t i = 0; i < positions_.size(); ++i)
+        if (positions_[i].id == id) { setPosition((int)i); return; }
+}
+
+int Game::nextCamMode(int cur, bool solo) const {
+    const int order[5] = {0, 1, 2, 4, 3};   // side, front, above, her face, his view
+    int at = 0;
+    for (int i = 0; i < 5; ++i) if (order[i] == cur) at = i;
+    for (int k = 1; k <= 5; ++k) {
+        int m = order[(at + k) % 5];
+        if (m == 3 && solo) continue;
+        return m;
+    }
+    return 0;
+}
+
 // ------------------------------------------------------------------ input + simulation
 void Game::updatePlay(float dt) {
     if (dt <= 0.f || posIndex_ < 0) return;
@@ -149,21 +181,24 @@ void Game::updatePlay(float dt) {
         if (night_.sinceStroke < 0.5f && introCard_ > 3.f && night_.elapsed > 4.f) introCard_ = 3.f;   // they've got it
         if (IsKeyPressed(KEY_ENTER)) introCard_ = std::min(introCard_, 0.6f);
     }
-    bool overUi = barOpen_ && ui.in.mouse.y > ui.H - ui.u(190.f);
+    bool overUi = (barOpen_ && ui.in.mouse.y > ui.H - ui.u(250.f)) || CheckCollisionPointRec(ui.in.mouse, actionBarRect_);
 
     if (!night_.finished) {
         if (IsKeyPressed(KEY_ESCAPE)) { go(Screen::Pause, 0.15f); return; }
         if (IsKeyPressed(KEY_TAB)) barOpen_ = !barOpen_;
         for (int k = 0; k < 10 && k < (int)positions_.size(); ++k)
             if (IsKeyPressed(k == 9 ? KEY_ZERO : KEY_ONE + k)) setPosition(k);
-        if (IsKeyPressed(KEY_R) && p.canTouch) rubTarget_ = rubTarget_ > 0.5f ? 0.f : 1.f;
-        if (IsKeyPressed(KEY_E) && p.canKiss) embraceTarget_ = embraceTarget_ > 0.5f ? 0.f : 1.f;
+        if ((IsKeyPressed(KEY_R) || IsKeyPressed(KEY_T)) && p.canTouch) rubTarget_ = rubTarget_ > 0.5f ? 0.f : 1.f;
+        if ((IsKeyPressed(KEY_E) || IsKeyPressed(KEY_K)) && p.canKiss) embraceTarget_ = embraceTarget_ > 0.5f ? 0.f : 1.f;
+        if (IsKeyPressed(KEY_O)) actById("oral");
+        if (IsKeyPressed(KEY_L)) actById("lick");
+        if (IsKeyPressed(KEY_X)) actById("solo");
         if (IsKeyPressed(KEY_H)) hudHidden_ = !hudHidden_;
         if (IsKeyPressed(KEY_M)) {
             settings.lightMood = (settings.lightMood + 1) % 3;
             toasts_.push_back({0.f, moodName((Mood)settings.lightMood)});
         }
-        if (IsKeyPressed(KEY_C)) { camMode_ = (camMode_ + 1) % (p.solo ? 3 : 4); cameraForPosition(0.9f); camUser_ = false; }
+        if (IsKeyPressed(KEY_C)) { camMode_ = nextCamMode(camMode_, p.solo); cameraForPosition(0.9f); camUser_ = false; }
         if (IsKeyPressed(KEY_V) && !p.solo) { camMode_ = camMode_ == 3 ? 0 : 3; cameraForPosition(0.7f); }
         if (settings.holdRhythm) rhythm_ = IsKeyDown(KEY_SPACE) || rhythmToggle_;   // (toggle only set by autoplay)
         else {
@@ -282,7 +317,7 @@ void Game::presentPlay(float dt) {
     const PositionInfo& p = positions_[(size_t)posIndex_];
     Character& v = scene.vivian;
     Character& m = scene.marcus;
-    std::string baseClip = p.solo ? "solo.idle" : p.id + ".in";
+    const std::string& baseClip = p.baseClip;
     const Json& meta = clipsMeta_["clips"][baseClip];
     float her = night_.her, him = night_.him;
 
@@ -362,7 +397,10 @@ void Game::presentPlay(float dt) {
         }
         scene.showMarcus = false;
     } else {
-        for (Character* c : {&v, &m}) if (c->loaded()) c->setLayer(0, baseClip, depth_, 1.f);
+        // depth acts scrub their clip with the played depth; loop acts (foreplay) run at the played tempo
+        loopPhase_ = std::fmod(loopPhase_ + dt * std::max(0.35f, std::min(2.f, night_.tempo + 0.15f)), 1.f);
+        float t = p.depthDriven ? depth_ : loopPhase_;
+        for (Character* c : {&v, &m}) if (c->loaded()) c->setLayer(0, baseClip, t, 1.f);
         if (p.canTouch) layered(1, p.id + ".rub", rubPhase_, rub_, "vivian", "arm.R");
         if (p.canKiss) layered(2, p.id + ".embrace", 0.f, embrace_, nullptr, "upper");
         scene.showMarcus = m.loaded() && !meta["marcusHidden"].boolean(false);
@@ -390,7 +428,7 @@ void Game::presentPlay(float dt) {
         if (dt > 0.f && before < 0.25f && touchAct_ >= 0.25f) {
             // a touch begins: a small flinch, a caught breath, a jolt through the breasts
             flinch_ = 1.f;
-            if (audio.ready()) audio.playRandom("breath/in", 0.55f * settings.voice, 0.05f);
+            breath(true, 0.55f);
             voice("moan02", 0.35f + 0.3f * her, 1.25f);
             for (const char* b : {"乳親.L", "乳親.R"}) { int bi = v.bone(b); if (bi >= 0) v.procedural.impulse(bi, V3{0.f, 0.25f, 0.1f}); }
         }
@@ -475,6 +513,11 @@ void Game::presentPlay(float dt) {
         m.proc.hair = settings.hairPhysics;
     }
 
+    if (camMode_ == 4 && v.loaded() && camera.mode() == CameraRig::Mode::Orbit) {
+        V3 hc, hf, hu;
+        v.headAxes(hc, hf, hu);
+        camera.follow(hc);
+    }
     // ---- camera: drift, climax push-in, afterglow pull-back ----
     camera.sway = settings.cinematicCamera ? 0.6f + 0.6f * him : 0.f;
     if (night_.finished && camera.mode() == CameraRig::Mode::Orbit && afterT_ > 2.f && afterT_ < 2.2f && !camUser_) {
@@ -584,7 +627,7 @@ void Game::drawHud() {
         if (!subtitle_.empty() && subA > 0.01f) {
             float a0 = U.alpha;
             U.alpha = a0 * subA;
-            float sy = U.H - U.u(190.f) - (barOpen_ ? U.u(150.f) : 0.f);
+            float sy = U.H - U.u(236.f) - (barOpen_ ? U.u(170.f) : 0.f);
             Vector2 m = U.measure(ui::Face::SerifItalic, U.u(34.f), subtitle_);
             U.glow(U.W * 0.5f, sy + U.u(20.f), m.x * 0.35f, Color{0, 0, 0, 120});
             U.text(ui::Face::SerifItalic, U.u(34.f), "\xe2\x80\x9c" + subtitle_ + "\xe2\x80\x9d", U.W * 0.5f, sy, U.th.ink, ui::Center);
@@ -594,7 +637,7 @@ void Game::drawHud() {
             float a0 = U.alpha;
             U.alpha = a0 * desireShow_;
             const char* h = desireHint(shownDesire_);
-            float hy = U.H - U.u(136.f) - (barOpen_ ? U.u(150.f) : 0.f);
+            float hy = U.H - U.u(178.f) - (barOpen_ ? U.u(170.f) : 0.f);
             float hw = U.measure(ui::Face::SansMedium, U.u(17.f), h).x + U.u(44.f);
             float prog = night_.desireTimeout > 0.f ? clamp01(1.f - night_.desireAge / night_.desireTimeout) : 0.f;
             Rectangle r{U.W * 0.5f - hw * 0.5f, hy, hw, U.u(38.f)};
@@ -616,25 +659,19 @@ void Game::drawHud() {
                    U.th.accent, ui::Center);
             U.alpha = a0;
         }
-        // ---- key hints (first minute, or while nothing happens) ----
+        // ---- how to move (first minute, or while nothing happens) ----
         float idleHints = night_.sinceStroke > 6.f ? 1.f : 0.f;
         float hintA = std::max(clamp01((45.f - hintsT_) * 0.5f), idleHints) * (barOpen_ ? 0.f : 1.f);
         if (hintA > 0.01f) {
             float a0 = U.alpha;
             U.alpha = a0 * hintA;
-            float hx = U.u(56.f), hy = U.H - U.u(64.f), px = 15.f;
-            hx += U.keyHint(hx, hy, "Drag", p.solo ? "Tease" : "Thrust", px) + U.u(26.f);
-            hx += U.keyHint(hx, hy, "Space", "Rhythm", px) + U.u(26.f);
-            hx += U.keyHint(hx, hy, "W/S", "Tempo", px) + U.u(26.f);
-            hx += U.keyHint(hx, hy, "A/D", "Depth", px) + U.u(26.f);
-            if (p.canTouch) hx += U.keyHint(hx, hy, "R", "Touch", px) + U.u(26.f);
-            if (p.canKiss) hx += U.keyHint(hx, hy, "E", "Embrace", px) + U.u(26.f);
-            hx += U.keyHint(hx, hy, "Tab", "Positions", px) + U.u(26.f);
-            hx += U.keyHint(hx, hy, "C", "Camera", px) + U.u(26.f);
-            U.keyHint(hx, hy, "Esc", "Pause", px);
+            const char* line = p.solo ? "Drag or scroll to set her pace  \xc2\xb7  W/S tempo  \xc2\xb7  A/D intensity"
+                                      : "Drag or scroll to move  \xc2\xb7  hold Space for a rhythm  \xc2\xb7  W/S tempo  \xc2\xb7  A/D depth";
+            U.text(ui::Face::SansMedium, U.u(16.f), line, U.W * 0.5f, U.H - U.u(128.f), ui::withA(U.th.ink, 0.9f), ui::Center);
             U.alpha = a0;
         }
     }
+    if (!hudHidden_ && hudA > 0.01f) { U.alpha = hudA; drawActionBar(); }
     U.alpha = 1.f;
     if (introCard_ > 0.f && !hudHidden_) drawIntroCard(clamp01(std::min(introCard_ / 0.6f, (14.f - introCard_) / 0.8f)));
     barT_ = approach(barT_, barOpen_ ? 1.f : 0.f, 10.f, frameDt_);
@@ -662,39 +699,132 @@ void Game::drawIntroCard(float a) {
     U.alpha = 1.f;
 }
 
+// Every act and control in one bar: clickable, with its key, lit when active, dimmed when this act has no such move.
+void Game::drawActionBar() {
+    ui::Ui& U = ui;
+    const PositionInfo& p = positions_[(size_t)posIndex_];
+    auto has = [&](const char* id) { for (auto& q : positions_) if (q.id == id) return true; return false; };
+    const char* camNames[5] = {"Side", "Front", "Above", "His view", "Her face"};
+    struct Btn { const char* key; std::string label; bool enabled, active; int action; };
+    std::vector<Btn> bs = {
+        {"Tab", "Acts", true, barOpen_, 0},
+        {"Space", "Rhythm", true, rhythm_, 1},
+        {"R", "Touch", p.canTouch, rubTarget_ > 0.5f, 2},
+        {"E", "Kiss", p.canKiss, embraceTarget_ > 0.5f, 3},
+        {"O", "Her lips", has("oral"), p.id == "oral", 4},
+        {"L", "His tongue", has("lick"), p.id == "lick", 5},
+        {"X", "Alone", has("solo"), p.id == "solo", 6},
+        {"C", camNames[std::max(0, std::min(4, camMode_))], true, false, 7},
+        {"M", moodName((Mood)settings.lightMood), true, false, 8},
+    };
+    float px = U.u(16.f), kp = U.u(13.f), h = U.u(48.f), gap = U.u(10.f);
+    std::vector<float> ws;
+    float total = 0.f;
+    for (auto& b : bs) {
+        float kw = std::max(U.measure(ui::Face::SansBold, kp, b.key).x + U.u(14.f), U.u(26.f));
+        float w = kw + U.u(10.f) + U.measure(ui::Face::SansMedium, px, b.label).x + U.u(30.f);
+        ws.push_back(w); total += w + gap;
+    }
+    total -= gap;
+    float x = U.W * 0.5f - total * 0.5f, y = U.H - U.u(28.f) - h;
+    actionBarRect_ = Rectangle{x - U.u(14.f), y - U.u(10.f), total + U.u(28.f), h + U.u(20.f)};
+    ui::Box back; back.radius = U.u(22.f); back.glass = true; back.glassTint = U.th.glass; back.glassAmt = 0.65f;
+    back.fill = Color{255, 240, 230, 6}; back.border = std::max(1.f, U.u(1.f)); back.borderCol = U.th.hairline;
+    back.shadow = U.u(24.f); back.shadowCol = Color{0, 0, 0, 90};
+    U.box(actionBarRect_, back);
+    for (size_t i = 0; i < bs.size(); ++i) {
+        const Btn& b = bs[i];
+        Rectangle r{x, y, ws[i], h};
+        bool over = b.enabled && CheckCollisionPointRec(U.in.mouse, r);
+        float hv = U.anim("ab#" + std::to_string(i), over ? 1.f : 0.f, 14.f);
+        float on = U.anim("ab#on" + std::to_string(i), b.active ? 1.f : 0.f, 12.f);
+        float a0 = U.alpha;
+        if (!b.enabled) U.alpha = a0 * 0.38f;
+        ui::Box pill; pill.radius = h * 0.5f;
+        pill.fill = ui::mixc(Color{255, 236, 224, (unsigned char)(10 + 22 * hv)}, ui::withA(U.th.accent, 0.24f), on);
+        pill.border = std::max(1.f, U.u(1.2f));
+        pill.borderCol = ui::mixc(Color{255, 232, 214, 50}, ui::withA(U.th.accent, 0.95f), std::max(on, hv * 0.6f));
+        if (on > 0.01f || hv > 0.01f) { pill.shadow = U.u(14.f) * std::max(on, hv); pill.shadowCol = ui::withA(U.th.accent, 0.25f); }
+        U.box(r, pill);
+        float kw = std::max(U.measure(ui::Face::SansBold, kp, b.key).x + U.u(14.f), U.u(26.f));
+        Rectangle kr{r.x + U.u(12.f), r.y + (h - U.u(26.f)) * 0.5f, kw, U.u(26.f)};
+        ui::Box key; key.radius = U.u(6.f); key.fill = Color{16, 9, 12, 170}; key.border = std::max(1.f, U.u(1.f)); key.borderCol = Color{255, 232, 214, 90};
+        U.box(kr, key);
+        U.text(ui::Face::SansBold, kp, b.key, kr.x + kr.width * 0.5f, kr.y + (kr.height - kp) * 0.5f - U.u(1.f), U.th.ink, ui::Center);
+        U.text(ui::Face::SansMedium, px, b.label, kr.x + kw + U.u(10.f), r.y + (h - px) * 0.5f - U.u(1.f), ui::mixc(U.th.inkDim, U.th.ink, std::max(on, hv)));
+        U.alpha = a0;
+        if (over && U.in.clicked && !night_.finished) {
+            if (ui.onSound) ui.onSound(1);
+            switch (b.action) {
+                case 0: barOpen_ = !barOpen_; break;
+                case 1: rhythmToggle_ = !rhythmToggle_; break;
+                case 2: rubTarget_ = rubTarget_ > 0.5f ? 0.f : 1.f; break;
+                case 3: embraceTarget_ = embraceTarget_ > 0.5f ? 0.f : 1.f; break;
+                case 4: actById("oral"); break;
+                case 5: actById("lick"); break;
+                case 6: actById("solo"); break;
+                case 7: camMode_ = nextCamMode(camMode_, p.solo); cameraForPosition(0.9f); camUser_ = false; break;
+                case 8: settings.lightMood = (settings.lightMood + 1) % 3; break;
+            }
+        }
+        x += ws[i] + gap;
+    }
+}
+
 void Game::drawPositionBar(float a) {
     ui::Ui& U = ui;
     U.alpha = a;
-    int n = (int)positions_.size();
-    float cw = U.u(150.f), ch = U.u(112.f), gap = U.u(14.f);
-    float total = (float)n * cw + (float)(n - 1) * gap;
-    float x0 = U.W * 0.5f - total * 0.5f, y0 = U.H - U.u(40.f) - ch + (1.f - ui::easeOut(a)) * U.u(60.f);
-    U.panel(Rectangle{x0 - U.u(22.f), y0 - U.u(46.f), total + U.u(44.f), ch + U.u(66.f)}, 24.f, 0.62f);
-    U.text(ui::Face::SansBold, U.u(13.f), "POSITIONS", x0, y0 - U.u(30.f), U.th.accent, ui::Left, 0.22f);
-    U.text(ui::Face::Sans, U.u(13.f), "Number keys or click \xc2\xb7 Tab to close", x0 + total, y0 - U.u(30.f), U.th.inkFaint, ui::Right);
-    for (int i = 0; i < n; ++i) {
-        const PositionInfo& p = positions_[(size_t)i];
-        Rectangle r{x0 + (float)i * (cw + gap), y0, cw, ch};
-        bool cur = i == posIndex_;
-        bool over = CheckCollisionPointRec(U.in.mouse, r);
-        float h = U.anim("posbar#" + std::to_string(i), over ? 1.f : 0.f, 14.f);
-        if (over && U.in.clicked) { setPosition(i); barOpen_ = false; }
-        ui::Box b; b.radius = U.u(16.f);
-        b.fill = cur ? ui::withA(U.th.accent, 0.2f) : Color{255, 236, 224, (unsigned char)(10 + 20 * h)};
-        b.border = std::max(1.f, U.u(1.2f));
-        b.borderCol = cur ? ui::withA(U.th.accent, 0.9f) : ui::mixc(U.th.hairline, ui::withA(U.th.accent, 0.6f), h);
-        b.shadow = U.u(14.f) * (h + (cur ? 0.6f : 0.f)); b.shadowCol = ui::withA(U.th.accent, 0.2f);
-        U.box(Rectangle{r.x, r.y - h * U.u(4.f), r.width, r.height}, b);
-        char key[4]; std::snprintf(key, sizeof key, "%d", (i + 1) % 10);
-        U.text(ui::Face::SansBold, U.u(13.f), key, r.x + U.u(14.f), r.y + U.u(12.f) - h * U.u(4.f), cur ? U.th.accent : U.th.inkFaint);
-        float nov = night_.novelty.count(p.id) ? night_.novelty.at(p.id) : 1.f;
-        for (int d = 0; d < 3; ++d) {
-            bool lit = nov > 0.34f * (float)d + 0.1f;
-            U.fillRect(Rectangle{r.x + r.width - U.u(16.f) - (float)d * U.u(9.f), r.y + U.u(15.f) - h * U.u(4.f), U.u(5.f), U.u(5.f)},
-                       lit ? ui::withA(U.th.rose, 0.85f) : Color{255, 236, 224, 40}, U.u(2.5f));
+    const char* groups[4] = {"Foreplay", "Oral", "Positions", "Solo"};
+    float cw = U.u(158.f), ch = U.u(96.f), gap = U.u(12.f), headW = U.u(150.f);
+    int maxRow = 0;
+    int counts[4] = {0, 0, 0, 0};
+    for (auto& q : positions_) for (int g = 0; g < 4; ++g) if (q.group == groups[g]) ++counts[g];
+    int rows = 0;
+    for (int g = 0; g < 4; ++g) if (counts[g] > 0) { ++rows; maxRow = std::max(maxRow, counts[g]); }
+    float rowW = headW + (float)maxRow * (cw + gap) - gap;
+    float rowH = ch + U.u(14.f);
+    float pw = rowW + U.u(56.f), ph = (float)rows * rowH + U.u(70.f);
+    float x0 = U.W * 0.5f - pw * 0.5f, y0 = U.H - U.u(120.f) - ph + (1.f - ui::easeOut(a)) * U.u(50.f);
+    U.panel(Rectangle{x0, y0, pw, ph}, 24.f, 0.64f);
+    U.text(ui::Face::SansBold, U.u(13.f), "CHOOSE WHAT YOU DO TOGETHER", x0 + U.u(28.f), y0 + U.u(22.f), U.th.accent, ui::Left, 0.22f);
+    U.text(ui::Face::Sans, U.u(13.f), "Number keys or click  \xc2\xb7  Tab closes", x0 + pw - U.u(28.f), y0 + U.u(22.f), U.th.inkFaint, ui::Right);
+    float y = y0 + U.u(54.f);
+    int keyIndex = 0;
+    for (int g = 0; g < 4; ++g) {
+        if (counts[g] == 0) continue;
+        U.text(ui::Face::Serif, U.u(26.f), groups[g], x0 + U.u(28.f), y + ch * 0.5f - U.u(16.f), U.th.inkDim);
+        float x = x0 + U.u(28.f) + headW;
+        for (size_t i = 0; i < positions_.size(); ++i) {
+            const PositionInfo& p = positions_[i];
+            if (p.group != groups[g]) continue;
+            Rectangle r{x, y, cw, ch};
+            bool cur = (int)i == posIndex_;
+            bool over = CheckCollisionPointRec(U.in.mouse, r);
+            float h = U.anim("posbar#" + std::to_string(i), over ? 1.f : 0.f, 14.f);
+            if (over && U.in.clicked) { setPosition((int)i); barOpen_ = false; }
+            ui::Box b; b.radius = U.u(16.f);
+            b.fill = cur ? ui::withA(U.th.accent, 0.22f) : Color{255, 236, 224, (unsigned char)(10 + 20 * h)};
+            b.border = std::max(1.f, U.u(1.2f));
+            b.borderCol = cur ? ui::withA(U.th.accent, 0.95f) : ui::mixc(U.th.hairline, ui::withA(U.th.accent, 0.6f), h);
+            b.shadow = U.u(14.f) * (h + (cur ? 0.6f : 0.f)); b.shadowCol = ui::withA(U.th.accent, 0.2f);
+            U.box(Rectangle{r.x, r.y - h * U.u(3.f), r.width, r.height}, b);
+            int idx = (int)i;
+            if (idx < 10) {
+                char key[4]; std::snprintf(key, sizeof key, "%d", (idx + 1) % 10);
+                U.text(ui::Face::SansBold, U.u(13.f), key, r.x + U.u(14.f), r.y + U.u(11.f) - h * U.u(3.f), cur ? U.th.accent : U.th.inkFaint);
+            }
+            float nov = night_.novelty.count(p.id) ? night_.novelty.at(p.id) : 1.f;
+            for (int d = 0; d < 3; ++d) {
+                bool lit = nov > 0.34f * (float)d + 0.1f;
+                U.fillRect(Rectangle{r.x + r.width - U.u(16.f) - (float)d * U.u(9.f), r.y + U.u(14.f) - h * U.u(3.f), U.u(5.f), U.u(5.f)},
+                           lit ? ui::withA(U.th.rose, 0.85f) : Color{255, 236, 224, 40}, U.u(2.5f));
+            }
+            U.paragraph(ui::Face::Serif, U.u(22.f), p.name, r.x + U.u(14.f), r.y + U.u(38.f) - h * U.u(3.f), r.width - U.u(28.f),
+                        cur ? U.th.ink : ui::mixc(U.th.inkDim, U.th.ink, h), 1.0f);
+            x += cw + gap;
+            ++keyIndex;
         }
-        U.paragraph(ui::Face::Serif, U.u(23.f), p.name, r.x + U.u(12.f), r.y + U.u(42.f) - h * U.u(4.f), r.width - U.u(24.f),
-                    cur ? U.th.ink : ui::mixc(U.th.inkDim, U.th.ink, h), 1.0f);
+        y += rowH;
     }
     U.alpha = 1.f;
 }

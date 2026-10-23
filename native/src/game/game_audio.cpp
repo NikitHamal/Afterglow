@@ -156,6 +156,7 @@ void Game::voice(const std::string& name, float vol, float pitch) {
     static const struct { const char* n; float g; } kGain[] = {{"moan02", 0.4f}, {"loveyou", 0.8f}, {"takeme", 3.f}, {"suck05", 4.f}, {"swallow04", 1.5f}};
     float g = 1.f;
     for (const auto& k : kGain) if (name == k.n) g = k.g;
+    if (harness) AG_INFO("AG: audio t=%.2f voice %s vol %.2f pitch %.2f", (double)night_.elapsed, name.c_str(), (double)vol, (double)pitch);
     if (audio.ready()) audio.play("vox/" + name, vol * g * settings.voice, pitch);
     // simple lip sync: open her mouth for the length of the line (moans longer, words shorter)
     if (name == "moan02" || name == "loveyou" || name == "takeme") {
@@ -165,11 +166,17 @@ void Game::voice(const std::string& name, float vol, float pitch) {
 }
 
 void Game::sfx(const std::string& prefix, float vol, float jitter) {
+    if (harness) AG_INFO("AG: audio t=%.2f sfx %s vol %.2f", (double)night_.elapsed, prefix.c_str(), (double)vol);
     if (audio.ready()) audio.playRandom("sfx/" + prefix + "/", vol * settings.effects, jitter);
 }
 
+void Game::breath(bool in, float vol) {
+    if (harness) AG_INFO("AG: audio t=%.2f breath %s vol %.2f", (double)night_.elapsed, in ? "in" : "out", (double)vol);
+    if (audio.ready()) audio.playRandom(in ? "breath/in" : "breath/out", vol * settings.voice, 0.06f);
+}
+
 void Game::playAudioEvents() {
-    if (!audio.ready() || posIndex_ < 0) return;
+    if ((!audio.ready() && !harness) || posIndex_ < 0) return;
     const PositionInfo& p = positions_[(size_t)posIndex_];
     float her = night_.her;
     for (const NightEvent& e : night_.events) {
@@ -184,7 +191,7 @@ void Game::playAudioEvents() {
                 else sfx(her > 0.35f ? "wetplaps" : "dryplaps", 0.25f + 0.65f * impact);
                 break;
             }
-            case NightEvent::DesireNew: audio.playRandom("breath/in", 0.4f * settings.voice, 0.04f); break;
+            case NightEvent::DesireNew: breath(true, 0.4f); break;
             case NightEvent::DesireMet: voice("moan02", 0.35f + 0.3f * her, 1.12f + 0.06f * frand()); moanT_ = std::max(moanT_, 2.5f); break;
             case NightEvent::HerClimax: voice("moan02", 1.f, 1.05f); moanT_ = 3.f; break;
             case NightEvent::HisClimax: sfx("cum", 0.75f, 0.03f); break;
@@ -195,9 +202,8 @@ void Game::playAudioEvents() {
 }
 
 void Game::updateAudio(float dt) {
-    if (!audio.ready()) return;
-    audio.setMasterVolume(settings.master);
-    audio.update();
+    if (!audio.ready() && !harness) return;
+    if (audio.ready()) { audio.setMasterVolume(settings.master); audio.update(); }
     bool playing = screen_ == Screen::Play;
     bool inNight = playing || screen_ == Screen::Pause || screen_ == Screen::Results;
     // the room is quieter in the menus, the pad a little more present
@@ -212,16 +218,20 @@ void Game::updateAudio(float dt) {
     breathT_ -= dt;
     if (breathT_ <= 0.f) {
         static bool inhale = true;
-        audio.playRandom(inhale ? "breath/in" : "breath/out", (0.12f + 0.35f * her) * settings.voice, 0.06f);
+        breath(inhale, 0.16f + 0.35f * her + 0.15f * touchAct_);
         inhale = !inhale;
-        breathT_ = (3.2f - 2.0f * her) * (0.85f + 0.3f * frand());
+        breathT_ = (3.0f - 2.0f * her) * (0.85f + 0.3f * frand());
     }
+    // her voice is always there: soft sighs as soon as you move together, moans that grow with her
     moanT_ -= dt;
     if (moanT_ <= 0.f && p.id != "oral") {
-        bool active = night_.stroking() || p.solo || rub_ > 0.5f;
-        if (her > 0.18f && active) voice("moan02", 0.25f + 0.65f * her, 0.9f + 0.18f * frand() + 0.06f * her);
+        bool active = night_.stroking() || p.solo || rub_ > 0.5f || touchAct_ > 0.2f;
+        if (active) {
+            if (her < 0.15f && frand() < 0.5f) breath(false, 0.45f);                              // a sigh
+            else voice("moan02", 0.18f + 0.7f * her, 0.88f + 0.18f * frand() + 0.06f * her);   // soft early, full later
+        }
         if (her > 0.6f && (night_.desire == Desire::Deeper || night_.desire == Desire::Faster) && frand() < 0.35f) voice("takeme", 0.7f, 1.f);
-        moanT_ = (9.f - 6.4f * her) * (0.75f + 0.5f * frand());
+        moanT_ = (7.5f - 5.2f * her) * (0.75f + 0.5f * frand());
     }
     // afterglow
     if (night_.finished && afterT_ > 2.2f && afterT_ - dt <= 2.2f && together_) voice("loveyou", 0.85f, 1.f);

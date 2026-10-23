@@ -58,27 +58,67 @@ bool Game::init() {
     if (!meta.empty()) clipsMeta_ = Json::parse(paths::readText(meta));
     platform::trimHeap();   // loading spikes (file images, decode buffers) go back to the OS
 
-    // positions the night can use (only those the content ships clips for)
-    struct Def { const char* id; const char* name; float her, him; bool pen; };
-    const Def defs[] = {
-        {"missionary", "Missionary", 1.0f, 1.0f, true}, {"legsup", "Legs Raised", 1.1f, 1.1f, true},
-        {"doggy", "From Behind", 1.05f, 1.2f, true},    {"prone", "Lying Flat", 1.0f, 1.15f, true},
-        {"cowgirl", "On Top", 1.15f, 0.95f, true},      {"revcowgirl", "Reverse", 1.0f, 1.1f, true},
-        {"spoon", "Spooning", 0.95f, 0.9f, true},       {"oral", "Her Lips", 0.3f, 1.25f, false},
-        {"lick", "His Tongue", 1.25f, 0.2f, false},      {"solo", "Alone", 1.0f, 0.f, false},
+    // acts come from the content: every clip family with a base clip (<id>.in = depth-driven, or a loop) is an
+    // act, grouped Foreplay / Oral / Positions / Solo; clips.json may name and group them ("label", "group",
+    // "her", "him"), otherwise known ids get good names and gains and new ones a sensible default
+    struct Known { const char* id; const char* name; const char* group; float her, him; bool pen; };
+    static const Known known[] = {
+        {"kiss", "Kissing", "Foreplay", 0.45f, 0.25f, false}, {"caress", "Caresses", "Foreplay", 0.55f, 0.25f, false},
+        {"oral", "Her Lips", "Oral", 0.3f, 1.25f, false}, {"lick", "His Tongue", "Oral", 1.25f, 0.2f, false},
+        {"missionary", "Missionary", "Positions", 1.0f, 1.0f, true}, {"legsup", "Legs Raised", "Positions", 1.1f, 1.1f, true},
+        {"doggy", "From Behind", "Positions", 1.05f, 1.2f, true}, {"prone", "Lying Flat", "Positions", 1.0f, 1.15f, true},
+        {"cowgirl", "On Top", "Positions", 1.15f, 0.95f, true}, {"revcowgirl", "Reverse", "Positions", 1.0f, 1.1f, true},
+        {"spoon", "Spooning", "Positions", 0.95f, 0.9f, true}, {"solo", "Alone", "Solo", 1.0f, 0.f, false},
     };
     const Character& src = scene.vivian.loaded() ? scene.vivian : scene.marcus;
-    for (const Def& d : defs) {
-        std::string id = d.id;
-        bool solo = id == "solo";
-        if (!src.hasClip(solo ? "solo.idle" : id + ".in")) continue;
+    std::vector<std::string> families;
+    for (const std::string& c : src.clipNames()) {
+        std::string fam = c.substr(0, c.find('.'));
+        if (std::find(families.begin(), families.end(), fam) == families.end()) families.push_back(fam);
+    }
+    for (const std::string& fam : families) {
+        std::string base;
+        for (const char* suffix : {".in", ".idle", ".loop"}) if (src.hasClip(fam + suffix)) { base = fam + suffix; break; }
+        if (base.empty()) continue;   // layers only (rub / embrace)
+        const Json& meta = clipsMeta_["clips"][base];
         PositionInfo p;
-        p.id = id; p.name = d.name; p.her = d.her; p.him = d.him; p.penetrative = d.pen;
-        p.solo = solo;
-        p.canTouch = !solo && src.hasClip(id + ".rub");
-        p.canKiss = src.hasClip(id + ".embrace");
+        p.id = fam;
+        p.baseClip = base;
+        p.depthDriven = base.size() > 3 && base.compare(base.size() - 3, 3, ".in") == 0;
+        p.solo = fam == "solo" || meta["marcusHidden"].boolean(false);
+        const Known* k = nullptr;
+        for (const Known& kn : known) if (fam == kn.id) k = &kn;
+        std::string g = meta["group"].str();
+        if (g.empty()) {
+            if (k) g = k->group;
+            else if (p.solo) g = "Solo";
+            else if (fam.find("oral") != std::string::npos || fam.find("lick") != std::string::npos || fam.find("blow") != std::string::npos ||
+                     fam.find("cunni") != std::string::npos || fam.find("69") != std::string::npos) g = "Oral";
+            else if (!p.depthDriven) g = "Foreplay";
+            else g = "Positions";
+        }
+        p.group = g;
+        std::string label = meta["label"].str(meta["name"].str());
+        if (label.empty() && k) label = k->name;
+        if (label.empty()) { label = fam; label[0] = (char)std::toupper((unsigned char)label[0]); }
+        p.name = label;
+        p.her = meta["her"].f(k ? k->her : (g == "Foreplay" ? 0.55f : 1.f));
+        p.him = meta["him"].f(k ? k->him : (g == "Foreplay" ? 0.25f : (p.solo ? 0.f : 1.f)));
+        p.penetrative = k ? k->pen : (g == "Positions");
+        p.canTouch = !p.solo && src.hasClip(fam + ".rub");
+        p.canKiss = src.hasClip(fam + ".embrace");
         positions_.push_back(p);
     }
+    // display order: Foreplay, Oral, Positions, Solo; known ids in their classic order, new ones after
+    auto rank = [&](const PositionInfo& p) {
+        const char* order[] = {"Foreplay", "Oral", "Positions", "Solo"};
+        int gi = 4;
+        for (int i = 0; i < 4; ++i) if (p.group == order[i]) gi = i;
+        int ki = 100;
+        for (size_t i = 0; i < sizeof(known) / sizeof(known[0]); ++i) if (p.id == known[i].id) ki = (int)i;
+        return gi * 1000 + ki;
+    };
+    std::stable_sort(positions_.begin(), positions_.end(), [&](const PositionInfo& x, const PositionInfo& y) { return rank(x) < rank(y); });
     if (positions_.empty()) { PositionInfo p; p.id = "none"; p.name = "\xe2\x80\x94"; positions_.push_back(p); }
     sceneReady_ = true;
     camSafety_.boundsMin = scene.info.camMin;
@@ -539,7 +579,7 @@ void Game::applySpec(const Spec& s) {
         }
         if (d.empty() && !s.has("autoplay")) night_.nextDesire = 999.f;
         std::string cm = s.get("cam", "side");
-        camMode_ = cm == "front" ? 1 : (cm == "top" ? 2 : (cm == "fpv" ? 3 : 0));
+        camMode_ = cm == "front" ? 1 : (cm == "top" ? 2 : (cm == "fpv" ? 3 : (cm == "face" ? 4 : 0)));
         cameraForPosition(0.f);
         camUser_ = true;   // no cinematic cuts in a still
         if (s.has("hud")) hudHidden_ = s.num("hud", 1.f) < 0.5f;
