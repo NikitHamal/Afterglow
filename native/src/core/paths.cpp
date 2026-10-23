@@ -117,6 +117,41 @@ bool writeText(const std::string& path, const std::string& text) {
     return (bool)f;
 }
 
+bool writeAtomic(const std::string& path, const std::string& text) {
+    std::string tmp = path + ".tmp";
+    {
+        std::error_code ec;
+        fs::create_directories(fs::u8path(path).parent_path(), ec);
+        std::ofstream f(fs::u8path(tmp), std::ios::binary | std::ios::trunc);
+        if (!f) return false;
+        f << text;
+        f.flush();
+        if (!f) return false;
+    }
+    std::error_code ec;
+    fs::rename(fs::u8path(tmp), fs::u8path(path), ec);   // replaces the target atomically
+    if (ec) { fs::remove(fs::u8path(tmp), ec); return false; }
+    return true;
+}
+
+bool removeFile(const std::string& path) { std::error_code ec; return fs::remove(fs::u8path(path), ec); }
+
+long long fileSize(const std::string& path) {
+    std::error_code ec;
+    auto n = fs::file_size(fs::u8path(path), ec);
+    return ec ? -1 : (long long)n;
+}
+
+std::string exeDirectory() { return exeDir(); }
+
+std::string tempDir() {
+    std::error_code ec;
+    fs::path t = fs::temp_directory_path(ec);
+    std::string d = ec ? join(userDir(), "tmp") : join(t.u8string(), "afterglow");
+    fs::create_directories(fs::u8path(d), ec);
+    return d;
+}
+
 std::vector<std::string> listFilesRecursive(const std::string& dir, const std::vector<std::string>& exts) {
     std::vector<std::string> out;
     std::error_code ec;

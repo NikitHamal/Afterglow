@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  AG_VERSION: 0.2.${{ github.run_number }}
+  AG_VERSION: 0.${{ github.run_number }}.0
 
 jobs:
   build:
@@ -49,9 +49,9 @@ jobs:
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Windows" ]; then
-            cmake -S native -B native/build -G "Visual Studio 17 2022" -A x64
+            cmake -S native -B native/build -G "Visual Studio 17 2022" -A x64 -DAG_VERSION="$AG_VERSION"
           else
-            cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release
+            cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release -DAG_VERSION="$AG_VERSION"
           fi
 
       - name: Build
@@ -69,6 +69,7 @@ jobs:
             (cd dist && 7z a -tzip -mx=7 "Afterglow-windows-x64.zip" Afterglow > /dev/null)
           elif [ "$RUNNER_OS" = "Linux" ]; then
             cp native/build/bin/afterglow dist/Afterglow/
+            cp native/installer/afterglow.desktop native/installer/afterglow.png native/installer/install-desktop-entry.sh dist/Afterglow/
             tar czf dist/Afterglow-linux-x64.tar.gz -C dist Afterglow
           else
             cp native/build/bin/afterglow dist/Afterglow/
@@ -117,10 +118,16 @@ jobs:
           cd game/Afterglow
           export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
           set +e
-          timeout 2400 xvfb-run -a -s "-screen 0 1920x1080x24" ./afterglow --shotlist "$GITHUB_WORKSPACE/tools/qa/shots.txt" --outdir "$GITHUB_WORKSPACE/qa-out" --res 1280x720 > "$GITHUB_WORKSPACE/qa-out/harness.log" 2>&1
-          echo "harness exit $?" | tee -a "$GITHUB_WORKSPACE/qa-out/harness.log"
-          tail -40 "$GITHUB_WORKSPACE/qa-out/harness.log"
-          ls -la "$GITHUB_WORKSPACE/qa-out"
+          mkdir -p "$GITHUB_WORKSPACE/qa-out/game" "$GITHUB_WORKSPACE/qa-out/engine"
+          # game screens (title, menus, customisation, settings, play HUD, pause, results)
+          timeout 1800 xvfb-run -a -s "-screen 0 1920x1080x24" ./afterglow --shotlist "$GITHUB_WORKSPACE/tools/qa/game_shots.txt" --outdir "$GITHUB_WORKSPACE/qa-out/game" --res 1280x720 > "$GITHUB_WORKSPACE/qa-out/game/harness.log" 2>&1
+          echo "game harness exit $?" | tee -a "$GITHUB_WORKSPACE/qa-out/game/harness.log"
+          tail -25 "$GITHUB_WORKSPACE/qa-out/game/harness.log"
+          # engine sandbox (poses, cameras, deformation)
+          timeout 1800 xvfb-run -a -s "-screen 0 1920x1080x24" ./afterglow --sandbox --shotlist "$GITHUB_WORKSPACE/tools/qa/shots.txt" --outdir "$GITHUB_WORKSPACE/qa-out/engine" --res 1280x720 > "$GITHUB_WORKSPACE/qa-out/engine/harness.log" 2>&1
+          echo "engine harness exit $?" | tee -a "$GITHUB_WORKSPACE/qa-out/engine/harness.log"
+          tail -15 "$GITHUB_WORKSPACE/qa-out/engine/harness.log"
+          ls -la "$GITHUB_WORKSPACE/qa-out/game" "$GITHUB_WORKSPACE/qa-out/engine"
       - uses: actions/upload-artifact@v4
         with:
           name: qa-shots
@@ -141,6 +148,31 @@ jobs:
           pattern: afterglow-*
           path: rel
           merge-multiple: true
+      - name: Update feed (latest.json with checksums)
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os
+          base = "https://github.com/NikitHamal/Afterglow/releases/download/nightly/"
+          files = {"windows": "Afterglow-Setup.exe", "windows-portable": "Afterglow-windows-x64.zip",
+                   "linux": "Afterglow-linux-x64.tar.gz", "macos": "Afterglow-macos-arm64.zip"}
+          assets = {}
+          for key, name in files.items():
+              p = os.path.join("rel", name)
+              if not os.path.exists(p):
+                  continue
+              h = hashlib.sha256()
+              with open(p, "rb") as f:
+                  for chunk in iter(lambda: f.read(1 << 20), b""):
+                      h.update(chunk)
+              assets[key] = {"url": base + name, "sha256": h.hexdigest(), "size": os.path.getsize(p)}
+          notes = (os.environ.get("COMMIT_MSG") or "").strip().splitlines()
+          feed = {"version": os.environ["AG_VERSION"], "commit": os.environ["GITHUB_SHA"], "notes": notes[0] if notes else "",
+                  "page": "https://github.com/NikitHamal/Afterglow/releases/tag/nightly", "assets": assets}
+          json.dump(feed, open("rel/latest.json", "w"), indent=2)
+          print(json.dumps(feed, indent=2))
+          PY
       - name: Publish rolling nightly
         env:
           GH_TOKEN: ${{ github.token }}

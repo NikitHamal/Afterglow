@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Afterglow
+GenericName=Romance game (18+)
+Comment=A night for two. Adults only.
+Exec=afterglow
+Icon=afterglow
+Terminal=false
+Categories=Game;
+StartupWMClass=Afterglow

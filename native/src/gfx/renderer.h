@@ -40,6 +40,11 @@ public:
     RenderSettings settings;
     int drawCalls = 0;
     long triangles = 0;
+    // frosted UI: when set, render() also leaves a blurred quarter-res copy of the frame
+    bool uiBlur = false;
+    unsigned int blurTexture() const { return uiBlur ? blur_[3].color : 0; }
+    int blurWidth() const { return blur_[3].w; }
+    int blurHeight() const { return blur_[3].h; }
 
 private:
     void ensureTargets(int w, int h);
@@ -52,6 +57,7 @@ private:
     Program pbr_, depth_, prefilter_, down_, up_, composite_, fxaa_, ssao_, ssaoBlur_;
     RenderTarget hdr_, ldr_, aoRaw_, ao_;
     RenderTarget bloom_[8];
+    RenderTarget blur_[4];             // 1/2, 1/4, 1/8 downsamples + 1/4 tent upsample (UI glass)
     int bloomCount_ = 0;
     ShadowMap shadow_;
     GLuint emptyVao_ = 0, white_ = 0, flatNormal_ = 0, black_ = 0;

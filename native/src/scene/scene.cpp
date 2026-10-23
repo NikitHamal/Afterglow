@@ -7,7 +7,9 @@ namespace ag {
 
 static std::string lowerS(std::string s) { for (auto& c : s) c = (char)std::tolower((unsigned char)c); return s; }
 
-bool Scene::load() {
+bool Scene::load(const std::function<void(float, const char*)>& progress) {
+    auto step = [&](float f, const char* what) { if (progress) progress(f, what); };
+    step(0.02f, "Lighting the candles");
     // room
     std::string roomPath = paths::findAsset({"room/room.glb"});
     if (!roomPath.empty() && room.load(roomPath)) {
@@ -66,8 +68,11 @@ bool Scene::load() {
     // characters (real-scale assets preferred; legacy web GLBs are fitted to real height)
     std::string vPath = paths::findAsset({"characters/vivian.glb", "legacy/vivian/vivian.glb", "assets/vivian/vivian.glb"});
     std::string mPath = paths::findAsset({"characters/marcus.glb", "legacy/marcus/marcus.glb", "assets/marcus/marcus.glb"});
+    step(0.12f, "Vivian");
     if (vPath.empty() || !vivian.load("vivian", vPath, 1.68f)) AG_ERROR("AG: Vivian not found");
+    step(0.62f, "Marcus");
     if (mPath.empty() || !marcus.load("marcus", mPath, 1.83f)) AG_ERROR("AG: Marcus not found");
+    step(0.9f, "Warming up");
     hasClips = (vivian.loaded() && !vivian.model.clips.empty()) || (marcus.loaded() && !marcus.model.clips.empty());
     for (Character* c : {&vivian, &marcus}) {
         if (!c->loaded()) continue;

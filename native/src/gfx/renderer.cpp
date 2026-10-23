@@ -42,6 +42,7 @@ void Renderer::shutdown() {
     for (Program* p : {&pbr_, &depth_, &prefilter_, &down_, &up_, &composite_, &fxaa_, &ssao_, &ssaoBlur_}) p->destroy();
     hdr_.destroy(); ldr_.destroy(); aoRaw_.destroy(); ao_.destroy();
     for (auto& b : bloom_) b.destroy();
+    for (auto& b : blur_) b.destroy();
     shadow_.destroy();
     if (emptyVao_) glDeleteVertexArrays(1, &emptyVao_);
     emptyVao_ = 0;
@@ -56,6 +57,7 @@ void Renderer::ensureTargets(int w, int h) {
     aoRaw_.create(std::max(1, w / 2), std::max(1, h / 2), GL_R8, false, false, GL_LINEAR);
     ao_.create(std::max(1, w / 2), std::max(1, h / 2), GL_R8, false, false, GL_LINEAR);
     for (auto& b : bloom_) b.destroy();
+    for (auto& b : blur_) b.destroy();
     bloomCount_ = 0;
     int bw = std::max(1, w / 2), bh = std::max(1, h / 2);
     for (int i = 0; i < 8 && i < settings.bloomLevels && bw >= 8 && bh >= 8; ++i) {
@@ -329,6 +331,30 @@ void Renderer::render(Scene& s, const CameraState& cam, int fbW, int fbH, float 
     composite_.set("u_flash", settings.flash);
     composite_.set("u_resolution", V2{(float)ldr_.w, (float)ldr_.h});
     fullscreen(composite_);
+
+    // ---- blurred copy for frosted UI panels (menus only) ----
+    if (uiBlur) {
+        int bw = std::max(2, ldr_.w / 2), bh = std::max(2, ldr_.h / 2);
+        if (blur_[0].w != bw || blur_[0].h != bh || !blur_[0].fbo) {
+            for (int i = 0; i < 3; ++i) { blur_[i].create(bw, bh, GL_RGBA8, false, false, GL_LINEAR); bw = std::max(1, bw / 2); bh = std::max(1, bh / 2); }
+            blur_[3].create(blur_[1].w, blur_[1].h, GL_RGBA8, false, false, GL_LINEAR);
+        }
+        down_.use();
+        const RenderTarget* src = &ldr_;
+        for (int i = 0; i < 3; ++i) {
+            blur_[i].bind();
+            down_.sampler("u_src", 0, src->color);
+            down_.set("u_texel", V2{1.f / (float)src->w, 1.f / (float)src->h});
+            fullscreen(down_);
+            src = &blur_[i];
+        }
+        blur_[3].bind();
+        up_.use();
+        up_.sampler("u_src", 0, blur_[2].color);
+        up_.set("u_texel", V2{1.f / (float)blur_[2].w, 1.f / (float)blur_[2].h});
+        up_.set("u_radius", 1.f);
+        fullscreen(up_);
+    }
 
     // ---- FXAA -> backbuffer ----
     glBindFramebuffer(GL_FRAMEBUFFER, 0);

@@ -3,6 +3,7 @@
 #include "scene/character.h"
 #include "scene/procroom.h"
 #include "gfx/particles.h"
+#include <functional>
 #include <string>
 
 namespace ag {
@@ -26,7 +27,7 @@ struct Lights {
 class Scene {
 public:
     // Loads room (GLB or placeholder), Vivian and Marcus. Returns false only on fatal errors.
-    bool load();
+    bool load(const std::function<void(float, const char*)>& progress = {});
     void destroy();
     void update(float dt);                  // characters + light flicker
     Character* character(const std::string& id);
