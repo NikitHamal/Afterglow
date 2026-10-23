@@ -172,8 +172,20 @@ static void packTargets(Primitive& p) {
 
 void Model::updateMorph(Primitive& p, const float* w, int count) {
     if (!p.dynamic || !p.vbo[0]) return;
-    p.scratchPos = p.pos;
-    p.scratchNrm = p.nrm;
+    if (p.scratchPos.size() != p.pos.size()) { p.scratchPos = p.pos; p.scratchNrm = p.nrm; p.dirtyLo = 0; p.dirtyHi = (uint32_t)(p.pos.size() / 3); }
+    // the vertices touched now, plus last time's (they go back to base): only that range is rebuilt and uploaded
+    uint32_t lo = p.dirtyLo, hi = p.dirtyHi, nlo = 0xffffffffu, nhi = 0;
+    for (int t = 0; t < count && t < (int)p.targets.size(); ++t) {
+        if (std::fabs(w[t]) < 1e-4f || p.targets[t].idx.empty()) continue;
+        nlo = std::min(nlo, p.targets[t].idx.front());
+        nhi = std::max(nhi, p.targets[t].idx.back() + 1);
+    }
+    if (nhi > 0) { lo = std::min(lo, nlo); hi = std::max(hi, nhi); }
+    if (hi <= lo) { p.dirtyLo = p.dirtyHi = 0; return; }
+    std::copy(p.pos.begin() + lo * 3, p.pos.begin() + hi * 3, p.scratchPos.begin() + lo * 3);
+    std::copy(p.nrm.begin() + lo * 3, p.nrm.begin() + hi * 3, p.scratchNrm.begin() + lo * 3);
+    p.dirtyLo = nhi > 0 ? nlo : 0;
+    p.dirtyHi = nhi;
     bool anyN = false;
     for (int t = 0; t < count && t < (int)p.targets.size(); ++t) {
         float wt = w[t];
@@ -206,10 +218,12 @@ void Model::updateMorph(Primitive& p, const float* w, int count) {
             }
         }
     }
+    GLintptr off = (GLintptr)(lo * 3 * sizeof(float));
+    GLsizeiptr bytes = (GLsizeiptr)((hi - lo) * 3 * sizeof(float));
     glBindBuffer(GL_ARRAY_BUFFER, p.vbo[0]);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)(p.scratchPos.size() * sizeof(float)), p.scratchPos.data());
+    glBufferSubData(GL_ARRAY_BUFFER, off, bytes, p.scratchPos.data() + lo * 3);
     glBindBuffer(GL_ARRAY_BUFFER, p.vbo[1]);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)(p.scratchNrm.size() * sizeof(float)), p.scratchNrm.data());
+    glBufferSubData(GL_ARRAY_BUFFER, off, bytes, p.scratchNrm.data() + lo * 3);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 

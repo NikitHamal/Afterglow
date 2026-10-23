@@ -13,6 +13,8 @@
 #include "raylib.h"
 #include "embedded_icon.h"
 #include <algorithm>
+#include <chrono>
+#include <thread>
 #include <cstring>
 #include <memory>
 
@@ -21,7 +23,7 @@ namespace {
 void applyDisplay(const ag::Settings& s, bool modeChanged) {
     if (s.vsync) SetWindowState(FLAG_VSYNC_HINT);
     else ClearWindowState(FLAG_VSYNC_HINT);
-    SetTargetFPS(s.fpsLimit());
+    SetTargetFPS(0);   // the main loop paces frames itself (sleeping, never spinning)
     if (!modeChanged) return;
     if (IsWindowFullscreen()) ToggleFullscreen();
     if (IsWindowState(FLAG_BORDERLESS_WINDOWED_MODE)) ToggleBorderlessWindowed();
@@ -140,7 +142,7 @@ int main(int argc, char** argv) {
     }
 
     bool wasFocused = true;
-    int lastCap = -2;
+    double nextFrame = GetTime();
     while (!game.wantsQuit()) {
         if (WindowShouldClose() || ag::platform::quitRequested()) break;
         bool minimized = IsWindowMinimized();
@@ -149,11 +151,10 @@ int main(int argc, char** argv) {
         wasFocused = focused;
         if (minimized) {               // nothing to show: sleep, keep the event queue alive
             PollInputEvents();
-            WaitTime(0.12);
+            std::this_thread::sleep_for(std::chrono::milliseconds(120));   // raylib WaitTime spins its last 5 %
             continue;
         }
         int cap = focused ? game.settings.fpsLimit() : 8;    // unfocused: paused game, a few cheap frames a second
-        if (cap != lastCap) { SetTargetFPS(cap); lastCap = cap; }
         if (IsKeyPressed(KEY_F11) || ((IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) && IsKeyPressed(KEY_ENTER))) {
             game.settings.windowMode = game.settings.windowMode == 0 ? 1 : 0;
             applyDisplay(game.settings, true);
@@ -165,6 +166,14 @@ int main(int argc, char** argv) {
         BeginDrawing();
         game.render(GetRenderWidth(), GetRenderHeight());
         EndDrawing();
+        // frame cap by sleeping (raylib's limiter busy-waits the tail of every frame): the CPU idles between frames
+        if (cap > 0) {
+            double period = 1.0 / (double)cap, now = GetTime();
+            nextFrame += period;
+            if (nextFrame < now - period) nextFrame = now;                  // fell behind: don't try to catch up
+            double wait = nextFrame - now;
+            if (wait > 0.0005) std::this_thread::sleep_for(std::chrono::duration<double>(wait));
+        } else nextFrame = GetTime();
         if (game.settings.windowMode == 0 && !IsWindowMaximized() && !IsWindowFullscreen()) {
             game.settings.winW = GetScreenWidth();
             game.settings.winH = GetScreenHeight();
