@@ -16,6 +16,42 @@ Dress dressFromName(const std::string& s) {
 
 namespace {
 std::string lowerS(std::string s) { for (auto& c : s) c = (char)std::tolower((unsigned char)c); return s; }
+
+// glTF names as the file wrote them: some exporters keep non-ASCII names JSON-escaped ("\u4e0a\u534a\u8eab" for
+// 上半身) and cgltf hands them over undecoded, so they would never match the character's UTF-8 bone names
+std::string unescapeJson(const std::string& in) {
+    if (in.find('\\') == std::string::npos) return in;
+    std::string out;
+    auto hex4 = [&](size_t i, unsigned& v) {
+        if (i + 4 > in.size()) return false;
+        v = 0;
+        for (size_t k = i; k < i + 4; ++k) {
+            char c = in[k], l = (char)(c | 32);
+            if (c >= '0' && c <= '9') v = v * 16 + (unsigned)(c - '0');
+            else if (l >= 'a' && l <= 'f') v = v * 16 + (unsigned)(l - 'a' + 10);
+            else return false;
+        }
+        return true;
+    };
+    for (size_t i = 0; i < in.size(); ++i) {
+        if (in[i] != '\\' || i + 1 >= in.size()) { out += in[i]; continue; }
+        char e = in[++i];
+        unsigned cp = 0;
+        if (e == 'u' && hex4(i + 1, cp)) {
+            i += 4;
+            unsigned lo = 0;
+            if (cp >= 0xd800 && cp < 0xdc00 && i + 6 < in.size() && in[i + 1] == '\\' && in[i + 2] == 'u' && hex4(i + 3, lo)) {
+                cp = 0x10000 + ((cp - 0xd800) << 10) + (lo - 0xdc00);
+                i += 6;
+            }
+            if (cp < 0x80) out += (char)cp;
+            else if (cp < 0x800) { out += (char)(0xc0 | cp >> 6); out += (char)(0x80 | (cp & 0x3f)); }
+            else if (cp < 0x10000) { out += (char)(0xe0 | cp >> 12); out += (char)(0x80 | ((cp >> 6) & 0x3f)); out += (char)(0x80 | (cp & 0x3f)); }
+            else { out += (char)(0xf0 | cp >> 18); out += (char)(0x80 | ((cp >> 12) & 0x3f)); out += (char)(0x80 | ((cp >> 6) & 0x3f)); out += (char)(0x80 | (cp & 0x3f)); }
+        } else out += e == 'n' ? '\n' : e == 't' ? '\t' : e;   // \\ \" \/ and the rest as the character itself
+    }
+    return out;
+}
 bool has(const std::string& s, const char* k) { return s.find(k) != std::string::npos; }
 
 // plain-coloured garments get a fabric by what they are (style + layer + top/bottom)
@@ -49,6 +85,7 @@ bool Outfit::load(const std::string& path, const std::string& st, const Characte
     destroy();
     style = st;
     if (!model.load(path)) return false;
+    for (Node& n : model.nodes) n.name = unescapeJson(n.name);
     const Model& cm = owner.model;
     if (cm.skins.empty() || model.skins.empty()) { AG_WARN("AG: outfit %s: no skin", path.c_str()); model.destroy(); return false; }
     // ---- bind to the character's skeleton: outfit joint -> the character's skin-0 joint of the same name ----
