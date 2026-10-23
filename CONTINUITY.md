@@ -12,6 +12,9 @@ root is legacy. Adults only (see `AGENTS.md`).
 nightly-release all `success`; rolling `nightly` release updated.
 
 **Done (latest first)**
+- Customise (her): `Tone` slider −1..1 (the content's `muscle_dn`; Skinny's −0.3 is kept and its chip lights);
+  preset chips sized to their names in balanced, justified rows (13 presets → 5/4/4); footer clear at 1280×720.
+  Verified on molab: build OK, harness shots of both tabs at 1280×720 / 1366×768 / 1920×1080.
 - `cac059e` story film fixes (garment colours, cameras for seated couples, film framing, story acts only).
 - `ffbb849` content M5–M7 wired into the game: 8 skin tones (porcelain … ebony) by name, body types from
   `characters/presets.json`, adult age shapes (`age_dn` = 25 y, base 42 y, `age_up` = 60 y; 21–25 read as 25),
@@ -23,9 +26,6 @@ nightly-release all `success`; rolling `nightly` release updated.
 **Half done**
 - Marcus: 3 painted tones (honey / caramel / deep); the other 5 are tints of them. No `age_up` / `age_dn` in
   `marcus.glb`, so his Age slider still shows the COMING SOON tag (by design until the morph ships).
-- Customise (her): `Tone` slider is 0..1 but the content ships `muscle_dn` and presets use it (Skinny = −0.3), so
-  that preset is clamped and its chip never lights. Three rows of preset chips now (13 presets) — panel fit at
-  1366×768 not re-verified since.
 
 **Open (content + engine)** — the ⏳ list in `docs/STORY_ASSETS.md` (non-bed locations, robes / slip / open shirt,
 smoother garment borders, `stand.embrace`, `kiss.stand`, `dance.slow`, `walk.in`, `lean.rail`, `sit.couch`), more
@@ -38,12 +38,14 @@ explicit story text. They stay open for whoever owns that track.
 
 ## In flight
 
-1. Customise: her muscle slider −1..1 (uses `muscle_dn`), presets keep negative muscle, verify the panel fit.
+1. Story locations: a kit for non-bed places on top of `tools/model/room/build_room.py`, most-used first —
+   `cabin_living` (5 scenes), `spa_suite` (4), `villa_terrace` (3), `apartment_hall` (3), then `hotel_ballroom`,
+   `hotel_terrace`, `villa_beach`, `apartment_living`, the singles. Blender 4.2.3 on molab.
 
 ## Exact next step
 
-Fix the her-muscle range in `native/src/game/game_ui.cpp` (slider `h_muscle` lo −1, drop the `max(0, …)` on
-`want[5]`) and check `Profile::load` clamps in `native/src/game/settings.cpp`; push; read the CI run.
+Install Blender 4.2.3 on molab (`tools/model/native/setup_toolchain.sh` has the URL), build `cabin_living` with the
+room kit, bake, `post.mjs`, render the harness story shots that use it, push.
 
 ## Commands
 
