@@ -66,7 +66,10 @@ bool Game::init() {
         {"doggy", "From Behind", "Positions", 1.05f, 1.2f, true}, {"prone", "Lying Flat", "Positions", 1.0f, 1.15f, true},
         {"cowgirl", "On Top", "Positions", 1.15f, 0.95f, true}, {"revcowgirl", "Reverse", "Positions", 1.0f, 1.1f, true},
         {"spoon", "Spooning", "Positions", 0.95f, 0.9f, true}, {"solo", "Alone", "Solo", 1.0f, 0.f, false},
+        {"handjob", "Her Hand", "Foreplay", 0.35f, 1.1f, false}, {"titjob", "Her Breasts", "Foreplay", 0.4f, 1.15f, false},
     };
+    // story staging clips (standing, sitting, dancing, undressing, cuddling...) are not acts
+    static const char* storyOnly[] = {"stand", "sit", "dance", "undress", "walk", "talk", "listen", "lie", "cuddle", "embrace", "lean", "kneel"};
     const Character& src = scene.vivian.loaded() ? scene.vivian : scene.marcus;
     std::vector<std::string> families;
     for (const std::string& c : src.clipNames()) {
@@ -78,6 +81,9 @@ bool Game::init() {
         for (const char* suffix : {".in", ".idle", ".loop"}) if (src.hasClip(fam + suffix)) { base = fam + suffix; break; }
         if (base.empty()) continue;   // layers only (rub / embrace)
         const Json& meta = clipsMeta_["clips"][base];
+        bool staging = meta["story"].boolean(false) || !meta["act"].boolean(true);
+        for (const char* so : storyOnly) staging = staging || fam == so;
+        if (staging) continue;
         PositionInfo p;
         p.id = fam;
         p.baseClip = base;
