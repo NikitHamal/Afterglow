@@ -2,6 +2,50 @@
 
 Newest first. Any session continuing the work: read `AGENTS.md`, then this file.
 
+## 2026-10-23 — the native game (C++ / raylib): engine + game lead
+
+The shipping product is now the native game in `native/` (Windows installer, Linux tarball, macOS zip on the
+rolling `nightly` release; in-game updater reads `latest.json` there). The web game in the repo root is legacy.
+Read `docs/NATIVE_ENGINE.md` (engine + game reference), `docs/NATIVE_CONTENT.md` (assets), `docs/STORY_ASSETS.md`
+(story format + assets the content track should build).
+
+Shipped since the first native build:
+- **Game** — title, menu (Continue / Stories / Free play / Customize / Settings / Quit), customisation with a live
+  turntable (her: 9 body types, 7 skin tones, hair colour, age 21-60 adults only; his: builds, endowment, tone,
+  age), settings (display, graphics, lighting with live preview, audio, controls, game), pause, results.
+- **Free play** — the night simulation (`game/night.*`): rhythm by drag / scroll / Space, her desires, connection,
+  edging, shared climax; acts are data-driven from `clips.json` (Foreplay / Oral / Positions / Solo) with an
+  always-visible action bar (Tab acts, Space rhythm, R touch, E kiss, O her lips, L his tongue, X alone, C camera,
+  M mood) and number keys.
+- **Story mode** — `native/assets/story/*.json`: Old Flames, The Storm, Salt and Sun (7 chapters, 3 endings each);
+  VN UI over the live scene (typewriter, name plates, choice cards, log, auto/skip, 6 save slots + autosave, chapter
+  select, gallery); intimate chapters hand over to free play with a goal. Dressed characters are hidden until
+  outfit assets exist (see `docs/STORY_ASSETS.md`).
+- **Look** — lighting moods (Warm evening default, Candlelit night, Bright daylight) + brightness/warmth, camera-side
+  fill, baked room lightmap scaled and blended with live light; skin support maps (flush / translucency / sweat
+  masks, pore detail); no dust particles; spring-bone hair with the content's colliders.
+- **Touch** — body zones from the bind mesh (vulva, breasts), arm IK onto them (fingers resting on the skin,
+  curled to conform), finger contact spheres dent soft tissue in the vertex shader, reactions (arch, flinch,
+  breath catch, gasp) by zone sensitivity.
+- **Cameras** — collision against body capsules / head spheres, the mattress and the headboard zone, room bounds;
+  her face camera, first person, touch close-up (QA).
+- **Lifecycle** — per-user installer (no UAC, AppMutex, upgrades, uninstall asks about saves), single instance,
+  log + crash note, atomic saves, graceful SIGTERM, 8 fps when unfocused, sleep while minimised.
+- **Performance** — sleeping frame limiter (60 fps + vsync default), 2048 shadow map with world-space PCF, PCF
+  early-out, out-of-range lights skipped, 12 SSAO samples, ranged morph uploads, texture cap per quality, heap
+  trim after load, 4K panels shaded at ~1440p; pause skips the 3D pass under the frosted backdrop.
+
+QA: CI renders `tools/qa/game_shots.txt` (every screen, moods, faces, touches, story screens, two autoplay runs
+with an audio event log) and `tools/qa/shots.txt` (engine sandbox) on every push; artifacts `qa-shots`.
+
+Next / open:
+1. Outfits, story locations and story-only clips from the content track (docs/STORY_ASSETS.md).
+2. Content: hand/finger poses in rub clips (the engine IK fixes the hand onto the surface but the clip's
+   arm path still decides the approach), the doggy pose's chin lift, genital-area texture polish (issue #4).
+3. His hands on her body (cowgirl / doggy grabs) — the touch system supports it, needs per-act targets.
+4. Age morphs (`age_up`/`age_dn`) — the slider is ready.
+
+
 ## 2026-10-22 (later) — v2 of both characters, customisation, performance
 
 Shipped (commits `2820e1c`, `73f586f`, `054a4f3`, plus GLB memory disposal):

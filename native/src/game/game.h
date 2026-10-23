@@ -6,6 +6,7 @@
 #include "app/app.h"
 #include "audio/audio.h"
 #include "game/night.h"
+#include "game/story.h"
 #include "game/settings.h"
 #include "gfx/renderer.h"
 #include "scene/camera.h"
@@ -14,6 +15,7 @@
 #include "ui/ui.h"
 #include "core/json.h"
 #include <functional>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -45,7 +47,7 @@ public:
     void onFocusLost();
     void saveAll();
 
-    enum class Screen { Title, Menu, Customize, Settings, Play, Pause, Results };
+    enum class Screen { Title, Menu, Customize, Settings, Play, Pause, Results, Stories, Story };
 
 private:
     // ---- flow ----
@@ -141,6 +143,38 @@ private:
     bool shotPending_ = false;            // F12: capture after this frame's UI
     std::string shotToast_;
     float shotToastT_ = 0.f;
+
+    // ---- story mode ----
+    void loadStories();
+    const Story* storyById(const std::string& id) const;
+    void beginStory(const Story* s, const std::string& node, const std::map<std::string, float>* vars = nullptr, int line = 0);
+    void storyAutosave();
+    void stageStoryNode();
+    void storyCamera(const std::string& cam, float blend);
+    bool storyCharVisible(int who) const;
+    void updateStory(float dt);
+    void presentStory(float dt);
+    void drawStories();
+    void drawStory();
+    void drawStoryLog();
+    void drawStorySlots(bool saving);
+    void drawStoryMenu();
+    void drawGallery();
+    std::vector<Story> stories_;
+    StoryProgress storyProgress_;
+    StoryPlayer story_;
+    std::vector<StorySave> storySaves_;
+    std::string storyProgressPath_, storySavesPath_;
+    bool storyPlaying_ = false, storySkipToggle_ = false;
+    int storyOverlay_ = 0;                // 0 none, 1 log, 2 save, 3 load, 4 gallery, 5 menu
+    float storyCardT_ = 99.f, storyLogScroll_ = 0.f;
+    int storyCardKind_ = 0, storyMood_ = -1, storySpeak_ = -1, gallerySel_ = 0;
+    std::string storyLastChapter_, storyLocation_;
+    bool storyShow_[2] = {true, true};
+    std::string storyOutfit_[2];
+    std::map<std::string, float> storyExpr_;
+    Rectangle storyControlsRect_{0, 0, 0, 0};
+    Screen pauseReturn_ = Screen::Play;
 
     // ---- audio ----
     void initAudio();

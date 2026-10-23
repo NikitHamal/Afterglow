@@ -1,0 +1,744 @@
+{
+ "id": "old_flames",
+ "title": "Old Flames",
+ "tagline": "Twenty years later, the same smile across a wedding reception.",
+ "setting": "A COASTAL HOTEL · A WEDDING WEEKEND",
+ "mood": "evening",
+ "vars": {
+  "trust": 0,
+  "warmth": 0,
+  "honest": 0,
+  "kissed": 0
+ },
+ "chapters": [
+  {
+   "id": "c1",
+   "title": "The Toast",
+   "start": "c1_reception"
+  },
+  {
+   "id": "c2",
+   "title": "The Terrace",
+   "start": "c2_terrace"
+  },
+  {
+   "id": "c3",
+   "title": "The Last Dance",
+   "start": "c3_dance"
+  },
+  {
+   "id": "c4",
+   "title": "Her Door",
+   "start": "c4_door"
+  },
+  {
+   "id": "c5",
+   "title": "Rediscovery",
+   "start": "c5_room"
+  },
+  {
+   "id": "c6",
+   "title": "After",
+   "start": "c6_after"
+  },
+  {
+   "id": "c7",
+   "title": "Morning",
+   "start": "c7_morning"
+  }
+ ],
+ "gallery": {
+  "g_door": "Her door",
+  "g_first": "Rediscovery",
+  "g_morning": "The morning after"
+ },
+ "nodes": {
+  "c1_reception": {
+   "chapter": "c1",
+   "location": "the hotel ballroom",
+   "mood": "evening",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "The band is playing something everybody half remembers. Vivian has a glass of champagne she isn't drinking and a smile she has worn for three hours."
+    },
+    {
+     "who": "narrator",
+     "text": "Twenty years of other people's weddings, and she still knows exactly where to stand so that nobody asks her to dance."
+    },
+    {
+     "who": "narrator",
+     "text": "Then a laugh carries across the room - low, unhurried - and something in her chest turns over before her mind catches up."
+    },
+    {
+     "who": "vivian",
+     "text": "No. It can't be."
+    },
+    {
+     "who": "narrator",
+     "text": "Marcus. Grey at the temples now, broader in the shoulders, the same way of listening with his whole face. He sees her a heartbeat later. He stops mid-sentence."
+    },
+    {
+     "who": "marcus",
+     "text": "Vivian."
+    },
+    {
+     "who": "vivian",
+     "text": "Marcus. You came all this way for Dana's wedding?"
+    },
+    {
+     "who": "marcus",
+     "text": "Dana said you'd be here. So, yes. All this way."
+    },
+    {
+     "who": "narrator",
+     "text": "He says it lightly. It doesn't land lightly."
+    }
+   ],
+   "choices": [
+    {
+     "text": "\"I've thought about you more than I should have.\"",
+     "set": {
+      "honest": "+1",
+      "warmth": "+1"
+     },
+     "next": "c1_honest"
+    },
+    {
+     "text": "Tease him about the tie he is clearly wearing under protest.",
+     "set": {
+      "warmth": "+1"
+     },
+     "next": "c1_tease"
+    },
+    {
+     "text": "Keep it polite and excuse yourself for some air.",
+     "set": {
+      "trust": "-1"
+     },
+     "next": "c1_air"
+    }
+   ]
+  },
+  "c1_honest": {
+   "chapter": "c1",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "I've thought about you. More than I should have, probably."
+    },
+    {
+     "who": "narrator",
+     "text": "It comes out before she can dress it up. He doesn't look away from it."
+    },
+    {
+     "who": "marcus",
+     "text": "Me too. Every time I heard a cello. Every time somebody laughed with their head thrown back like that."
+    },
+    {
+     "who": "vivian",
+     "text": "Like what?"
+    },
+    {
+     "who": "marcus",
+     "text": "Like you're doing right now."
+    }
+   ],
+   "next": "c2_terrace"
+  },
+  "c1_tease": {
+   "chapter": "c1",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Is that a tie, or a hostage situation?"
+    },
+    {
+     "who": "marcus",
+     "text": "Dana picked it. I have been told I look 'distinguished'."
+    },
+    {
+     "who": "vivian",
+     "text": "You look like a man who would rather be on a boat."
+    },
+    {
+     "who": "marcus",
+     "text": "Then you haven't changed either. You still see straight through me."
+    },
+    {
+     "who": "narrator",
+     "text": "There it is - the old rhythm, picked up mid-bar as if nobody had ever stopped playing."
+    }
+   ],
+   "next": "c2_terrace"
+  },
+  "c1_air": {
+   "chapter": "c1",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "It's good to see you, Marcus. Truly. I just need some air."
+    },
+    {
+     "who": "narrator",
+     "text": "She doesn't get far. The terrace doors are heavy, the sea is loud, and when she turns around he is standing a polite distance away with two glasses of water."
+    },
+    {
+     "who": "marcus",
+     "text": "You never could stand a crowd. I thought you might want company. Or not. I can go."
+    },
+    {
+     "who": "vivian",
+     "text": "Stay. It's just water."
+    }
+   ],
+   "next": "c2_terrace"
+  },
+  "c2_terrace": {
+   "chapter": "c2",
+   "location": "the terrace above the sea",
+   "mood": "evening",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "The terrace is lit with paper lanterns that sway in the wind off the water. Below them the sea keeps breaking against the same rocks it has been breaking against all their lives."
+    },
+    {
+     "who": "marcus",
+     "text": "I used to imagine this. Running into you somewhere. I always had a speech ready."
+    },
+    {
+     "who": "vivian",
+     "text": "And now?"
+    },
+    {
+     "who": "marcus",
+     "text": "Now I can't remember a word of it."
+    },
+    {
+     "who": "vivian",
+     "text": "You took the job in Lisbon. I stayed. That was the speech, wasn't it - why you left."
+    },
+    {
+     "who": "marcus",
+     "text": "I asked you to come."
+    },
+    {
+     "who": "vivian",
+     "text": "You asked me at the airport, Marcus. With a boarding pass in your hand."
+    },
+    {
+     "who": "narrator",
+     "text": "He winces. It is an old wound, and they both know exactly where it is."
+    }
+   ],
+   "choices": [
+    {
+     "text": "\"I was afraid. Of going, and of losing you anyway.\"",
+     "set": {
+      "honest": "+1",
+      "trust": "+1"
+     },
+     "next": "c2_afraid"
+    },
+    {
+     "text": "\"We were young. I don't blame you any more.\"",
+     "set": {
+      "trust": "+1"
+     },
+     "next": "c2_forgive"
+    },
+    {
+     "text": "\"It still stings, if you want the truth.\"",
+     "set": {
+      "honest": "+1"
+     },
+     "next": "c2_sting"
+    }
+   ]
+  },
+  "c2_afraid": {
+   "chapter": "c2",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "I was afraid. Of going - and of going and losing you anyway, in a city where I didn't know a soul."
+    },
+    {
+     "who": "marcus",
+     "text": "I never knew that."
+    },
+    {
+     "who": "vivian",
+     "text": "I never told you. I was too proud to be afraid out loud."
+    },
+    {
+     "who": "marcus",
+     "text": "Thank you for telling me now."
+    },
+    {
+     "who": "narrator",
+     "text": "He reaches out, slowly enough that she could step back, and tucks a strand of hair the wind has stolen behind her ear. She doesn't step back."
+    }
+   ],
+   "set": {
+    "warmth": "+1"
+   },
+   "next": "c3_dance"
+  },
+  "c2_forgive": {
+   "chapter": "c2",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "We were twenty-two. We thought every door closed forever. I don't blame you, Marcus. Not any more."
+    },
+    {
+     "who": "marcus",
+     "text": "That's generous."
+    },
+    {
+     "who": "vivian",
+     "text": "It's just true. Took me a long time to notice it."
+    },
+    {
+     "who": "narrator",
+     "text": "The lanterns sway. Somewhere inside, the band slows down."
+    }
+   ],
+   "next": "c3_dance"
+  },
+  "c2_sting": {
+   "chapter": "c2",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "It still stings. I'd be lying if I said it didn't."
+    },
+    {
+     "who": "marcus",
+     "text": "Then I'm sorry. Not for going - for how I asked. You deserved better than a question at a gate."
+    },
+    {
+     "who": "vivian",
+     "text": "Yes. I did."
+    },
+    {
+     "who": "narrator",
+     "text": "He nods, and doesn't argue, and somehow that is the thing that softens her."
+    }
+   ],
+   "next": "c3_dance"
+  },
+  "c3_dance": {
+   "chapter": "c3",
+   "location": "the ballroom, late",
+   "mood": "evening",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "By midnight the bride has kicked off her shoes and the band is down to a piano and a tired saxophone."
+    },
+    {
+     "who": "marcus",
+     "text": "Dance with me. One song. For the people we were."
+    },
+    {
+     "who": "narrator",
+     "text": "His hand finds the small of her back as if it never forgot where to go. She lets her cheek rest near his collar. He smells of salt and cedar and something she has no name for except 'Marcus'."
+    },
+    {
+     "who": "vivian",
+     "text": "You're holding me like I might leave."
+    },
+    {
+     "who": "marcus",
+     "text": "You might."
+    },
+    {
+     "who": "vivian",
+     "text": "I'm not going anywhere tonight."
+    },
+    {
+     "who": "narrator",
+     "text": "The song ends. Neither of them moves. He looks at her mouth, then back to her eyes - asking, without a word."
+    }
+   ],
+   "choices": [
+    {
+     "text": "Kiss him.",
+     "set": {
+      "kissed": "=1",
+      "warmth": "+1"
+     },
+     "next": "c3_kiss"
+    },
+    {
+     "text": "\"Not here. Walk me back?\"",
+     "set": {
+      "trust": "+1"
+     },
+     "next": "c3_walk"
+    },
+    {
+     "text": "\"Let's not rush this. Goodnight, Marcus.\"",
+     "next": "c3_goodnight"
+    }
+   ]
+  },
+  "c3_kiss": {
+   "chapter": "c3",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "She kisses him. It is not the kiss of twenty years ago - it is slower, surer, the kiss of two people who know exactly what it costs."
+    },
+    {
+     "who": "marcus",
+     "text": "Vivian..."
+    },
+    {
+     "who": "vivian",
+     "text": "Walk me back. Please."
+    }
+   ],
+   "next": "c4_door"
+  },
+  "c3_walk": {
+   "chapter": "c3",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Not here. Not with Dana's aunts watching. Walk me back?"
+    },
+    {
+     "who": "marcus",
+     "text": "Always."
+    },
+    {
+     "who": "narrator",
+     "text": "They leave by the terrace doors, his jacket around her shoulders, their hands finding each other halfway down the corridor without either of them deciding it."
+    }
+   ],
+   "next": "c4_door"
+  },
+  "c3_goodnight": {
+   "chapter": "c3",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Let's not rush this. Not after twenty years. Goodnight, Marcus."
+    },
+    {
+     "who": "marcus",
+     "text": "Goodnight. I'm in room 412, if you want to have breakfast. Or not. No pressure either way."
+    },
+    {
+     "who": "narrator",
+     "text": "She goes up alone. She lies awake until the windows go grey, listening to the sea, and does not decide anything at all."
+    }
+   ],
+   "next": "c7_friends"
+  },
+  "c4_door": {
+   "chapter": "c4",
+   "location": "the fourth-floor corridor",
+   "mood": "evening",
+   "show": [],
+   "camera": "wide",
+   "gallery": "g_door",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "Her key card blinks red twice before it blinks green. Her hands are not quite steady."
+    },
+    {
+     "who": "vivian",
+     "text": "Do you want to come in?"
+    },
+    {
+     "who": "marcus",
+     "text": "More than anything. But only if you're sure. We can stand here and talk until the sun comes up, and I'd still call it a good night."
+    },
+    {
+     "who": "vivian",
+     "text": "I'm sure. I've been sure since the toast."
+    },
+    {
+     "who": "marcus",
+     "text": "Then yes."
+    },
+    {
+     "who": "narrator",
+     "text": "The door closes behind them with a soft click, and the noise of the wedding disappears."
+    }
+   ],
+   "next": "c5_room"
+  },
+  "c5_room": {
+   "chapter": "c5",
+   "location": "her room, sea view",
+   "mood": "evening",
+   "show": [
+    "vivian",
+    "marcus"
+   ],
+   "outfit": {
+    "vivian": "nude",
+    "marcus": "nude"
+   },
+   "act": "missionary",
+   "actT": 0.15,
+   "camera": "side",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "They undress each other slowly, the way you open a letter you have waited a long time for. Every button is a question; every answer is yes."
+    },
+    {
+     "who": "marcus",
+     "text": "You're even more beautiful than I remembered."
+    },
+    {
+     "who": "vivian",
+     "text": "You remember wrong. Come here.",
+     "expr": {
+      "smile": 0.6
+     }
+    },
+    {
+     "who": "narrator",
+     "text": "She draws him down onto the bed. His mouth finds her throat, her collarbone, the curve of her breast, unhurried, as if he has all the time in the world - and tonight he does."
+    },
+    {
+     "who": "vivian",
+     "text": "Tell me if this is too fast.",
+     "expr": {
+      "pleasure": 0.3
+     }
+    },
+    {
+     "who": "marcus",
+     "text": "Nothing about you is too fast. Is this all right?"
+    },
+    {
+     "who": "vivian",
+     "text": "It's more than all right. Don't stop.",
+     "expr": {
+      "pleasure": 0.5
+     },
+     "voice": "moan02"
+    },
+    {
+     "who": "narrator",
+     "text": "He enters her slowly, watching her face, and the twenty years fold up like a map."
+    }
+   ],
+   "play": {
+    "act": "missionary",
+    "goal": "together",
+    "next": "c6_after"
+   },
+   "gallery": "g_first"
+  },
+  "c6_after": {
+   "chapter": "c6",
+   "location": "her room, after",
+   "mood": "candle",
+   "show": [
+    "vivian",
+    "marcus"
+   ],
+   "outfit": {
+    "vivian": "nude",
+    "marcus": "nude"
+   },
+   "act": "spoon",
+   "actT": 0.05,
+   "camera": "face",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "Afterwards they lie tangled in the sheets, the window open, the sea doing the talking for a while."
+    },
+    {
+     "who": "vivian",
+     "text": "Well. That was not on Dana's seating plan.",
+     "expr": {
+      "smile": 0.8
+     }
+    },
+    {
+     "who": "marcus",
+     "text": "I'd like to thank Dana. Personally. With flowers."
+    },
+    {
+     "who": "narrator",
+     "text": "She laughs into his shoulder. Then the laugh fades, and the real question arrives, the one they have both been stepping around."
+    },
+    {
+     "who": "vivian",
+     "text": "What happens tomorrow, Marcus?"
+    }
+   ],
+   "choices": [
+    {
+     "text": "\"Stay. Not just tonight. Let's find out who we are now.\"",
+     "if": "trust >= 1",
+     "set": {
+      "trust": "+1"
+     },
+     "next": "c7_second"
+    },
+    {
+     "text": "\"Let this be one perfect night. No promises.\"",
+     "next": "c7_onenight"
+    },
+    {
+     "text": "\"Come home with me. See what my life looks like.\"",
+     "if": "honest >= 1",
+     "set": {
+      "trust": "+2"
+     },
+     "next": "c7_second"
+    }
+   ]
+  },
+  "c7_morning": {
+   "chapter": "c7",
+   "location": "her room, morning",
+   "mood": "day",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "Morning, and the question from last night is still there, waiting on the pillow between them."
+    },
+    {
+     "who": "marcus",
+     "text": "Good morning. I'm still here. Unless you'd like me not to be."
+    }
+   ],
+   "choices": [
+    {
+     "text": "\"Stay. Let's find out who we are now.\"",
+     "set": {
+      "trust": "+1"
+     },
+     "next": "c7_second"
+    },
+    {
+     "text": "\"Let it be one perfect night.\"",
+     "next": "c7_onenight"
+    }
+   ]
+  },
+  "c7_second": {
+   "chapter": "c7",
+   "location": "her room, morning",
+   "mood": "day",
+   "show": [
+    "vivian",
+    "marcus"
+   ],
+   "outfit": {
+    "vivian": "nude",
+    "marcus": "nude"
+   },
+   "act": "spoon",
+   "actT": 0.0,
+   "camera": "face",
+   "gallery": "g_morning",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "Morning comes in gold through the curtains. He is still there. He is making terrible coffee with the room's tiny kettle and humming."
+    },
+    {
+     "who": "marcus",
+     "text": "I called the airline. I can change the flight. Or cancel it. Whichever you'd like."
+    },
+    {
+     "who": "vivian",
+     "text": "Change it. To next week. And then we'll talk about the week after.",
+     "expr": {
+      "smile": 0.9
+     }
+    },
+    {
+     "who": "marcus",
+     "text": "That sounds like a plan."
+    },
+    {
+     "who": "vivian",
+     "text": "It sounds like a second chance."
+    }
+   ],
+   "end": {
+    "title": "Second Chance",
+    "text": "Some doors close. Some, it turns out, were only ever waiting for both of you to knock at the same time."
+   }
+  },
+  "c7_onenight": {
+   "chapter": "c7",
+   "location": "her room, morning",
+   "mood": "day",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "When she wakes, the other side of the bed is still warm. There's a note on the pillow in handwriting she would know anywhere."
+    },
+    {
+     "who": "marcus",
+     "text": "'Thank you for last night. For forgiving the boy at the airport. Whatever comes next - I'll never be sorry. - M.'"
+    },
+    {
+     "who": "narrator",
+     "text": "She folds it twice and puts it in her purse, next to the train ticket home. She is smiling. That surprises her most of all."
+    }
+   ],
+   "end": {
+    "title": "One Perfect Night",
+    "text": "Not every story needs a sequel. Some are perfect exactly as long as they are."
+   }
+  },
+  "c7_friends": {
+   "chapter": "c7",
+   "location": "the breakfast terrace",
+   "mood": "day",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "He is at a table by the railing with two coffees, one with milk, the way she took it twenty years ago. She still does."
+    },
+    {
+     "who": "vivian",
+     "text": "You remembered."
+    },
+    {
+     "who": "marcus",
+     "text": "Some things stick."
+    },
+    {
+     "who": "narrator",
+     "text": "They talk for three hours. About Lisbon, about her daughter's first job, about how neither of them can stand the band's version of anything. When he leaves for the airport they hug like old friends - and promise, and mean it, to write."
+    }
+   ],
+   "end": {
+    "title": "Old Friends",
+    "text": "Not every flame has to be rekindled. Some are better kept as a warm light in the window."
+   }
+  }
+ }
+}

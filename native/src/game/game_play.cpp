@@ -193,7 +193,7 @@ void Game::updatePlay(float dt) {
     bool overUi = (barOpen_ && ui.in.mouse.y > ui.H - ui.u(250.f)) || CheckCollisionPointRec(ui.in.mouse, actionBarRect_);
 
     if (!night_.finished) {
-        if (IsKeyPressed(KEY_ESCAPE)) { go(Screen::Pause, 0.15f); return; }
+        if (IsKeyPressed(KEY_ESCAPE)) { pauseReturn_ = screen_; go(Screen::Pause, 0.15f); return; }
         if (IsKeyPressed(KEY_TAB)) barOpen_ = !barOpen_;
         for (int k = 0; k < 10 && k < (int)positions_.size(); ++k)
             if (IsKeyPressed(k == 9 ? KEY_ZERO : KEY_ONE + k)) setPosition(k);

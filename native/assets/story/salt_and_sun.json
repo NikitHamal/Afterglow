@@ -1,0 +1,619 @@
+{
+ "id": "salt_and_sun",
+ "title": "Salt and Sun",
+ "tagline": "Twelve years married, one hard year behind them, three days at a villa by the sea.",
+ "setting": "A VILLA BY THE SEA · A LONG WEEKEND",
+ "mood": "day",
+ "vars": {
+  "close": 0,
+  "honest": 0,
+  "play": 0
+ },
+ "chapters": [
+  {
+   "id": "c1",
+   "title": "Arrival",
+   "start": "c1_arrive"
+  },
+  {
+   "id": "c2",
+   "title": "Sunscreen",
+   "start": "c2_beach"
+  },
+  {
+   "id": "c3",
+   "title": "Siesta",
+   "start": "c3_siesta"
+  },
+  {
+   "id": "c4",
+   "title": "The Truth",
+   "start": "c4_terrace"
+  },
+  {
+   "id": "c5",
+   "title": "Night Swim",
+   "start": "c5_swim"
+  },
+  {
+   "id": "c6",
+   "title": "Our Bed",
+   "start": "c6_bed"
+  },
+  {
+   "id": "c7",
+   "title": "Sunday",
+   "start": "c7_sunday"
+  }
+ ],
+ "gallery": {
+  "g_siesta": "Siesta",
+  "g_bed": "Our bed",
+  "g_sunday": "Sunday"
+ },
+ "nodes": {
+  "c1_arrive": {
+   "chapter": "c1",
+   "location": "a white villa above the bay",
+   "mood": "day",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "The villa is all white walls and blue shutters, bougainvillea spilling over the gate. Below it the bay is so clear you can count the stones on the bottom."
+    },
+    {
+     "who": "narrator",
+     "text": "It was Marcus's idea. After the year they've had - her mother's illness, his job, the long run of evenings where they talked about schedules and nothing else - he booked it without asking. That's either very romantic or very annoying. She hasn't decided."
+    },
+    {
+     "who": "marcus",
+     "text": "Well? Say something. Say it's terrible and we'll leave."
+    },
+    {
+     "who": "vivian",
+     "text": "It's not terrible."
+    },
+    {
+     "who": "marcus",
+     "text": "High praise."
+    },
+    {
+     "who": "narrator",
+     "text": "He's standing in the doorway with both suitcases, the light behind him. She realises she can't remember the last time she really looked at him."
+    }
+   ],
+   "choices": [
+    {
+     "text": "Take his hand. \"Thank you for this.\"",
+     "set": {
+      "close": "+1"
+     },
+     "next": "c1_hand"
+    },
+    {
+     "text": "\"Last one in the sea makes dinner.\"",
+     "set": {
+      "play": "+1"
+     },
+     "next": "c1_race"
+    },
+    {
+     "text": "Unpack first. One thing at a time.",
+     "next": "c1_unpack"
+    }
+   ]
+  },
+  "c1_hand": {
+   "chapter": "c1",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Thank you. For this. For booking it before I could talk you out of it."
+    },
+    {
+     "who": "marcus",
+     "text": "I know you. You would have talked me out of it."
+    },
+    {
+     "who": "narrator",
+     "text": "His thumb moves across her knuckles, an old habit she'd forgotten she loved."
+    }
+   ],
+   "next": "c2_beach"
+  },
+  "c1_race": {
+   "chapter": "c1",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Last one in the sea makes dinner."
+    },
+    {
+     "who": "marcus",
+     "text": "That's not fair, I'm holding the suitcases -"
+    },
+    {
+     "who": "narrator",
+     "text": "She's already gone, sandals in her hand, laughing down the stone steps. He drops the suitcases in the hall and chases her like they're twenty-five."
+    }
+   ],
+   "next": "c2_beach"
+  },
+  "c1_unpack": {
+   "chapter": "c1",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "They unpack in a careful, polite silence, two people being considerate of each other the way strangers are."
+    },
+    {
+     "who": "marcus",
+     "text": "Viv. We don't have to do anything this weekend. We could just be here."
+    },
+    {
+     "who": "vivian",
+     "text": "I know. I'm trying."
+    },
+    {
+     "who": "marcus",
+     "text": "So am I."
+    }
+   ],
+   "next": "c2_beach"
+  },
+  "c2_beach": {
+   "chapter": "c2",
+   "location": "the little beach below the villa",
+   "mood": "day",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "The beach is a crescent of pale sand with nobody on it but them. The sun is fierce; the water is cold enough to make her gasp."
+    },
+    {
+     "who": "vivian",
+     "text": "Do my back? I'll burn to a crisp otherwise."
+    },
+    {
+     "who": "narrator",
+     "text": "He kneels behind her with the sunscreen. His hands are slow and sure on her shoulders, down the line of her spine, around the edges of her bikini strap."
+    },
+    {
+     "who": "marcus",
+     "text": "You've got freckles here now. New ones."
+    },
+    {
+     "who": "vivian",
+     "text": "You've been counting my freckles?"
+    },
+    {
+     "who": "marcus",
+     "text": "I used to. I'd like to start again."
+    },
+    {
+     "who": "narrator",
+     "text": "Something warm unfolds low in her stomach that has nothing to do with the sun."
+    }
+   ],
+   "choices": [
+    {
+     "text": "Lean back against him and close your eyes.",
+     "set": {
+      "close": "+1"
+     },
+     "next": "c3_siesta"
+    },
+    {
+     "text": "\"Careful, people will talk.\" (There's no one for a mile.)",
+     "set": {
+      "play": "+1"
+     },
+     "next": "c3_siesta"
+    }
+   ]
+  },
+  "c3_siesta": {
+   "chapter": "c3",
+   "location": "the shuttered bedroom, afternoon",
+   "mood": "day",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "At three the heat drives them indoors. The shutters turn the light to stripes of gold across the bed. She lies down 'just for a minute' and he lies down beside her."
+    },
+    {
+     "who": "marcus",
+     "text": "I've missed this. Not - not just the sex. This. You, next to me, not looking at your phone."
+    },
+    {
+     "who": "vivian",
+     "text": "I've missed you too. I didn't even notice how much until today."
+    },
+    {
+     "who": "narrator",
+     "text": "She rolls toward him and kisses him, lazy and slow, salt still on her lips. He kisses her back like a question."
+    }
+   ],
+   "choices": [
+    {
+     "text": "\"Tonight. I want to wait for tonight.\"",
+     "set": {
+      "close": "+1"
+     },
+     "next": "c4_terrace"
+    },
+    {
+     "text": "Climb into his lap. Tonight is too far away.",
+     "if": "play >= 1 || close >= 2",
+     "next": "c3_now"
+    }
+   ]
+  },
+  "c3_now": {
+   "chapter": "c3",
+   "location": "the shuttered bedroom",
+   "mood": "day",
+   "show": [
+    "vivian",
+    "marcus"
+   ],
+   "outfit": {
+    "vivian": "nude",
+    "marcus": "nude"
+   },
+   "act": "cowgirl",
+   "actT": 0.2,
+   "camera": "side",
+   "gallery": "g_siesta",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "The bikini comes off with one tug of a string. His shorts take a little more effort, and a lot more laughing."
+    },
+    {
+     "who": "vivian",
+     "text": "Lie back. Let me.",
+     "expr": {
+      "smile": 0.7
+     }
+    },
+    {
+     "who": "marcus",
+     "text": "Are you sure? I can -"
+    },
+    {
+     "who": "vivian",
+     "text": "I'm sure. I want to look at you.",
+     "expr": {
+      "pleasure": 0.4
+     }
+    },
+    {
+     "who": "narrator",
+     "text": "She sinks down onto him slowly, her hands flat on his chest, the shutters striping them both with gold."
+    }
+   ],
+   "play": {
+    "act": "cowgirl",
+    "goal": "time:75",
+    "next": "c4_terrace"
+   }
+  },
+  "c4_terrace": {
+   "chapter": "c4",
+   "location": "the terrace at sunset",
+   "mood": "evening",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "Sunset turns the bay to copper. They eat grilled fish with their fingers and drink a cold white wine that tastes of the hillside."
+    },
+    {
+     "who": "marcus",
+     "text": "Can I ask you something? Honestly?"
+    },
+    {
+     "who": "vivian",
+     "text": "Honestly."
+    },
+    {
+     "who": "marcus",
+     "text": "This year. Were you lonely? With me right there?"
+    },
+    {
+     "who": "narrator",
+     "text": "The question sits on the table between them like a lit candle."
+    }
+   ],
+   "choices": [
+    {
+     "text": "\"Yes. And I was afraid to say it.\"",
+     "set": {
+      "honest": "+2",
+      "close": "+1"
+     },
+     "next": "c4_yes"
+    },
+    {
+     "text": "\"We both were. We were surviving, not living.\"",
+     "set": {
+      "honest": "+1"
+     },
+     "next": "c4_both"
+    },
+    {
+     "text": "\"Let's not do this tonight. Please.\"",
+     "next": "c4_not"
+    }
+   ]
+  },
+  "c4_yes": {
+   "chapter": "c4",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Yes. I was lonely, and I was afraid to say it, because saying it would make it real."
+    },
+    {
+     "who": "marcus",
+     "text": "I was too. I kept thinking you'd stopped wanting me, and I didn't know how to ask."
+    },
+    {
+     "who": "vivian",
+     "text": "I never stopped. I just stopped knowing how to show it."
+    },
+    {
+     "who": "marcus",
+     "text": "Then let's learn again. We're good at learning."
+    }
+   ],
+   "next": "c5_swim"
+  },
+  "c4_both": {
+   "chapter": "c4",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "We both were. We were surviving. Getting through Tuesdays."
+    },
+    {
+     "who": "marcus",
+     "text": "I don't want to get through Tuesdays with you. I want to waste them."
+    },
+    {
+     "who": "narrator",
+     "text": "She laughs, and reaches across the table for his hand."
+    }
+   ],
+   "next": "c5_swim"
+  },
+  "c4_not": {
+   "chapter": "c4",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Let's not. Not tonight. Please."
+    },
+    {
+     "who": "marcus",
+     "text": "All right. Another time."
+    },
+    {
+     "who": "narrator",
+     "text": "He means it kindly. Still, a small door closes, and they both hear it."
+    }
+   ],
+   "next": "c5_swim"
+  },
+  "c5_swim": {
+   "chapter": "c5",
+   "location": "the bay at night",
+   "mood": "candle",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "At midnight she takes his hand and leads him down the steps to the water. The moon is nearly full. Nobody for a mile."
+    },
+    {
+     "who": "vivian",
+     "text": "Swim with me."
+    },
+    {
+     "who": "marcus",
+     "text": "I don't have my -"
+    },
+    {
+     "who": "vivian",
+     "text": "Neither do I."
+    },
+    {
+     "who": "narrator",
+     "text": "They leave their clothes on the warm stones. The water is silver and black and cold enough to make them both shout, and then laugh at themselves for shouting."
+    },
+    {
+     "who": "marcus",
+     "text": "You're glowing. Look - the plankton."
+    },
+    {
+     "who": "narrator",
+     "text": "Every stroke she makes leaves a trail of green light. He swims up behind her and wraps his arms around her waist, and they float like that, two lights in the dark."
+    }
+   ],
+   "next": "c6_bed"
+  },
+  "c6_bed": {
+   "chapter": "c6",
+   "location": "the villa bedroom",
+   "mood": "candle",
+   "show": [
+    "vivian",
+    "marcus"
+   ],
+   "outfit": {
+    "vivian": "nude",
+    "marcus": "nude"
+   },
+   "act": "missionary",
+   "actT": 0.1,
+   "camera": "side",
+   "gallery": "g_bed",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "Still damp, still salty, they fall into the big white bed. There is no hurry in it at all."
+    },
+    {
+     "who": "marcus",
+     "text": "I want to remember all of this. Every part of you."
+    },
+    {
+     "who": "vivian",
+     "text": "Then take your time. We have all night.",
+     "expr": {
+      "smile": 0.6
+     }
+    },
+    {
+     "who": "narrator",
+     "text": "He kisses his way down her body like he is reading something he loves, and when he finally moves over her and into her, she wraps her legs around him and holds on."
+    },
+    {
+     "who": "vivian",
+     "text": "Don't let go.",
+     "expr": {
+      "pleasure": 0.6
+     },
+     "voice": "moan02"
+    },
+    {
+     "who": "marcus",
+     "text": "Never again."
+    }
+   ],
+   "play": {
+    "act": "missionary",
+    "goal": "together",
+    "next": "c7_sunday"
+   }
+  },
+  "c7_sunday": {
+   "chapter": "c7",
+   "location": "the terrace, Sunday morning",
+   "mood": "day",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "Sunday morning, coffee on the terrace, her feet in his lap. The taxi comes at four."
+    },
+    {
+     "who": "marcus",
+     "text": "What do we bring home? Besides the sunburn."
+    }
+   ],
+   "choices": [
+    {
+     "text": "\"Us. The real us. Let's keep finding each other.\"",
+     "if": "honest >= 2",
+     "next": "c7_renewed"
+    },
+    {
+     "text": "\"Promises. Dinner on Fridays. Phones off. A weekend like this every spring.\"",
+     "if": "close >= 2",
+     "next": "c7_promises"
+    },
+    {
+     "text": "\"A good memory. Let's see what home brings.\"",
+     "next": "c7_good"
+    }
+   ]
+  },
+  "c7_renewed": {
+   "chapter": "c7",
+   "location": "the terrace",
+   "mood": "day",
+   "show": [],
+   "camera": "wide",
+   "gallery": "g_sunday",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Us. The real us. I want to keep finding you - at home, on Tuesdays, everywhere."
+    },
+    {
+     "who": "marcus",
+     "text": "I'm right here. I'm not hard to find. I just needed you to look."
+    },
+    {
+     "who": "narrator",
+     "text": "They miss the four o'clock taxi on purpose. Then the six o'clock one. They catch the last ferry with ten minutes to spare, laughing, salt in their hair."
+    }
+   ],
+   "end": {
+    "title": "Renewed",
+    "text": "Twelve years in, they fell in love with each other again - not the people they used to be, but the ones they are."
+   }
+  },
+  "c7_promises": {
+   "chapter": "c7",
+   "location": "the terrace",
+   "mood": "day",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Promises. Friday dinners. Phones in a drawer. And this, every spring."
+    },
+    {
+     "who": "marcus",
+     "text": "Every spring. I'll book it before you can talk me out of it."
+    },
+    {
+     "who": "narrator",
+     "text": "She writes it on the villa's notepad and makes him sign it. It goes on the fridge at home, and it stays there for years."
+    }
+   ],
+   "end": {
+    "title": "Promises",
+    "text": "Love isn't a feeling you keep. It's a promise you keep making - on Fridays, and every spring."
+   }
+  },
+  "c7_good": {
+   "chapter": "c7",
+   "location": "the terrace",
+   "mood": "day",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "A good memory. Let's see what home brings."
+    },
+    {
+     "who": "marcus",
+     "text": "That's fair. It was a good weekend."
+    },
+    {
+     "who": "narrator",
+     "text": "It was. On the ferry back she falls asleep on his shoulder, and he doesn't move for the whole crossing, and neither of them knows yet whether it is a beginning or a pause."
+    }
+   ],
+   "end": {
+    "title": "A Good Weekend",
+    "text": "Not every question gets answered in three days. But some get asked, and that's where everything starts."
+   }
+  }
+ }
+}

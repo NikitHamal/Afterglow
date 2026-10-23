@@ -1,0 +1,633 @@
+{
+ "id": "the_storm",
+ "title": "The Storm",
+ "tagline": "A novelist alone in a mountain cabin. A knock at the door at midnight.",
+ "setting": "A MOUNTAIN CABIN · A WINTER STORM",
+ "mood": "candle",
+ "vars": {
+  "trust": 0,
+  "spark": 0,
+  "patient": 0
+ },
+ "chapters": [
+  {
+   "id": "c1",
+   "title": "The Knock",
+   "start": "c1_knock"
+  },
+  {
+   "id": "c2",
+   "title": "Dry Clothes",
+   "start": "c2_fire"
+  },
+  {
+   "id": "c3",
+   "title": "Power Out",
+   "start": "c3_dark"
+  },
+  {
+   "id": "c4",
+   "title": "Close",
+   "start": "c4_close"
+  },
+  {
+   "id": "c5",
+   "title": "Snowed In",
+   "start": "c5_snow"
+  },
+  {
+   "id": "c6",
+   "title": "The Second Night",
+   "start": "c6_night"
+  },
+  {
+   "id": "c7",
+   "title": "Thaw",
+   "start": "c7_thaw"
+  }
+ ],
+ "gallery": {
+  "g_fire": "By the fire",
+  "g_night": "The second night",
+  "g_dawn": "Snowbound"
+ },
+ "nodes": {
+  "c1_knock": {
+   "chapter": "c1",
+   "location": "a cabin above the tree line",
+   "mood": "candle",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "Chapter nine of Vivian's novel has been stuck for eleven days. She rented the cabin to unstick it: no signal, no neighbours, nothing but snow and a stack of firewood that looked enormous in October."
+    },
+    {
+     "who": "narrator",
+     "text": "Tonight the wind is screaming in the chimney. The lights flicker every time a gust hits. She has just poured a second glass of red when someone knocks."
+    },
+    {
+     "who": "narrator",
+     "text": "Three knocks. Then a voice, nearly lost in the storm."
+    },
+    {
+     "who": "marcus",
+     "text": "Hello? I'm sorry - my car went off the road at the bend. I saw your light. I don't have a phone signal. I just need to get warm."
+    },
+    {
+     "who": "vivian",
+     "text": "Who are you?"
+    },
+    {
+     "who": "marcus",
+     "text": "Marcus. I photograph owls, if that helps. It usually doesn't."
+    }
+   ],
+   "choices": [
+    {
+     "text": "Open the door - nobody should be out in this.",
+     "set": {
+      "spark": "+1"
+     },
+     "next": "c1_open"
+    },
+    {
+     "text": "Talk through the door first. Ask him questions.",
+     "set": {
+      "trust": "+1"
+     },
+     "next": "c1_ask"
+    }
+   ]
+  },
+  "c1_open": {
+   "chapter": "c1",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "She opens it. Snow blows in with him - a tall man, eyebrows frosted white, a camera bag clutched to his chest like a baby."
+    },
+    {
+     "who": "marcus",
+     "text": "Thank you. Truly. I'll sit by the fire and not touch anything and be gone the second the plough comes through."
+    },
+    {
+     "who": "vivian",
+     "text": "You'll take your boots off first. And then you'll have tea, because you're blue."
+    }
+   ],
+   "next": "c2_fire"
+  },
+  "c2_fire": {
+   "chapter": "c2",
+   "location": "the cabin, by the fire",
+   "mood": "candle",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "Twenty minutes later he is wrapped in the cabin's least ugly blanket, holding a mug with both hands, his wet things steaming on the chair."
+    },
+    {
+     "who": "marcus",
+     "text": "I was up at the ridge for the great grey owls. Waited six hours. Got one photograph. Then the car decided it would rather be a sled."
+    },
+    {
+     "who": "vivian",
+     "text": "Was it a good photograph?"
+    },
+    {
+     "who": "marcus",
+     "text": "It's the best thing I've ever taken. Want to see?"
+    },
+    {
+     "who": "narrator",
+     "text": "He shows her on the camera's little screen: a pale ghost of a bird on a black branch, every feather lit by the last of the sun."
+    },
+    {
+     "who": "vivian",
+     "text": "That's beautiful."
+    },
+    {
+     "who": "marcus",
+     "text": "So - what brings a woman alone to a cabin in a blizzard? Running from something?"
+    }
+   ],
+   "choices": [
+    {
+     "text": "Tell him about the novel - and the chapter that won't come.",
+     "set": {
+      "trust": "+1",
+      "spark": "+1"
+     },
+     "next": "c2_book"
+    },
+    {
+     "text": "\"Writing. That's all you need to know, owl man.\"",
+     "next": "c2_guarded"
+    }
+   ]
+  },
+  "c2_book": {
+   "chapter": "c2",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "A novel. Two people who meet too late. I can't write the chapter where they finally touch - every version reads like an instruction manual."
+    },
+    {
+     "who": "marcus",
+     "text": "Maybe they need to stop thinking about the touching. Maybe it's the minute before that matters."
+    },
+    {
+     "who": "vivian",
+     "text": "Says the man who waits six hours for an owl."
+    },
+    {
+     "who": "marcus",
+     "text": "Exactly. The waiting is the photograph."
+    },
+    {
+     "who": "narrator",
+     "text": "She looks at him a moment too long. He notices. Neither of them says so."
+    }
+   ],
+   "next": "c3_dark"
+  },
+  "c2_guarded": {
+   "chapter": "c2",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Writing. That's all you need to know, owl man."
+    },
+    {
+     "who": "marcus",
+     "text": "Fair. I'll take the couch, and you can lock your door, and I won't take it personally."
+    },
+    {
+     "who": "vivian",
+     "text": "I wasn't going to lock it."
+    },
+    {
+     "who": "marcus",
+     "text": "Lock it anyway. You don't know me."
+    },
+    {
+     "who": "narrator",
+     "text": "It's the right thing to say. It makes her trust him a little more."
+    }
+   ],
+   "set": {
+    "trust": "+1"
+   },
+   "next": "c3_dark"
+  },
+  "c1_ask": {
+   "chapter": "c1",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Where did you go off the road?"
+    },
+    {
+     "who": "marcus",
+     "text": "The hairpin past the old sawmill. The car is sideways in a drift. You can see the hazard lights from your window if you look left."
+    },
+    {
+     "who": "narrator",
+     "text": "She looks. Two tiny orange lights blink through the snow, exactly where he said."
+    },
+    {
+     "who": "vivian",
+     "text": "All right. Boots off at the door, and you sleep on the couch."
+    },
+    {
+     "who": "marcus",
+     "text": "Deal. Thank you - I mean it."
+    }
+   ],
+   "next": "c2_fire"
+  },
+  "c3_dark": {
+   "chapter": "c3",
+   "location": "the cabin, power out",
+   "mood": "candle",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "At eleven the power gives up. The fridge sighs into silence. The only light is the fire and the half dozen candles she finds in a kitchen drawer."
+    },
+    {
+     "who": "marcus",
+     "text": "Well. Now it's a proper adventure."
+    },
+    {
+     "who": "vivian",
+     "text": "Now it's a horror film. The writer, the stranger, the storm."
+    },
+    {
+     "who": "marcus",
+     "text": "In the horror film I'd be the one who gets eaten first. Big, friendly, obviously doomed."
+    },
+    {
+     "who": "narrator",
+     "text": "She laughs - really laughs - for the first time in eleven days. He opens the second bottle of wine without being asked, and pours hers first."
+    },
+    {
+     "who": "marcus",
+     "text": "Tell me about the two people who meet too late."
+    },
+    {
+     "who": "vivian",
+     "text": "He's kind. She's tired of being careful. That's all I have."
+    },
+    {
+     "who": "marcus",
+     "text": "That sounds like plenty."
+    }
+   ],
+   "next": "c4_close"
+  },
+  "c4_close": {
+   "chapter": "c4",
+   "location": "the cabin, by the fire",
+   "mood": "candle",
+   "show": [],
+   "camera": "wide",
+   "gallery": "g_fire",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "Somewhere after midnight they end up on the rug in front of the fire, backs against the couch, shoulders touching because it's warmer that way. That's what they tell themselves."
+    },
+    {
+     "who": "marcus",
+     "text": "Can I say something that might be a mistake?"
+    },
+    {
+     "who": "vivian",
+     "text": "That's the only kind of thing worth saying at this hour."
+    },
+    {
+     "who": "marcus",
+     "text": "I'd very much like to kiss you. And I'll understand completely if you'd rather I went back to my owl."
+    },
+    {
+     "who": "narrator",
+     "text": "The fire snaps. Her heart is loud enough that she's sure he can hear it."
+    }
+   ],
+   "choices": [
+    {
+     "text": "Lean in and kiss him.",
+     "if": "spark >= 1",
+     "set": {
+      "spark": "+1"
+     },
+     "next": "c4_kiss"
+    },
+    {
+     "text": "\"Not tonight. Ask me again tomorrow.\"",
+     "set": {
+      "patient": "=1",
+      "trust": "+1"
+     },
+     "next": "c4_wait"
+    },
+    {
+     "text": "\"I'd like that. Slowly.\"",
+     "if": "trust >= 1",
+     "set": {
+      "spark": "+1",
+      "trust": "+1"
+     },
+     "next": "c4_kiss"
+    }
+   ]
+  },
+  "c4_kiss": {
+   "chapter": "c4",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "She kisses him first. His hand comes up to her cheek like she's something he's been photographing for hours and is afraid to frighten off."
+    },
+    {
+     "who": "vivian",
+     "text": "Your hands are still cold."
+    },
+    {
+     "who": "marcus",
+     "text": "Then warm them."
+    },
+    {
+     "who": "narrator",
+     "text": "They don't go further than kisses that night. They don't need to. When she finally goes to bed she leaves the bedroom door open - and he doesn't walk through it, and somehow that makes her want him more."
+    }
+   ],
+   "next": "c5_snow"
+  },
+  "c4_wait": {
+   "chapter": "c4",
+   "lines": [
+    {
+     "who": "vivian",
+     "text": "Not tonight. Ask me again tomorrow."
+    },
+    {
+     "who": "marcus",
+     "text": "I will. That's a promise."
+    },
+    {
+     "who": "narrator",
+     "text": "He kisses her forehead, once, and goes to the couch. She lies awake listening to the storm and to him breathing, and writes three pages of chapter nine on her phone in the dark."
+    }
+   ],
+   "next": "c5_snow"
+  },
+  "c5_snow": {
+   "chapter": "c5",
+   "location": "the cabin, a white morning",
+   "mood": "day",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "Morning, and the world is gone - everything outside the window is one smooth sheet of white. The road is somewhere under four feet of it."
+    },
+    {
+     "who": "marcus",
+     "text": "Radio says the plough won't come up until tomorrow. I'm sorry. You're stuck with me."
+    },
+    {
+     "who": "vivian",
+     "text": "I'll make you earn your keep. Firewood. Then pancakes."
+    },
+    {
+     "who": "narrator",
+     "text": "They spend the day like an old couple and a pair of teenagers at the same time: chopping wood, losing a snowball fight he definitely let her win, reading her pages aloud by the window."
+    },
+    {
+     "who": "marcus",
+     "text": "Your chapter nine. They don't touch for four pages and it's the most romantic thing I've ever read."
+    },
+    {
+     "who": "vivian",
+     "text": "Maybe I've had some recent research."
+    }
+   ],
+   "next": "c6_night"
+  },
+  "c6_night": {
+   "chapter": "c6",
+   "location": "the cabin bedroom",
+   "mood": "candle",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "The second night the storm is softer, a steady fall of snow that swallows every sound. She stops in the bedroom doorway."
+    },
+    {
+     "who": "vivian",
+     "text": "You promised to ask me again."
+    },
+    {
+     "who": "marcus",
+     "text": "I did. Vivian - may I?"
+    },
+    {
+     "who": "vivian",
+     "text": "Yes. Come to bed, Marcus."
+    }
+   ],
+   "next": "c6_bed"
+  },
+  "c6_bed": {
+   "chapter": "c6",
+   "location": "the cabin bedroom",
+   "mood": "candle",
+   "show": [
+    "vivian",
+    "marcus"
+   ],
+   "outfit": {
+    "vivian": "nude",
+    "marcus": "nude"
+   },
+   "act": "spoon",
+   "actT": 0.1,
+   "camera": "side",
+   "gallery": "g_night",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "Wool sweaters on the floor, the quilt pulled up against the cold, skin against skin and then nothing cold at all."
+    },
+    {
+     "who": "marcus",
+     "text": "Tell me what you like. I want to get this right."
+    },
+    {
+     "who": "vivian",
+     "text": "Slowly. Like you're waiting for the owl.",
+     "expr": {
+      "smile": 0.7
+     }
+    },
+    {
+     "who": "narrator",
+     "text": "He takes her at her word. He kisses the back of her neck, the line of her shoulder, until she is the one who can't wait any longer and reaches back to guide him to her."
+    },
+    {
+     "who": "vivian",
+     "text": "There. Oh - there.",
+     "expr": {
+      "pleasure": 0.6
+     },
+     "voice": "moan02"
+    }
+   ],
+   "play": {
+    "act": "spoon",
+    "goal": "together",
+    "next": "c7_thaw"
+   }
+  },
+  "c7_thaw": {
+   "chapter": "c7",
+   "location": "the cabin, the thaw",
+   "mood": "day",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "The plough comes at noon, orange lights blinking up the hairpin. The driver says Marcus's car can be towed by evening."
+    },
+    {
+     "who": "marcus",
+     "text": "So. This is where the owl flies away."
+    }
+   ],
+   "choices": [
+    {
+     "text": "\"Stay one more night. The book needs a final chapter.\"",
+     "if": "together >= 1 || spark >= 2",
+     "set": {
+      "spark": "+1"
+     },
+     "next": "c7_snowbound"
+    },
+    {
+     "text": "Let him go - and keep the night as it was.",
+     "next": "c7_dawn"
+    },
+    {
+     "text": "\"Write to me. I want to see the owl photographs.\"",
+     "if": "patient >= 1",
+     "next": "c7_letters"
+    }
+   ]
+  },
+  "c7_snowbound": {
+   "chapter": "c7",
+   "location": "the cabin",
+   "mood": "candle",
+   "show": [
+    "vivian",
+    "marcus"
+   ],
+   "outfit": {
+    "vivian": "nude",
+    "marcus": "nude"
+   },
+   "act": "spoon",
+   "actT": 0.0,
+   "camera": "face",
+   "gallery": "g_dawn",
+   "lines": [
+    {
+     "who": "marcus",
+     "text": "One more night. And then I'll come back in spring, when the owls nest, and you can tell me how the book ends."
+    },
+    {
+     "who": "vivian",
+     "text": "I think I know how it ends now.",
+     "expr": {
+      "smile": 0.9
+     }
+    },
+    {
+     "who": "marcus",
+     "text": "Tell me."
+    },
+    {
+     "who": "vivian",
+     "text": "They don't meet too late after all."
+    }
+   ],
+   "end": {
+    "title": "Snowbound",
+    "text": "Some storms leave you stranded. Some leave you exactly where you needed to be."
+   }
+  },
+  "c7_dawn": {
+   "chapter": "c7",
+   "location": "the cabin porch",
+   "mood": "day",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "narrator",
+     "text": "He leaves before the tow truck, walking down to meet it with his camera bag over his shoulder. At the bend he turns and lifts a hand."
+    },
+    {
+     "who": "narrator",
+     "text": "On the kitchen table he's left a print he must have carried in the bag all along: the great grey owl, every feather lit. On the back: 'For chapter nine.'"
+    },
+    {
+     "who": "narrator",
+     "text": "She finishes the novel in four days. It is the best thing she has ever written."
+    }
+   ],
+   "end": {
+    "title": "The Morning After",
+    "text": "Two strangers, one storm, one night. Neither of them will ever hear the wind in a chimney the same way again."
+   }
+  },
+  "c7_letters": {
+   "chapter": "c7",
+   "location": "the cabin porch",
+   "mood": "day",
+   "show": [],
+   "camera": "wide",
+   "lines": [
+    {
+     "who": "marcus",
+     "text": "I'll write. Real letters, with stamps. I'm old-fashioned that way."
+    },
+    {
+     "who": "vivian",
+     "text": "Good. So am I."
+    },
+    {
+     "who": "narrator",
+     "text": "The first letter arrives three weeks later: an owl photograph, and four lines that she reads so many times the paper goes soft. The second asks if she'd like to see the nesting season. She says yes."
+    }
+   ],
+   "end": {
+    "title": "Letters",
+    "text": "Some things are worth waiting for. Ask any owl photographer."
+   }
+  }
+ }
+}
