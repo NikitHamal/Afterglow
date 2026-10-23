@@ -156,6 +156,8 @@ void Renderer::bindMaterial(Program& p, const Model& m, int mi, const Character*
     p.sampler("u_texEmis", 4, mat.texEmis ? mat.texEmis : white_);
     bool hair = mat.shading == Shading::Hair;
     p.set("u_tint", (ch && hair) ? ch->hairTint : V3{1, 1, 1});
+    p.set("u_hairShape", (ch && hair) ? 1 : 0);
+    if (ch && hair) p.set("u_hairCenter", ch->hairCenter());
     bool skin = mat.shading == Shading::Skin;
     p.set("u_flush", (ch && skin) ? ch->flush : 0.f);
     p.set("u_sweat", (ch && skin) ? ch->sweat : 0.f);

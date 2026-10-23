@@ -1,5 +1,5 @@
 // Afterglow engine — procedural animation layers applied on top of clips:
-// breathing, head/eye look-at with saccades (+ eye roll), verlet hair chains with sphere colliders,
+// breathing, head/eye look-at with saccades (+ eye roll), spring-bone hair chains with sphere colliders,
 // spring "jiggle" bones.
 #pragma once
 #include "anim/animator.h"
@@ -30,6 +30,9 @@ public:
     void apply(Animator& a, float dt, const ProcParams& p);
     void reset() { needReset_ = true; }
     int hairChainCount() const { return (int)chains_.size(); }
+    // rest-pose head axes in the head bone's local frame (face forward, crown up)
+    const V3& headForwardLocal() const { return headFwd_; }
+    const V3& headUpLocal() const { return headUp_; }
     int colliderCount() const { return (int)colliders_.size(); }
 
     struct Collider { int bone; V3 local; float r; };
@@ -56,6 +59,7 @@ private:
     struct Chain {
         std::vector<int> bones;          // root .. tip leaf
         std::vector<float> rest;         // rest length bone[i-1] -> bone[i]
+        std::vector<V3> axis;            // rest direction of bone[i] in bone[i-1]'s local frame
         std::vector<V3> p, prev;
     };
     std::vector<Chain> chains_;

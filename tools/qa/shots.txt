@@ -16,10 +16,12 @@ oral|pos=oral;depth=0.6;cam=side
 lick|pos=lick;depth=0.5;cam=side
 solo|pos=solo;rub=1;cam=side
 wide|pos=missionary;depth=0.7;cam=wide
-vivian_face|pos=missionary;depth=0.3;cam=close
-vivian_pleasure|pos=missionary;depth=0.9;cam=close;face=pleasure:0.9;flush=0.7;sweat=0.6
+vivian_face|pos=solo;cam=close
+vivian_pleasure|pos=solo;rub=1;cam=close;face=pleasure:0.9;flush=0.7;sweat=0.6
 vivian_deep|pos=solo;cam=side;tone=deep
 vivian_curvy|pos=solo;cam=side;body=bust:1,hips:0.8,butt:0.8,waist:0.6
 vivian_slim|pos=solo;cam=side;body=bust:-1,hips:-0.6,weight:-0.8
-marcus_soft|pos=solo;char=marcus;aroused=0;cam=wide
+marcus_soft|pos=solo;char=marcus;aroused=0;cam=portrait
+hair_cowgirl|pos=cowgirl;depth=0.6;cam=close
+hair_doggy|pos=doggy;depth=0.5;cam=close
 debug_overlay|pos=missionary;depth=0.6;cam=side;debug=1

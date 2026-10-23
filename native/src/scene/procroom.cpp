@@ -172,8 +172,8 @@ GLuint texWallpaper() {
             float du = std::fabs(std::fmod(u * 4.f + 0.5f, 1.f) - 0.5f), dv = std::fabs(std::fmod(v * 3.f + 0.5f, 1.f) - 0.5f);
             float diamond = smoothstep(0.42f, 0.38f, du + dv * 0.75f) - smoothstep(0.30f, 0.26f, du + dv * 0.75f);
             float stripe = smoothstep(0.02f, 0.0f, std::fabs(std::fmod(u * 8.f, 1.f) - 0.5f) - 0.47f);
-            V3 base{0.33f, 0.115f, 0.145f};
-            V3 c = base * (0.9f + 0.2f * fbm(u * 40.f, v * 40.f, 3)) + V3{0.06f, 0.035f, 0.025f} * (diamond * 0.6f + stripe * 0.25f);
+            V3 base{0.15f, 0.19f, 0.195f};
+            V3 c = base * (0.9f + 0.2f * fbm(u * 40.f, v * 40.f, 3)) + V3{0.07f, 0.055f, 0.03f} * (diamond * 0.6f + stripe * 0.25f);
             put(px, N, x, y, c);
         }
     return textureFromRGBA(px.data(), N, N, true);
@@ -187,9 +187,9 @@ GLuint texRug() {
             float border = smoothstep(0.08f, 0.075f, b) - smoothstep(0.045f, 0.04f, b);
             float r = length(V3{(u - 0.5f) * 1.4f, (v - 0.5f), 0});
             float med = smoothstep(0.24f, 0.22f, r) * (0.5f + 0.5f * std::sin(std::atan2(v - 0.5f, u - 0.5f) * 8.f + r * 30.f));
-            V3 c{0.42f, 0.08f, 0.10f};
+            V3 c{0.30f, 0.235f, 0.20f};
             c = c * (0.85f + 0.3f * fbm(u * 90.f, v * 90.f, 2));
-            c = lerp(c, V3{0.55f, 0.38f, 0.18f}, border * 0.8f + med * 0.35f);
+            c = lerp(c, V3{0.52f, 0.38f, 0.18f}, border * 0.8f + med * 0.35f);
             put(px, N, x, y, c);
         }
     return textureFromRGBA(px.data(), N, N, true);
@@ -257,13 +257,13 @@ void buildPlaceholderRoom(Model& out, RoomInfo& info) {
 
     int mWood = mat("floor_wood", {1, 1, 1, 1}, 0.42f, 0.f, texWood());
     int mWall = mat("wallpaper", {1, 1, 1, 1}, 0.85f, 0.f, texWallpaper());
-    int mPanel = mat("wainscot", {0.10f, 0.04f, 0.045f, 1}, 0.5f, 0.f);
+    int mPanel = mat("wainscot", {0.085f, 0.055f, 0.04f, 1}, 0.5f, 0.f);
     int mFrame = mat("bed_frame", {0.11f, 0.055f, 0.035f, 1}, 0.36f, 0.f);
-    int mMattress = mat("mattress", {0.15f, 0.03f, 0.045f, 1}, 0.8f, 0.f);
-    int mSheet = mat("sheet_satin", {0.14f, 0.020f, 0.026f, 1}, 0.28f, 0.f);
-    int mPillow = mat("pillow", {0.78f, 0.70f, 0.64f, 1}, 0.7f, 0.f);
-    int mHead = mat("headboard_velvet", {0.24f, 0.05f, 0.08f, 1}, 0.72f, 0.f);
-    int mDuvet = mat("duvet", {0.40f, 0.10f, 0.13f, 1}, 0.62f, 0.f);
+    int mMattress = mat("mattress", {0.50f, 0.45f, 0.40f, 1}, 0.8f, 0.f);
+    int mSheet = mat("sheet_satin", {0.42f, 0.35f, 0.28f, 1}, 0.42f, 0.f);
+    int mPillow = mat("pillow", {0.78f, 0.73f, 0.66f, 1}, 0.7f, 0.f);
+    int mHead = mat("headboard_velvet", {0.11f, 0.105f, 0.11f, 1}, 0.72f, 0.f);
+    int mThrow = mat("throw", {0.30f, 0.045f, 0.07f, 1}, 0.62f, 0.f);
     int mStand = mat("nightstand", {0.10f, 0.05f, 0.032f, 1}, 0.33f, 0.f);
     int mBrass = mat("brass", {0.62f, 0.45f, 0.22f, 1}, 0.28f, 1.f);
     int mShade = mat("lamp_shade", {0.95f, 0.78f, 0.55f, 1}, 0.8f, 0.f, 0, {5.5f, 3.4f, 1.6f});
@@ -272,7 +272,7 @@ void buildPlaceholderRoom(Model& out, RoomInfo& info) {
     int mRug = mat("rug", {1, 1, 1, 1}, 0.95f, 0.f, texRug());
     GLuint night = texNight();
     int mWindow = mat("window_night", {0, 0, 0, 1}, 1.f, 0.f, 0, {1.4f, 1.4f, 1.4f}, night);
-    int mCurtain = mat("curtain_velvet", {0.22f, 0.04f, 0.06f, 1}, 0.78f, 0.f);
+    int mCurtain = mat("curtain_velvet", {0.035f, 0.085f, 0.09f, 1}, 0.78f, 0.f);
     out.materials[(size_t)mFlame].castShadow = false;
     out.materials[(size_t)mShade].castShadow = false;
     out.materials[(size_t)mWindow].castShadow = false;
@@ -304,8 +304,16 @@ void buildPlaceholderRoom(Model& out, RoomInfo& info) {
     for (int s = -1; s <= 1; s += 2)
         add(s < 0 ? "pillow_l" : "pillow_r", superEllipsoid({0.42f * (float)s, bedTop + 0.075f, headZ + 0.30f}, {0.32f, 0.085f, 0.20f}, 0.45f, 0.3f, 18,
             [](V3 p) { p.y *= 1.f - 0.25f * std::fabs(p.x) / 0.32f; return p; }), mPillow);
-    add("duvet", superEllipsoid({0.f, bedTop + 0.045f, footZ - 0.18f}, {0.92f, 0.055f, 0.24f}, 0.35f, 0.25f, 22,
-        [](V3 p) { p.y += std::sin(p.x * 7.f) * 0.008f; return p; }), mDuvet);
+    // throw folded over the foot edge: only 9 cm lies on the mattress, so feet and shins stay clear of it
+    MeshData drape = grid(48, 12, [&](float u, float v) {
+        float x = -(HW + 0.05f) + u * 2.f * (HW + 0.05f);
+        float s = v * 0.48f, ripple = 0.006f * std::sin(x * 11.f + v * 3.f);
+        if (s < 0.09f) return V3{x, bedTop + 0.014f + ripple * 0.3f, footZ - 0.09f + s};
+        float t = s - 0.09f, bend = std::min(1.f, t / 0.05f);
+        return V3{x, bedTop + 0.014f - t, footZ + 0.004f + 0.022f * bend + ripple};
+    }, 5.f, 1.f);
+    orientBy(drape, [&](V3 q) { return q.y > bedTop ? V3{0, 1, 0} : V3{0, 0, 1}; });
+    add("throw", drape, mThrow);
     add("headboard", facing(grid(48, 30, [&](float u, float v) {
         float x = -(HW + 0.10f) + u * 2.f * (HW + 0.10f), y = 0.42f + v * 1.25f;
         float tuft = std::cos(x * 26.f) * std::cos(y * 26.f + (std::fmod(std::floor(y * 4.1f), 2.f) * 3.14f));

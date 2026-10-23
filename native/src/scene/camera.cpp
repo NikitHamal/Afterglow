@@ -92,6 +92,7 @@ CameraState CameraRig::update(float dt, float aspect) {
         float u = smoothstep(0.f, 1.f, fpBlend_);
         eye = lerp(eye, fEye, u);
         tgt = lerp(tgt, fEye + dir, u);
+        cs.fovy = lerpf(fovDeg_, fpFovDeg_, u) * kPi / 180.f;   // first person wants a natural, wider view
     }
     if (sway > 0.f) {
         V3 s{vnoise1(time_ * 0.37f), vnoise1(time_ * 0.29f + 5.f), vnoise1(time_ * 0.31f + 9.f)};

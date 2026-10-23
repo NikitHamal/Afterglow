@@ -34,6 +34,8 @@ public:
 
 private:
     void applyPose();
+    void applyCameraPreset();
+    bool boneShot(const std::string& name, V3& target, float& yaw, float& pitch, float& dist) const;
     void drawOverlay(int w, int h);
     std::string currentPos() const { return positions_.empty() ? std::string() : positions_[(size_t)posIndex_]; }
     V3 focusPoint() const;
@@ -51,6 +53,8 @@ private:
     CameraState cam_;
     Json clipsMeta_;
     std::string camPreset_ = "front";
+    float camBlend_ = 0.f;
+    bool camPending_ = false, camFollow_ = false;
     bool quit_ = false;
     bool dropdownEdit_ = false;
     bool forceChars_ = false;

@@ -64,7 +64,12 @@ void Procedural::init(Animator& a, float rootScale) {
         }
         if (ch.bones.size() < 2) continue;
         ch.rest.assign(ch.bones.size(), 0.f);
-        for (size_t k = 1; k < ch.bones.size(); ++k) ch.rest[k] = length(pos(a, ch.bones[k]) - pos(a, ch.bones[k - 1])) * scale_;
+        ch.axis.assign(ch.bones.size(), V3{0, 1, 0});
+        for (size_t k = 1; k < ch.bones.size(); ++k) {
+            ch.rest[k] = length(pos(a, ch.bones[k]) - pos(a, ch.bones[k - 1])) * scale_;
+            V3 t = a.restT(ch.bones[k]);
+            if (length(t) > 1e-6f) ch.axis[k] = normalize(t);
+        }
         chains_.push_back(std::move(ch));
     }
 
@@ -121,14 +126,16 @@ void Procedural::look(Animator& a, float dt, const ProcParams& p) {
         V3 cur = normalize(qrotate(w, fwdLocal));
         V3 want = normalize(target - pos(a, n));
         if (length(want) < 0.5f) return;
+        float off = std::acos(clampf(dot(cur, want), -1.f, 1.f));
+        float cone = 1.f - smoothstep(1.3f, 2.1f, off);   // don't wrench the neck toward targets behind
         Quat d = qclampAngle(qfromto(cur, want), maxAng);
-        d = qslerp(Quat{}, d, clampf(weight, 0.f, 1.f));
+        d = qslerp(Quat{}, d, clampf(weight * cone, 0.f, 1.f));
         a.setWorldRot(n, qmul(d, w));
         a.recomputeSubtree(n);
     };
     float lw = clampf(p.lookWeight, 0.f, 1.f);
-    if (neck_ >= 0) aim(neck_, neckFwd_, lookSmooth_, 0.35f, lw * 0.4f);
-    aim(head_, headFwd_, lookSmooth_, 0.75f, lw);
+    if (neck_ >= 0) aim(neck_, neckFwd_, lookSmooth_, 0.25f, lw * 0.35f);
+    aim(head_, headFwd_, lookSmooth_, 0.55f, lw);
     // eyes: saccades jump, roll-up blends toward the brow line
     saccadeT_ -= dt;
     if (p.saccades && saccadeT_ <= 0.f) {
@@ -176,64 +183,76 @@ void Procedural::jiggle(Animator& a, float dt, const ProcParams& p) {
 }
 
 void Procedural::hair(Animator& a, float dt, const ProcParams& p) {
+    // Spring-bone chains (the VRM model): every joint is pulled toward its animated direction relative to
+    // its *simulated* parent, plus gravity; inertia with drag; length-preserving; pushed out of sphere
+    // colliders and above the floor plane. Stiffness falls off toward the tips, so long hair hangs and
+    // swings while the roots keep the style on the scalp.
     if (chains_.empty() || dt <= 0.f) return;
-    // world colliders
     struct WS { V3 c; float r; };
     std::vector<WS> cols;
     cols.reserve(colliders_.size());
-    for (auto& c : colliders_) cols.push_back({xformPoint(a.global(c.bone), c.local), c.r * scale_ + 0.006f * scale_});
+    for (auto& c : colliders_) cols.push_back({xformPoint(a.global(c.bone), c.local), c.r * scale_});
     V3 anchor = head_ >= 0 ? pos(a, head_) : pos(a, chains_[0].bones[0]);
     bool teleport = needReset_ || length(anchor - lastAnchor_) > 0.35f;
     lastAnchor_ = anchor;
-    const V3 grav = V3{0, -9.81f, 0} * p.hairGravity;
-    hairAccum_ = teleport ? 0.f : std::min(hairAccum_ + dt, 4.f / 90.f);
     const float h = 1.f / 90.f;
+    int steps = 0;
+    if (teleport) {
+        hairAccum_ = 0.f;
+        steps = 45;   // settle half a second in the new pose instead of popping from the styled shape
+    } else {
+        hairAccum_ = std::min(hairAccum_ + dt, 4.f * h);
+        steps = (int)(hairAccum_ / h);
+        hairAccum_ -= (float)steps * h;
+    }
+    const V3 down{0, -1, 0};
+    const float grav = 0.9f * p.hairGravity * scale_, drag = 0.35f, hit = 0.012f * scale_;
     for (Chain& ch : chains_) {
-        size_t n = ch.bones.size();
+        const size_t n = ch.bones.size();
         if (teleport || ch.p.size() != n) {
             ch.p.resize(n); ch.prev.resize(n);
             for (size_t i = 0; i < n; ++i) ch.p[i] = ch.prev[i] = pos(a, ch.bones[i]);
         }
-    }
-    while (hairAccum_ >= h) {
-        hairAccum_ -= h;
-        for (Chain& ch : chains_) {
-            size_t n = ch.bones.size();
-            ch.p[0] = ch.prev[0] = pos(a, ch.bones[0]);
+        const int parent = a.model()->nodes[(size_t)ch.bones[0]].parent;
+        const Quat parentW = parent >= 0 ? a.worldRot(parent) : Quat{};
+        ch.p[0] = ch.prev[0] = pos(a, ch.bones[0]);
+        for (int st = 0; st < steps; ++st) {
+            Quat rotPrev = parentW;
             for (size_t i = 1; i < n; ++i) {
-                V3 target = pos(a, ch.bones[i]);               // rigid (styled) position this frame
-                float k = (0.16f - 0.10f * (float)i / (float)(n - 1)) * p.hairStiffness;
-                V3 vel = (ch.p[i] - ch.prev[i]) * 0.93f;
-                ch.prev[i] = ch.p[i];
-                ch.p[i] = ch.p[i] + vel + grav * (h * h) + (target - ch.p[i]) * k;
-            }
-            for (int it = 0; it < 3; ++it) {
-                for (size_t i = 1; i < n; ++i) {
-                    V3 d = ch.p[i] - ch.p[i - 1];
+                const Quat restW = qmul(rotPrev, a.r(ch.bones[i - 1]));
+                const V3 axisW = qrotate(restW, ch.axis[i]);
+                const float k = (1.8f - 1.25f * (float)(i - 1) / (float)std::max<size_t>(1, n - 2)) * p.hairStiffness * scale_;
+                const V3 root = ch.p[i - 1];
+                auto project = [&](const V3& q) {
+                    V3 d = q - root;
                     float l = length(d);
-                    if (l > 1e-6f) ch.p[i] = ch.p[i - 1] + d * (ch.rest[i] / l);
-                    for (const WS& c : cols) {
-                        V3 dc = ch.p[i] - c.c;
-                        float dl = length(dc);
-                        if (dl < c.r && dl > 1e-6f) ch.p[i] = c.c + dc * (c.r / dl);
-                    }
-                    if (ch.p[i].y < p.floorY + 0.004f) ch.p[i].y = p.floorY + 0.004f;
+                    return l > 1e-6f ? root + d * (ch.rest[i] / l) : root + axisW * ch.rest[i];
+                };
+                const V3 cur = ch.p[i];
+                V3 next = project(cur + (cur - ch.prev[i]) * (1.f - drag) + axisW * (k * h) + down * (grav * h));
+                for (const WS& c : cols) {
+                    V3 dc = next - c.c;
+                    float r = c.r + hit, d2 = dot(dc, dc);
+                    if (d2 < r * r && d2 > 1e-12f) next = project(c.c + dc * (r / std::sqrt(d2)));
                 }
+                if (next.y < p.floorY + hit) next = project(V3{next.x, p.floorY + hit, next.z});
+                ch.prev[i] = cur;
+                ch.p[i] = next;
+                V3 dir = next - root;
+                rotPrev = length(dir) > 1e-6f ? qmul(qfromto(axisW, normalize(dir)), restW) : restW;
             }
         }
-    }
-    // orient bones toward the simulated particles, root to tip
-    for (Chain& ch : chains_) {
-        size_t n = ch.bones.size();
-        for (size_t i = 0; i + 1 < n; ++i) {
-            int b = ch.bones[i], c = ch.bones[i + 1];
-            V3 o = pos(a, b);
-            V3 cur = normalize(pos(a, c) - o);
-            V3 want = normalize(ch.p[i + 1] - o);
-            if (length(cur) < 0.5f || length(want) < 0.5f) continue;
-            Quat w = a.worldRot(b);
-            a.setWorldRot(b, qmul(qfromto(cur, want), w));
+        // orient each joint toward its simulated tail, root to tip
+        Quat rotPrev = parentW;
+        for (size_t i = 1; i < n; ++i) {
+            const int b = ch.bones[i - 1];
+            const Quat restW = qmul(rotPrev, a.r(b));
+            const V3 axisW = qrotate(restW, ch.axis[i]);
+            V3 want = ch.p[i] - pos(a, b);
+            Quat w = length(want) > 1e-6f ? qmul(qfromto(axisW, normalize(want)), restW) : restW;
+            a.setWorldRot(b, w);
             a.recomputeSubtree(b);
+            rotPrev = w;
         }
     }
 }

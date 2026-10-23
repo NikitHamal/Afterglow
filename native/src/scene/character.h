@@ -59,6 +59,8 @@ public:
     V3 bonePos(const std::string& name) const;
     M4 boneWorld(const std::string& name) const;
     V3 forward() const;                                    // model facing (+Z) in world
+    V3 hairCenter() const { return hairCenter_; }          // skull centre (world)
+    void headAxes(V3& center, V3& faceFwd, V3& crownUp) const;   // world head frame (cameras, gaze)
     float autoScale() const { return autoScale_; }
     float footOffset() const { return footY_ * autoScale_; }
     M4 rootMatrix() const;
@@ -77,6 +79,7 @@ private:
 
     bool loaded_ = false;
     float autoScale_ = 1.f, footY_ = 0.f;
+    V3 hairCenter_{0, 1.6f, 0};
     std::string dir_, tone_;
     struct Layer { int clip = -1; float t = 0.f, w = 0.f; std::string mask; };
     Layer layers_[kLayers];
