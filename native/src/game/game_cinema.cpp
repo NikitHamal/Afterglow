@@ -508,6 +508,37 @@ void Game::applyStoryPose(float dt) {
             (s ? tm.right : tm.left) = h;
         }
     }
+    // seated, kissing: the near hands find each other — hers flat on his chest, his on her waist, each on the side
+    // facing the partner (sitting side by side turned in, the far hands stay where the clip rests them)
+    if (sit && both && kiss_ > 0.05f) {
+        float sw = smoothstep(0.15f, 0.8f, kiss_);
+        V3 vr = flatv(v.bonePos("腕.R") - v.bonePos("腕.L")), hr = flatv(m.bonePos("腕.R") - m.bonePos("腕.L"));
+        V3 vf = flatv(cross(V3{0, 1, 0}, vr)), hf = flatv(cross(V3{0, 1, 0}, hr));
+        V3 toHim = flatv(m.bonePos("センター") - v.bonePos("センター"));
+        bool heOnHerRight = dot(toHim, vr) > 0.f, sheOnHisRight = dot(toHim, hr) < 0.f;
+        V3 zp, zn;
+        Zone hz = sheOnHisRight ? Zone::ChestR : Zone::ChestL, vz = heOnHerRight ? Zone::WaistR : Zone::WaistL;
+        if (m.touch.zoneWorld(m.anim, hz, zp, zn)) {
+            HandGoal g;
+            g.active = true; g.world = true; g.flat = true; g.dent = false; g.weight = sw; g.curl = 0.12f; g.press = 0.f;
+            g.palmLift = 0.017f;
+            g.pos = zp + zn * clothOver(1, hz);
+            g.normal = zn;
+            g.along = normalize(V3{0.f, 1.f, 0.f} + flatv(zp - m.bonePos("上半身2")) * 0.35f);
+            g.elbowHint = normalize(V3{0.f, -1.f, 0.f} + vf * 0.45f);        // in front of her, low: clear of his arm
+            (heOnHerRight ? tv.right : tv.left) = g;
+        }
+        if (v.touch.zoneWorld(v.anim, vz, zp, zn)) {
+            HandGoal h;
+            h.active = true; h.world = true; h.flat = true; h.dent = false; h.weight = sw; h.curl = 0.2f; h.press = 0.f;
+            h.palmLift = 0.02f;
+            h.pos = zp + zn * clothOver(0, vz);
+            h.normal = zn;
+            h.along = normalize(vf * -1.f + V3{0.f, -0.2f, 0.f});           // fingers around toward her back
+            h.elbowHint = normalize(V3{0.f, -1.f, 0.f} - hf * 0.35f);       // low and back: under her forearm
+            (sheOnHisRight ? tm.right : tm.left) = h;
+        }
+    }
     // "me": the right hand laid flat on one's own upper chest, a little to the heart side, fingers toward the left
     // shoulder, the elbow down and out
     for (int w = 0; w < 2; ++w) {
