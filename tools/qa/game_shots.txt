@@ -8,6 +8,8 @@ menu|screen=menu;t=3
 customize_her|screen=customize;tab=her;t=2
 customize_curvy|screen=customize;tab=her;body=bust:1,hips:0.85,butt:0.9,weight:0.55,belly:0.3;hair=3;t=2
 customize_slim|screen=customize;tab=her;body=bust:-0.55,hips:-0.45,waist:0.45,butt:-0.4,weight:-0.75;tone=honey;t=2
+customize_bbw|screen=customize;tab=her;body=bust:1,hips:1,waist:-0.9,butt:0.95,weight:1,belly:0.9;tone=ebony;t=2
+customize_petite|screen=customize;tab=her;body=bust:-0.35,hips:-0.3,waist:0.3,butt:-0.2,weight:-0.45,muscle:0.1;tone=fair;age=28;t=2
 customize_him|screen=customize;tab=him;t=2
 settings_display|screen=settings;settab=0;t=2
 settings_lighting|screen=settings;settab=2;t=2

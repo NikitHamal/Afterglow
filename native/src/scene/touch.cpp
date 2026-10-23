@@ -59,7 +59,10 @@ void TouchRig::init(Character& c) {
         int bone = node("下半身");
         if (cnt > 0 && bone >= 0) {
             V3 p = sum * (float)(1.0 / cnt);
-            V3 n = length(nsum) > 1e-6f ? normalize(nsum) : V3{0, -0.5f, 0.86f};
+            // the opening's normals partly cancel: lean on the direction out from the pelvis
+            V3 out = p - a.global(bone).translation();
+            V3 n = normalize((length(out) > 1e-4f ? normalize(out) : V3{0, -0.5f, 0.86f}) +
+                             (length(nsum) > 1e-6f ? normalize(nsum) * 0.35f : V3{0, 0, 0}));
             M4 inv = inverse(a.global(bone));
             zones_[(int)Zone::Vulva] = {bone, xformPoint(inv, p), normalize(xformDir(inv, n)), true};
         }

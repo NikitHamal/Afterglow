@@ -58,6 +58,13 @@ bool Sandbox::init() {
     cameraPreset("front", 0.f);
     camSafety_.boundsMin = scene.info.camMin;
     camSafety_.boundsMax = scene.info.camMax;
+    {
+        // the bed: the mattress (eye stays above the sheet) and the headboard with the pillows against it
+        const RoomInfo& ri = scene.info;
+        float hx = ri.bedHalf.x + 0.08f, headZ = ri.bedCenter.z - ri.bedHalf.z, footZ = ri.bedCenter.z + ri.bedHalf.z;
+        camSafety_.solids.push_back({V3{-hx, 0.f, headZ - 0.1f}, V3{hx, ri.bedTop + 0.04f, footZ + 0.06f}});
+        camSafety_.solids.push_back({V3{-hx - 0.05f, 0.f, headZ - 0.25f}, V3{hx + 0.05f, 1.35f, headZ + 0.22f}});
+    }
     camera.solve = [this](const V3& eye, const V3& target, bool fp) { return resolveCamera(proxies_, camSafety_, eye, target, fp ? 1 : -1); };
     return true;
 }

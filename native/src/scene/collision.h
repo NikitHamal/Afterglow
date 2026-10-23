@@ -22,8 +22,11 @@ private:
     std::vector<Capsule> caps_;
 };
 
+struct Box3 { V3 mn, mx; };
+
 struct CameraSafety {
     V3 boundsMin{-3, 0.1f, -3}, boundsMax{3, 2.8f, 3.5f};
+    std::vector<Box3> solids;      // furniture the eye must stay out of (mattress, headboard + pillows)
     float margin = 0.09f;          // eye-to-skin clearance (keeps the near plane out of bodies)
     float nearProbe = 0.12f;       // also clear a point this far ahead of the eye
 };

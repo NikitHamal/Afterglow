@@ -7,6 +7,13 @@ namespace ag {
 
 const int Settings::kFpsCaps[5] = {30, 60, 120, 144, 0};
 
+namespace { const char* kTones[kSkinToneCount] = {"fair", "honey", "olive", "bronze", "caramel", "deep", "ebony"}; }
+const char* skinToneName(int i) { return kTones[std::max(0, std::min(kSkinToneCount - 1, i))]; }
+int skinToneIndex(const std::string& n) {
+    for (int i = 0; i < kSkinToneCount; ++i) if (n == kTones[i]) return i;
+    return -1;
+}
+
 int Settings::fpsLimit() const { return kFpsCaps[std::max(0, std::min(fpsCap, 4))]; }
 
 namespace {
@@ -96,15 +103,24 @@ bool Profile::load(const std::string& path) {
     her.weight = rd(h, "weight", 0.f, -1.f, 1.f);
     her.muscle = rd(h, "muscle", 0.f, 0.f, 1.f);
     her.belly = rd(h, "belly", 0.f, 0.f, 1.f);
-    her.tone = ri(h, "tone", 1, 0, 2);
+    // skin by name; profiles from before the seven tones stored 0 honey / 1 caramel / 2 deep
+    auto tone = [&](const Json& o) {
+        int byName = skinToneIndex(o["skin"].str());
+        if (byName >= 0) return byName;
+        const int old3[3] = {1, 4, 5};
+        return old3[ri(o, "tone", 1, 0, 2)];
+    };
+    her.tone = tone(h);
     her.hair = ri(h, "hair", 0, 0, 15);
+    her.age = rd(h, "age", 42.f, kMinAge, kMaxAge);
     const Json& m = j["him"];
     him.muscle = rd(m, "muscle", 0.f, -1.f, 1.f);
     him.weight = rd(m, "weight", 0.f, -1.f, 1.f);
     him.belly = rd(m, "belly", 0.f, 0.f, 1.f);
     him.length = rd(m, "length", 0.f, -1.f, 1.f);
     him.girth = rd(m, "girth", 0.f, -1.f, 1.f);
-    him.tone = ri(m, "tone", 1, 0, 2);
+    him.tone = tone(m);
+    him.age = rd(m, "age", 40.f, kMinAge, kMaxAge);
     const Json& s = j["stats"];
     stats.nights = ri(s, "nights", 0, 0, 1 << 30);
     stats.together = ri(s, "together", 0, 0, 1 << 30);
@@ -138,11 +154,13 @@ bool Profile::save(const std::string& path) const {
     Json h = Json::object();
     h.set("bust", Json::of(her.bust)); h.set("hips", Json::of(her.hips)); h.set("waist", Json::of(her.waist));
     h.set("butt", Json::of(her.butt)); h.set("weight", Json::of(her.weight)); h.set("muscle", Json::of(her.muscle));
-    h.set("belly", Json::of(her.belly)); h.set("tone", Json::of(her.tone)); h.set("hair", Json::of(her.hair));
+    h.set("belly", Json::of(her.belly)); h.set("skin", Json::of(std::string(skinToneName(her.tone)))); h.set("hair", Json::of(her.hair));
+    h.set("age", Json::of(std::max(kMinAge, std::min(kMaxAge, her.age))));
     j.set("her", h);
     Json m = Json::object();
     m.set("muscle", Json::of(him.muscle)); m.set("weight", Json::of(him.weight)); m.set("belly", Json::of(him.belly));
-    m.set("length", Json::of(him.length)); m.set("girth", Json::of(him.girth)); m.set("tone", Json::of(him.tone));
+    m.set("length", Json::of(him.length)); m.set("girth", Json::of(him.girth)); m.set("skin", Json::of(std::string(skinToneName(him.tone))));
+    m.set("age", Json::of(std::max(kMinAge, std::min(kMaxAge, him.age))));
     j.set("him", m);
     Json s = Json::object();
     s.set("nights", Json::of(stats.nights)); s.set("together", Json::of(stats.together));

@@ -50,6 +50,7 @@ public:
     bool setTone(const std::string& tone);                 // honey | caramel | deep
     const std::string& tone() const { return tone_; }
     V3 hairTint{1, 1, 1};                                  // linear multiplier on hair albedo
+    V3 skinTint{1, 1, 1};                                  // linear multiplier on skin (+ genital) albedo: tone variants
     float flush = 0.f;                                     // 0..1 arousal flush
     float sweat = 0.f;                                     // 0..1 sweat sheen
 
