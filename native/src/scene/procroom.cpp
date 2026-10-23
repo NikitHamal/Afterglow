@@ -275,7 +275,7 @@ void buildPlaceholderRoom(Model& out, RoomInfo& info) {
     int mPanel = mat("wainscot", {0.085f, 0.055f, 0.04f, 1}, 0.5f, 0.f);
     int mFrame = mat("bed_frame", {0.11f, 0.055f, 0.035f, 1}, 0.36f, 0.f);
     int mMattress = mat("mattress", {0.50f, 0.45f, 0.40f, 1}, 0.8f, 0.f);
-    int mSheet = mat("sheet_satin", {0.34f, 0.275f, 0.21f, 1}, 0.4f, 0.f, texSatin());
+    int mSheet = mat("sheet_satin", {0.34f, 0.275f, 0.21f, 1}, 0.62f, 0.f, texSatin());
     int mPillow = mat("pillow", {0.78f, 0.73f, 0.66f, 1}, 0.7f, 0.f);
     int mHead = mat("headboard_velvet", {0.11f, 0.105f, 0.11f, 1}, 0.72f, 0.f);
     int mThrow = mat("throw", {0.30f, 0.045f, 0.07f, 1}, 0.62f, 0.f);

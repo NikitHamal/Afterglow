@@ -4,6 +4,7 @@
 #include "core/paths.h"
 #include "external/cgltf.h"   // implementation is compiled inside raylib (rmodels.c)
 #include <cstring>
+#include <future>
 #include <map>
 #include <algorithm>
 #include <cctype>
@@ -221,7 +222,21 @@ bool Model::load(const std::string& p) {
     if (cgltf_parse(&opt, bytes.data(), bytes.size(), &d) != cgltf_result_success) { AG_ERROR("AG: glTF parse failed %s", p.c_str()); return false; }
     if (cgltf_load_buffers(&opt, d, p.c_str()) != cgltf_result_success) { AG_ERROR("AG: glTF buffers failed %s", p.c_str()); cgltf_free(d); return false; }
 
-    // ---- textures (lazy, keyed by image + colour space) ----
+    // ---- textures: embedded images decoded in parallel (CPU), uploaded lazily per colour space (GPU) ----
+    std::vector<DecodedImage> decoded(d->images_count);
+    {
+        std::vector<std::future<void>> jobs;
+        for (size_t i = 0; i < d->images_count; ++i) {
+            const cgltf_image& im = d->images[i];
+            if (!im.buffer_view) continue;
+            const uint8_t* data = cgltf_buffer_view_data(im.buffer_view);
+            int size = (int)im.buffer_view->size;
+            if (!data || size <= 0) continue;
+            DecodedImage* dst = &decoded[i];
+            jobs.push_back(std::async(std::launch::async, [data, size, dst] { decodeImage(data, size, *dst); }));
+        }
+        for (auto& j : jobs) j.get();
+    }
     std::map<std::pair<int, bool>, GLuint> texCache;
     auto texFor = [&](const cgltf_texture_view& v, bool srgb) -> GLuint {
         if (!v.texture || !v.texture->image) return 0;
@@ -230,7 +245,10 @@ bool Model::load(const std::string& p) {
         auto it = texCache.find(key);
         if (it != texCache.end()) return it->second;
         GLuint t = 0;
-        if (img->buffer_view) {
+        const DecodedImage& pre = decoded[(size_t)key.first];
+        if (pre.w > 0) {
+            t = textureFromDecoded(pre, srgb);
+        } else if (img->buffer_view) {
             const uint8_t* data = cgltf_buffer_view_data(img->buffer_view);
             if (data) t = textureFromMemory(data, (int)img->buffer_view->size, srgb);
         } else if (img->uri && std::strncmp(img->uri, "data:", 5) != 0) {

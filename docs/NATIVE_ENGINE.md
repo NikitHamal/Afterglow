@@ -141,7 +141,7 @@ graphics, audio, controls, game) / the night -> pause -> results.
   atomically; autosave every 20 s in play. User folder: `%APPDATA%\Afterglow`, `~/.config/afterglow`,
   `~/Library/Application Support/Afterglow`; logs in `logs/afterglow.log` (+ `.prev.log`, crash notes).
 - Lifecycle (`main.cpp`, `app/platform`): single instance (Windows mutex `AfterglowGameMutex`, shared with the
-  installer's AppMutex; a lock file elsewhere), pause + 20 fps when unfocused, sleep while minimised, F11 /
+  installer's AppMutex; a lock file elsewhere), pause + 8 fps when unfocused, sleep while minimised, F11 /
   Alt+Enter borderless toggle, graceful shutdown (save, stop audio, free GL).
 - Updater (`app/updater`): CI builds `0.<run>.0` and publishes `latest.json` (`version`, `notes`, `page`,
   `assets.<windows|windows-portable|linux|macos> = {url, sha256, size}`) with the nightly release. The game

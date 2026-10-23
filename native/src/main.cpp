@@ -11,6 +11,7 @@
 #include "core/paths.h"
 #include "game/game.h"
 #include "raylib.h"
+#include "embedded_icon.h"
 #include <algorithm>
 #include <cstring>
 #include <memory>
@@ -107,6 +108,12 @@ int main(int argc, char** argv) {
     if (!IsWindowReady()) { AG_ERROR("AG: no OpenGL 3.3 window"); ag::platform::releaseSingleInstance(); ag::platform::closeLog(); return 1; }
     SetWindowMinSize(960, 540);
     SetExitKey(KEY_NULL);
+#if !defined(_WIN32)
+    {
+        Image icon = LoadImageFromMemory(".png", kAppIconPng, kAppIconPngSize);
+        if (icon.data) { SetWindowIcon(icon); UnloadImage(icon); }
+    }
+#endif
     if (pre.windowMode != 0) applyDisplay(pre, true);
     else applyDisplay(pre, false);
 
@@ -135,7 +142,7 @@ int main(int argc, char** argv) {
             WaitTime(0.12);
             continue;
         }
-        int cap = focused ? game.settings.fpsLimit() : 20;   // unfocused: a slow, cheap frame rate
+        int cap = focused ? game.settings.fpsLimit() : 8;    // unfocused: paused game, a few cheap frames a second
         if (cap != lastCap) { SetTargetFPS(cap); lastCap = cap; }
         if (IsKeyPressed(KEY_F11) || ((IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) && IsKeyPressed(KEY_ENTER))) {
             game.settings.windowMode = game.settings.windowMode == 0 ? 1 : 0;

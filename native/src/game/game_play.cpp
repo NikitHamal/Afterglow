@@ -40,6 +40,9 @@ void Game::startNight(bool resume) {
     for (size_t i = 0; i < positions_.size(); ++i) if (positions_[i].id == want) start = (int)i;
     posIndex_ = -1;
     setPosition(start, true);
+    // establishing shot: start wide, ease into the position's camera
+    camera.setOrbit(scene.info.bedCenter + V3{0.f, 0.15f, 0.f}, camera.yaw + 0.6f, 0.42f, 3.6f, 0.f);
+    cameraForPosition(3.f);
     depth_ = depthTarget_ = dragDepth_ = 0.3f;
     rhythm_ = rhythmToggle_ = false;
     rhythmTempo_ = 0.8f; rhythmAmp_ = 0.5f; rhythmPhase_ = 0.f;
@@ -172,6 +175,12 @@ void Game::updatePlay(float dt) {
     bool dragging = IsMouseButtonDown(MOUSE_BUTTON_LEFT) && !overUi && !ui.anyActive();
     bool orbiting = IsMouseButtonDown(MOUSE_BUTTON_RIGHT);
     float wheel = orbiting ? 0.f : ui.in.wheel;
+    // the cursor hides while you move together, and when the mouse rests
+    static float still = 0.f;
+    still = ui.in.mouseMoved && !dragging ? 0.f : still + dt;
+    bool hide = !harness && (dragging || (still > 2.5f && !barOpen_));
+    if (hide && !IsCursorHidden()) HideCursor();
+    else if (!hide && IsCursorHidden()) ShowCursor();
     if (dragging) {
         dragDepth_ = clamp01(dragDepth_ + GetMouseDelta().y * 0.0042f * sens);
         depthTarget_ = dragDepth_;
@@ -314,7 +323,7 @@ void Game::presentPlay(float dt) {
     climaxGlow_ = approach(climaxGlow_, 0.f, 0.45f, dt);
     moanPulse_ = approach(moanPulse_, 0.f, 3.5f, dt);
     smilePulse_ = approach(smilePulse_, 0.f, 1.2f, dt);
-    sweat_ = clamp01(std::max(sweat_, std::min(0.85f, night_.elapsed / 420.f + 0.35f * her)));
+    sweat_ = clamp01(std::max(sweat_, std::min(0.5f, night_.elapsed / 700.f + 0.22f * her)));   // a dewy glow, not oil
 
     // ---- layers ----
     rubPhase_ = std::fmod(rubPhase_ + dt * (0.8f + 0.9f * her), 1.f);
