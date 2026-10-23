@@ -7,7 +7,8 @@ import numpy as np
 from mathutils import Vector, Matrix
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 import textures as TX
-OUT = "/root/agb/native/room"; TEX = OUT + "/tex"; os.makedirs(TEX, exist_ok=True)
+STYLE = os.environ.get("AG_ROOM_STYLE", "classic")           # classic | cabin | villa | hotel (story bedrooms)
+OUT = os.environ.get("AG_ROOM_OUT", "/root/agb/native/room"); TEX = OUT + "/tex"; os.makedirs(TEX, exist_ok=True)
 BAKE_RES = int(os.environ.get("BAKE_RES", "2048")); BAKE_SAMPLES = int(os.environ.get("BAKE_SAMPLES", "96"))
 def log(*a): print("[room]", *a, flush=True)
 t0 = time.time()
@@ -21,13 +22,29 @@ BED_TOP = MAT_TOP + 0.004                         # fitted-sheet surface the cha
 
 # ------------------------------------------------------------------ textures + materials
 TX.wood_planks(TEX + "/floor.jpg", TEX + "/floor_n.jpg")
-TX.damask_wall(TEX + "/wall.jpg", TEX + "/wall_n.jpg")
-TX.fabric(TEX + "/velvet.jpg", TEX + "/velvet_n.jpg", (0.30, 0.04, 0.07), weave=140, sheen=0.5, seed=1)
-TX.fabric(TEX + "/sheet.jpg", TEX + "/sheet_n.jpg", (0.42, 0.08, 0.11), weave=200, sheen=0.4, seed=2)
-TX.fabric(TEX + "/linen.jpg", TEX + "/linen_n.jpg", (0.78, 0.70, 0.62), weave=160, sheen=0.1, seed=3)
-TX.fabric(TEX + "/duvet.jpg", TEX + "/duvet_n.jpg", (0.20, 0.05, 0.07), weave=120, sheen=0.35, seed=4)
 TX.fabric(TEX + "/shade.jpg", TEX + "/shade_n.jpg", (0.86, 0.74, 0.58), weave=90, sheen=0.05, seed=5)
-TX.rug(TEX + "/rug.jpg"); TX.night_sky(TEX + "/sky.jpg")
+TX.rug(TEX + "/rug.jpg")
+if STYLE == "cabin":                                          # log cabin: pine logs, wool plaid, snow at the window
+    TX.log_wall(TEX + "/wall.jpg", TEX + "/wall_n.jpg")
+    TX.plaid(TEX + "/velvet.jpg", TEX + "/velvet_n.jpg", (0.36, 0.06, 0.05), (0.08, 0.16, 0.10), (0.70, 0.62, 0.40), seed=1)
+    TX.fabric(TEX + "/sheet.jpg", TEX + "/sheet_n.jpg", (0.74, 0.68, 0.58), weave=160, sheen=0.1, seed=2)
+    TX.fabric(TEX + "/linen.jpg", TEX + "/linen_n.jpg", (0.80, 0.74, 0.64), weave=160, sheen=0.1, seed=3)
+    TX.plaid(TEX + "/duvet.jpg", TEX + "/duvet_n.jpg", (0.42, 0.08, 0.06), (0.10, 0.10, 0.12), (0.80, 0.72, 0.50), seed=4)
+    TX.snow_night(TEX + "/sky.jpg")
+elif STYLE == "villa":                                        # whitewashed villa: plaster, white linen, blue accents, sea by day
+    TX.plaster(TEX + "/wall.jpg", TEX + "/wall_n.jpg")
+    TX.fabric(TEX + "/velvet.jpg", TEX + "/velvet_n.jpg", (0.16, 0.30, 0.50), weave=140, sheen=0.2, seed=1)
+    TX.fabric(TEX + "/sheet.jpg", TEX + "/sheet_n.jpg", (0.90, 0.89, 0.86), weave=200, sheen=0.15, seed=2)
+    TX.fabric(TEX + "/linen.jpg", TEX + "/linen_n.jpg", (0.92, 0.91, 0.88), weave=160, sheen=0.1, seed=3)
+    TX.fabric(TEX + "/duvet.jpg", TEX + "/duvet_n.jpg", (0.86, 0.88, 0.90), weave=120, sheen=0.1, seed=4)
+    TX.sea_day(TEX + "/sky.jpg")
+else:
+    TX.damask_wall(TEX + "/wall.jpg", TEX + "/wall_n.jpg")
+    TX.fabric(TEX + "/velvet.jpg", TEX + "/velvet_n.jpg", (0.30, 0.04, 0.07) if STYLE == "classic" else (0.06, 0.09, 0.20), weave=140, sheen=0.5, seed=1)
+    TX.fabric(TEX + "/sheet.jpg", TEX + "/sheet_n.jpg", (0.42, 0.08, 0.11) if STYLE == "classic" else (0.80, 0.76, 0.68), weave=200, sheen=0.4, seed=2)
+    TX.fabric(TEX + "/linen.jpg", TEX + "/linen_n.jpg", (0.78, 0.70, 0.62), weave=160, sheen=0.1, seed=3)
+    TX.fabric(TEX + "/duvet.jpg", TEX + "/duvet_n.jpg", (0.20, 0.05, 0.07) if STYLE == "classic" else (0.08, 0.12, 0.26), weave=120, sheen=0.35, seed=4)
+    (TX.night_sky if STYLE == "classic" else TX.sea_night)(TEX + "/sky.jpg")
 log("textures generated")
 
 def image(path, colorspace="sRGB"):
@@ -53,8 +70,8 @@ def make_mat(name, albedo=None, normal=None, color=(0.5, 0.5, 0.5), rough=0.6, m
 M = {
     "floor": make_mat("room_floor", TEX + "/floor.jpg", TEX + "/floor_n.jpg", rough=0.42),
     "wall": make_mat("room_wall", TEX + "/wall.jpg", TEX + "/wall_n.jpg", rough=0.85),
-    "panel": make_mat("room_panel", color=(0.10, 0.045, 0.04), rough=0.45),
-    "ceiling": make_mat("room_ceiling", color=(0.12, 0.07, 0.07), rough=0.9),
+    "panel": make_mat("room_panel", color={"villa": (0.80, 0.78, 0.72), "cabin": (0.20, 0.11, 0.05)}.get(STYLE, (0.10, 0.045, 0.04)), rough=0.45),
+    "ceiling": make_mat("room_ceiling", color={"villa": (0.88, 0.86, 0.82), "cabin": (0.30, 0.18, 0.09)}.get(STYLE, (0.12, 0.07, 0.07)), rough=0.9),
     "walnut": make_mat("room_walnut", TEX + "/floor.jpg", TEX + "/floor_n.jpg", rough=0.35),
     "velvet": make_mat("room_velvet", TEX + "/velvet.jpg", TEX + "/velvet_n.jpg", rough=0.7),
     "sheet": make_mat("room_sheet", TEX + "/sheet.jpg", TEX + "/sheet_n.jpg", rough=0.38),
@@ -308,12 +325,16 @@ for i, p in enumerate(lamps):
     else:
         add_light("POINT", f"lamp_{i}", p, (1.0, 0.64, 0.36), 32.0, 0.08)
 for i, p in enumerate(candles): add_light("POINT", f"candle_{i}", p, (1.0, 0.56, 0.24), 2.2, 0.02)
-add_light("SUN", "moon", (-RX - 1, WY, 3), (0.55, 0.66, 1.0), 0.55, rot=(math.radians(52), 0, math.radians(-90)))
-add_light("AREA", "window_glow", (-RX - 0.2, WY, WZ), (0.45, 0.55, 0.9), 18.0)
+if STYLE == "villa":
+    add_light("SUN", "moon", (-RX - 1, WY, 3), (1.0, 0.95, 0.86), 4.5, rot=(math.radians(38), 0, math.radians(-90)))
+    add_light("AREA", "window_glow", (-RX - 0.2, WY, WZ), (0.75, 0.85, 1.0), 260.0)
+else:
+    add_light("SUN", "moon", (-RX - 1, WY, 3), (0.55, 0.66, 1.0), 0.55, rot=(math.radians(52), 0, math.radians(-90)))
+    add_light("AREA", "window_glow", (-RX - 0.2, WY, WZ), (0.45, 0.55, 0.9), 18.0)
 sc.objects["window_glow"].rotation_euler = (0, math.radians(90), 0); sc.objects["window_glow"].data.size = 1.3
 LIGHTS[-1]["direction"] = [1, 0, 0]
 world = bpy.data.worlds.new("night"); sc.world = world; world.use_nodes = True
-world.node_tree.nodes["Background"].inputs[0].default_value = (0.006, 0.006, 0.012, 1)
+world.node_tree.nodes["Background"].inputs[0].default_value = (0.35, 0.42, 0.55, 1) if STYLE == "villa" else (0.006, 0.006, 0.012, 1)
 
 # ------------------------------------------------------------------ lightmap UVs (one atlas) + bake full diffuse irradiance
 room_meshes = [o for o in sc.objects if o.type == "MESH"]
@@ -387,7 +408,7 @@ for o in lit:
 bpy.data.images.remove(lm)
 
 # ------------------------------------------------------------------ publish layout for the engine + export
-meta = dict(version=1, units="m", up="+Y",
+meta = dict(version=1, units="m", up="+Y", style=STYLE, mood="day" if STYLE == "villa" else "evening",
             bedTop=BED_TOP, playArea=dict(zMin=-(PLAY_Y1), note="characters stay on the foot side of zMin (pillows beyond)"),
             bed=dict(center=[bx, BED_TOP, -by], width=MAT_W, length=MAT_L, size=[MAT_W, MAT_L], headboard="-Z", headZ=-(by + MAT_L / 2), footZ=-(by - MAT_L / 2)),
             lights=LIGHTS, lightmap=dict(slot="emissiveTexture", texCoord=1, encoding="sRGB", scale=scale, mode="full diffuse irradiance (direct+indirect) from all static lights; room colour = base x lightmap"),
@@ -396,7 +417,7 @@ meta = dict(version=1, units="m", up="+Y",
             window=dict(center=[-RX, WZ, -WY]))
 json.dump(meta, open(OUT + "/room.json", "w"), indent=1)
 sc["afterglow"] = json.dumps(meta)
-ENGINE = {"lamp_key": 120.0, "lamp_0": 0.55, "moon": 0.45, "window_glow": None}      # engine units (see scene.cpp lightsFromRoomGlb)
+ENGINE = {"lamp_key": 120.0, "lamp_0": 0.55, "moon": 2.2 if STYLE == "villa" else 0.45, "window_glow": None}      # engine units (see scene.cpp lightsFromRoomGlb)
 for o in [o for o in sc.objects if o.type == "LIGHT"]:
     if o.name.startswith("candle_"): o.data.energy = 0.12
     elif o.name in ENGINE and ENGINE[o.name] is None: bpy.data.objects.remove(o)

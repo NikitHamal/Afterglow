@@ -10,6 +10,7 @@ from body import Body
 import positions as PO
 import positions2                                      # registers the remaining positions into PO.CLIPS
 import positions3                                      # more acts: handjob, titjob, face-riding, cuddle, make-out
+import positions4                                      # story clips: stand.idle, sit.bed
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 only = [a for a in argv if not a.startswith("--")]
@@ -122,8 +123,8 @@ if hair_o is not None:
             for g in v.groups:
                 if g.group == hg.index and g.weight > 0.99: hair_head[v.index] = True
 
-NONPEN = ("oral", "lick", "handjob", "titjob", "facesit", "cuddle", "kiss")
-AROUSED = {"lick": 0.0, "cuddle": 0.0, "kiss": 0.35, "facesit": 0.8}
+NONPEN = ("oral", "lick", "handjob", "titjob", "facesit", "cuddle", "kiss", "stand", "sit")
+AROUSED = {"lick": 0.0, "cuddle": 0.0, "kiss": 0.35, "facesit": 0.8, "stand": 0.0, "sit": 0.0}
 def keys_for(clip, t):
     sex = clip.split(".")[0] not in ("solo",)
     pen = sex and not clip.startswith(NONPEN)
@@ -151,7 +152,7 @@ def verify(clip, t):
     extra = [(her_vulva_zone, his_shaft), (her_seat, his_seat | his_shaft)] if pen else []
     if clip.startswith("titjob"): extra = [(her_breast, his_shaft), (her_breast, his_seat)]
     if clip.startswith("facesit"): extra = [(her_seat, his_head)]
-    if clip.startswith(("cuddle", "kiss")): extra = [(her_trunk, his_trunk), (her_seat, his_seat)]
+    if clip.startswith(("cuddle", "kiss", "sit", "stand")): extra = [(her_trunk, his_trunk), (her_seat, his_seat)]
     pairs, bad, depth, worst = SC.interpenetration(A, Pa, allowA, Bm, Pb, allowB, boneA=her_bones, boneB=his_bones,
                                                    handA=her_hand, handB=his_hand, extra=extra)
     if os.environ.get("DIAG") and bad:

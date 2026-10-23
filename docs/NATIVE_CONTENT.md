@@ -15,6 +15,8 @@ Blender (Z-up, +Y toward the headboard); the exporter converts.
 | `characters/presets.json` | body presets (Natural, Petite, Skinny, Slim, Athletic, Curvy, Chubby, BBW, Voluptuous, Ebony goddess, Porcelain, Mature, Young adult; his Lean…Heavy): slider values + skin tone |
 | `characters/clips.json` | per-clip duration, kind, stroke, morph rules, layer bones, camera presets (orbit + his first-person eye), verification numbers |
 | `room/room.glb`, `room/room.json` | the bedroom (bed identical to the authoring bed) with a Cycles-baked lightmap, light rig, scene extras (see Room) |
+| `locations/<id>/<id>.glb` + `<id>.json` | story bedrooms built on the exact authoring bed: `hotel_room` (sea at night), `cabin_bedroom` (pine logs, wool plaid, snow outside), `villa_bedroom` (white plaster, blue linen, the bay by day) — same conventions as `room/room.glb` (lightmap on uv1, punctual lights, scene extras incl. `style`, `mood`) |
+| `characters/outfits/<who>_<style>.glb` | story outfits (see Outfits) |
 | `audio/sfx/<group>/*.ogg`, `audio/vox/*.wav` | sound pack (CC BY-SA 4.0, `audio/sfx/LICENSE_soundpack.txt`) and voice samples |
 
 ## Morph targets (mesh `extras.targetNames`, all 0 at rest)
@@ -139,6 +141,26 @@ lying face to face, lips together, her leg over his hip, hands on cheek/waist).
   (`乳親.L/R`, light jiggle) as damped springs around their animated pose — `{bone, stiffness, damping, gravity,
   maxAngleDeg}`, same solver as the hair tips.
 
+## Outfits (`tools/model/native/outfits.py`)
+
+Each garment is the matching patch of the character's own skin, lifted 2–7 mm off it, carrying the body's skin
+weights and every body morph (same target names), so it follows every clip, pose and body shape exactly
+(a skin-tight cut — no cloth simulation needed, nothing can clip through it). One GLB per style with the
+armature + two meshes `<who>_outfit_<style>_outer` / `_under`, each with node extras
+`afterglow.outfit = {style, layer, hidesWhen}` (`outer` hides when `partial`/`nude`, `under` when `nude`). Bind
+them to the character's skeleton by joint name and apply the character's morph weights to them.
+Vivian: `evening_dress` (wine satin bodycon dress, low back · black lace bra + briefs), `knit_sweater_jeans`
+(sweater + jeans as one fitted layer · nude-tone cotton set), `sundress_bikini` (cream cotton sundress · blue
+bikini). Marcus: `flannel_jeans`, `suit_open_collar`, `linen_shirt_shorts` (outer = shirt + trousers/shorts,
+under = boxer briefs). His genitals are not part of the garments: hide the `marcus_genital` primitive while his
+`under` layer is shown.
+
+## Story clips (loops, both characters)
+
+`stand.idle` — standing at talking distance at the foot of the bed, turned toward each other, weight shifting;
+`sit.bed` — sitting side by side on the bed's right edge, feet on the floor, his arm around her, her hands on her
+thighs. Floors for both are the room floor (y = 0).
+
 ## Room (`tools/model/room/build_room.py` → `post.mjs`)
 
 Real-scale night bedroom: mattress 1.80 × 2.00 m, top (sheet) at y = 0.604, bed centre (0, 0.604, −1.22), head
@@ -171,6 +193,8 @@ blender -b /root/agb/out/vivian_s4.blend --python tools/model/native/skin_maps.p
 blender -b /root/agb/male/out/marcus_b.blend --python tools/model/native/skin_maps.py -- marcus
 bash tools/model/native/stage_assets.sh     # copy into native/assets + regenerate clips.json
 BAKE_RES=2048 BAKE_SAMPLES=1024 blender -b --python tools/model/room/build_room.py   # room + Cycles lightmap (~2 min on 20 cores)
+AG_ROOM_STYLE=cabin|villa|hotel AG_ROOM_OUT=<dir> blender -b --python tools/model/room/build_room.py   # story bedrooms
+blender -b /root/agb/native/<who>_native.blend --python tools/model/native/outfits.py -- <who> <out_dir>
 node tools/model/room/post.mjs /root/agb/native/room/room_raw.glb /root/agb/native/room/room.json /root/agb/native/room
 ```
 
@@ -225,10 +249,14 @@ made once per clip, so it never changes between frames.
 | `titjob.in` | 0 | 0.0 | -8..-6 | -7..-7 | 0 | 0 | 7 | V L→chest -3..-3; V R→chest -3..-3; M L→chest 6..6; M R→chest 6..6 |
 | `solo.rub` | 0 | 0.0 | -12..-12 | room floor | 0 | 0 | 1 | V L→chest -4..-3; V R→hips -13..-8 |
 | `solo.idle` | 0 | 0.0 | -3..-3 | room floor | 0 | 0 | 0 | — |
+| `stand.idle` | 0 | 0.0 | -604..-604 | room floor | 0 | 0 | 0 | V L→thigh.L -27..-23; V R→thigh.R -27..-23 |
+| `sit.bed` | 0 | 0.0 | -400..-400 | room floor | 46 | 0 | 14 | V L→thigh.L -2..-2; V R→thigh.R -4..-4; M L→thigh.L 8..8; M R→chest -5..-5 |
 
 Known residuals (next pass): missionary.rub — her reaching forearm passes under his chest (he lies low at
 mid-depth); legs-up — his hands, holding her ankles beside his head, sink into his own shoulders; spoon.rub —
 her rubbing hand presses into her own hip; doggy / reverse cowgirl — one of the holding hands hovers 1.5–2.5 cm
 off the skin; cowgirl at the very top of the stroke — inner thighs touch the sides of his waist. When she lies
 on her back the bun presses up to ~1.8 cm into the (soft) mattress. `solo.*` floors for Marcus are the room
-floor. Not shipped yet: `facesit`, `cuddle`, `kiss.side` (authored in `positions3.py`, not clean yet).
+floor. Story clips: in `stand.idle` her hanging hands rest ~2.5 cm into the sides of her thighs and in `sit.bed`
+the backs of their knees touch the bed frame's top edge (46 small pairs) — both being fixed next. Not shipped
+yet: `facesit`, `cuddle`, `kiss.side` (authored in `positions3.py`, not clean yet).

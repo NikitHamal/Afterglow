@@ -6,6 +6,7 @@ HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 import positions as PO
 import positions2  # noqa: F401  (registers clips)
 import positions3  # noqa: F401
+import positions4  # noqa: F401
 out = sys.argv[sys.argv.index("--") + 1]
 NAT = "/root/agb/native"
 ver = json.load(open(NAT + "/verify.json")) if os.path.exists(NAT + "/verify.json") else {}
@@ -47,7 +48,7 @@ for name, (fn, frames, kind) in PO.CLIPS.items():
                    [-PO.TIP_OUT, round(positions2.PRONE_LINS - PO.TIP_OUT, 3)] if name.startswith("prone") else [-PO.TIP_OUT, round(PO.LINS - PO.TIP_OUT, 3)])),
         morphs=dict(vivian=({"vag_open": 1.0} if name.startswith(("cowgirl", "revcowgirl")) and kind == "depth" else
                             {"vag_open": "smoothstep(0, 0.12, depth)"} if kind == "depth" and not name.startswith(("oral", "lick", "handjob", "titjob")) else {}),
-                    marcus=({"aroused": "0..1 by arousal"} if solo else {"aroused": {"lick": 0.0, "cuddle": 0.0, "kiss": 0.35, "facesit": 0.8}.get(name.split(".")[0], 1.0)})),
+                    marcus=({"aroused": "0..1 by arousal"} if solo else {"aroused": {"lick": 0.0, "cuddle": 0.0, "kiss": 0.35, "facesit": 0.8, "stand": 0.0, "sit": 0.0}.get(name.split(".")[0], 1.0)})),
         marcusHidden=solo,
         cameras=dict(
             orbit_side=orbit(90 if side.x else 0, 18, 2.3),

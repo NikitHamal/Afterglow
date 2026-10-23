@@ -16,10 +16,15 @@ Shipped (`native/assets/characters`, see `docs/NATIVE_CONTENT.md`):
 - **Contacts for the engine's touch simulation** in `clips.json → contacts` + soft bones (his scrotum, her breasts)
   in the armature extras.
 - New acts: `handjob.in`, `titjob.in` (verified clean). `facesit`, `cuddle`, `kiss.side` are authored but held back.
+- **Story assets** (see `docs/STORY_ASSETS.md` wishes): bedrooms on the exact authoring bed
+  `locations/{hotel_room,cabin_bedroom,villa_bedroom}`, outfits `characters/outfits/<who>_<style>.glb` (Vivian
+  evening_dress / knit_sweater_jeans / sundress_bikini, Marcus suit_open_collar / flannel_jeans / linen_shirt_shorts,
+  each outer + under, skin-tight, carrying every body morph), story clips `stand.idle`, `sit.bed`.
 
 Still open on the content side: petite height (needs per-clip retargeting), more hairstyles (long waves, bob,
-ponytail), story locations (cabin, villa, hotel), outfits with undress layers, standing/lap/side/69/fingering clips,
-Marcus v3, the residuals listed under Verification in `docs/NATIVE_CONTENT.md`.
+ponytail), the non-bed story locations (hotel ballroom/terrace/corridor, cabin living room, villa terrace/beach),
+loose garments (skirts/robes with cloth bones), stand.embrace / dance.slow / undress clips, standing/lap/side/69/
+fingering clips, Marcus v3, the residuals listed under Verification in `docs/NATIVE_CONTENT.md`.
 
 ## 2026-10-23 — the native game (C++ / raylib): engine + game lead
 
