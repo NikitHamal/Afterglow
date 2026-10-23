@@ -7,6 +7,10 @@ A=$R/native/assets
 mkdir -p $A/characters $A/audio/sfx $A/audio/vox
 cp /root/agb/native/export/vivian.glb /root/agb/native/export/marcus.glb $A/characters/
 cp /root/agb/native/tex/vivian/vivian_skin_{honey,caramel,deep}.jpg /root/agb/native/tex/marcus/marcus_skin_{honey,caramel,deep}.jpg /root/agb/native/tex/marcus/marcus_genital_*.jpg $A/characters/
+# optional skin support maps (tools/model/native/skin_maps.py): flush / translucency / sweat masks + tileable micro normal
+for f in /root/agb/native/tex/vivian/vivian_skin_mask.png /root/agb/native/tex/marcus/marcus_skin_mask.png /root/agb/native/tex/skin_detail_n.png; do
+  [ -f "$f" ] && cp "$f" $A/characters/
+done
 SP="$R/assets/Shinlalala's Lewd Sound Pack"
 for d in Cum DryPlaps PullOut Strokes Wet WetPlaps; do
   dst=$A/audio/sfx/$(echo $d | tr 'A-Z' 'a-z'); mkdir -p "$dst"; cp "$SP/$d/"*.ogg "$dst/"

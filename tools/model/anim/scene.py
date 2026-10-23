@@ -101,16 +101,27 @@ def interpenetration(A, Pa, allowA, B, Pb, allowB, sample=2, boneA=None, boneB=N
     intended contact), max depth of A-verts inside B, and the worst offending bone pairs"""
     ta = BVHTree.FromPolygons([tuple(v) for v in A], Pa); tb = BVHTree.FromPolygons([tuple(v) for v in B], Pb)
     pairs = ta.overlap(tb)
-    bad = []
+    bad = []; zone = []
     for i, j in pairs:
         if handA is not None and any(handA[k] for k in Pa[i]): continue
         if handB is not None and any(handB[k] for k in Pb[j]): continue
         okA = any(allowA[k] for k in Pa[i]); okB = any(allowB[k] for k in Pb[j])
         if okA and okB: continue
-        if any(any(za[k] for k in Pa[i]) and any(zb[k] for k in Pb[j]) for za, zb in extra): continue
+        hit = [n for n, (za, zb) in enumerate(extra) if any(za[k] for k in Pa[i]) and any(zb[k] for k in Pb[j])]
+        if hit:
+            if hit[0] > 0: zone.append((i, j))                     # pelvis-to-pelvis flesh: allowed, depth tracked
+            continue
         bad.append((i, j))
-    global LAST_BAD
+    global LAST_BAD, LAST_ZONE_DEPTH
     LAST_BAD = bad
+    zd = 0.0
+    if zone:
+        for k in list({k for i, _ in zone for k in Pa[i]})[::sample]:
+            loc, nrm, _, d = tb.find_nearest(tuple(A[k]))
+            if loc is None: continue
+            s_ = (Vector(A[k]) - loc).dot(nrm)
+            if s_ < 0: zd = max(zd, -s_)
+    LAST_ZONE_DEPTH = zd
     depth = 0.0
     if bad:
         verts = {k for i, _ in bad for k in Pa[i]}

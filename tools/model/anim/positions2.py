@@ -93,36 +93,40 @@ def doggy(ctx, t, rub=None):
 
 # ---------------------------------------------------------------- COWGIRL / REVERSE COWGIRL
 COW_STROKE = 0.05
+PRONE_LINS = 0.085      # prone: her buttocks limit the depth
 def cowgirl(ctx, t, reverse=False, rub=None):
     V, M = ctx.V, ctx.M
     supine_him(M, pelvis_y=1.0, feet_w=0.10, knees=0.04)
-    m = M.rig
-    S = nrm(V3(0, 0.30 if reverse else -0.22, 0.97))
-    m.aim("竿根", S)
-    R0 = m.head("竿根")
-    r = V.rig; r.reset()
+    m = M.rig; r = V.rig
     face = V3(0, -1, 0) if reverse else V3(0, 1, 0)
-    V.place(R0 + V3(0, 0, 0.12), face, V3(0, 0, 1))
-    align_to(V, "下半身", "vag_D", S, up_hint=V3(0, -0.2 if reverse else 0.2, 1))
-    tip_in = t * COW_STROKE + (0.075 if reverse else 0.065) - TIP_OUT   # she sits down onto him; knees rest on the sheet
-    V.move(R0 + S * (ctx.L_erect - tip_in) - V.lm("vag_E"))
     k = ss(0.45, 1.0, t)
-    lean = 18 - 5 * k
-    upv = nrm(V3(0, (-1 if reverse else 1) * math.sin(math.radians(lean)), math.cos(math.radians(lean))))
-    V.spine(forward=nrm(face * 0.95 + V3(0, 0, -0.2)), up=upv, chest_forward=nrm(face + V3(0, 0, -0.35)), chest_up=nrm(upv + face * 0.25))
-    if not reverse:                             # knees beside his waist, shins back along his sides
-        best_of("knees", [0.26, 0.30, 0.34, 0.38], lambda w: kneel(V, w, +1, nrm(-face + V3(0, 0, 0.03)), knee_z=0.045,
-                                                                     min_dy=0.04), (V,))
-    else:                                       # knees ahead of her beside his thighs, shins folded back beside his hips
-        best_of("knees", [(w, f) for w in (0.30, 0.36, 0.42) for f in (0.0, 0.5, 0.9)],      # shins fan out past his arms
-                lambda v: kneel(V, v[0], -1, lambda sx: nrm(V3(sx * v[1], 1, 0.04)), knee_z=0.045,
-                                min_dy=0.04), (V,))
+    tip_in = t * COW_STROKE + (0.075 if reverse else 0.065) - TIP_OUT   # she sits down onto him; knees rest on the sheet
+    def seat(v):
+        """shaft tilt (+ toward his head: she sits over his belly and leans in, her thighs straddle his waist
+        instead of his hips), her torso lean, knee width (+ shin fan in reverse)"""
+        tilt, lean0, w = v[0], v[1], v[2]
+        S = nrm(V3(0, tilt, 0.97)); m.aim("竿根", S); R0 = m.head("竿根")
+        r.reset()
+        V.place(R0 + V3(0, 0, 0.12), face, V3(0, 0, 1))
+        align_to(V, "下半身", "vag_D", S, up_hint=V3(0, -0.2 if reverse else 0.2, 1))
+        V.move(R0 + S * (ctx.L_erect - tip_in) - V.lm("vag_E"))
+        lean = lean0 - 5 * k
+        upv = nrm(V3(0, (-1 if reverse else 1) * math.sin(math.radians(lean)), math.cos(math.radians(lean))))
+        V.spine(forward=nrm(face * 0.95 + V3(0, 0, -0.2)), up=upv, chest_forward=nrm(face + V3(0, 0, -0.35)), chest_up=nrm(upv + face * 0.25))
+        if not reverse:                         # knees beside his waist/ribs, shins back along his sides
+            kneel(V, w, +1, lambda sx: nrm(-face + V3(sx * 0.22, 0, 0.03)), knee_z=0.045, min_dy=0.04)
+        else:                                   # knees ahead of her beside his thighs, shins fanned back past his hips
+            kneel(V, w, -1, lambda sx: nrm(V3(sx * v[3], 1, 0.04)), knee_z=0.045, min_dy=0.04)
+    if not reverse:
+        best_of("seat", [(tl, ln, w) for tl, ln in ((-0.22, 18), (0.05, 26), (0.30, 36)) for w in (0.20, 0.23, 0.26, 0.29)], seat, (V, M))
+    else:
+        best_of("seat", [(tl, 18, w, f) for tl in (0.30, 0.50) for w in (0.24, 0.30, 0.36) for f in (0.5, 0.9)], seat, (V, M))
     for s, sx in sides(V, "腕"):
         if rub is not None and s == ".R":
             her_rub_hand(V, s, rub, V.lm("clit")); continue
         sh = r.head("腕" + s)
-        if reverse:
-            T = M.lm("thigh" + (".R" if s == ".L" else ".L")) + V3(0, 0, 0.05)
+        if reverse:                                         # her hands on his thighs, each on her own side
+            T = M.lm("thigh" + (".L" if dict(sides(M, "足"))[".L"] == sx else ".R")) + V3(0, 0, 0.05)
             hands_to(V, s, T, V3(0, 0, -1), nrm(V3(0, -1, -0.2)), sh + V3(sx * 0.4, 0.1, 0), 0.45)
         else:
             T = M.lm("chest" + (".R" if s == ".L" else ".L")) + V3(0, 0, 0.035)
@@ -165,20 +169,20 @@ def legsup(ctx, t):
     M.spine(forward=nrm(yz(-8)), up=nrm(yz(82)), chest_forward=nrm(yz(-12)), chest_up=nrm(yz(78)))
     ctx.penetrate(t)
     kneel(M, 0.16, -1, V3(0, -1, 0.04), knee_z=0.05)
-    for s, sx in sides(V, "足"):                           # her legs up in a V, ankles wide of his head
-        H = r.head("足" + s)
-        A = m.head("頭") + V3(sx * 0.44, 0.04, 0.16)
-        V.leg_ik(s, A, H + V3(sx * 0.4, 0.2, 0.3))
-        V.foot_relaxed(s, 28, splay=V3(sx, 0, 0))
     her_leg = dict(sides(V, "足"))
-    def his_hands(v):                                      # his hands hold her ankles (same world side, no crossing)
-        side_off, pole = v
+    def legs_and_hands(v):
+        """her legs up in a V (ankles wide of his head); his hands hold her ankles on their own side"""
+        spread, up, side_off, pole = v
+        for s, sx in sides(V, "足"):
+            H = r.head("足" + s)
+            V.leg_ik(s, m.head("頭") + V3(sx * spread, 0.04, up), H + V3(sx * 0.4, 0.2, 0.3))
+            V.foot_relaxed(s, 28, splay=V3(sx, 0, 0))
         for s, sx in sides(M, "腕"):
             A = r.head("足首" + (".L" if her_leg[".L"] == sx else ".R"))
             hands_to(M, s, A + V3(sx * side_off, -0.03, -0.05), V3(-sx, 0.2, 0), nrm(V3(0, 0, 1)),
                      m.head("腕" + s) + V3(sx * pole[0], pole[1], pole[2]), 0.75)
-    best_of("hands", [(o, p) for o in (-0.04, 0.0, 0.04) for p in ((0.5, -0.2, -0.2), (0.6, -0.1, -0.5), (-0.1, -0.2, -0.5), (0.2, 0.2, -0.6))],
-            his_hands, (M,))
+    best_of("legs", [(sp, up, o, p) for sp in (0.44, 0.54, 0.64) for up in (0.16, 0.30) for o in (-0.04, 0.04)
+                     for p in ((0.5, -0.2, -0.2), (0.2, 0.2, -0.6))], legs_and_hands, (V, M))
     M.look(r.head("頭"))
 
 # ---------------------------------------------------------------- ORAL (she kneels between his legs) / LICK
@@ -368,8 +372,10 @@ def prone(ctx, t):
     m = M.rig; m.reset()
     M.place(E - D * 0.25 + V3(0, 0, 0.1), V3(0, 0.5, -1), V3(0, 1, 0.5))
     align_pelvis_to(M, D, up_hint=V3(0, 1, 0.45))
-    M.spine(forward=nrm(V3(0, 0.3, -1)), up=nrm(V3(0, 1, 0.3)), chest_forward=nrm(V3(0, 0.45, -1)), chest_up=nrm(V3(0, 1, 0.45)))
-    ctx.penetrate(t)
+    def his_chest(c):
+        M.spine(forward=nrm(V3(0, 0.3, -1)), up=nrm(V3(0, 1, 0.3)), chest_forward=nrm(V3(0, c, -1)), chest_up=nrm(V3(0, 1, c)))
+        ctx.penetrate(t, lins=PRONE_LINS)
+    best_of("chest", [0.45, 0.7, 1.0, 1.4], his_chest, (M,))
     def legs(v):
         fw, kw = v
         prone_legs(V, fw, back=0.82, knee_out=0.03 if fw < 0.2 else 0.12)

@@ -39,10 +39,11 @@ for name, (fn, frames, kind) in PO.CLIPS.items():
         time="normalized depth (0 = tip at the entrance, 1 = full)" if kind == "depth" else ("loop phase 0..1" if kind == "loop" else "single pose"),
         rubHand=("vivian.R" if lay.get("vivian") == "arm.R" else None),
         layerBones=lay or None,
-        stroke_m=(0.0 if kind != "depth" else (0.05 if name.startswith(("cowgirl", "revcowgirl")) else (0.075 if name.startswith("oral") else (0.016 if name.startswith("lick") else PO.LINS)))),
+        stroke_m=(0.0 if kind != "depth" else (0.05 if name.startswith(("cowgirl", "revcowgirl")) else (0.075 if name.startswith("oral") else (0.016 if name.startswith("lick") else (positions2.PRONE_LINS if name.startswith("prone") else PO.LINS))))),
         insert_m=(None if kind != "depth" or name.startswith("lick") else
                   ([0.059, 0.109] if name.startswith("cowgirl") else [0.069, 0.119] if name.startswith("revcowgirl") else
-                   [-0.004, 0.071] if name.startswith("oral") else [-PO.TIP_OUT, round(PO.LINS - PO.TIP_OUT, 3)])),
+                   [-0.004, 0.071] if name.startswith("oral") else
+                   [-PO.TIP_OUT, round(positions2.PRONE_LINS - PO.TIP_OUT, 3)] if name.startswith("prone") else [-PO.TIP_OUT, round(PO.LINS - PO.TIP_OUT, 3)])),
         morphs=dict(vivian=({"vag_open": 1.0} if name.startswith(("cowgirl", "revcowgirl")) and kind == "depth" else
                             {"vag_open": "smoothstep(0, 0.12, depth)"} if kind == "depth" and not name.startswith(("oral", "lick")) else {}),
                     marcus=({"aroused": "0..1 by arousal"} if solo else ({"aroused": 0.0} if name.startswith("lick") else {"aroused": 1.0}))),

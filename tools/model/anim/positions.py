@@ -20,20 +20,25 @@ def yz(angle_deg):
 SCORE = None            # author.py: () -> penalty of the current pose (bad contacts, depth, floors)
 CURRENT = None          # clip being baked: best_of caches its choice per clip
 _BEST = {}
+_TRY = {}            # variant under test (used when SCORE re-poses at another t)
+SCORE_T = None          # set while SCORE re-poses the clip at another t: best_of must not recurse, just apply
 def best_of(key, variants, apply, bodies):
     """pose with each variant (apply(v)), keep the one with the lowest SCORE. Decided once per clip (author.py
-    runs every clip at mid-stroke first) so the choice never changes between frames."""
+    runs every clip near full depth first) so the choice never changes between frames."""
     k = (CURRENT, key)
+    if SCORE_T is not None:
+        apply(variants[_TRY.get(k, _BEST.get(k, 0))]); return None
     if k not in _BEST:
         if SCORE is None: _BEST[k] = 0
         else:
             snaps = [b.rig.snapshot() for b in bodies]; best = None; scores = []
             for i, v in enumerate(variants):
                 for b, sn in zip(bodies, snaps): b.rig.restore(sn)
+                _TRY[k] = i
                 apply(v); sc = SCORE(); scores.append(round(sc, 1))
                 if best is None or sc < best[0]: best = (sc, i)
             for b, sn in zip(bodies, snaps): b.rig.restore(sn)
-            _BEST[k] = best[1]
+            _BEST[k] = best[1]; _TRY.pop(k, None)
             print("[anim]   best_of", CURRENT, key, variants[best[1]], round(best[0], 1), "| all", scores, flush=True)
     apply(variants[_BEST[k]]); return variants[_BEST[k]]
 
@@ -58,12 +63,13 @@ class Ctx:
     def entrance(self, which="vag"):
         return self.V.lm(which + "_E"), self.V.dir(which + "_D")
 
-    def penetrate(self, depth, which="vag"):
-        """aim his shaft along her canal and slide him so the tip is `depth` inside (pelvis translated)"""
+    def penetrate(self, depth, which="vag", lins=None):
+        """aim his shaft along her canal and slide him so the tip is `depth` inside (pelvis translated);
+        lins: insertion at depth 1 for this position (default LINS)"""
         M = self.M; r = M.rig
         E, D = self.entrance(which)
         r.aim("竿根", D)
-        tip_in = depth * LINS - TIP_OUT
+        tip_in = depth * (LINS if lins is None else lins) - TIP_OUT
         B = E - D * (self.L_erect - tip_in)                # where the shaft root must be
         M.move(B - r.head("竿根"))
         return E, D
@@ -102,7 +108,7 @@ def supine_her(V, pelvis_y, tilt=-15.0, knees_w=0.40, feet_w=0.40, feet_back=0.4
         V.foot(s, nrm(V3(sx * 0.22, -1.0, 0.0)), V3(sx * 0.06, 0, 1))          # sole flat on the sheet
     if head_target is not None: V.look(head_target)
 
-def her_arms_overhead(V, grip=0.0, reach=0.24):
+def her_arms_overhead(V, grip=0.0, reach=0.24, width=0.30):
     """hands up beside her head; grip > 0: palms down, fingers clutching the sheet (tightens with grip)"""
     r = V.rig
     for s, sx in sides(V, "腕"):
@@ -113,7 +119,7 @@ def her_arms_overhead(V, grip=0.0, reach=0.24):
             V.hand(s, palm=V3(-sx * 0.3, -0.2, 1), fingers=nrm(V3(sx * 0.15, 1, 0.1)))
             V.fingers(s, 0.42)
         else:
-            W = V3(sx * 0.30, sh.y + reach - 0.03, BED_TOP + 0.085)
+            W = V3(sx * width, sh.y + reach - 0.03, BED_TOP + 0.085)
             V.arm_ik(s, W, sh + V3(sx * 0.45, 0.0, -0.05))
             V.hand(s, palm=V3(0, 0, -1), fingers=nrm(V3(sx * 0.2, 1, -0.15)))
             V.fingers(s, 0.42 + 0.26 * grip, thumb=0.40 + 0.25 * grip)
@@ -189,7 +195,7 @@ def missionary(ctx, t, rub=None, embrace=0.0):
     supine_her(V, pelvis_y=0.98 + 0.004 * t + 0.012 * k, tilt=-24 - 3 * k, knees_w=0.95 + 0.08 * k, feet_w=0.62, feet_back=0.30,
                head_target=head_pt, arch=0.6 * k)
     SC.settle(V, sink=0.008)
-    her_arms_overhead(V, grip=0.25 + 0.75 * k)
+    best_of("her_arms_up", [(0.24, 0.24), (0.30, 0.24), (0.22, 0.32)], lambda v: her_arms_overhead(V, grip=0.25 + 0.75 * k, reach=v[1], width=v[0]), (V,))
     if rub is not None:
         her_rub_hand(V, ".R", rub, V.lm("clit"))
     E, D = ctx.entrance()

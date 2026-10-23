@@ -87,8 +87,8 @@ E0 = np.array(viv_meas["vagina"]["entrance"], np.float32)
 her_vulva_zone = np.linalg.norm(B - E0, axis=1) < 0.06                    # inner thighs / buttocks squeezing the shaft
 # pelvis-to-pelvis contact (her buttocks / inner thighs on his groin, hips, upper thighs): flesh that compresses in
 # every penetrative position, so touching there is intended contact
-her_seat = (np.linalg.norm(B - E0, axis=1) < 0.19) & np.array([b.startswith(("足", "下半身")) for b in SC.dominant_bone(body)])
-his_seat = (np.linalg.norm(MB - np.array(root0), axis=1) < 0.22) & np.array([b.startswith(("足", "下半身", "上半身")) for b in SC.dominant_bone(mb)])
+her_seat = (np.linalg.norm(B - E0, axis=1) < 0.26) & np.array([b.startswith(("足", "下半身")) for b in SC.dominant_bone(body)])
+his_seat = (np.linalg.norm(MB - np.array(root0), axis=1) < 0.28) & np.array([b.startswith(("足", "下半身", "上半身")) for b in SC.dominant_bone(mb)])
 
 # room furniture the bodies must never enter (the sheet/mattress are the support: checked by the floors instead)
 ROOM_HIT = ("headboard", "pillow", "duvet", "nightstand", "lamp", "bed_base", "candle", "book", "wine", "drawer", "knob")
@@ -163,13 +163,27 @@ def verify(clip, t):
                 extent_y=[round(float(min(A[:, 1].min(), Bm[:, 1].min())), 3), round(float(max(A[:, 1].max(), Bm[:, 1].max())), 3)],
                 extent_x=[round(float(min(A[:, 0].min(), Bm[:, 0].min())), 3), round(float(max(A[:, 0].max(), Bm[:, 0].max())), 3)],
                 room_pairs=room_pairs, hair_floor_mm=hair_floor, hair_vs_him=hair_his,
+                pelvic_depth_mm=round(SC.LAST_ZONE_DEPTH * 1000, 1),
                 beyond_play_mm=round(max(0.0, float(max(A[:, 1].max(), Bm[:, 1].max())) - PLAY_Y1) * 1000, 1))
 
-PRE_T = 0.85                                                       # layout choices are made near full depth
+PRE_T = 0.85                                                       # layout choices are made near full depth...
 def _score():
-    r_ = verify(PO.CURRENT, PRE_T)
+    sc = 0.0
+    clip = PO.CURRENT; fn_, _, kind_ = PO.CLIPS[clip]
+    for t_ in ((0.0, PRE_T) if kind_ == "depth" else (0.5,)):        # ...and must also hold at the top of the stroke
+        if t_ != PRE_T and kind_ == "depth":
+            snaps = [b_.rig.snapshot() for b_ in (V, M)]
+            PO.SCORE_T = t_; fn_(ctx, t_); PO.SCORE_T = None
+            sc += _score_at(clip, t_)
+            for b_, sn in zip((V, M), snaps): b_.rig.restore(sn)
+        else:
+            sc += _score_at(clip, t_)
+    return sc
+def _score_at(clip, t_):
+    r_ = verify(clip, t_)
     sc = r_["bad"] + 3.0 * r_["depth_mm"] + 8.0 * max(0.0, -10.0 - r_["her_floor_mm"]) + 8.0 * max(0.0, -10.0 - r_["his_floor_mm"])
     sc += 4.0 * r_["room_pairs"] + 2.0 * r_["beyond_play_mm"] + 2.0 * (r_["hair_vs_him"] or 0)
+    sc += 4.0 * max(0.0, r_["pelvic_depth_mm"] - 8.0)             # flesh may press, not sink through
     if r_["hair_floor_mm"] is not None: sc += 4.0 * max(0.0, -15.0 - r_["hair_floor_mm"])
     return sc
 PO.SCORE = _score
@@ -245,11 +259,15 @@ for clip in only:
     for r_ in res:
         if r_["bad"]: log(f"   t={r_['t']}: bad {r_['bad']} depth {r_['depth_mm']} mm worst {r_['worst']}")
     if RENDER:
-        fn(ctx, 0.6 if kind == "depth" else 0.25)
-        evaluate(clip, 0.6)
+        pt = float(os.environ.get("AG_PREVIEW_T", "0.6"))
+        fn(ctx, pt if kind == "depth" else 0.25)
+        evaluate(clip, pt)
         pel = V.rig.head("下半身")
-        for tag, eye in (("side", pel + Vector((1.9, -0.2, 0.75))), ("front", pel + Vector((0.35, -2.1, 0.9))), ("top", pel + Vector((0.6, -0.4, 2.2)))):
-            render(f"{PRE}/{clip.replace('.', '_')}_{tag}.png", pel + Vector((0, 0.15, 0.05)), eye)
+        views = (("side", pel + Vector((1.9, -0.2, 0.75))), ("front", pel + Vector((0.35, -2.1, 0.9))), ("top", pel + Vector((0.6, -0.4, 2.2))),
+                 ("feet", pel + Vector((0.05, -2.4, 0.35))), ("close", pel + Vector((0.9, -0.9, 0.45))))
+        want = os.environ.get("AG_PREVIEW_VIEWS", "side,front,top").split(",")
+        for tag, eye in views:
+            if tag in want: render(f"{PRE}/{clip.replace('.', '_')}_{tag}.png", pel + Vector((0, 0.15, 0.05)), eye)
 json.dump(report, open(NAT + "/verify.json", "w"), indent=1)
 for b in (V, M): b.arm.animation_data.action = None
 for lib in list(bpy.data.libraries): bpy.data.libraries.remove(lib)      # appended actions are local; drop the source ref
