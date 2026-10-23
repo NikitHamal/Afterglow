@@ -15,6 +15,11 @@ void rot(Animator& a, int n, const V3& axis, float ang) {
     a.recomputeSubtree(n);
 }
 float bump(float t, float len) { return t >= 0.f && t < len ? std::sin(t / len * kPi) : 0.f; }   // one smooth hump
+void rotq(Animator& a, int n, const Quat& q) {
+    if (n < 0) return;
+    a.setWorldRot(n, qnormalize(qmul(q, a.worldRot(n))));
+    a.recomputeSubtree(n);
+}
 }  // namespace
 
 void Actor::bind(Character* c) {
@@ -143,7 +148,7 @@ void Actor::face(float dt) {
     if (lineT_ < dt * 1.5f && hash1(time_) > 0.55f) blink_ = 1.f;
     blink_ += (0.f - blink_) * damp(15.f, dt);
     closed_ += ((eyesClosed ? 1.f : 0.f) - closed_) * damp(6.f, dt);
-    out["blink"] = std::max(out["blink"], std::max(blink_, closed_ * 0.92f));
+    out["blink"] = std::max(out["blink"], std::max(blink_, closed_));
     for (auto& o : out) c_->setMorph(o.first, clampf(o.second, 0.f, 1.f));
 }
 
@@ -170,10 +175,24 @@ void Actor::pose(Animator& a) {
     r = normalize(r);
     V3 f = normalize(cross(up, r));
     float w = acting;
+    // toward the partner: seated side by side the upper body turns part of the way (the neck does the rest)
+    V3 toP = hasPartner_ ? partner_ - P(a, upper) : f;
+    toP.y = 0.f;
+    toP = length(toP) > 1e-3f ? normalize(toP) : f;
+    if (turn > 0.001f) {
+        float yaw = std::atan2(dot(cross(f, toP), up), dot(f, toP));
+        rot(a, upper, up, clampf(yaw, -1.2f, 1.2f) * 0.4f * turn * w);
+        r = P(a, arm[1]) - P(a, arm[0]);
+        r.y = 0.f;
+        r = length(r) > 1e-3f ? normalize(r) : r;
+        f = normalize(cross(up, r));
+    }
+    V3 rl = normalize(cross(toP, up));   // leaning in goes toward the partner
     // torso: a slow weight shift, leaning in a little while speaking, more for a kiss
     rot(a, upper, f, 0.022f * std::sin(time_ * 0.55f + (female_ ? 0.f : 2.f)) * (1.f - sit) * w);
-    rot(a, upper, r, -(0.045f * speakW_ * (0.4f + energy_) + 0.12f * lean) * w);
-    rot(a, chest, r, -0.05f * lean * w);
+    rot(a, upper, r, -(0.045f * speakW_ * (0.4f + energy_)) * w);
+    rot(a, upper, rl, -leanMax * lean * w);
+    rot(a, chest, rl, -0.05f * lean * w);
     // arms: talk gestures (additive to the clip), with a little life from the speech itself
     if (gestW_ < 0.002f) return;
     Arm L, R;
@@ -225,6 +244,44 @@ void Actor::postPose(Animator& a) {
     rot(a, head, r, hp * 0.6f * w);
     rot(a, head, up, hy * w);
     rot(a, head, f, hr * w);
+    kissIK(a);
+}
+
+// the kiss: neck + head as a two-bone chain put the lip front on the target; the crown stays as upright as it can,
+// then the head rolls toward its own right so the noses pass each other
+void Actor::kissIK(Animator& a) {
+    V3 mo;
+    float km = c_->morph("kiss");
+    if (!c_->touch.mouthWorld(a, km, mo)) return;
+    mouthRest = mo;
+    if (kissW <= 0.001f || neck < 0 || head < 0) return;
+    V3 T = lerp(mo, kissTarget, clampf(kissW, 0.f, 1.f));
+    V3 N = P(a, neck), H = P(a, head);
+    float L1 = length(H - N), L2 = length(mo - H);
+    V3 st = T - N;
+    float d = length(st);
+    if (L1 < 1e-4f || L2 < 1e-4f || d < 1e-4f) return;
+    V3 dir = st / d;
+    d = clampf(d, std::fabs(L1 - L2) + 1e-3f, (L1 + L2) * 0.999f);   // out of reach: as close as the chain allows
+    T = N + dir * d;
+    V3 pole = (H - N) - dir * dot(H - N, dir);
+    if (length(pole) < 1e-4f) pole = V3{0, 1, 0} - dir * dir.y;
+    pole = normalize(pole);
+    float x = (L1 * L1 - L2 * L2 + d * d) / (2.f * d);
+    float h = std::sqrt(std::max(0.f, L1 * L1 - x * x));
+    V3 H2 = N + dir * x + pole * h;
+    rotq(a, neck, qfromto(normalize(H - N), normalize(H2 - N)));
+    c_->touch.mouthWorld(a, km, mo);
+    H = P(a, head);
+    rotq(a, head, qfromto(normalize(mo - H), normalize(T - H)));
+    V3 ax = normalize(T - H);
+    V3 cu = qrotate(a.worldRot(head), c_->procedural.headUpLocal());
+    V3 u0 = cu - ax * dot(cu, ax), u1 = V3{0, 1, 0} - ax * ax.y;
+    if (length(u0) > 1e-4f && length(u1) > 1e-4f) {
+        u0 = normalize(u0); u1 = normalize(u1);
+        float ang = std::atan2(dot(cross(u0, u1), ax), dot(u0, u1));
+        rotq(a, head, qaxis(ax, ang * kissW + kissRoll * kissW));
+    }
 }
 
 }  // namespace ag
