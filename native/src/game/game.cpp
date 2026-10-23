@@ -579,7 +579,7 @@ void Game::applySpec(const Spec& s) {
         }
         if (d.empty() && !s.has("autoplay")) night_.nextDesire = 999.f;
         std::string cm = s.get("cam", "side");
-        camMode_ = cm == "front" ? 1 : (cm == "top" ? 2 : (cm == "fpv" ? 3 : (cm == "face" ? 4 : 0)));
+        camMode_ = cm == "front" ? 1 : (cm == "top" ? 2 : (cm == "fpv" ? 3 : (cm == "face" ? 4 : (cm == "touch" ? 5 : 0))));
         cameraForPosition(0.f);
         camUser_ = true;   // no cinematic cuts in a still
         if (s.has("hud")) hudHidden_ = s.num("hud", 1.f) < 0.5f;

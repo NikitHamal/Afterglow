@@ -71,8 +71,9 @@ void TouchRig::init(Character& c) {
         int joint = -1;
         for (size_t j = 0; j < m.skins[0].joints.size(); ++j) if (m.skins[0].joints[j] == bone) joint = (int)j;
         if (joint < 0) continue;
-        struct Cand { V3 p, n; };
+        struct Cand { V3 p, n; float w; };
         std::vector<Cand> cands;
+        float maxW = 0.f;
         for (const Mesh& me : m.meshes)
             for (const Primitive& pr : me.prims) {
                 if (pr.joints.empty() || pr.weights.empty() || pr.pos.empty()) continue;
@@ -80,11 +81,14 @@ void TouchRig::init(Character& c) {
                 for (size_t v = 0; v < nv; ++v) {
                     float w = 0.f;
                     for (int k = 0; k < 4; ++k) if (pr.joints[v * 4 + k] == joint) w += pr.weights[v * 4 + k];
-                    if (w < 0.45f) continue;
+                    if (w <= 0.f) continue;
+                    maxW = std::max(maxW, w);
                     cands.push_back({V3{pr.pos[v * 3], pr.pos[v * 3 + 1], pr.pos[v * 3 + 2]},
-                                     pr.nrm.empty() ? V3{0, 0, 1} : V3{pr.nrm[v * 3], pr.nrm[v * 3 + 1], pr.nrm[v * 3 + 2]}});
+                                     pr.nrm.empty() ? V3{0, 0, 1} : V3{pr.nrm[v * 3], pr.nrm[v * 3 + 1], pr.nrm[v * 3 + 2]}, w});
                 }
             }
+        // the breast proper: skin weighted to the bone at least 60 % as strongly as its strongest vertex
+        cands.erase(std::remove_if(cands.begin(), cands.end(), [&](const Cand& c) { return c.w < std::max(0.12f, maxW * 0.6f); }), cands.end());
         if (cands.empty()) continue;
         float best = -1e9f;
         for (auto& cd : cands) best = std::max(best, cd.p.z);
