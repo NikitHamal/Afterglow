@@ -166,8 +166,10 @@ void Scene::lightsFromRoomGlb() {
             p.base = l.intensity > 50.f ? l.intensity / 400.f : l.intensity;
             p.intensity = p.base;
             p.range = l.range > 0.f ? l.range : 3.f;
-            p.flicker = n.find("candle") != std::string::npos ? (float)np * 1.3f + 0.2f : 0.f;
-            pointRole[np - 1] = n.find("candle") != std::string::npos ? 0 : (n.find("lamp") != std::string::npos ? 1 : 2);
+            // candles and hearth fires flicker; a fire is as strong as a lamp in every mood
+            bool candle = n.find("candle") != std::string::npos, fire = n.find("fire") != std::string::npos;
+            p.flicker = candle || fire ? (float)np * 1.3f + 0.2f : 0.f;
+            pointRole[np - 1] = candle ? 0 : (fire || n.find("lamp") != std::string::npos ? 1 : 2);
         }
     }
     if (np > 0) lights.numPoints = np;

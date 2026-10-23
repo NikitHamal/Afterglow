@@ -141,9 +141,15 @@ std::string Game::resolvePlace(const StoryNode* n) const {
     std::string want = !n->place.empty() ? n->place : slugOf(n->location);
     if (want.empty()) return place_.empty() ? std::string("room") : place_;
     if (Scene::hasLocation(want)) return want;
-    // the closest place that exists: by family (hotel_*, cabin_*, villa_*...), else where the story already is
+    // the closest place that exists: a sibling of the same family first (a door scene in the living room, the
+    // beach on the terrace), then the family's bedroom, else where the story already is
     struct F { const char* key; const char* to; };
-    static const F fam[] = {{"hotel", "hotel_room"}, {"ballroom", "hotel_room"}, {"wedding", "hotel_room"}, {"spa", "hotel_room"},
+    static const F fam[] = {{"cabin", "cabin_living"}, {"lodge", "cabin_living"}, {"snow", "cabin_living"},
+                            {"spa", "spa_suite"}, {"massage", "spa_suite"},
+                            {"beach", "villa_terrace"}, {"bay", "villa_terrace"}, {"sea", "villa_terrace"}, {"villa", "villa_terrace"},
+                            {"apartment", "apartment_living"}, {"flat", "apartment_living"}, {"city", "apartment_living"},
+                            {"ballroom", "hotel_ballroom"}, {"wedding", "hotel_ballroom"},
+                            {"hotel", "hotel_room"}, {"ballroom", "hotel_room"}, {"wedding", "hotel_room"}, {"spa", "hotel_room"},
                             {"cabin", "cabin_bedroom"}, {"lodge", "cabin_bedroom"}, {"snow", "cabin_bedroom"},
                             {"villa", "villa_bedroom"}, {"beach", "villa_bedroom"}, {"bay", "villa_bedroom"}, {"sea", "villa_bedroom"},
                             {"apartment", "room"}, {"flat", "room"}, {"city", "room"}, {"home", "room"}, {"bedroom", "room"}};
