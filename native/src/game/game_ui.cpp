@@ -183,6 +183,15 @@ void Game::drawCustomize() {
     std::vector<Color> toneCols(kToneSwatch, kToneSwatch + 7);
     std::vector<std::string> toneNames(kToneLabel, kToneLabel + 7);
     char agebuf[24];
+    // age shapes ship with a later character update; until then the slider says so instead of doing nothing silently
+    auto soonTag = [&](const Character& c, float lx, float ly) {
+        if (!c.loaded() || c.hasMorph("age_up") || c.hasMorph("age_dn")) return;
+        float tx = lx + U.measure(ui::Face::SansMedium, U.u(19.f), "Age").x + U.u(10.f);
+        float tp = U.u(11.f);
+        Vector2 m = U.measure(ui::Face::SansBold, tp, "COMING SOON", 0.12f);
+        U.fillRect(Rectangle{tx, ly + U.u(2.f), m.x + U.u(14.f), U.u(19.f)}, Color{255, 236, 224, 26}, U.u(9.5f));
+        U.text(ui::Face::SansBold, tp, "COMING SOON", tx + U.u(7.f), ly + U.u(5.5f), U.th.inkFaint, ui::Left, 0.12f);
+    };
     if (custTab_ == 0) {
         HerLook& h = profile.her;
         U.sectionLabel("BODY TYPE", x, y, w);
@@ -200,34 +209,35 @@ void Game::drawCustomize() {
             const Preset& p = presets[i];
             bool act = std::fabs(h.bust - p.bust) + std::fabs(h.hips - p.hips) + std::fabs(h.waist - p.waist) + std::fabs(h.butt - p.butt) +
                        std::fabs(h.weight - p.weight) + std::fabs(h.muscle - p.muscle) + std::fabs(h.belly - p.belly) < 0.05f;
-            Rectangle r{x + (float)(i % 5) * (cw + U.u(10.f)), y + (float)(i / 5) * U.u(46.f), cw, U.u(36.f)};
+            Rectangle r{x + (float)(i % 5) * (cw + U.u(10.f)), y + (float)(i / 5) * U.u(42.f), cw, U.u(34.f)};
             if (U.chip(std::string("hp#") + p.name, p.name, r, act)) {
                 h.bust = p.bust; h.hips = p.hips; h.waist = p.waist; h.butt = p.butt; h.weight = p.weight; h.muscle = p.muscle; h.belly = p.belly;
                 changed = true;
             }
         }
-        y += U.u(104.f);
+        y += U.u(94.f);
         U.sectionLabel("FIGURE", x, y, w);
-        y += U.u(32.f);
+        y += U.u(30.f);
         struct S { const char* id; const char* label; float* v; float lo; };
         const S sl[] = {{"h_bust", "Bust", &h.bust, -1.f}, {"h_hips", "Hips", &h.hips, -1.f}, {"h_waist", "Waist", &h.waist, -1.f},
                         {"h_butt", "Bottom", &h.butt, -1.f}, {"h_weight", "Weight", &h.weight, -1.f}, {"h_muscle", "Tone", &h.muscle, 0.f},
                         {"h_belly", "Belly", &h.belly, 0.f}};
         float colW = (w - U.u(48.f)) * 0.5f;
         for (int i = 0; i < 7; ++i) {
-            float sx = x + (i % 2) * (colW + U.u(48.f)), sy = y + (float)(i / 2) * U.u(64.f);
+            float sx = x + (i % 2) * (colW + U.u(48.f)), sy = y + (float)(i / 2) * U.u(58.f);
             changed |= U.slider(sl[i].id, sl[i].label, sl[i].v, sl[i].lo, 1.f, Rectangle{sx, sy, colW, U.u(46.f)}, sl[i].lo < 0.f);
         }
         // adults only: 21 to 60 years
         std::snprintf(agebuf, sizeof agebuf, "%d years", (int)std::lround(h.age));
-        changed |= U.slider("h_age", "Age", &h.age, kMinAge, kMaxAge, Rectangle{x + colW + U.u(48.f), y + 3.f * U.u(64.f), colW, U.u(46.f)}, false, agebuf);
-        y += U.u(4.f * 64.f + 12.f);
+        changed |= U.slider("h_age", "Age", &h.age, kMinAge, kMaxAge, Rectangle{x + colW + U.u(48.f), y + 3.f * U.u(58.f), colW, U.u(46.f)}, false, agebuf);
+        soonTag(scene.vivian, x + colW + U.u(48.f), y + 3.f * U.u(58.f));
+        y += U.u(4.f * 58.f + 8.f);
         U.sectionLabel("SKIN & HAIR", x, y, w);
         y += U.u(30.f);
-        changed |= U.swatches("h_tone", "Skin tone", &h.tone, toneCols, toneNames, Rectangle{x, y, w, U.u(76.f)});
-        y += U.u(86.f);
+        changed |= U.swatches("h_tone", "Skin tone", &h.tone, toneCols, toneNames, Rectangle{x, y, w, U.u(72.f)});
+        y += U.u(80.f);
         changed |= U.swatches("h_hair", "Hair colour", &h.hair, std::vector<Color>(kHairSwatch, kHairSwatch + 6),
-                              std::vector<std::string>(kHairLabel, kHairLabel + 6), Rectangle{x, y, colW, U.u(76.f)});
+                              std::vector<std::string>(kHairLabel, kHairLabel + 6), Rectangle{x, y, colW, U.u(72.f)});
         U.text(ui::Face::SansMedium, U.u(19.f), "Hair style", x + colW + U.u(48.f), y, U.th.inkDim);
         U.chip("h_style", "Low chignon", Rectangle{x + colW + U.u(48.f), y + U.u(36.f), U.u(170.f), U.u(36.f)}, true);
         y += U.u(86.f);
@@ -253,6 +263,7 @@ void Game::drawCustomize() {
         changed |= U.slider("m_belly", "Belly", &h.belly, 0.f, 1.f, Rectangle{x, y + U.u(64.f), colW, U.u(46.f)});
         std::snprintf(agebuf, sizeof agebuf, "%d years", (int)std::lround(h.age));
         changed |= U.slider("m_age", "Age", &h.age, kMinAge, kMaxAge, Rectangle{x + colW + U.u(48.f), y + U.u(64.f), colW, U.u(46.f)}, false, agebuf);
+        soonTag(scene.marcus, x + colW + U.u(48.f), y + U.u(64.f));
         y += U.u(140.f);
         U.sectionLabel("ENDOWMENT", x, y, w);
         y += U.u(32.f);
@@ -263,11 +274,6 @@ void Game::drawCustomize() {
         y += U.u(30.f);
         changed |= U.swatches("m_tone", "Skin tone", &h.tone, toneCols, toneNames, Rectangle{x, y, w, U.u(76.f)});
         y += U.u(96.f);
-    }
-    {
-        const Character& c = custTab_ == 0 ? scene.vivian : scene.marcus;
-        if (c.loaded() && !c.hasMorph("age_up") && !c.hasMorph("age_dn"))
-            U.text(ui::Face::Sans, U.u(14.f), "Age shapes the face and body once the next character update arrives.", x, y - U.u(4.f), U.th.inkFaint);
     }
     if (changed) applyLooks();
     if (custTab_ == 1 && scene.marcus.loaded()) {
@@ -360,9 +366,11 @@ void Game::drawSettings() {
             for (int i = 0; i < 3; ++i) {
                 Rectangle r{x + (float)i * (cw + U.u(14.f)), y, cw, ch};
                 bool act = settings.lightMood == i;
+                // the panel is see-through here (live preview): a dark base keeps the cards readable over a bright room
+                U.fillRect(r, Color{14, 8, 11, 150}, r.height * 0.5f);
                 if (U.chip(std::string("lm#") + std::to_string(i), "", r, act)) settings.lightMood = i;
                 U.text(ui::Face::Serif, U.u(25.f), moods[i].name, r.x + r.width * 0.5f, r.y + U.u(18.f), act ? U.th.ink : U.th.inkDim, ui::Center);
-                U.text(ui::Face::Sans, U.u(15.f), moods[i].line, r.x + r.width * 0.5f, r.y + U.u(58.f), U.th.inkFaint, ui::Center);
+                U.text(ui::Face::Sans, U.u(15.f), moods[i].line, r.x + r.width * 0.5f, r.y + U.u(58.f), act ? U.th.inkDim : U.th.inkFaint, ui::Center);
             }
             y += ch + U.u(36.f);
             char b[32];

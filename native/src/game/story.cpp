@@ -172,6 +172,8 @@ void StoryPlayer::start(const Story* s, const std::string& nodeId, const std::ma
     enter(nodeId);
     line_ = std::max(0, std::min(lineIx, node_ ? (int)node_->lines.size() : 0));
     reveal_ = 0.f;
+    // resuming mid-scene (a save, a gallery replay): the lines already read belong to the log and the choice prompt
+    for (int i = 0; i < line_; ++i) history.push_back({node_->lines[(size_t)i].who, node_->lines[(size_t)i].text});
 }
 
 void StoryPlayer::enter(const std::string& id) {

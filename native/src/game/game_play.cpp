@@ -718,18 +718,20 @@ void Game::drawActionBar() {
     const PositionInfo& p = positions_[(size_t)posIndex_];
     auto has = [&](const char* id) { for (auto& q : positions_) if (q.id == id) return true; return false; };
     const char* camNames[5] = {"Side", "Front", "Above", "His view", "Her face"};
-    struct Btn { const char* key; std::string label; bool enabled, active; int action; };
+    struct Btn { const char* key; std::string label; bool enabled, active; int action; const char* tip; };
     std::vector<Btn> bs = {
-        {"Tab", "Acts", true, barOpen_, 0},
-        {"Space", "Rhythm", true, rhythm_, 1},
-        {"R", "Touch", p.canTouch, rubTarget_ > 0.5f, 2},
-        {"E", "Kiss", p.canKiss, embraceTarget_ > 0.5f, 3},
-        {"O", "Her lips", has("oral"), p.id == "oral", 4},
-        {"L", "His tongue", has("lick"), p.id == "lick", 5},
-        {"X", "Alone", has("solo"), p.id == "solo", 6},
-        {"C", camNames[std::max(0, std::min(4, camMode_))], true, false, 7},
-        {"M", moodName((Mood)settings.lightMood), true, false, 8},
+        {"Tab", "Acts", true, barOpen_, 0, "Choose what you do together"},
+        {"Space", "Rhythm", true, rhythm_, 1, "An easy rhythm: hold Space, or click to keep it going"},
+        {"R", "Touch", p.canTouch, rubTarget_ > 0.5f, 2, "Her fingers join in"},
+        {"E", "Kiss", p.canKiss, embraceTarget_ > 0.5f, 3, "Lean in close and kiss"},
+        {"O", "Her lips", has("oral"), p.id == "oral", 4, "Her lips on him"},
+        {"L", "His tongue", has("lick"), p.id == "lick", 5, "His mouth on her"},
+        {"X", "Alone", has("solo"), p.id == "solo", 6, "She shows him how she likes it"},
+        {"C", camNames[std::max(0, std::min(4, camMode_))], true, false, 7, "Next camera"},
+        {"M", moodName((Mood)settings.lightMood), true, false, 8, "Next lighting mood"},
     };
+    int tipIdx = -1;
+    Rectangle tipR{};
     float px = U.u(16.f), kp = U.u(13.f), h = U.u(48.f), gap = U.u(10.f);
     std::vector<float> ws;
     float total = 0.f;
@@ -749,8 +751,11 @@ void Game::drawActionBar() {
         const Btn& b = bs[i];
         Rectangle r{x, y, ws[i], h};
         bool over = b.enabled && CheckCollisionPointRec(U.in.mouse, r);
+        if (CheckCollisionPointRec(U.in.mouse, r)) { tipIdx = (int)i; tipR = r; }
         float hv = U.anim("ab#" + std::to_string(i), over ? 1.f : 0.f, 14.f);
         float on = U.anim("ab#on" + std::to_string(i), b.active ? 1.f : 0.f, 12.f);
+        float pr = U.anim("ab#pr" + std::to_string(i), over && U.in.mouseDown ? 1.f : 0.f, 20.f);
+        r = Rectangle{r.x + pr * U.u(1.5f), r.y + pr * U.u(1.5f), r.width - pr * U.u(3.f), r.height - pr * U.u(3.f)};
         float a0 = U.alpha;
         if (!b.enabled) U.alpha = a0 * 0.38f;
         ui::Box pill; pill.radius = h * 0.5f;
@@ -782,6 +787,25 @@ void Game::drawActionBar() {
         }
         x += ws[i] + gap;
     }
+    // what the hovered button does (or why it is dimmed)
+    if (barOpen_) tipIdx = -1;   // the open picker explains itself
+    float tipA = U.anim("ab#tip", tipIdx >= 0 ? 1.f : 0.f, 10.f);
+    if (tipIdx >= 0) { lastTip_ = tipIdx; lastTipR_ = tipR; }
+    if (tipA > 0.01f && lastTip_ >= 0 && lastTip_ < (int)bs.size()) {
+        const Btn& b = bs[(size_t)lastTip_];
+        std::string tip = b.enabled ? b.tip : std::string("Not in this act");
+        float tp = U.u(15.f);
+        float tw = U.measure(ui::Face::SansMedium, tp, tip).x + U.u(32.f);
+        float tx = std::max(U.u(12.f), std::min(U.W - tw - U.u(12.f), lastTipR_.x + lastTipR_.width * 0.5f - tw * 0.5f));
+        float ty = actionBarRect_.y - U.u(46.f) + (1.f - tipA) * U.u(6.f);
+        float a0 = U.alpha;
+        U.alpha = a0 * tipA;
+        ui::Box tb; tb.radius = U.u(15.f); tb.fill = Color{20, 12, 16, 228}; tb.border = std::max(1.f, U.u(1.f)); tb.borderCol = ui::withA(U.th.accent, 0.45f);
+        tb.shadow = U.u(14.f); tb.shadowCol = Color{0, 0, 0, 120};
+        U.box(Rectangle{tx, ty, tw, U.u(32.f)}, tb);
+        U.text(ui::Face::SansMedium, tp, tip, tx + tw * 0.5f, ty + (U.u(32.f) - tp) * 0.5f - U.u(1.f), b.enabled ? U.th.ink : U.th.inkDim, ui::Center);
+        U.alpha = a0;
+    }
 }
 
 void Game::drawPositionBar(float a) {
@@ -792,8 +816,13 @@ void Game::drawPositionBar(float a) {
     int maxRow = 0;
     int counts[4] = {0, 0, 0, 0};
     for (auto& q : positions_) for (int g = 0; g < 4; ++g) if (q.group == groups[g]) ++counts[g];
+    // no foreplay acts in the clips yet: the Foreplay row offers kissing and her touch, which join the current act
+    const bool foreplayToggles = counts[0] == 0;
     int rows = 0;
-    for (int g = 0; g < 4; ++g) if (counts[g] > 0) { ++rows; maxRow = std::max(maxRow, counts[g]); }
+    for (int g = 0; g < 4; ++g) {
+        int n = (g == 0 && foreplayToggles) ? 2 : counts[g];
+        if (n > 0) { ++rows; maxRow = std::max(maxRow, n); }
+    }
     float rowW = headW + (float)maxRow * (cw + gap) - gap;
     float rowH = ch + U.u(14.f);
     float pw = rowW + U.u(56.f), ph = (float)rows * rowH + U.u(70.f);
@@ -804,6 +833,40 @@ void Game::drawPositionBar(float a) {
     float y = y0 + U.u(54.f);
     int keyIndex = 0;
     for (int g = 0; g < 4; ++g) {
+        if (g == 0 && foreplayToggles) {
+            const PositionInfo& cp = positions_[(size_t)posIndex_];
+            U.text(ui::Face::Serif, U.u(26.f), groups[g], x0 + U.u(28.f), y + ch * 0.5f - U.u(16.f), U.th.inkDim);
+            struct T { const char* key; const char* name; bool can, on; };
+            const T ts[2] = {{"E", "Kissing", cp.canKiss, embraceTarget_ > 0.5f}, {"R", "Her Touch", cp.canTouch, rubTarget_ > 0.5f}};
+            float x = x0 + U.u(28.f) + headW;
+            for (int k = 0; k < 2; ++k) {
+                Rectangle r{x, y, cw, ch};
+                bool over = ts[k].can && CheckCollisionPointRec(U.in.mouse, r);
+                float h = U.anim(std::string("posbar#f") + ts[k].key, over ? 1.f : 0.f, 14.f);
+                float a0 = U.alpha;
+                if (!ts[k].can) U.alpha = a0 * 0.4f;
+                if (over && U.in.clicked) {
+                    float& tgt = k == 0 ? embraceTarget_ : rubTarget_;
+                    tgt = ts[k].on ? 0.f : 1.f;
+                    barOpen_ = false;
+                }
+                ui::Box b; b.radius = U.u(16.f);
+                b.fill = ts[k].on ? ui::withA(U.th.accent, 0.22f) : Color{255, 236, 224, (unsigned char)(10 + 20 * h)};
+                b.border = std::max(1.f, U.u(1.2f));
+                b.borderCol = ts[k].on ? ui::withA(U.th.accent, 0.95f) : ui::mixc(U.th.hairline, ui::withA(U.th.accent, 0.6f), h);
+                b.shadow = U.u(14.f) * (h + (ts[k].on ? 0.6f : 0.f)); b.shadowCol = ui::withA(U.th.accent, 0.2f);
+                U.box(Rectangle{r.x, r.y - h * U.u(3.f), r.width, r.height}, b);
+                U.text(ui::Face::SansBold, U.u(13.f), ts[k].key, r.x + U.u(14.f), r.y + U.u(11.f) - h * U.u(3.f), ts[k].on ? U.th.accent : U.th.inkFaint);
+                U.text(ui::Face::Serif, U.u(22.f), ts[k].name, r.x + U.u(14.f), r.y + U.u(38.f) - h * U.u(3.f),
+                       ts[k].on ? U.th.ink : ui::mixc(U.th.inkDim, U.th.ink, h));
+                U.text(ui::Face::Sans, U.u(12.f), !ts[k].can ? "not in this act" : (ts[k].on ? "on \xc2\xb7 click to stop" : "joins this act"),
+                       r.x + U.u(14.f), r.y + ch - U.u(24.f) - h * U.u(3.f), ts[k].on ? U.th.accent : U.th.inkFaint);
+                U.alpha = a0;
+                x += cw + gap;
+            }
+            y += rowH;
+            continue;
+        }
         if (counts[g] == 0) continue;
         U.text(ui::Face::Serif, U.u(26.f), groups[g], x0 + U.u(28.f), y + ch * 0.5f - U.u(16.f), U.th.inkDim);
         float x = x0 + U.u(28.f) + headW;

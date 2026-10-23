@@ -174,7 +174,7 @@ void Renderer::bindMaterial(Program& p, const Model& m, int mi, const Character*
     p.set("u_hasDetailN", detail ? 1 : 0);
     p.sampler("u_skinMask", 9, mask ? mask : white_);       // 7 is the SSAO buffer, 8 kept free
     p.sampler("u_detailN", 10, detail ? detail : flatNormal_);
-    p.set("u_baked", (mat.shading == Shading::Room && mat.texEmis && mat.uvEmis == 1) ? 1 : 0);
+    p.set("u_baked", (mat.shading == Shading::Room && mat.baked && mat.texEmis) ? 1 : 0);
 }
 
 void Renderer::drawModel(Program& p, Model& m, Animator& a, const Character* ch, int pass) {

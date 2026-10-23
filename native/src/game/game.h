@@ -86,6 +86,8 @@ private:
     int nextCamMode(int cur, bool solo) const;
     int lastAct_ = -1;
     Rectangle actionBarRect_{0, 0, 0, 0};
+    int lastTip_ = -1;           // action bar tooltip (kept while it fades out)
+    Rectangle lastTipR_{0, 0, 0, 0};
     std::vector<PositionInfo> positions_;
     int posIndex_ = 0, pendingPos_ = -1;
     float posFade_ = 0.f;                 // position change dip (0..1..0)
