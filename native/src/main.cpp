@@ -116,7 +116,16 @@ int main(int argc, char** argv) {
     }
 #endif
     if (pre.windowMode != 0) applyDisplay(pre, true);
-    else applyDisplay(pre, false);
+    else {
+        applyDisplay(pre, false);
+        // small screens (1366x768 laptops): fit the window and centre it
+        int mon = GetCurrentMonitor(), mw = GetMonitorWidth(mon), mh = GetMonitorHeight(mon);
+        if (mw > 0 && mh > 0 && (GetScreenWidth() > mw - 60 || GetScreenHeight() > mh - 100)) {
+            int w = std::max(960, std::min(GetScreenWidth(), mw - 60)), h = std::max(540, std::min(GetScreenHeight(), mh - 100));
+            SetWindowSize(w, h);
+            SetWindowPosition((mw - w) / 2, std::max(0, (mh - h) / 2 - 20));
+        }
+    }
 
     ag::Updater updater;
     ag::Game game;

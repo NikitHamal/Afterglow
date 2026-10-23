@@ -64,6 +64,7 @@ jobs:
           mkdir -p dist/Afterglow
           cp -R native/build/bin/assets dist/Afterglow/
           cp native/installer/LICENSE-18PLUS.txt dist/Afterglow/
+          mkdir -p dist/Afterglow/licenses && cp native/res/fonts/OFL-*.txt dist/Afterglow/licenses/
           if [ "$RUNNER_OS" = "Windows" ]; then
             cp native/build/bin/Afterglow.exe dist/Afterglow/
             (cd dist && 7z a -tzip -mx=7 "Afterglow-windows-x64.zip" Afterglow > /dev/null)
