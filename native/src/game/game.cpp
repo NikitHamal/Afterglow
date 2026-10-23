@@ -336,7 +336,11 @@ void Game::render(int w, int h) {
     rs.bloom = settings.bloom;
     rs.ssao = settings.ssao && settings.quality > 0;
     rs.grain = settings.filmGrain ? 0.024f : 0.f;
-    renderer.render(scene, cam_, w, h, time_);
+    // paused: once the frosted backdrop fully covers the frozen scene, keep the last blur and skip the 3D
+    bool pausedBackdrop = screen_ == Screen::Pause || (screen_ == Screen::Settings && settingsReturn_ == Screen::Pause);
+    bool frozen = pausedBackdrop && screenTime_ > 0.6f && renderer.blurTexture() != 0 && w == lastRenderW_ && h == lastRenderH_ && !debug_;
+    if (frozen) ClearBackground(Color{6, 3, 5, 255});
+    else { renderer.render(scene, cam_, w, h, time_); lastRenderW_ = w; lastRenderH_ = h; }
     ui.blurTex = renderer.blurTexture();
     ui.blurW = renderer.blurWidth(); ui.blurH = renderer.blurHeight();
 

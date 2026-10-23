@@ -151,6 +151,7 @@ private:
     Json clipsMeta_;
     float time_ = 0.f, frameDt_ = 1.f / 60.f;
     int fbW_ = 1280, fbH_ = 720;
+    int lastRenderW_ = 0, lastRenderH_ = 0;
     std::string settingsPath_, profilePath_;
     float saveTimer_ = 0.f;
     bool sceneReady_ = false;
