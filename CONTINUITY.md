@@ -12,13 +12,18 @@ root is legacy. Adults only (see `AGENTS.md`).
 render shot lists on the molab box instead, see Commands).
 
 **Done (latest first)**
-- `ad90f38` story places kit (`tools/model/room/kit.py`, `build_place.py`) + `cabin_living` (The Storm, 5 scenes);
-  'fire' lights flicker; missing places fall back to a built sibling of their family first.
-- `c51dbb3` director: face-to-face couples shot from the open side (they were shot from behind the bed); the side is
-  picked again when the pose changes (seated couples were shot from behind).
-- `b425acd` CI without the QA job (it took ~55 min).
-- `a97d631` customise: her muscle −1..1 (`muscle_dn`), preset chips sized to their names in balanced rows.
-- `cc4137c` this file. Before that: `ffbb849` 8 skin tones / presets.json / adult age shapes, story film, M5–M7 content.
+- Kiss + hands (agent pass, branch `agent-kiss`): the kiss lands (neck + head IK onto the meeting point, heads roll
+  ~22° so noses pass; lips 2 mm apart standing and seated, were 64 / 110 mm); embrace palms flat on the partner's
+  real chest / waist (anchors from trunk-weighted skin; the old ray hit surfaces inside the body); forearms take 60 %
+  of a palm turn (no flat-ribbon wrists); seated couples turn to each other; harness key `near=` (embrace, no kiss).
+- Garments (agent pass, branch `agent-garments`): outfits follow the skeleton again — the outfit GLBs store the
+  Japanese joint names JSON-escaped (`\uXXXX`), cgltf left them undecoded, every garment joint fell back to the
+  root and the clothes stayed in bind pose (the real cause of "clothes not on the body"); clean cuts along hems /
+  cuffs / necklines with corners kept; underwear never drawn under a worn outer layer; cloth shading (sheen BRDF,
+  satin anisotropy, finished hems, garment insides in shadow, albedo capped for whites).
+- `9d0d7c9` garment fit system (`native/src/scene/fit.*`): covered skin not drawn, smooth borders, drape.
+- `ccef91b` embrace hands on the facing side; `c51dbb3` director side fix; `ad90f38` places kit + `cabin_living`.
+- `b425acd` CI without the QA job; `a97d631` customise fixes; `cc4137c` this file.
 
 **Half done**
 - Marcus: 3 painted tones (others tinted), no `age_up` / `age_dn` (his Age slider shows COMING SOON by design).
@@ -33,16 +38,14 @@ explicit story text, renders/videos of the acts. They stay open for whoever owns
 
 ## In flight
 
-1. Garment fit (engine, `native/src/scene/fit.*`): garments are offset copies of the skin (6–7 mm) that sink into the
-   body under skinning (seated: the sweater front up to 6 mm inside, measured in Blender), so the skin showed through.
-   Now, per garment at load: skin covered by an opaque layer is not drawn while that layer is worn; an under layer
-   hides under the outer one; garments trim along a smoothed copy of their border (no triangle staircase at hems and
-   necklines). Lace covers nothing. Automatic for any future garment / accessory.
+1. Verify the merged kiss + garment work on molab (fresh CMake configure: shaders are embedded at configure time,
+   `cmake --build` alone keeps old shaders), push.
 
 ## Exact next step
 
-Check the molab renders of `fit_*` (seated two-shot, standing two-shot, kiss, hotel) — no skin through cloth, no holes
-at borders, smooth necklines; then commit + push the fit system, then `spa_suite` with `build_place.py`.
+`spa_suite` (The Massage, 4 scenes) with `tools/model/room/build_place.py`: a treatment bed on the authoring bed's
+footprint (0.604 m top, 1.8 x 2.0 m, centre (0, 0.604, -1.22) engine) so every bed clip works there; then
+villa_terrace, apartment_hall, hotel_ballroom.
 
 ## Commands
 
@@ -56,6 +59,8 @@ git fetch origin && git rebase origin/main && /app/py/.venv/bin/python /data/wor
 # harness (needs a build; on molab: Release build in /root/build, Mesa llvmpipe under Xvfb)
 LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1920x1080x24" ./afterglow --shotlist tools/qa/game_shots.txt --outdir qa-out --res 1280x720 --frames 24
 ./afterglow --shot out.png --scene "screen=customize;tab=her" --res 1366x768
+# NOTE: shaders are embedded at CMake configure time: re-run `cmake -S native -B build` after editing native/shaders
+# (or symlink build/bin/shaders -> native/shaders; the engine loads that folder first)
 # a story place: build (+ Cycles previews), post, stage as locations/<id>/
 AG_PLACE=cabin_living AG_ROOM_OUT=/root/agb/places/cabin_living AG_PREVIEW=1 BAKE_SAMPLES=512 blender -b --python tools/model/room/build_place.py
 node tools/model/room/post.mjs <dir>/<id>_raw.glb <dir>/<id>.json <dir>/post   # room.glb/json -> native/assets/locations/<id>/<id>.*
