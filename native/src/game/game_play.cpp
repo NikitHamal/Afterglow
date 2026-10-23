@@ -159,9 +159,11 @@ void Game::updatePlay(float dt) {
         if (IsKeyPressed(KEY_H)) hudHidden_ = !hudHidden_;
         if (IsKeyPressed(KEY_C)) { camMode_ = (camMode_ + 1) % (p.solo ? 3 : 4); cameraForPosition(0.9f); camUser_ = false; }
         if (IsKeyPressed(KEY_V) && !p.solo) { camMode_ = camMode_ == 3 ? 0 : 3; cameraForPosition(0.7f); }
-        if (settings.holdRhythm) rhythm_ = IsKeyDown(KEY_SPACE);
-        else if (IsKeyPressed(KEY_SPACE)) rhythmToggle_ = !rhythmToggle_;
-        if (!settings.holdRhythm || rhythmToggle_) rhythm_ = rhythm_ || rhythmToggle_;
+        if (settings.holdRhythm) rhythm_ = IsKeyDown(KEY_SPACE) || rhythmToggle_;   // (toggle only set by autoplay)
+        else {
+            if (IsKeyPressed(KEY_SPACE)) rhythmToggle_ = !rhythmToggle_;
+            rhythm_ = rhythmToggle_;
+        }
         if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) rhythmTempo_ = std::min(2.6f, rhythmTempo_ + dt * 0.7f);
         if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) rhythmTempo_ = std::max(0.3f, rhythmTempo_ - dt * 0.7f);
         if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) rhythmAmp_ = std::min(0.95f, rhythmAmp_ + dt * 0.5f);
@@ -170,9 +172,11 @@ void Game::updatePlay(float dt) {
 
     if (autoplay_) autoplayStep(dt);
 
+    if (night_.finished) { rhythm_ = rhythmToggle_ = false; dragDepth_ = depthTarget_ = 0.12f; }   // afterglow: still, close
+
     // ---- depth: mouse drag (direct), wheel notches (strokes that spring back), or the auto rhythm ----
     float sens = settings.mouseSens * (settings.invertY ? -1.f : 1.f);
-    bool dragging = IsMouseButtonDown(MOUSE_BUTTON_LEFT) && !overUi && !ui.anyActive();
+    bool dragging = IsMouseButtonDown(MOUSE_BUTTON_LEFT) && !overUi && !ui.anyActive() && !night_.finished;
     bool orbiting = IsMouseButtonDown(MOUSE_BUTTON_RIGHT);
     float wheel = orbiting ? 0.f : ui.in.wheel;
     // the cursor hides while you move together, and when the mouse rests
@@ -185,7 +189,7 @@ void Game::updatePlay(float dt) {
         dragDepth_ = clamp01(dragDepth_ + GetMouseDelta().y * 0.0042f * sens);
         depthTarget_ = dragDepth_;
         wheelImpulse_ = 0.f;
-    } else if (wheel != 0.f && !overUi) {
+    } else if (wheel != 0.f && !overUi && !night_.finished) {
         dragDepth_ = clamp01(dragDepth_ - wheel * 0.16f * (settings.invertY ? -1.f : 1.f));
         depthTarget_ = dragDepth_;
         wheelImpulse_ = 0.35f;
