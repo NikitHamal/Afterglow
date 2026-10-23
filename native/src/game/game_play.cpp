@@ -127,6 +127,15 @@ void Game::cameraForPosition(float blend) {
         else camera.setFirstPerson(&scene.marcus, "頭", {0.f, 0.07f, 0.09f}, blend);
         return;
     }
+    if (camMode_ == 5 && scene.vivian.loaded()) {
+        // QA: the touched area up close (her vulva zone, from in front and above)
+        V3 zp, zn;
+        if (scene.vivian.touch.zoneWorld(scene.vivian.anim, Zone::Vulva, zp, zn)) {
+            V3 d = normalize(zn + V3{0.f, 0.9f, 0.f});
+            camera.setOrbit(zp, std::atan2(d.x, d.z), std::min(std::asin(clampf(d.y, -1.f, 1.f)), 1.3f), 0.62f, blend);
+            return;
+        }
+    }
     if (camMode_ == 4 && scene.vivian.loaded()) {
         // her face: from the front-side, away from him, slightly above, following her head
         V3 hc, hf, hu;
@@ -517,6 +526,10 @@ void Game::presentPlay(float dt) {
         V3 hc, hf, hu;
         v.headAxes(hc, hf, hu);
         camera.follow(hc);
+    }
+    if (camMode_ == 5 && v.loaded() && camera.mode() == CameraRig::Mode::Orbit) {
+        V3 zp, zn;
+        if (v.touch.zoneWorld(v.anim, Zone::Vulva, zp, zn)) camera.follow(zp);
     }
     // ---- camera: drift, climax push-in, afterglow pull-back ----
     camera.sway = settings.cinematicCamera ? 0.6f + 0.6f * him : 0.f;
