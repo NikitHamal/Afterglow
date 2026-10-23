@@ -597,7 +597,7 @@ void Game::drawIntroCard(float a) {
     float w = U.u(620.f), h = U.u(250.f), x = U.W * 0.5f - w * 0.5f, y = U.H * 0.5f - h * 0.5f - U.u(40.f) + (1.f - a) * U.u(16.f);
     U.panel(Rectangle{x, y, w, h}, 24.f, 0.6f);
     U.text(ui::Face::SansBold, U.u(13.f), "YOUR FIRST NIGHT", x + w * 0.5f, y + U.u(26.f), U.th.accent, ui::Center, 0.24f);
-    U.paragraph(ui::Face::SerifItalic, U.u(25.f), "Move together, then listen. She'll tell you what she wants â and he'll tell you when to slow down.",
+    U.paragraph(ui::Face::SerifItalic, U.u(25.f), "Move together, then listen. She'll tell you what she wants \xe2\x80\x94 and he'll tell you when to slow down.",
                 x + U.u(40.f), y + U.u(58.f), w - U.u(80.f), U.th.ink, 1.3f, ui::Center);
     float hx = x + U.u(44.f), hy = y + h - U.u(64.f);
     hx += U.keyHint(hx, hy, "Drag", "Move", 16.f) + U.u(24.f);

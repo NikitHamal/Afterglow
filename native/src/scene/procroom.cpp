@@ -274,7 +274,7 @@ void buildPlaceholderRoom(Model& out, RoomInfo& info) {
     int mWall = mat("wallpaper", {1, 1, 1, 1}, 0.85f, 0.f, texWallpaper());
     int mPanel = mat("wainscot", {0.085f, 0.055f, 0.04f, 1}, 0.5f, 0.f);
     int mFrame = mat("bed_frame", {0.11f, 0.055f, 0.035f, 1}, 0.36f, 0.f);
-    int mMattress = mat("mattress", {0.50f, 0.45f, 0.40f, 1}, 0.8f, 0.f);
+    int mMattress = mat("mattress", {0.34f, 0.275f, 0.21f, 1}, 0.8f, 0.f);
     int mSheet = mat("sheet_satin", {0.34f, 0.275f, 0.21f, 1}, 0.62f, 0.f, texSatin());
     int mPillow = mat("pillow", {0.78f, 0.73f, 0.66f, 1}, 0.7f, 0.f);
     int mHead = mat("headboard_velvet", {0.11f, 0.105f, 0.11f, 1}, 0.72f, 0.f);
@@ -302,11 +302,12 @@ void buildPlaceholderRoom(Model& out, RoomInfo& info) {
     append(wain, box({sideX - 0.03f, 0.45f, (3.5f + backZ) * 0.5f}, {0.05f, 0.9f, 3.5f - backZ}));
     add("wainscot", wain, mPanel, false);
 
-    // bed: frame + mattress (top at 0.60, sheet at 0.604)
+    // bed: frame + mattress (top at 0.585), sheet surface at 0.604
     MeshData frame = box({0.f, 0.25f, CZ}, {2.f * HW + 0.14f, 0.30f, 2.f * HL + 0.12f});
     for (int i = 0; i < 4; ++i) append(frame, box({(i & 1) ? HW + 0.03f : -HW - 0.03f, 0.05f, (i & 2) ? footZ + 0.03f : headZ - 0.03f}, {0.09f, 0.1f, 0.09f}));
     add("bed_frame", frame, mFrame);
-    add("mattress", box({0.f, 0.50f, CZ}, {2.f * HW, 0.20f, 2.f * HL}), mMattress);
+    // mattress top sits 19 mm under the sheet surface: wrinkles never let it poke through
+    add("mattress", box({0.f, 0.4925f, CZ}, {2.f * HW, 0.185f, 2.f * HL}), mMattress);
     add("sheet", facing(grid(72, 84, [&](float u, float v) {
         float x = -(HW + 0.12f) + u * 2.f * (HW + 0.12f), z = headZ - 0.02f + v * (2.f * HL + 0.16f);
         float edgeX = std::max(0.f, std::fabs(x) - HW), edgeZ = std::max(0.f, z - footZ);
