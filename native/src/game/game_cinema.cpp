@@ -48,7 +48,8 @@ std::vector<std::string> poseClips(const std::string& pose) {
     if (pose.find('.') != std::string::npos) return {pose};
     if (pose == "stand") return {"stand.idle"};
     if (pose == "sit") return {"sit.bed", "stand.idle"};
-    if (pose == "lie" || pose == "cuddle") return {"cuddle.idle", "kiss.side"};
+    if (pose == "lie" || pose == "cuddle") return {"cuddle.idle"};
+    if (pose == "kiss") return {"kiss.stand", "stand.embrace", "stand.idle"};
     if (pose == "dance") return {"dance.slow", "stand.idle"};
     if (pose == "embrace") return {"stand.embrace", "stand.idle"};
     return {pose + ".idle"};
@@ -244,7 +245,7 @@ void Game::storyLineStarted() {
     if (!l || !n) { speaker_ = -1; return; }
     int spk = l->who == "vivian" ? 0 : (l->who == "marcus" ? 1 : -1);
     // the voice: Kokoro take from the manifest (silent when not voiced yet); the typewriter ends with it
-    if (l->voice != "none") take_ = voices_.take(story_.story()->id, n->id, story_.lineIndex(), &takeKey_);
+    if (l->voice != "none") take_ = voices_.take(story_.story()->id, n->id, story_.lineIndex(), &takeKey_, &l->text);
     if (take_) {
         if (!harness) voicePlayer_.play(voices_.file(takeKey_), settings.voice);
         if (harness) AG_INFO("AG: audio voice line %s %s %.2fs", l->who.c_str(), takeKey_.c_str(), (double)take_->dur);
@@ -430,7 +431,7 @@ void Game::applyStoryPose(float dt) {
     near_ = approachF(near_, std::max(nearTarget_, kissTarget_), dt / 1.3f);
     float k = smoothstep(0.f, 1.f, kiss_), nr = smoothstep(0.f, 1.f, near_);
     bool sit = pose_ == "sit";
-    float step = (sit ? 0.11f : 0.25f) * nr;
+    float step = (sit ? 0.11f : 0.22f) * nr;
     V3 axis = flatv(m.bonePos("センター") - v.bonePos("センター"));
     v.placement = m4translate(axis * step);
     m.placement = m4translate(axis * -step);
@@ -481,7 +482,7 @@ void Game::presentStory(float dt) {
         bool partner = w ? scene.showVivian : scene.showMarcus;
         V3 oh{0, 1.5f, 0}, of{0, 0, 1}, ou{0, 1, 0};
         if (partner) o.headAxes(oh, of, ou);
-        if (kiss_ > 0.3f) oh = oh + of * 0.07f + V3{0.f, -0.05f, 0.f};   // look at the lips
+        if (kiss_ > 0.3f) oh = oh + of * 0.04f + V3{0.f, -0.02f, 0.f};   // toward the partner's mouth
         actors_[w].update(dt, oh, partner, cam_.eye);
         c.proc.breathRate = 0.22f + 0.1f * kiss_;
         c.proc.breathAmp = 1.f + 0.6f * kiss_;
@@ -652,7 +653,7 @@ void Game::storyBeats(float dt) {
         if (beatLine_ >= (int)b->lines.size()) { beatNode_.clear(); beatTake_ = nullptr; return; }
         const StoryLine& L = b->lines[(size_t)beatLine_];
         std::string key;
-        beatTake_ = L.voice == "none" ? nullptr : voices_.take(story_.story()->id, b->id, beatLine_, &key);
+        beatTake_ = L.voice == "none" ? nullptr : voices_.take(story_.story()->id, b->id, beatLine_, &key, &L.text);
         if (beatTake_ && !harness) voicePlayer_.play(voices_.file(key), settings.voice);
         if (!L.vox.empty()) voice(L.vox, 0.8f, 1.f);
         beatWho_ = L.who;

@@ -1,85 +1,106 @@
-# Story assets — what story mode wants from the content track
+# Story assets — what story mode uses, and what it still wants from the content track
 
-Story mode (`native/src/game/story.*`, `game_story.cpp`) plays data-driven visual novels over the live 3D scene.
-Scripts live in `native/assets/story/<id>.json` (one file per story; the engine loads every `*.json` there). Until
-the assets below land, the engine uses fallbacks: every location renders as the bedroom with the node's lighting
-mood and a location card; a character whose outfit is `dressed` or `partial` is **not drawn** (only `nude`
-characters appear), so early chapters read as text over the room. Nothing in a script has to change when assets
-arrive — the engine picks them up by name.
+Story mode plays each story as a short film over the live 3D scene (`native/src/game/game_cinema.cpp`, `story.*`,
+`director.*`, `voice.*`, `scene/actor.*`, `scene/outfit.*`). Scripts live in `native/assets/story/<id>.json`, written
+with the helpers in `tools/story/` (`python3 tools/story/<id>.py native/assets/story` re-emits and validates one).
+Every spoken line is voiced by `.github/workflows/voices.yml` (see `docs/VOICE.md`) when a script changes.
+
+The engine always stages a scene with what exists today and picks up new assets **by name**, without script
+changes: a missing location falls back to the closest one that exists (hotel_* → `hotel_room`, cabin_* →
+`cabin_bedroom`, villa_* / beach → `villa_bedroom`, spa_* → `hotel_room`, apartment_* / city → the default room); a
+missing staging clip falls back along a chain (`stand.embrace` → `stand.idle`, `cuddle.idle` → spooning
+still, `dance.slow` → `stand.idle`) with procedural acting on top.
 
 ## Script format (JSON)
 
 ```jsonc
 {
   "id": "old_flames", "title": "Old Flames", "tagline": "...", "setting": "A COASTAL HOTEL · A WEDDING WEEKEND",
-  "mood": "evening",                       // default lighting mood: evening | candle | day
-  "vars": {"trust": 0, "warmth": 0},       // numeric variables, reset per playthrough
-  "chapters": [{"id": "c1", "title": "The Toast", "start": "c1_reception"}],
-  "gallery": {"g_first": "Rediscovery"},   // unlockable scenes (replay from the node that unlocks them)
+  "mood": "evening",                                        // default lighting mood: evening | candle | day
+  "cast": {"vivian": {"wardrobe": "evening_dress"}, "marcus": {"wardrobe": "suit_open_collar"}},
+  "vars": {"trust": 0}, "chapters": [{"id": "c1", "title": "The Toast", "start": "c1_reception"}],
+  "gallery": {"g_first": "Rediscovery"},
   "nodes": {
     "c1_reception": {
-      "chapter": "c1", "location": "the hotel ballroom", "mood": "evening",
-      "show": ["vivian", "marcus"],                       // who is on stage (omit = keep)
-      "outfit": {"vivian": "dressed", "marcus": "nude"},  // dressed | partial | nude
-      "act": "missionary", "actT": 0.15,                  // pose from a free-play act (clip family) at depth/phase
-      "camera": "wide",                                   // wide | side | front | top | face | his_view
-      "set": {"warmth": "+1"},                            // on entering: "+n", "-n", "=n"
+      "chapter": "c1", "location": "the ballroom of the Hotel Miramar",   // shown on the location card
+      "place": "hotel_ballroom",                         // location asset wanted (falls back, see above)
+      "mood": "evening", "ambience": "party",            // party | sea | rain | wind | fire | city | spa, '+'-combined
+      "show": ["vivian", "marcus"], "outfit": {"vivian": "dressed", "marcus": "dressed"},   // dressed | partial | nude
+      "wardrobe": {"vivian": "knit_sweater_jeans"},      // per-node style change (optional)
+      "pose": "stand",                                   // stand | sit | lie | dance | embrace | a clip name | an act id
+      "act": "missionary", "actT": 0.1,                  // the act a to_bed action goes to (and its depth)
       "lines": [
-        {"who": "narrator", "text": "..."},
-        {"who": "vivian", "text": "...", "voice": "moan02", "sfx": "wet", "camera": "face",
-         "expr": {"smile": 0.6, "pleasure": 0.3, "moan": 0, "kiss": 0, "flush": 0.2}, "wait": 0}
+        {"who": "marcus", "text": "Vivian.",
+         "delivery": "soft",                             // TTS + acting energy: normal soft whisper playful urgent breathless tender
+         "shot": "close",                                // establish wide two ots close xclose kiss medium (act poses: side front top face pov)
+         "gesture": "open", "look": "down", "head": "nod",   // acting cues for the speaker
+         "react": "smile",                               // the listener's reaction
+         "expr": {"smile": 0.4, "her.shy": 0.3},         // face morphs (speaker's, or her./him.)
+         "action": "kiss",                               // kiss embrace step_in part apart undress:<who>[:outer|under|all]
+                                                         // dress:<who> to_bed sit stand lie
+         "vox": "moan02", "sfx": "wet", "voice": "none"} // samples on the line; voice none = silent
       ],
       "choices": [{"text": "...", "if": "trust >= 1 || honest >= 1", "set": {"trust": "+1"}, "next": "c2_terrace"}],
-      "next": "c2_terrace",                               // when there are no choices
-      "play": {"act": "missionary", "goal": "together", "next": "c6_after"},  // hand over to free play
-      "end": {"title": "Second Chance", "text": "..."},  // an ending (recorded)
-      "gallery": "g_first"                                // unlocks a gallery entry
-    }
+      "next": "c2_terrace",
+      "play": {"act": "missionary", "goal": "together", "next": "c6_after", "acts": ["missionary", "cowgirl"],
+               "beats": {"start": "c5_b_start", "desire": "c5_b_desire", "edge": "c5_b_edge", "her_peak": "c5_b_peak"}},
+      "end": {"title": "Second Chance", "text": "..."}, "gallery": "g_first"
+    },
+    "c5_b_start": {"beat": true, "lines": [{"who": "vivian", "text": "Slowly.", "delivery": "breathless"}]}
   }
 }
 ```
 
-Play goals: `together` (the night ends — his climax; `together` var = 1 when shared), `her` (her first climax),
-`him`, `time:<seconds>`. After play the story gets `together`, `herClimaxes`, `connection` as variables.
-Conditions: `var <op> value|var` with `>= <= == != > <`, joined by `&&` / `||`.
+Shots without a `shot` are chosen by the director (narration: establishing then two-shots; dialogue: over-the-
+shoulder / close-ups by emotion, held while one speaker goes on, cut when the speaker changes; a kiss gets the
+kiss two-shot). Beat nodes are spoken over the play (start, a new desire, his edge, her peak).
 
-## Locations wanted (one GLB each, same conventions as `room/room.glb`)
+## Stories (5 × 7 chapters, 3 endings each)
 
-| id (script `location`, slugified) | for | notes |
-|---|---|---|
-| `hotel_ballroom`, `hotel_terrace`, `hotel_corridor` | Old Flames ch. 1–4 | evening; terrace over the sea at night, paper lanterns; corridor with a room door |
-| `hotel_room` | Old Flames ch. 5–7 | the bed must match the authoring bed (all clips are authored on it); sea view window |
-| `cabin_interior` | The Storm ch. 1–5 | log cabin, stone fireplace (warm flicker light), rug in front of it, couch, snow at the windows |
-| `cabin_bedroom` | The Storm ch. 6–7 | authoring bed; wool blankets; candle light |
-| `villa_terrace`, `villa_beach` | Salt and Sun ch. 1–5 | bright daylight; white walls, blue shutters, bay below |
-| `villa_bedroom` | Salt and Sun ch. 3, 6 | authoring bed; shutters (striped light), white linen |
+| Story | Places | Wardrobe (her / him) | Ambience |
+|---|---|---|---|
+| Old Flames | hotel_ballroom, hotel_terrace, hotel_corridor, hotel_room | evening_dress / suit_open_collar | party, sea |
+| The Storm | cabin_door, cabin_living, cabin_bedroom | knit_sweater_jeans / flannel_jeans | wind + fire |
+| Salt and Sun | villa_terrace, villa_beach, villa_bedroom | sundress_bikini / linen_shirt_shorts | sea |
+| The Massage | spa_lobby, spa_steam, spa_suite, spa_lounge | sundress_bikini / linen_shirt_shorts (spa: `partial`) | spa |
+| Neighbours | apartment_hall, apartment_living, apartment_balcony, apartment_bedroom | knit_sweater_jeans / suit_open_collar | city |
 
-Suggested file layout: `native/assets/locations/<id>/<id>.glb` + `<id>.json` (room.json schema: `bedTop`, `bed`,
-`lights`, `lightmap`, `cameraBounds`, `window`). Rooms without a bed are fine for dressed scenes.
+## Delivered (thank you) and wanted
 
-## Outfits wanted (per character, separate meshes skinned to the same rig)
+Legend: ✅ in the game · ⏳ wanted (the engine falls back meanwhile)
 
-Names the engine will look for: `<character>_outfit_<style>_<layer>` meshes inside the character GLB (or
-`characters/outfits/<character>_<style>.glb` skinned to the same skeleton), with an `extras.afterglow.outfit`
-block `{style, layer, hidesWhen: ["partial"|"nude"]}`.
+**Locations** (`locations/<id>/<id>.glb` + `.json`, room.json schema; rooms without a bed are fine — standing
+scenes use the floor at y = 0 and the foot-of-bed marks of `stand.idle`):
 
-| character | styles | layers |
-|---|---|---|
-| Vivian | `evening_dress` (Old Flames), `knit_sweater_jeans` (The Storm), `sundress_bikini` (Salt and Sun) | `outer` (dress / sweater), `under` (lingerie / bikini) |
-| Marcus | `suit_open_collar`, `flannel_jeans`, `linen_shirt_shorts` | `outer`, `under` |
+- ✅ `hotel_room`, `cabin_bedroom`, `villa_bedroom`
+- ⏳ `hotel_ballroom` (warm chandeliers, a bar, a dance floor), `hotel_terrace` (stone balustrade over the sea at night,
+  paper lanterns), `hotel_corridor` (carpet, numbered doors, wall sconces)
+- ⏳ `cabin_living` (stone hearth with a live fire light, rug, couch, snow at the windows), `cabin_door` (the porch
+  and door from inside)
+- ⏳ `villa_terrace` (white walls, blue shutters, table for two, the bay below), `villa_beach` (a sand crescent,
+  rocks, moonlight variant)
+- ⏳ `spa_lobby`, `spa_steam` (tiled steam room, benches), `spa_suite` (candles, a wide padded treatment bed —
+  ideally the authoring bed's footprint), `spa_lounge` (loungers, tea)
+- ⏳ `apartment_hall` (stairwell landing, two doors), `apartment_living` (sofa, piano, city window),
+  `apartment_balcony`, `apartment_bedroom` (city view)
 
-State mapping: `dressed` = all layers, `partial` = `under` only, `nude` = none. Undress transitions are engine
-side (a short dissolve per layer + fabric sfx).
+**Outfits** (`characters/outfits/<who>_<style>.glb`):
 
-## Poses / clips wanted (both GLBs, same naming as today)
+- ✅ Vivian `evening_dress`, `knit_sweater_jeans`, `sundress_bikini`; Marcus `suit_open_collar`, `flannel_jeans`,
+  `linen_shirt_shorts` — bound by joint name, every body morph followed, undress layers animated in the engine.
+- ⏳ smoother garment borders: the necklines / hems follow the body's triangle edges and read jagged in close-ups
+  (a few mm of edge loop or an alpha-faded border strip would fix it).
+- ⏳ spa robes (both), a slip / nightdress (her), a white shirt worn open (him).
 
-Free-play acts are reused for intimate scenes. Story-only clips (loop `kind`, both characters, same world):
-`stand.idle` (standing, talking distance), `stand.embrace` (standing kiss), `dance.slow` (slow dance loop),
-`sit.bed` (side by side on the bed edge), `undress.her` / `undress.him` (layer-by-layer, 3–4 s),
-`lie.cuddle` (after: her head on his chest). With these the engine stops hiding dressed characters.
+**Story clips** (both characters, same world, loops unless noted):
 
-## Voice lines wanted (`audio/vox/`)
+- ✅ `stand.idle`, `sit.bed`
+- ⏳ `stand.embrace` (standing, his hands at her waist, hers on his chest), `kiss.stand` (standing kiss — today the
+  engine steps them in and bends heads procedurally), `dance.slow`, `cuddle.idle` (authored, held back),
+  `kiss.side` (authored, held back), `undress.her` / `undress.him` (3–4 s, layer by layer), `sit.couch` / `sit.floor`
+  (by the fire), `walk.in` (a few steps into frame), `lean.rail` (both at a balustrade)
+- ⏳ talk gestures / listening loops (the engine layers procedural gestures today)
+- ⏳ `massage.back` (one lying face down on the bed, the other kneeling beside with hands on the back)
 
-Short, breathy, one take each, 48 kHz WAV like the current ones: `yes_soft`, `dont_stop`, `kiss_me`, `slower`,
-`deeper`, `laugh_soft`, `sigh_content`, `gasp_touch`, `his_name` ("Marcus"), and for him `her_name`, `breath_low`.
-Story lines reference them by file name (`"voice": "kiss_me"`).
+**Voices**: ✅ Kokoro takes for every line (`docs/VOICE.md`). ⏳ extra vocal samples for play: `gasp_touch`,
+`laugh_soft`, `sigh_content` (48 kHz WAV like `audio/vox/*`).

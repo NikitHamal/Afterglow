@@ -321,7 +321,7 @@ void main() {
         else if (u_fabric == 7) { fabricRough = 0.36; clothSheen = 0.15; }
         else { freq = 420.0; k = triPattern(2, freq); amt = 0.0007; fabricRough = 0.74; clothSheen = 0.14; }
         float fade = 1.0 - smoothstep(0.25, 0.6, fpx * freq);
-        if (amt > 0.0 && fade > 0.0) N = bumpNormal(N, k * fade, amt * freq * 0.5);
+        if (amt > 0.0 && fade > 0.0) N = bumpNormal(N, k * fade, amt * 0.35);   // amt: weave height (m)
         base.rgb *= 1.0 - 0.45 * undressRim;   // the edge where it lifts off reads as a shadowed fold
     }
 
