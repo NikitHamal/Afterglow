@@ -384,8 +384,9 @@ scalp = COV & (MH > 0.5) & (ear_dist(POS) > 0.02)
 feather = ss(-0.004, 0.006, POS[..., 2] - hz) * scalp
 strand = 0.55 + 0.45 * ss(0.3, 0.7, HP[..., 1])
 hl = np.array(hex_lin(HAIR_HEX))
-for tone in ("honey", "caramel", "deep"):
+for tone in ("porcelain", "fair", "honey", "olive", "caramel", "bronze", "deep", "ebony"):
     p = f"{TEX}/vivian_skin_{tone}.jpg"
+    if not os.path.exists(p): continue
     a = np.flipud(np.asarray(Image.open(p).convert("RGB"), np.float32) / 255.0)
     lin = np.where(a <= 0.04045, a / 12.92, ((a + 0.055) / 1.055) ** 2.4)
     tgt = hl[None, None] * strand[..., None] * 0.9

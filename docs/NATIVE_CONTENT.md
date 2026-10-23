@@ -12,16 +12,25 @@ Blender (Z-up, +Y toward the headboard); the exporter converts.
 | `characters/marcus.glb` | Marcus, 1.83 m, 70 bones (MMD set + `竿根/竿中/竿先/竿端` + `玉袋`), 7 meshes, 17 clips |
 | `characters/<who>_skin_{honey,caramel,deep}.jpg` | alternate 4K skin albedos (caramel is embedded); Marcus also has `marcus_genital_*.jpg` |
 | `characters/<who>_skin_mask.png`, `characters/skin_detail_n.png` | optional skin support maps (see "Skin support maps") |
+| `characters/presets.json` | body presets (Natural, Petite, Skinny, Slim, Athletic, Curvy, Chubby, BBW, Voluptuous, Ebony goddess, Porcelain, Mature, Young adult; his Lean…Heavy): slider values + skin tone |
 | `characters/clips.json` | per-clip duration, kind, stroke, morph rules, layer bones, camera presets (orbit + his first-person eye), verification numbers |
 | `room/room.glb`, `room/room.json` | the bedroom (bed identical to the authoring bed) with a Cycles-baked lightmap, light rig, scene extras (see Room) |
 | `audio/sfx/<group>/*.ogg`, `audio/vox/*.wav` | sound pack (CC BY-SA 4.0, `audio/sfx/LICENSE_soundpack.txt`) and voice samples |
 
 ## Morph targets (mesh `extras.targetNames`, all 0 at rest)
 
-- **Vivian faces** (body + brows/lashes/teeth/tongue carry them): `blink, moan, pleasure, oral, kiss, smile`
-- **Vivian body** (slider −1..+1 → `_dn` / `_up`): `bust_up/bust_dn` (−55 / +29 mm), `hips_up/dn` (±35 mm),
-  `waist_up/dn`, `butt_up/dn`, `weight_up/dn`, `muscle_up`, `belly_up`. The hair mesh carries `weight_up,
-  weight_dn, muscle_up` (neck/face) so it keeps sitting on her — apply the same weights to every mesh.
+- **Vivian faces** (body + brows/lashes/teeth/tongue carry them): `blink, moan, pleasure, oral, kiss, smile`,
+  v3: `bite_lip` (teeth on the lower lip), `bliss` (eyes softly closed), `gasp`, `smirk` (one-sided), `pout`,
+  `orgasm`, `wink` (her left eye), `shy` (pair it with the gaze looking away), and gaze lids `lids_down` /
+  `lids_up` — drive them from the eye pitch so the upper lids follow the eyes.
+- **Vivian body** (slider −1..+1 → `_dn` / `_up`, full adult ranges): `bust` small A-cup ↔ very large with real
+  weight/sag (`bust_up` 59 mm), `hips`, `waist`, `butt`, `weight` skinny ↔ BBW (belly + love handles, thighs,
+  upper arms, fuller face, a hint of double chin at the top; 83 mm), `muscle_up/dn`, `belly_up`, and **adult-only
+  age** `age_dn` / `age_up`: −1 = 25 y, 0 = 42 y (Vivian), +1 = 60 y — built from MakeHuman's adult age range
+  only, the young end keeps adult face and head:body proportions. `weight` and `age` also move the face, so they
+  are carried to eyes/brows/lashes/teeth/tongue/hair too — apply the same weights to every mesh.
+- **Vivian arousal**: `vag_aroused` (labia engorge, inner labia part, clitoris swells) — drive it with arousal,
+  together with `<who>_skin_mask.png` alpha (wetness) and the flush channel.
 - **Vivian anatomy**: `vag_open` (labia part, the opening + canal widen to his erect girth, r≈21 mm),
   `anal_open` (r≈11.5 mm). In sex clips drive `vag_open = smoothstep(0, 0.12, depth)`.
 - **Marcus faces**: `blink, effort, pleasure, moan, kiss`; **body** `muscle_up/dn, weight_up/dn, belly_up`
@@ -36,6 +45,13 @@ Blender (Z-up, +Y toward the headboard); the exporter converts.
 hair MASK 0.42 double-sided, brows/lashes MASK 0.3 double-sided, eyes MASK 0.5. No vertex colours, except
 Marcus' hair shell whose `COLOR_0.a` is a soft hairline fringe (RGB = 1).
 
+## Skin tones
+
+Vivian ships eight 4K albedos sharing one normal + ORM map, lightest → darkest: `porcelain, fair, honey, olive,
+caramel` (embedded), `bronze, deep, ebony` (`characters/vivian_skin_<tone>.jpg`). Genital pigmentation is a
+modest darkening of her own skin with a mauve-pink mucosa derived from it (never saturated red), soft-edged into
+the surrounding skin; tidy short pubic hair. Marcus: `honey, caramel, deep`.
+
 ## Skin support maps (optional, `tools/model/native/skin_maps.py`)
 
 All on the body's uv0 (same layout as the skin albedo), **linear** data (load without sRGB decode):
@@ -49,6 +65,8 @@ All on the body's uv0 (same layout as the skin albedo), **linear** data (load wi
     (`trans *= mask.g * 2.5`) so light bleeds through ears/fingers only, not through the torso.
   - **B = sweat / sheen**: forehead, temples, upper lip, neck, sternum, under the breasts, lower back. Multiply
     `u_sweat` by it (beads + roughness drop only where people actually sweat).
+  - **A = arousal wetness** (Vivian): vestibule, inner labia, canal entrances, fading over the outer labia —
+    roughness × (1 − 0.6 · wet · arousal) gives the moist sheen only where it belongs.
 - `skin_detail_n.png` (512², tileable tangent-space normal, +Y up / OpenGL convention): pores + fine crosshatch.
   Sample at `uv0 * 48` (≈ 3.5 cm per tile on the body), blend with the 2K normal by adding xy
   (`n.xy += d.xy * 0.35 * (1 - mask.b * u_sweat)`), fade it out with distance (it only matters in close-ups).
@@ -79,7 +97,11 @@ outside the cheek) and two short nape wisps. Mesh `vivian_hair`, two primitives:
 ## Clips (both GLBs, same names, same world)
 
 `missionary.in, missionary.rub, missionary.embrace, legsup.in, doggy.in, doggy.rub, prone.in, cowgirl.in,
-cowgirl.rub, revcowgirl.in, revcowgirl.rub, spoon.in, spoon.rub, oral.in, lick.in, solo.rub, solo.idle`
+cowgirl.rub, revcowgirl.in, revcowgirl.rub, spoon.in, spoon.rub, oral.in, lick.in, solo.rub, solo.idle`, and the
+non-penetrative acts `handjob.in` (t = her hand from the base to just under the head), `titjob.in` (t = her
+breasts sliding along him), `facesit.in` (loop: she kneels astride his face, rocking), `cuddle.idle` (afterglow
+loop: her head on his chest, arm across him, leg over his thigh, his arm around her) and `kiss.side` (loop:
+lying face to face, lips together, her leg over his hip, hands on cheek/waist).
 
 - `.in`: 25 frames, normalized time = penetration depth. Sample both characters at the same t. Her canal is
   aligned to his shaft in every frame (his `竿根` is aimed along her canal axis, his pelvis rides that axis);
@@ -102,6 +124,20 @@ cowgirl.rub, revcowgirl.in, revcowgirl.rub, spoon.in, spoon.rub, oral.in, lick.i
 - `solo.*`: Marcus stands beside the bed (`marcusHidden: true` — hide him or keep him as a watcher).
 - Hair chains and eyes are never keyed: simulate the hair (colliders in the armature node's
   `extras.afterglow.hairColliders`) and drive the eyes from gaze.
+- **Hands really touch.** Every intended hand contact is solved against the posed skin of its target: palms land
+  on the surface and each finger curls until its pad meets the curve (breasts, thighs, hips, the shaft, his
+  chest, his hair); fingertip rubbing keeps the pads on the skin with the palm lifted off the mons, the ring and
+  little finger tucked. The elbow is chosen so the wrist stays inside its range (the forearm does the turning)
+  and never drops into the mattress. Then the real skinned hand is checked and lifted out if it sank in.
+- **Joint ranges** (rigkit `ROM`, swing/twist from the anatomical rest): neck 40°/45°, head 32°/38°, wrist
+  65°/85° (twist = forearm pronation), ankle incl. midfoot 82°/35°. Every keyed frame is clamped to them.
+- **Contacts for touch simulation** (`clips.json → contacts`): one track per hand / mouth that touches skin —
+  `{char, effector, bone, offset, radius, target {char, bone, region}, gap_mm [min, max], t [first, last]}`. The
+  contact point each frame = the effector bone's world matrix × `offset` (bone-local, like `fpv.offset_local`);
+  `region` names the soft tissue to deform (`breast.L`, `vulva`, `hips`, `thigh.R`, `chest`, `genitals`, `head`…).
+- **Soft bones** (armature `extras.afterglow.softBones`): his scrotum (`玉袋`, sag + swing) and her breasts
+  (`乳親.L/R`, light jiggle) as damped springs around their animated pose — `{bone, stiffness, damping, gravity,
+  maxAngleDeg}`, same solver as the hair tips.
 
 ## Room (`tools/model/room/build_room.py` → `post.mjs`)
 
@@ -151,47 +187,48 @@ L/R label, and the measured canal axis is kept in the sagittal plane (the raw PC
 
 ## Verification
 
-Each clip is checked at t = 0, .25, .5, .75, 1 (numbers in `clips.json` → `verify`, raw data in
-`/root/agb/native/verify.json`): intersecting triangle pairs between the two bodies outside the intended
-contact, the deepest such penetration, each body's lowest point vs. the mattress top (mm; − = pressed into the
-soft mattress), contacts with the real room's furniture, the lowest point of her bun (rigid hair) vs. the
-mattress, and the largest per-bone rotation step between frames (IK hinges are kept continuous frame to frame).
+Each clip is checked at t = 0, .25, .5, .75, 1 (numbers in `clips.json` → `verify` + `contacts`, raw data in
+`/root/agb/native/verify.json`): intersecting triangle pairs between the two bodies outside the intended contact,
+the deepest such penetration, each body's lowest point vs. the mattress top (mm; − = pressed into the soft
+mattress), contacts with the real room's furniture, how far any limited joint goes past its range (should be 0:
+every keyed frame is clamped), the largest per-bone step between frames, and every hand contact's skin gap
+(min..max over the clip; 0 = touching, − = pressing in). V/M = Vivian/Marcus, L/R = hand.
 
-Intended contact (not counted): genitals (her `v_*` masks × his shaft/scrotum + pubic mound), hands on
-anything, her mouth (oral) / his mouth (lick), his shaft vs. her inner thighs and buttocks within 6 cm of the
-entrance, and pelvis-to-pelvis flesh (her thighs/buttocks within 26 cm of the entrance × his groin, hips,
-upper thighs and lower belly within 28 cm of the shaft root). That flesh compresses in every penetrative
-position; rigid meshes can only overlap there, so its depth is tracked separately (`pelvic_depth_mm`) and the
-layout search penalises anything deeper than 8 mm.
+Intended contact (not counted): genitals (her `v_*` masks × his shaft/scrotum + pubic mound), hands on anything,
+her mouth (oral) / his mouth (lick), his shaft vs. her inner thighs and buttocks within 6 cm of the entrance,
+pelvis-to-pelvis flesh (her thighs/buttocks within 26 cm of the entrance × his groin, hips, upper thighs and lower
+belly within 28 cm of the shaft root; its depth is tracked as `pelvic_depth_mm` and the layout search penalises
+anything past 8 mm), her breasts × his shaft in titjob.
 
-How layouts are chosen: where a pose has several reasonable layouts (her knee width and seat in cowgirl,
-leg spread + where his hands hold her ankles in legs-up, his straddle vs. kneeling between her legs in prone,
-her arms in the embrace, his hands in lick and reverse cowgirl) `positions.best_of` poses each candidate and
-scores it with the same checks at **both** the top (t = 0) and the bottom (t = 0.85) of the stroke; the
-choice is made once per clip, so it never changes between frames.
+How layouts are chosen: where a pose has several reasonable layouts `positions.best_of` poses each candidate and
+scores it with the same checks at **both** the top (t = 0) and the bottom (t = 0.85) of the stroke; the choice is
+made once per clip, so it never changes between frames.
 
-| Clip | bad tri pairs (max) | deepest (mm) | her lowest (mm) | his lowest (mm) | room furniture hits | bun lowest (mm) | max joint step (deg) |
-|---|---|---|---|---|---|---|---|
-| `missionary.in` | 0 | 0.0 | -8..-8 | -1..7 | 0 | -18 | 9.2 |
-| `missionary.rub` | 0 | 0.0 | -8..-8 | -1..-1 | 0 | -16 | 1.5 |
-| `missionary.embrace` | 22 | 7.0 | -8..-8 | 6..6 | 0 | -16 | 0.0 |
-| `legsup.in` | 0 | 0.0 | -2..0 | 2..2 | 0 | -13 | 2.0 |
-| `doggy.in` | 0 | 0.0 | 3..5 | -1..17 | 0 | 207 | 3.7 |
-| `doggy.rub` | 0 | 0.0 | 3..3 | -1..-1 | 0 | 207 | 0.3 |
-| `prone.in` | 14 | 4.3 | -9..-9 | -2..-2 | 0 | 144 | 2.0 |
-| `cowgirl.in` | 31 | 15.4 | 8..10 | -7..-7 | 0 | clear | 3.5 |
-| `cowgirl.rub` | 0 | 0.0 | 11..11 | -7..-7 | 0 | clear | 1.9 |
-| `revcowgirl.in` | 0 | 0.0 | 7..9 | -4..-4 | 0 | clear | 1.8 |
-| `revcowgirl.rub` | 0 | 0.0 | 7..7 | -4..-4 | 0 | clear | 1.3 |
-| `spoon.in` | 0 | 0.0 | -2..-2 | 1..1 | 0 | 271 | 0.4 |
-| `spoon.rub` | 0 | 0.0 | -2..-2 | 1..1 | 0 | 271 | 0.3 |
-| `oral.in` | 0 | 0.0 | -4..-3 | -7..-7 | 0 | clear | 5.8 |
-| `lick.in` | 22 | 0.1 | -2..-2 | -21..5 | 0 | 105 | 1.6 |
-| `solo.rub` | 0 | 0.0 | -9..-9 | room floor (standing) | 0 | -13 | 3.0 |
-| `solo.idle` | 0 | 0.0 | -3..-3 | room floor (standing) | 0 | -14 | 0.1 |
+| Clip | bad tri pairs (max) | deepest (mm) | her lowest (mm) | his lowest (mm) | furniture hits | joint-range excess (°) | max joint step (°) | hand contacts: gap mm (min..max) |
+|---|---|---|---|---|---|---|---|---|
+| `missionary.in` | 0 | 0.0 | -8..-8 | -2..6 | 0 | 0 | 9 | — |
+| `missionary.rub` | 52 | 29.4 | -8..-8 | -1..-1 | 0 | 0 | 2 | V R→hips 10..14; V R→chest -54..-51 |
+| `missionary.embrace` | 0 | 0.0 | -8..-8 | 6..6 | 0 | 0 | 7 | V L→chest 7..7; V R→chest 7..7 |
+| `legsup.in` | 0 | 0.0 | -0..-0 | 2..2 | 0 | 0 | 17 | V L→head 5..18; M L→thigh.R -8..-5; M L→shoulder.L -49..-30; M R→thigh.L -9..-3 |
+| `doggy.in` | 0 | 0.0 | 3..5 | -1..17 | 0 | 0 | 10 | M L→thigh.L 17..22 |
+| `doggy.rub` | 0 | 0.0 | 3..3 | -1..-1 | 0 | 0 | 2 | V R→hips -10..-6; M L→thigh.L 16..16 |
+| `prone.in` | 14 | 4.3 | -9..-9 | -11..-9 | 0 | 0 | 2 | V L→head 21..22 |
+| `cowgirl.in` | 31 | 15.4 | 8..10 | -7..-7 | 0 | 0 | 35 | M L→thigh.R -4..-3; M R→thigh.L -4..2 |
+| `cowgirl.rub` | 0 | 0.0 | 11..11 | 2..2 | 0 | 0 | 1 | V R→hips 7..16; M L→thigh.R -3..-3; M R→thigh.L -3..-3 |
+| `revcowgirl.in` | 32 | 12.5 | 6..8 | -4..-4 | 0 | 0 | 23 | V L→thigh.L -3..4; V R→thigh.R 18..24; V R→thigh.R 18..25; M L→thigh.L -5..-2 |
+| `revcowgirl.rub` | 12 | 0.0 | 7..7 | -4..-4 | 0 | 0 | 7 | V L→thigh.L 14..14; V R→hips 4..10; M L→thigh.L -5..-5; M R→thigh.R -17..-17 |
+| `spoon.in` | 0 | 0.0 | -2..-2 | -4..-4 | 0 | 0 | 5 | M R→hips -8..15 |
+| `spoon.rub` | 0 | 0.0 | -2..-2 | -4..-4 | 0 | 0 | 1 | V R→hips -25..-24; V R→genitals -2..9; M R→thigh.R 7..7 |
+| `oral.in` | 0 | 0.0 | -4..-3 | -7..-7 | 0 | 0 | 6 | V L→thigh.R 7..11; V R→belly -4..-4 |
+| `lick.in` | 0 | 0.0 | -0..0 | -21..5 | 0 | 0 | 13 | M L→thigh.R -2..1; M R→thigh.L -4..-3 |
+| `handjob.in` | 0 | 0.0 | -6..-6 | -7..-7 | 0 | 0 | 20 | V L→thigh.R 4..4; V R→thigh.R -4..-2; M L→chest 6..6; M R→chest 6..6 |
+| `titjob.in` | 0 | 0.0 | -8..-6 | -7..-7 | 0 | 0 | 7 | V L→chest -3..-3; V R→chest -3..-3; M L→chest 6..6; M R→chest 6..6 |
+| `solo.rub` | 0 | 0.0 | -12..-12 | room floor | 0 | 0 | 1 | V L→chest -4..-3; V R→hips -13..-8 |
+| `solo.idle` | 0 | 0.0 | -3..-3 | room floor | 0 | 0 | 0 | — |
 
-Known residuals: cowgirl at the very top of the stroke (t = 0, she rises highest) — her inner thighs touch
-the sides of his waist (31 small triangle pairs, ≤ 15 mm, gone from t = 0.25 on); embrace — her elbows touch
-each other behind his neck; lick — his elbows rest against her inner knees (surface contact, ≤ 0.1 mm);
-prone at full depth — inner thighs ≤ 4 mm. When she lies on her back the bun presses up to ~1.8 cm into the
-(soft) mattress. `solo.*` floors for Marcus are the room floor.
+Known residuals (next pass): missionary.rub — her reaching forearm passes under his chest (he lies low at
+mid-depth); legs-up — his hands, holding her ankles beside his head, sink into his own shoulders; spoon.rub —
+her rubbing hand presses into her own hip; doggy / reverse cowgirl — one of the holding hands hovers 1.5–2.5 cm
+off the skin; cowgirl at the very top of the stroke — inner thighs touch the sides of his waist. When she lies
+on her back the bun presses up to ~1.8 cm into the (soft) mattress. `solo.*` floors for Marcus are the room
+floor. Not shipped yet: `facesit`, `cuddle`, `kiss.side` (authored in `positions3.py`, not clean yet).

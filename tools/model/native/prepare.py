@@ -87,7 +87,8 @@ if WHO == "marcus":
     CARRY = ["muscle_up", "muscle_dn", "weight_up", "weight_dn", "belly_up"]
 else:
     # ------------------------------------------------------------ amplify the weaker body morphs
-    AMP = {"butt_up": 2.2, "butt_dn": 1.7, "weight_up": 2.4, "weight_dn": 2.2, "waist_dn": 1.5, "muscle_up": 1.3}
+    # v3 (build5 with age_*): full ranges are authored in build5, nothing to amplify; older builds were weaker
+    AMP = {"butt_up": 1.8, "butt_dn": 1.4, "weight_dn": 1.5} if "age_up" in sk else {"butt_up": 2.2, "butt_dn": 1.7, "weight_up": 2.4, "weight_dn": 2.2, "waist_dn": 1.5, "muscle_up": 1.3}
     for nm, k in AMP.items():
         if nm in sk:
             D = co(sk[nm]) - B; put(sk[nm], B + D * k)
@@ -139,7 +140,19 @@ else:
         meas["vagina"] = opening(vag_canal, reg_v | vag_canal, R_vag, 0.011, "vag_open", part=0.004)
         reg_a = (an > 0.03)
         meas["anus"] = opening(anal_canal, reg_a | anal_canal, 0.0115, 0.0075, "anal_open")
-    CARRY = ["bust_up", "bust_dn", "weight_up", "weight_dn", "muscle_up"]
+        # arousal: outer + inner labia engorge, the inner labia part a little, the clitoris swells and peeks from its hood
+        clit = attr("v_clit")
+        if vmaj is not None and vmin is not None:
+            body.data.update()
+            Nv = np.array([tuple(v.normal) for v in body.data.vertices], np.float32)
+            cv = cav if cav is not None else np.zeros(len(B), np.float32)
+            sw = 0.0016 * vmaj + 0.0024 * vmin * (1 - cv) + (0.0018 * clit if clit is not None else 0.0)
+            sw = sw * (an < 0.25)
+            D = Nv * sw[:, None]
+            D[:, 0] += np.sign(B[:, 0]) * 0.0014 * vmin * (1 - cv) * (an < 0.25)
+            add_key(body, "vag_aroused", B + D)
+            log(f"vag_aroused: {int((np.linalg.norm(D, axis=1) > 1e-4).sum())} verts, max {np.linalg.norm(D, axis=1).max()*1000:.1f} mm")
+    CARRY = ["bust_up", "bust_dn", "weight_up", "weight_dn", "muscle_up", "muscle_dn", "age_up", "age_dn"]
 
 # ---------------------------------------------------------------- carry torso morphs onto the hair
 if hair is not None:

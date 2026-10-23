@@ -95,6 +95,41 @@ EXPR = {
     "kiss":     U("mouth-pursing", 0.8) + U("mouth-protusion", 0.55) + U("eye-left-closure", 0.75) + U("eye-right-closure", 0.75),
     "smile":    U("mouth-corner-puller", 0.75) + U("eye-left-slit", 0.22) + U("eye-right-slit", 0.22) + U("mouth-elevation", 0.2),
 }
+# v3: richer set. Partial units: m_low = lower lip + jaw (what moves when the mouth opens), sL = her left half (+X)
+def ss_(e0, e1, x):
+    t = np.clip((np.asarray(x, np.float64) - e0) / (e1 - e0), 0, 1); return (t * t * (3 - 2 * t)).astype(np.float32)
+dn_open = np.linalg.norm(unit_delta["mouth-open"], axis=1)
+m_low = np.clip(dn_open / max(float(dn_open.max()), 1e-6) * 2.5, 0, 1)[:, None]
+sL = ss_(-0.006, 0.006, B0[:, 0])[:, None]
+EXPR.update({
+    # teeth catch the lower lip: lower lip rolled in, upper lip lifted a touch, sultry lids
+    "bite_lip": U("mouth-eversion", -0.75) * m_low + U("mouth-elevation", 0.22) + U("mouth-corner-puller", 0.22) + U("mouth-open", 0.06)
+                + U("eye-left-slit", 0.25) + U("eye-right-slit", 0.25) + U("eyebrows-left-inner-up", 0.15) + U("eyebrows-right-inner-up", 0.15),
+    # eyes softly closed, brows relaxed upward, the ghost of a smile, lips just apart
+    "bliss":    U("eye-left-closure", 1.0) + U("eye-right-closure", 1.0) + U("eyebrows-left-inner-up", 0.45) + U("eyebrows-right-inner-up", 0.45)
+                + U("mouth-corner-puller", 0.35) + U("mouth-parling", 0.2),
+    # sharp intake of breath: mouth drops open, eyes and brows fly up, nostrils flare
+    "gasp":     U("mouth-open", 0.6) + U("mouth-parling", 0.3) + U("eye-left-opened-up", 0.7) + U("eye-right-opened-up", 0.7)
+                + U("eyebrows-left-up", 0.8) + U("eyebrows-right-up", 0.8) + U("nose-left-dilatation", 0.5) + U("nose-right-dilatation", 0.5)
+                + U("neck-platysma", 0.15),
+    # one-sided knowing smile (her left), the other brow up a little
+    "smirk":    (U("mouth-corner-puller", 0.6) + U("mouth-upward-retraction", 0.2)) * sL + U("eye-left-slit", 0.15) + U("eyebrows-right-up", 0.25),
+    # lips pushed forward, lower lip out, pleading brows
+    "pout":     U("mouth-protusion", 0.55) + U("mouth-pursing", 0.35) + U("mouth-eversion", 0.5) * m_low
+                + U("eyebrows-left-inner-up", 0.35) + U("eyebrows-right-inner-up", 0.35) + U("eye-left-opened-up", 0.15) + U("eye-right-opened-up", 0.15),
+    # climax: eyes squeezed half shut, brows knitted up, mouth open, nose and neck tense
+    "orgasm":   U("eye-left-closure", 0.65) + U("eye-right-closure", 0.65) + U("eyebrows-left-inner-up", 1.0) + U("eyebrows-right-inner-up", 1.0)
+                + U("mouth-open", 0.65) + U("mouth-parling", 0.4) + U("mouth-upward-retraction", 0.25)
+                + U("nose-left-elevation", 0.4) + U("nose-right-elevation", 0.4) + U("neck-platysma", 0.35),
+    # left eye closes, that side smiles
+    "wink":     U("eye-left-closure", 1.0) + U("mouth-corner-puller", 0.45) * sL + U("nose-left-elevation", 0.2) + U("eyebrows-left-down", 0.2),
+    # shy: small closed smile, lids lowered, brows soft (pair with gaze/head turned away)
+    "shy":      U("mouth-corner-puller", 0.3) + U("mouth-compression", 0.25) + U("eye-left-slit", 0.2) + U("eye-right-slit", 0.2)
+                + U("eyebrows-left-inner-up", 0.25) + U("eyebrows-right-inner-up", 0.25),
+    # lids follow gaze (engine drives them from eye pitch): down = upper lids lower, up = upper lids lift
+    "lids_down": U("eye-left-closure", 0.35) + U("eye-right-closure", 0.35),
+    "lids_up":   U("eye-left-opened-up", 0.6) + U("eye-right-opened-up", 0.6),
+})
 for name, d in EXPR.items():
     kb = body.shape_key_add(name=name, from_mix=False); kb.data.foreach_set("co", (B0 + d).ravel())
 for sub, o in PARTS.items():
@@ -114,20 +149,36 @@ log(f"expression morphs {list(EXPR)} on body + lashes/brows/teeth/tongue")
 # Deltas are masked off the head/neck (face + hair stay put) and re-centred on the pelvis (skeleton stays seated).
 import copy
 VARIANTS = {
-    # native: bidirectional pairs (slider -1..+1 -> _dn/_up), strong but natural adult ranges.
-    # target values are ADDED to Vivian's own sculpt targets (negative undoes them).
-    "bust_up":   ({"cupsize": 1.0, "firmness": 0.62}, {"breast-volume-vert-up": 0.45, "measure-bust-circ-incr": 0.55}),
-    "bust_dn":   ({"cupsize": 0.22, "firmness": 0.62}, {"measure-bust-circ-decr": 0.35}),
-    "hips_up":   ({}, {"hip-scale-horiz-incr": 0.45, "measure-hips-circ-incr": 0.45}),
-    "hips_dn":   ({}, {"hip-scale-horiz-incr": -0.32, "hip-scale-horiz-decr": 0.3, "measure-hips-circ-incr": -0.3, "measure-hips-circ-decr": 0.3}),
-    "waist_up":  ({}, {"measure-waist-circ-decr": -0.5, "measure-waist-circ-incr": 0.35}),
-    "waist_dn":  ({}, {"measure-waist-circ-decr": 0.5}),
-    "butt_up":   ({}, {"buttocks-volume-incr": 0.4}),
-    "butt_dn":   ({}, {"buttocks-volume-incr": -0.6, "buttocks-volume-decr": 0.4}),
-    "weight_up": ({"weight": 0.9}, {}),
-    "weight_dn": ({"weight": 0.36}, {}),
-    "muscle_up": ({"muscle": 0.88}, {}),
-    "belly_up":  ({}, {"stomach-pregnant-incr": 0.4, "stomach-pregnant-decr": -0.15}),
+    # v3: bidirectional pairs (slider -1..+1 -> _dn/_up) with full adult ranges, authored here (no amplification later).
+    # (phenotype overrides, target values ADDED to Vivian's own sculpt targets (negative undoes them), face/neck kept?)
+    # very large: heavier, fuller, sits lower and a little apart (real weight + sag); small: firm A-cup
+    "bust_up":   ({"cupsize": 1.0, "firmness": 0.36}, {"measure-bust-circ-incr": 0.95, "breast-volume-vert-down": 0.4, "breast-trans-down": 0.15,
+                                                       "breast-dist-incr": 0.15, "measure-underbust-circ-incr": 0.08}, False),
+    "bust_dn":   ({"cupsize": 0.05, "firmness": 0.82}, {"measure-bust-circ-decr": 0.7, "breast-dist-decr": 0.1}, False),
+    "hips_up":   ({}, {"hip-scale-horiz-incr": 0.9, "measure-hips-circ-incr": 0.9, "hip-scale-depth-incr": 0.3, "measure-thigh-circ-incr": 0.3}, False),
+    "hips_dn":   ({}, {"hip-scale-horiz-incr": -0.32, "hip-scale-horiz-decr": 0.6, "measure-hips-circ-incr": -0.3, "measure-hips-circ-decr": 0.6,
+                       "measure-thigh-circ-incr": -0.18, "measure-thigh-circ-decr": 0.3}, False),
+    "waist_up":  ({}, {"measure-waist-circ-decr": -0.5, "measure-waist-circ-incr": 0.6}, False),
+    "waist_dn":  ({}, {"measure-waist-circ-decr": 0.5}, False),
+    "butt_up":   ({}, {"buttocks-volume-incr": 0.4, "hip-scale-depth-incr": 0.45, "measure-hips-circ-incr": 0.25}, False),
+    "butt_dn":   ({}, {"buttocks-volume-incr": -0.6, "buttocks-volume-decr": 0.6, "hip-scale-depth-decr": 0.3}, False),
+    # skinny <-> BBW: MakeHuman weight plus where women really carry it - belly + love handles, thighs, upper arms,
+    # a fuller face and a hint of double chin at the top end
+    "weight_up": ({"weight": 1.0}, {"measure-waist-circ-decr": -0.5, "measure-waist-circ-incr": 0.6, "stomach-pregnant-incr": 0.3,
+                                    "stomach-pregnant-decr": -0.15, "stomach-tone-decr": 0.4, "l-upperarm-fat-incr": 0.9, "r-upperarm-fat-incr": 0.9,
+                                    "l-upperleg-fat-incr": 0.8, "r-upperleg-fat-incr": 0.8, "measure-thigh-circ-incr": 0.5, "measure-hips-circ-incr": 0.4,
+                                    "measure-underbust-circ-incr": 0.35, "torso-scale-depth-incr": 0.3, "neck-double-incr": 0.7,
+                                    "head-fat-decr": -0.2, "head-fat-incr": 0.35, "measure-upperarm-circ-incr": 0.4,
+                                    "l-lowerarm-fat-incr": 0.4, "r-lowerarm-fat-incr": 0.4, "l-lowerleg-fat-incr": 0.35, "r-lowerleg-fat-incr": 0.35}, True),
+    "weight_dn": ({"weight": 0.1}, {"hip-scale-horiz-incr": -0.15, "buttocks-volume-incr": -0.3, "measure-thigh-circ-incr": -0.18,
+                                    "l-upperarm-fat-decr": 0.4, "r-upperarm-fat-decr": 0.4}, True),
+    "muscle_up": ({"muscle": 1.0}, {"stomach-tone-incr": 0.5}, False),
+    "muscle_dn": ({"muscle": 0.22}, {}, False),
+    "belly_up":  ({}, {"stomach-pregnant-incr": 0.45, "stomach-pregnant-decr": -0.15, "stomach-tone-decr": 0.6, "measure-waist-circ-incr": 0.2}, False),
+    # ADULT age only: MakeHuman age 0.5 = 25 y (pure adult target; values below 0.5 blend in child shapes and are never
+    # used), 0.77 ~ 60 y. Vivian is 0.63 (~42 y): age slider -1 -> 25, 0 -> 42, +1 -> 60.
+    "age_dn":    ({"age": 0.5}, {}, True),
+    "age_up":    ({"age": 0.77}, {}, True),
 }
 def vg_w(o, name):
     w = np.zeros(len(o.data.vertices), np.float32)
@@ -139,7 +190,8 @@ def vg_w(o, name):
     return w
 keep = np.clip(1.0 - (vg_w(body, "head") + 0.8 * vg_w(body, "neck_01")), 0, 1)[:, None]
 pel = (np.abs(B0[:, 0]) < 0.03) & (np.abs(B0[:, 2] - 0.93) < 0.04)
-for vname, (pheno, tg) in VARIANTS.items():
+VAR_D = {}
+for vname, (pheno, tg, face_ok) in VARIANTS.items():
     inf = HumanService._create_default_human_info_dict()
     inf["phenotype"] = copy.deepcopy(info["phenotype"]); inf["phenotype"].update(pheno)
     tt = dict(targets)
@@ -150,9 +202,23 @@ for vname, (pheno, tg) in VARIANTS.items():
     D = basis_co(vo) - B0
     vme = vo.data; bpy.data.objects.remove(vo); bpy.data.meshes.remove(vme)
     D -= D[pel].mean(0)
-    D *= keep
+    if not face_ok: D *= keep
     kb = body.shape_key_add(name=vname, from_mix=False); kb.data.foreach_set("co", (B0 + D).ravel())
+    VAR_D[vname] = D
     log(f"shape morph {vname}: max {np.abs(D).max()*1000:.0f} mm")
+# face-aware variants (weight, age) move the face: carry them to eyes / brows / lashes / teeth / tongue exactly like the
+# expressions (MakeHuman's own fitting weights)
+for sub, o in PARTS.items():
+    m = Mhclo(); m.load(o["mhclo_path"])
+    n = len(o.data.vertices); idx = np.zeros((n, 3), np.int64); w = np.zeros((n, 3), np.float32); ok = np.zeros(n, bool)
+    for vi, mp in m.verts.items():
+        if vi < n: idx[vi] = mp["verts"]; w[vi] = mp["weights"]; ok[vi] = True
+    P0 = basis_co(o)
+    for vname, D in VAR_D.items():
+        off = (D[idx] * w[..., None]).sum(1) * ok[:, None]
+        if np.abs(off).max() < 2e-4: continue
+        kb = o.shape_key_add(name=vname, from_mix=False); kb.data.foreach_set("co", (P0 + off).ravel())
+log("face-aware body morphs carried to the face parts")
 
 # ================================================================== anatomy: vulva + canals (vulva.py, same folder)
 def uv_coverage(me, R=1024):
@@ -377,7 +443,7 @@ for k_, n_ in enumerate(VMN): M[n_] = np.clip(VM[k_], 0, 1) * COV
 hairs = ((HP[..., 0] < 0.16) | (HP[..., 1] > 0.66)).astype(np.float32)
 M["v_pub"] = M["v_pub"] * (0.3 + 0.6 * hairs)
 H += (HP[..., 1] - 0.5) * 0.55 * M["v_min"] + (HP[..., 1] - 0.5) * 0.3 * M["v_anus"]
-ROUGH = ROUGH * (1 - M["v_muc"]) + 0.2 * M["v_muc"]
+ROUGH = ROUGH * (1 - M["v_muc"]) + 0.34 * M["v_muc"]          # moist, not mirror-glossy (wetness is the engine's mask)
 for bn, r, s_ in [("calf_l", 0.05, 0.22), ("calf_r", 0.05, 0.22), ("lowerarm_l", 0.035, 0.16), ("lowerarm_r", 0.035, 0.16),
                   ("foot_l", 0.04, 0.16), ("foot_r", 0.04, 0.16)]:
     c = bones[bn][0]; yy, xx = region(c, r * 1.8)
@@ -424,13 +490,28 @@ TONES = {
                      mix=(0.45, 0.55), chest=(170, 112, 78), lip=(0.38, 0.065, 0.10), shadow=(0.72, 0.57, 0.55), blush=0.18, flush=(0.93, 0.83, 0.81), areola=(0.66, 0.52, 0.48), freck=0.12),
     "deep":    dict(vulva=dict(maj=(0.78, 0.66, 0.62), anus=(0.60, 0.46, 0.44), mino=(0.58, 0.44, 0.42), muc=(0.55, 0.20, 0.23), clit=(0.58, 0.25, 0.28), deep=(0.12, 0.02, 0.03)),
                      mix=(0.0, 1.0), chest=(112, 68, 47), lip=(0.25, 0.045, 0.07), shadow=(0.78, 0.63, 0.56), blush=0.12, flush=(0.86, 0.82, 0.80), areola=(0.62, 0.50, 0.46), freck=0.0),
+    # v3 additions (same paint masks, different pigment): lightest -> darkest is
+    # porcelain, fair, honey, olive, caramel, bronze, deep, ebony
+    "porcelain": dict(vulva=dict(maj=(0.90, 0.78, 0.76), anus=(0.76, 0.58, 0.56), mino=(0.78, 0.56, 0.55), muc=(0.84, 0.42, 0.45), clit=(0.88, 0.50, 0.52), deep=(0.24, 0.05, 0.06)),
+                     mix=(1.0, 0.0), chest=(236, 200, 182), lip=(0.58, 0.16, 0.20), shadow=(0.78, 0.62, 0.64), blush=0.32, flush=(1.0, 0.78, 0.77), areola=(0.84, 0.64, 0.60), freck=0.38),
+    "fair":    dict(vulva=dict(maj=(0.88, 0.76, 0.73), anus=(0.73, 0.55, 0.53), mino=(0.75, 0.54, 0.52), muc=(0.82, 0.40, 0.42), clit=(0.86, 0.47, 0.50), deep=(0.23, 0.04, 0.05)),
+                     mix=(1.0, 0.0), chest=(226, 180, 150), lip=(0.54, 0.12, 0.16), shadow=(0.77, 0.61, 0.63), blush=0.29, flush=(1.0, 0.79, 0.77), areola=(0.80, 0.62, 0.58), freck=0.34),
+    "olive":   dict(vulva=dict(maj=(0.83, 0.71, 0.66), anus=(0.66, 0.49, 0.46), mino=(0.67, 0.48, 0.46), muc=(0.75, 0.34, 0.36), clit=(0.79, 0.40, 0.42), deep=(0.20, 0.035, 0.045)),
+                     mix=(0.8, 0.2), chest=(186, 142, 98), lip=(0.44, 0.08, 0.11), shadow=(0.74, 0.59, 0.56), blush=0.2, flush=(0.95, 0.82, 0.80), areola=(0.70, 0.55, 0.50), freck=0.15,
+                     under=(0.97, 1.0, 0.90)),
+    "bronze":  dict(vulva=dict(maj=(0.79, 0.67, 0.63), anus=(0.61, 0.46, 0.44), mino=(0.60, 0.44, 0.42), muc=(0.62, 0.25, 0.28), clit=(0.66, 0.30, 0.33), deep=(0.15, 0.025, 0.035)),
+                     mix=(0.2, 0.8), chest=(140, 90, 58), lip=(0.30, 0.05, 0.08), shadow=(0.75, 0.60, 0.55), blush=0.14, flush=(0.90, 0.82, 0.80), areola=(0.64, 0.51, 0.47), freck=0.04),
+    "ebony":   dict(vulva=dict(maj=(0.80, 0.68, 0.64), anus=(0.62, 0.48, 0.46), mino=(0.58, 0.45, 0.43), muc=(0.45, 0.16, 0.19), clit=(0.48, 0.20, 0.23), deep=(0.09, 0.015, 0.02)),
+                     mix=(0.0, 1.0), chest=(74, 44, 32), lip=(0.17, 0.035, 0.05), shadow=(0.80, 0.66, 0.58), blush=0.08, flush=(0.84, 0.82, 0.80), areola=(0.60, 0.50, 0.46), freck=0.0),
 }
 SRCL = {k: load_src(k) for k in SRC}
+soft = lambda m_, r_: np.clip(blur(m_, r_), 0, 1)                                   # genital pigment fades in, no hard edges
+mj, mn, an_, smuc, spub = soft(M["v_maj"], 6), soft(M["v_min"], 3), soft(M["v_anus"], 4), soft(M["v_muc"], 2), soft(M["v_pub"], 3)
 def lerp3(a, b, t): return a + (b - a) * t[..., None]
 for tone, T in TONES.items():
     base = SRCL["cau"] * T["mix"][0] + SRCL["afr"] * T["mix"][1]
     gain = to_lin(np.array(T["chest"], np.float32) / 255) / base[chest].mean(0)
-    C = base * gain
+    C = base * gain * np.array(T.get("under", (1.0, 1.0, 1.0)), np.float32)
     mott = HP[..., 2] - 0.5
     C *= (1 + mott[..., None] * np.array([0.06, 0.0, -0.03]))
     C *= (0.82 + 0.18 * AO)[..., None]
@@ -443,20 +524,23 @@ for tone, T in TONES.items():
     C = lerp3(C, C * np.array([0.55, 0.42, 0.42]) ** 2.2, M["smudge"] * 0.5)
     C = lerp3(C, C * np.array([1.0, 0.70, 0.72]) ** 2.2, M["blush"] * T["blush"])
     lipc = to_lin(np.array(T["lip"])) * np.ones_like(C)
-    lipc = lerp3(lipc, to_lin(np.array([0.60, 0.22, 0.25])) * np.array([1.0, 0.92, 0.92]) * (0.5 if tone == "deep" else 1.0), M["wet"])
+    lipc = lerp3(lipc, to_lin(np.array([0.60, 0.22, 0.25])) * np.array([1.0, 0.92, 0.92]) * {"deep": 0.5, "ebony": 0.35, "bronze": 0.7}.get(tone, 1.0), M["wet"])
     detail = (C.mean(-1, keepdims=True) / np.maximum(1e-4, C[M["lip"] > 0.5].mean())) ** 0.5
     C = lerp3(C, lipc * np.clip(detail, 0.6, 1.4), M["lip"] * 0.9)
     C = lerp3(C, to_lin(np.array([0.36, 0.025, 0.055])) * (0.85 + 0.3 * HP[..., 2:3]), M["nail"] * 0.96)
     C = lerp3(C, C * np.array(T["areola"]) ** 2.2, M["areola"] * 0.85)
     C = lerp3(C, C * np.array(T["areola"]) ** 3.0, M["nipple"] * 0.6)
     Vp = T["vulva"]
-    C = lerp3(C, C * np.array(Vp["maj"]) ** 2.2, M["v_maj"] * 0.8)                 # outer labia + perineum pigment
-    C = lerp3(C, C * np.array(Vp["anus"]) ** 2.2, M["v_anus"] * 0.85)
-    C = lerp3(C, C * np.array(Vp["mino"]) ** 2.2, M["v_min"] * 0.8)                # inner labia, darker edges
-    C = lerp3(C, to_lin(np.array(Vp["muc"])) * (0.85 + 0.3 * HP[..., 2:3]), M["v_muc"] * 0.92)
-    C = lerp3(C, to_lin(np.array(Vp["clit"])), M["v_clit"] * 0.5 * (1 - M["v_cav"]))
-    C = lerp3(C, to_lin(np.array(Vp["deep"])), np.clip(M["v_cav"], 0, 1) ** 0.8)       # canals darken with depth
-    C = lerp3(C, to_lin(np.array([0.07, 0.04, 0.03])), M["v_pub"])                    # trimmed landing strip
+    C = lerp3(C, C * np.array([0.90, 0.82, 0.80]) ** 2.2, mj * 0.65)               # outer labia + perineum: a shade darker
+    C = lerp3(C, C * np.array([0.82, 0.70, 0.70]) ** 2.2, an_ * 0.7)
+    C = lerp3(C, C * np.array([0.80, 0.66, 0.66]) ** 2.2, mn * 0.75)                # inner labia: darker, a little mauve
+    skin_pink = C * np.array([1.10, 0.80, 0.84]) * 1.15                             # her own skin, flushed toward mauve-pink
+    muc = skin_pink * 0.45 + to_lin(np.array(Vp["muc"]) * np.array([0.92, 1.05, 1.05])) * 0.55
+    C = lerp3(C, muc * (0.9 + 0.2 * HP[..., 2:3]), smuc * 0.85)
+    C = lerp3(C, muc * np.array([1.06, 0.96, 0.98]), M["v_clit"] * 0.35 * (1 - M["v_cav"]))
+    C = lerp3(C, muc * 0.42, np.clip(M["v_cav"], 0, 1) ** 1.2 * 0.9)               # canals: deeper mucosa, never black
+    hair_c = to_lin(np.array([0.10, 0.065, 0.05])) * (0.6 + 0.8 * HP[..., 0:1])       # short trimmed hair, strand texture
+    C = lerp3(C, hair_c, spub * (0.55 + 0.35 * ss(0.35, 0.65, HP[..., 1])))
     out = np.flipud(np.clip(to_srgb(C) * 255 + 0.5, 0, 255).astype(np.uint8))
     Image.fromarray(out).save(f"{TEX}/vivian_skin_{tone}.jpg", quality=92)
     Image.fromarray(out).resize((768, 768), Image.LANCZOS).save(f"{TEX}/preview_skin_{tone}.jpg", quality=85)

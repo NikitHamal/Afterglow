@@ -19,7 +19,8 @@ for who in WHO:
     ad = arm.animation_data or arm.animation_data_create()
     for tr in list(ad.nla_tracks): ad.nla_tracks.remove(tr)
     ad.action = None
-    acts = sorted([a for a in bpy.data.actions if a.name.startswith(pfx)], key=lambda a: a.name)
+    skip = set(filter(None, os.environ.get("AG_EXCLUDE_CLIPS", "").split(",")))      # clips not yet clean enough to ship
+    acts = sorted([a for a in bpy.data.actions if a.name.startswith(pfx) and a.name.split("|", 1)[1] not in skip], key=lambda a: a.name)
     for a in acts:
         tr = ad.nla_tracks.new(); tr.name = a.name
         st = tr.strips.new(a.name, int(a.frame_range[0]), a); st.name = a.name

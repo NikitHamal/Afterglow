@@ -120,36 +120,181 @@ def her_arms_overhead(V, grip=0.0, reach=0.24, width=0.30):
             V.fingers(s, 0.42)
         else:
             W = V3(sx * width, sh.y + reach - 0.03, BED_TOP + 0.085)
-            V.arm_ik(s, W, sh + V3(sx * 0.45, 0.0, -0.05))
-            V.hand(s, palm=V3(0, 0, -1), fingers=nrm(V3(sx * 0.2, 1, -0.15)))
-            V.fingers(s, 0.42 + 0.26 * grip, thumb=0.40 + 0.25 * grip)
+            for _ in range(3):
+                V.arm_ik(s, W, sh + V3(sx * 0.45, 0.0, -0.05))
+                V.hand(s, palm=V3(0, 0, -1), fingers=nrm(V3(sx * 0.2, 1, -0.15)))
+                V.fingers(s, 0.42 + 0.26 * grip, thumb=0.40 + 0.25 * grip)
+                low = min(min(tip(V, s, f_).z for f_ in FINGERS), V.rig.tail("親指２" + s).z) - 0.008      # pad radius
+                if low >= BED_TOP - 0.003: break
+                W = W + V3(0, 0, BED_TOP - 0.002 - low)
 
-def her_rub_hand(V, s, phase, target, radius=0.011):
-    """her hand on a point (clit): fingertip pads circle on the skin; returns the fingertip target"""
-    r = V.rig; sx = 1 if s == ".L" else -1
+# ---------------------------------------------------------------- hands that really touch (surface-aware)
+LIMB_BONES = ("腕", "ひじ", "手首", "親指", "人指", "中指", "薬指", "小指")
+_KEEP = {}
+def surface(body, exclude=LIMB_BONES):
+    """BVH of the body's current evaluated skin (limbs in `exclude` left out, so a hand can find its own body)"""
+    from mathutils.bvhtree import BVHTree
+    import numpy as np
+    key = (body.obj.name, exclude)
+    if key not in _KEEP:
+        _KEEP[key] = np.array([not b.startswith(exclude) for b in SC.dominant_bone(body.obj)])
+    keep = _KEEP[key]
+    SC.apply_rigs(body)
+    Pv, Pf = SC.evaluated(body.obj)
+    return BVHTree.FromPolygons([tuple(v) for v in Pv], [f for f in Pf if all(keep[i] for i in f)])
+
+FINGERS = ("人指", "中指", "薬指", "小指")
+def natural_pole(body, s, W, palm, fingers, hint):
+    """elbow pole within +-100 deg of `hint` around the shoulder->wrist axis that leaves the wrist with the least bend
+    and twist (the forearm does the pronation), elbow above the mattress, close to last frame's choice"""
+    r = body.rig; S = r.head("腕" + s); ax = (Vector(W) - S).normalized()
+    h = Vector(hint) - S; h = (h - ax * ax.dot(h)).normalized()
+    b2 = ax.cross(h)
+    last = r.__dict__.setdefault("_last_pole", {}).get(s)
+    hinge_mem = {k_: v_.copy() for k_, v_ in getattr(r, "_last_hinge", {}).items()}   # trials must not steer the hinge memory
+    best = None
+    for k in range(-5, 6):
+        a = math.radians(20.0 * k)
+        p = S + (h * math.cos(a) + b2 * math.sin(a)) * 0.5
+        body.arm_ik(s, W, p); body.hand(s, palm=palm, fingers=fingers)
+        sw_, tw, _, _ = r.swing_twist("手首" + s)
+        cost = 2.0 * max(0.0, sw_ - 35.0) + 0.6 * abs(tw) + 25.0 * (1 - math.cos(a))
+        cost += 1500.0 * max(0.0, BED_TOP + 0.035 - r.head("ひじ" + s).z)        # elbow never in the mattress
+        if last is not None: cost += 150.0 * (p - last).length
+        if best is None or cost < best[0]: best = (cost, p)
+    r._last_pole[s] = best[1].copy()
+    r._last_hinge = hinge_mem
+    return best[1]
+def tip(body, s, f): return body.rig.tail(f + "３" + s)
+def palm_centre(body, s):
+    r = body.rig; return (r.head("手首" + s) * 0.45 + r.head("中指１" + s) * 0.55)
+
+_HANDV = {}
+def hand_skin_gap(body, s, bvh):
+    """smallest signed distance of the posed hand skin (palm + fingers) to the target surface (- = inside)"""
+    import numpy as np
+    key = (body.obj.name, s)
+    if key not in _HANDV:
+        _HANDV[key] = np.where(np.array([b.startswith(("手首", "親指", "人指", "中指", "薬指", "小指")) and b.endswith(s)
+                                         for b in SC.dominant_bone(body.obj)]))[0][::3]
+    SC.apply_rigs(body)
+    Pv, _ = SC.evaluated(body.obj)
+    g = 1.0
+    for i in _HANDV[key]:
+        l2, n2, _, _ = bvh.find_nearest(Vector(Pv[i]))
+        if l2 is not None: g = min(g, (Vector(Pv[i]) - Vector(l2)).dot(Vector(n2)))
+    return g
+
+def lift_out(body, s, bvh, W, n, pose_hand, pole, allow=-0.003, iters=3):
+    """move the wrist out along n until the skinned hand rests on (not in) the target"""
+    for _ in range(iters):
+        g = hand_skin_gap(body, s, bvh)
+        if g >= allow: break
+        W = W + n * (allow - g + 0.001)
+        body.arm_ik(s, W, pole); pose_hand()
+    return W
+
+def tip_gap(bvh, q):
+    l2, n2, _, _ = bvh.find_nearest(q)
+    return 1.0 if l2 is None else (q - Vector(l2)).dot(Vector(n2))
+
+_TIPFRAME = {}
+def touch_tips(body, s, bvh, anchor, along, pole, curl=0.22, pad=0.007, lift=0.03, iters=5, frame_key=None):
+    """fingertip pads (index + middle) on the skin at `anchor`, fingers lying `along` the surface, palm lifted `lift`
+    off it (never through the belly). With frame_key the hand keeps one orientation + elbow for the whole clip
+    (a rubbing hand only translates), so the wrist never flips. Returns the contact point."""
+    r = body.rig
+    loc, n, _, _ = bvh.find_nearest(Vector(anchor)); P = Vector(loc); n = Vector(n).normalized()
+    f = Vector(along); f = (f - n * n.dot(f)).normalized()
+    if frame_key is not None:
+        if frame_key in _TIPFRAME: n, f, pole_c = _TIPFRAME[frame_key]
+        else: pole_c = None
+    goal = P + n * pad
+    W = goal - f * 0.15 + n * lift
+    if frame_key is not None and pole_c is not None: pole = pole_c
+    else: pole = natural_pole(body, s, W, -n, (f - n * 0.35).normalized(), pole)
+    if frame_key is not None and frame_key not in _TIPFRAME: _TIPFRAME[frame_key] = (n.copy(), f.copy(), pole.copy())
+    for _ in range(iters):
+        body.arm_ik(s, W, pole)
+        body.hand(s, palm=-n, fingers=(f - n * 0.35).normalized())
+        r.limit("手首" + s)
+        body.fingers(s, curl, index=curl * 0.6, thumb=0.5)
+        r.curl([[f"薬指{d}{s}" for d in "０１２３"]], 1.05); r.curl([[f"小指{d}{s}" for d in "０１２３"]], 1.15)   # two fingers do the work
+        t_ = (tip(body, s, "人指") + tip(body, s, "中指")) * 0.5
+        W = W + (goal - t_)
+    def pose_hand():
+        body.hand(s, palm=-n, fingers=(f - n * 0.35).normalized()); r.limit("手首" + s)
+        body.fingers(s, curl, index=curl * 0.6, thumb=0.5)
+        r.curl([[f"薬指{d}{s}" for d in "０１２３"]], 1.05); r.curl([[f"小指{d}{s}" for d in "０１２３"]], 1.15)
+    lift_out(body, s, bvh, W, n, pose_hand, pole, allow=-0.004)
+    return P
+
+def cup(body, s, bvh, anchor, along, pole, pad=0.007, palm_lift=0.017, iters=5):
+    """palm on the skin at `anchor` (fingers `along` the surface), then every finger curls until its pad meets the
+    curve (wraps a breast, a thigh, a shaft); the thumb closes from the other side"""
+    r = body.rig
+    loc, n, _, _ = bvh.find_nearest(Vector(anchor)); P = Vector(loc); n = Vector(n).normalized()
+    f = Vector(along); f = (f - n * n.dot(f)).normalized()
+    goal = P + n * palm_lift
+    W = goal - f * 0.05
+    pole = natural_pole(body, s, W, -n, f, pole)
+    for _ in range(iters):
+        body.arm_ik(s, W, pole)
+        body.hand(s, palm=-n, fingers=f)
+        r.limit("手首" + s)
+        body.fingers(s, 0.05, thumb=0.15)
+        W = W + (goal - palm_centre(body, s))
+    for _ in range(2):                                       # concave skin (a crease): lift the hand until it clears
+        worst = min(tip_gap(bvh, q) for q in [palm_centre(body, s)] + [tip(body, s, f_) for f_ in FINGERS])
+        if worst >= pad * 0.5: break
+        W = W + n * (pad - worst); body.arm_ik(s, W, pole); body.hand(s, palm=-n, fingers=f)
+        r.limit("手首" + s); body.fingers(s, 0.05, thumb=0.15)
+    lastc = r.__dict__.setdefault("_last_curl", {})
+    def settle_curl(key, c):                                 # fingers move smoothly from frame to frame
+        p_ = lastc.get(key); c = c if p_ is None else p_ + max(-0.12, min(0.12, c - p_)); lastc[key] = c; return c
+    for fn_ in FINGERS:                                      # wrap: smallest curl whose pad reaches the skin
+        chain = [f"{fn_}{d}{s}" for d in "０１２３"]
+        best = 0.05
+        for c in [0.05 + 0.08 * k for k in range(18)]:
+            r.curl([chain], c)
+            if tip_gap(bvh, tip(body, s, fn_)) <= pad: best = c; break
+            best = c
+        r.curl([chain], settle_curl(chain[0], best))
+    th = [f"親指{d}{s}" for d in "０１２"]
+    best = 0.15
+    for c in [0.15 + 0.08 * k for k in range(12)]:
+        r.curl([th], c, decay=(0.6, 0.9, 0.8))
+        best = c
+        if tip_gap(bvh, r.tail(th[-1])) <= pad: break
+    r.curl([th], settle_curl(th[0], best), decay=(0.6, 0.9, 0.8))
+    snap = {k_: r.basis[k_].copy() for k_ in r.basis if k_.endswith(s) and k_.startswith(("親指", "人指", "中指", "薬指", "小指"))}
+    def pose_hand():
+        body.hand(s, palm=-n, fingers=f); r.limit("手首" + s)
+        for k_, m_ in snap.items(): r.basis[k_] = m_.copy()
+        r.fk("手首" + s)
+    lift_out(body, s, bvh, W, n, pose_hand, pole, allow=-0.004)
+    return P
+
+def her_rub_hand(V, s, phase, target, radius=0.011, bvh=None):
+    """her fingertips circle on her clit, on the skin: pads touching, palm resting above the mons (not in it)"""
+    r = V.rig; sx = dict(sides(V, "腕"))[s]
     a = 2 * math.pi * phase
-    # circle in the plane of the body surface (approximate: perpendicular to her front)
     fwd = V.fwd_dir("下半身"); up = V.up_dir("下半身"); left = V.left_dir("下半身")
-    tip = target + (left * math.cos(a) + up * math.sin(a)) * radius
-    # the wrist sits above the mons, hand pointing down toward the vulva, palm on the skin
-    fingers_dir = (-up * 0.9 + fwd * -0.2).normalized()
-    palm = -fwd
-    W = tip - fingers_dir * 0.085 + fwd * 0.028
+    anchor = target + (left * math.cos(a) + up * math.sin(a)) * radius + fwd * 0.01
+    bvh = bvh or surface(V)
     sh = r.head("腕" + s)
-    V.arm_ik(s, W, sh + left * sx * 0.12 + fwd * 0.12 - up * 0.35)       # elbow tucked to her side
-    V.hand(s, palm=palm, fingers=fingers_dir)
-    V.fingers(s, 0.25, index=0.12, thumb=0.2)
-    return tip
+    return touch_tips(V, s, bvh, anchor, -up, sh + left * sx * 0.15 + fwd * 0.15 - up * 0.35, curl=0.22, pad=0.005, lift=0.032,
+                      frame_key=(CURRENT, "rub", s))
 
-def her_breast_hand(V, s, phase, nipple_lm):
-    r = V.rig; sx = 1 if s == ".L" else -1
+def her_breast_hand(V, s, phase, nipple_lm, bvh=None):
+    """her hand cups her breast from below-outside, fingers wrapping the curve, squeezing gently with the phase"""
+    r = V.rig; sx = dict(sides(V, "腕"))[s]
     N = V.lm(nipple_lm); fwd = V.fwd_dir("上半身2"); up = V.up_dir("上半身2"); left = V.left_dir("上半身2")
     k = 0.5 + 0.5 * math.sin(2 * math.pi * phase)
-    W = N - up * 0.075 - left * sx * 0.03 + fwd * (0.035 + 0.008 * k)
+    anchor = N - up * 0.045 + left * sx * 0.025 - fwd * 0.01        # lower-outer curve of the breast
+    bvh = bvh or surface(V)
     sh = r.head("腕" + s)
-    V.arm_ik(s, W, sh + left * sx * 0.3 - fwd * 0.1 - up * 0.2)
-    V.hand(s, palm=-fwd, fingers=(up * 0.9 + left * -sx * 0.4).normalized())
-    V.fingers(s, 0.35 + 0.25 * k, thumb=0.4)
+    cup(V, s, bvh, anchor, nrm(up * 0.9 - left * sx * 0.35), sh + left * sx * 0.3 - fwd * 0.1 - up * 0.25, palm_lift=0.010 - 0.004 * k)
 
 def kneel_his_legs(M, knee_w=0.17, knee_z=0.055, shin_dir=V3(0, -1, 0.04)):
     r = M.rig
@@ -238,8 +383,8 @@ def missionary(ctx, t, rub=None, embrace=0.0):
                 else:                                               # holding his upper arms from below
                     A0 = M.rig.head("腕" + hs); A1 = M.rig.head("ひじ" + hs)
                     T = A0 + (A1 - A0) * a + V3(0, 0, -0.055)
-                    V.arm_ik(s, T, sh + V3(sx * 0.5, -0.1, b))
-                    V.hand(s, palm=V3(0, 0, 1), fingers=nrm(V3(sx * 0.3, 0.6, 0.2)))
+                    cup(V, s, surface(M, exclude=("手首", "親指", "人指", "中指", "薬指", "小指")), T, nrm(V3(sx * 0.3, 0.6, 0.2)), sh + V3(sx * 0.5, -0.1, b))
+                    continue
                 V.fingers(s, 0.45)
         best_of("her_arms", [("back", d, z) for d in (0.0, 0.1) for z in (0.0, 0.5)] +
                 [("arm", f, z) for f in (0.5, 0.6, 0.7, 0.8) for z in (-0.4, 0.0, 0.3)], her_arms, (V,))
@@ -260,7 +405,6 @@ def solo(ctx, phase, rub=True):
     if rub:
         her_rub_hand(V, ".R", phase, V.lm("clit"))
         her_breast_hand(V, ".L", phase, "nipple.L")
-        SC.settle(V, sink=0.008)                                   # shoulder blades follow the arms down
     else:
         her_arms_overhead(V)
         b = 0.5 + 0.5 * math.sin(2 * math.pi * phase)              # idle: slow breath-like sway of the knees
