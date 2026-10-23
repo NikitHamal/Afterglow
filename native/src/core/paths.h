@@ -26,6 +26,12 @@ std::string join(const std::string& a, const std::string& b);
 std::string dirname(const std::string& path);
 std::string readText(const std::string& path);
 bool writeText(const std::string& path, const std::string& text);
+// write to <path>.tmp, then rename over the target: a crash never leaves a half-written file
+bool writeAtomic(const std::string& path, const std::string& text);
+bool removeFile(const std::string& path);
+long long fileSize(const std::string& path);      // -1 when missing
+std::string exeDirectory();                       // folder of the running executable
+std::string tempDir();                            // writable temp folder for downloads
 std::vector<std::string> listFilesRecursive(const std::string& dir, const std::vector<std::string>& exts);
 
 }  // namespace ag::paths

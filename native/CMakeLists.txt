@@ -50,13 +50,51 @@ file(WRITE ${AG_GEN_DIR}/embedded_shaders.h.in
   "static const int kEmbeddedShaderCount = ${AG_SHADER_COUNT};\n")
 configure_file(${AG_GEN_DIR}/embedded_shaders.h.in ${AG_GEN_DIR}/embedded_shaders.h COPYONLY)
 
+# ---- UI fonts (OFL, native/res/fonts) embedded as byte arrays ----
+file(GLOB AG_FONT_FILES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/res/fonts/*.ttf)
+set(AG_FONT_ARRAYS "")
+set(AG_FONT_TABLE "")
+foreach(f ${AG_FONT_FILES})
+  get_filename_component(name ${f} NAME_WE)
+  string(MAKE_C_IDENTIFIER ${name} id)
+  file(READ ${f} hex HEX)
+  file(SIZE ${f} fsize)
+  string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," hex "${hex}")
+  string(APPEND AG_FONT_ARRAYS "static const unsigned char ag_font_${id}[] = {${hex}};\n")
+  string(APPEND AG_FONT_TABLE "  {\"${name}\", ag_font_${id}, ${fsize}},\n")
+endforeach()
+list(LENGTH AG_FONT_FILES AG_FONT_COUNT)
+file(WRITE ${AG_GEN_DIR}/embedded_fonts.h.in
+  "// generated from native/res/fonts by CMake - do not edit\n#pragma once\n"
+  "struct EmbeddedFont { const char* name; const unsigned char* data; int size; };\n"
+  "${AG_FONT_ARRAYS}static const EmbeddedFont kEmbeddedFonts[] = {\n${AG_FONT_TABLE}};\n"
+  "static const int kEmbeddedFontCount = ${AG_FONT_COUNT};\n")
+configure_file(${AG_GEN_DIR}/embedded_fonts.h.in ${AG_GEN_DIR}/embedded_fonts.h COPYONLY)
+
+# ---- version (CI passes -DAG_VERSION=0.<run>.0; local builds are "dev" and never self-update) ----
+set(AG_VERSION "0.0.0-dev" CACHE STRING "Game version")
+set(AG_VER_MAJOR 0)
+set(AG_VER_MINOR 0)
+set(AG_VER_PATCH 0)
+if(AG_VERSION MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)")
+  set(AG_VER_MAJOR ${CMAKE_MATCH_1})
+  set(AG_VER_MINOR ${CMAKE_MATCH_2})
+  set(AG_VER_PATCH ${CMAKE_MATCH_3})
+endif()
+
 # ---- game executable ----
 file(GLOB_RECURSE AG_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 add_executable(afterglow ${AG_SOURCES})
 target_include_directories(afterglow PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src ${AG_GEN_DIR}
   ${raylib_SOURCE_DIR}/src ${raylib_SOURCE_DIR}/src/external ${raygui_SOURCE_DIR}/src)
-target_link_libraries(afterglow PRIVATE raylib)
+find_package(Threads REQUIRED)
+target_link_libraries(afterglow PRIVATE raylib Threads::Threads)
+target_compile_definitions(afterglow PRIVATE AG_VERSION="${AG_VERSION}"
+  AG_VER_MAJOR=${AG_VER_MAJOR} AG_VER_MINOR=${AG_VER_MINOR} AG_VER_PATCH=${AG_VER_PATCH})
+if(WIN32)
+  target_link_libraries(afterglow PRIVATE winhttp psapi shell32)
+endif()
 set_target_properties(afterglow PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/$<0:>)
 
 if(MSVC)

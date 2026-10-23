@@ -192,7 +192,28 @@ bool Character::setTone(const std::string& tone) {
         GLuint t = 0;
         if (it != toneCache_.end()) t = it->second;
         else { t = textureFromFile(file, true); toneCache_[file] = t; }
-        if (t) { baseOverride_[mi] = t; any = true; }
+        if (!t) continue;
+        // VRAM: the override replaces the embedded albedo for good, and only the live tone stays cached
+        GLuint prev = baseOverride_[mi];
+        baseOverride_[mi] = t;
+        any = true;
+        Material& mat = model.materials[mi];
+        if (mat.texBase && mat.texBase != t) {
+            for (auto& mt : model.textures) if (mt == mat.texBase) mt = 0;
+            GLuint dead = mat.texBase;
+            for (auto& other : model.materials) if (other.texBase == dead) other.texBase = 0;
+            textureDestroy(dead);
+        }
+        if (prev && prev != t) {
+            bool used = false;
+            for (GLuint o : baseOverride_) used = used || o == prev;
+            if (!used) {
+                for (auto c = toneCache_.begin(); c != toneCache_.end();) {
+                    if (c->second == prev) c = toneCache_.erase(c); else ++c;
+                }
+                textureDestroy(prev);
+            }
+        }
     }
     if (any) tone_ = tone;
     return any;
@@ -211,6 +232,7 @@ void Character::update(float dt) {
     }
     for (auto& kv : boneOffsets_) anim.r(kv.first) = qnormalize(qmul(anim.r(kv.first), kv.second));
     anim.computeGlobals(rootMatrix());
+    if (poseHook) poseHook(anim);
     procedural.apply(anim, dt, proc);
     anim.finish();
     // skull centre: hair shading bends card normals around it

@@ -1,0 +1,21 @@
+# Afterglow game QA — every screen, rendered on CI by the harness under Mesa llvmpipe (1280x720).
+# Format: name|spec. Keys: screen=title|menu|customize|settings|play|pause|results, tab=her|him, settab=0..4,
+# pos, depth, her, him, connection, desire, rub, embrace, cam=side|front|top|fpv, bar=1, climax=her|him|together,
+# result=together|soon, body/mbody/tone/mtone/hair, quality, hints, t (seconds into the screen).
+title|screen=title;t=4
+menu|screen=menu;t=3
+customize_her|screen=customize;tab=her;t=2
+customize_curvy|screen=customize;tab=her;body=bust:1,hips:0.85,butt:0.9,weight:0.55,belly:0.3;hair=3;t=2
+customize_slim|screen=customize;tab=her;body=bust:-0.55,hips:-0.45,waist:0.45,butt:-0.4,weight:-0.75;tone=honey;t=2
+customize_him|screen=customize;tab=him;t=2
+settings_display|screen=settings;settab=0;t=2
+settings_audio|screen=settings;settab=2;t=2
+play_missionary|screen=play;pos=missionary;depth=0.6;her=0.45;him=0.3;desire=faster;cam=side
+play_doggy|screen=play;pos=doggy;depth=0.7;her=0.62;him=0.86;cam=side
+play_cowgirl_fpv|screen=play;pos=cowgirl;depth=0.6;her=0.5;him=0.4;cam=fpv
+play_positions|screen=play;pos=spoon;depth=0.5;her=0.3;him=0.2;bar=1;cam=front
+play_climax|screen=play;pos=missionary;depth=0.85;her=0.95;him=0.97;climax=together;cam=front
+play_solo|screen=play;pos=solo;depth=0.6;her=0.4;cam=side
+pause|screen=pause;pos=missionary;depth=0.5;her=0.4;him=0.3
+results|screen=results;result=together
+results_soon|screen=results;result=soon

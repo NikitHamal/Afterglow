@@ -4,6 +4,7 @@
 #include "gfx/model.h"
 #include "anim/animator.h"
 #include "anim/procedural.h"
+#include <functional>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -50,6 +51,8 @@ public:
     // ---- placement + procedural ----
     M4 placement = M4::identity();                         // world transform of the model root
     ProcParams proc;
+    // optional pose edit after the clips (world-space bone aims); runs before the procedural layers
+    std::function<void(Animator&)> poseHook;
     void resetSimulation() { procedural.reset(); }
 
     void update(float dt);
