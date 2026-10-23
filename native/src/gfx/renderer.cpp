@@ -9,8 +9,10 @@ void applyQuality(RenderSettings& s, Quality q) {
     s.quality = q;
     switch (q) {
         case Quality::Low: s.shadowRes = 1024; s.shadowSoft = 1.6f; s.bloomLevels = 4; s.hairSoft = false; s.renderScale = 0.8f; s.fxaa = true; s.ssao = false; break;
-        case Quality::Medium: s.shadowRes = 2048; s.shadowSoft = 2.2f; s.bloomLevels = 5; s.hairSoft = true; s.renderScale = 1.f; s.fxaa = true; s.ssao = true; s.ssaoSamples = 10; break;
-        case Quality::High: s.shadowRes = 4096; s.shadowSoft = 3.0f; s.bloomLevels = 6; s.hairSoft = true; s.renderScale = 1.f; s.fxaa = true; s.ssao = true; s.ssaoSamples = 16; break;
+        // the shadow frustum only spans the bed (about 2 x 2 m): 2048 texels are ~1 mm, and the PCF radius is kept
+        // in world units, so High looks the same as the old 4096 map at a quarter of the fill cost
+        case Quality::Medium: s.shadowRes = 1536; s.shadowSoft = 1.65f; s.bloomLevels = 5; s.hairSoft = true; s.renderScale = 1.f; s.fxaa = true; s.ssao = true; s.ssaoSamples = 10; break;
+        case Quality::High: s.shadowRes = 2048; s.shadowSoft = 1.5f; s.bloomLevels = 6; s.hairSoft = true; s.renderScale = 1.f; s.fxaa = true; s.ssao = true; s.ssaoSamples = 12; break;
     }
 }
 
@@ -169,8 +171,8 @@ void Renderer::bindMaterial(Program& p, const Model& m, int mi, const Character*
     GLuint mask = (ch && skin) ? ch->skinMask() : 0, detail = (ch && skin) ? ch->skinDetail() : 0;
     p.set("u_hasSkinMask", mask ? 1 : 0);
     p.set("u_hasDetailN", detail ? 1 : 0);
-    p.sampler("u_skinMask", 7, mask ? mask : white_);
-    p.sampler("u_detailN", 8, detail ? detail : flatNormal_);
+    p.sampler("u_skinMask", 9, mask ? mask : white_);       // 7 is the SSAO buffer, 8 kept free
+    p.sampler("u_detailN", 10, detail ? detail : flatNormal_);
     p.set("u_baked", (mat.shading == Shading::Room && mat.texEmis && mat.uvEmis == 1) ? 1 : 0);
 }
 

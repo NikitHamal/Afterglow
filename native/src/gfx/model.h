@@ -43,6 +43,7 @@ struct Primitive {
     struct Sparse { std::vector<uint32_t> idx; std::vector<float> dp, dn; };
     std::vector<Sparse> targets;
     int targetCount = 0;
+    uint32_t dirtyLo = 0, dirtyHi = 0;   // vertex range uploaded last time (reset to base this time)
     std::vector<float> scratchPos, scratchNrm;
     std::vector<uint16_t> joints;                     // 4 per vertex (CPU queries)
     std::vector<float> weights;                       // 4 per vertex
