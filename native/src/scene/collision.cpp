@@ -81,6 +81,18 @@ V3 resolveCamera(const BodyProxies& proxies, const CameraSafety& s, V3 eye, cons
                 moved = true;
             }
         }
+        // furniture: leave a box through its nearest face (+ margin)
+        for (const Box3& b : s.solids) {
+            V3 mn = b.mn - V3{s.margin, s.margin, s.margin}, mx = b.mx + V3{s.margin, s.margin, s.margin};
+            if (eye.x <= mn.x || eye.x >= mx.x || eye.y <= mn.y || eye.y >= mx.y || eye.z <= mn.z || eye.z >= mx.z) continue;
+            float d[6] = {eye.x - mn.x, mx.x - eye.x, eye.y - mn.y, mx.y - eye.y, eye.z - mn.z, mx.z - eye.z};
+            int k = 0;
+            for (int i = 1; i < 6; ++i) if (d[i] < d[k]) k = i;
+            if (k == 2) k = 3;                       // never push the eye down into the floor: go over the top
+            if (k == 0) eye.x = mn.x; else if (k == 1) eye.x = mx.x; else if (k == 3) eye.y = mx.y;
+            else if (k == 4) eye.z = mn.z; else eye.z = mx.z;
+            moved = true;
+        }
         eye = V3{clampf(eye.x, s.boundsMin.x, s.boundsMax.x), clampf(eye.y, s.boundsMin.y, s.boundsMax.y),
                  clampf(eye.z, s.boundsMin.z, s.boundsMax.z)};
         if (!moved) break;

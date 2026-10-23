@@ -62,6 +62,8 @@ private:
     void stage(Stage st);
     void applyLooks();                    // profile -> characters (morphs, tones, hair colour)
     void standPose(Character& c);         // relaxed standing pose (customisation preview)
+    void applySkin(Character& c, int tone);
+    static float ageToMorph(float years, float base);
     void updateMenuCamera(float dt);
     Stage stage_ = Stage::Bedroom;
     float turntable_ = 0.f, turnVel_ = 0.f, showcaseZoom_ = 0.f;

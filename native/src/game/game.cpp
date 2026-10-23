@@ -16,9 +16,6 @@
 
 namespace ag {
 
-namespace {
-const char* kToneNames[3] = {"honey", "caramel", "deep"};
-}
 
 // ------------------------------------------------------------------ lifecycle
 bool Game::init() {
@@ -123,6 +120,13 @@ bool Game::init() {
     sceneReady_ = true;
     camSafety_.boundsMin = scene.info.camMin;
     camSafety_.boundsMax = scene.info.camMax;
+    {
+        // the bed: the mattress (eye stays above the sheet) and the headboard with the pillows against it
+        const RoomInfo& ri = scene.info;
+        float hx = ri.bedHalf.x + 0.08f, headZ = ri.bedCenter.z - ri.bedHalf.z, footZ = ri.bedCenter.z + ri.bedHalf.z;
+        camSafety_.solids.push_back({V3{-hx, 0.f, headZ - 0.1f}, V3{hx, ri.bedTop + 0.04f, footZ + 0.06f}});
+        camSafety_.solids.push_back({V3{-hx - 0.05f, 0.f, headZ - 0.25f}, V3{hx + 0.05f, 1.35f, headZ + 0.22f}});
+    }
     camera.solve = [this](const V3& eye, const V3& target, bool fp) {
         return resolveCamera(proxies_, camSafety_, eye, target, fp ? 1 : -1);   // first person sits in his head
     };
@@ -276,7 +280,8 @@ void Game::applyLooks() {
         const HerLook& h = profile.her;
         v.setBody("bust", h.bust); v.setBody("hips", h.hips); v.setBody("waist", h.waist); v.setBody("butt", h.butt);
         v.setBody("weight", h.weight); v.setBody("muscle", h.muscle); v.setBody("belly", h.belly);
-        v.setTone(kToneNames[std::max(0, std::min(2, h.tone))]);
+        applySkin(v, h.tone);
+        v.setBody("age", ageToMorph(h.age, 42.f));
         bool legacyHair = false;
         for (const Material& mat : v.model.materials)
             if (mat.shading == Shading::Hair && mat.baseColor.x > 0.9f) legacyHair = true;
@@ -287,8 +292,27 @@ void Game::applyLooks() {
     if (m.loaded()) {
         const HisLook& h = profile.him;
         m.setBody("muscle", h.muscle); m.setBody("weight", h.weight); m.setBody("belly", h.belly);
-        m.setTone(kToneNames[std::max(0, std::min(2, h.tone))]);
+        applySkin(m, h.tone);
+        m.setBody("age", ageToMorph(h.age, 40.f));
     }
+}
+
+// seven skin tones from the three painted albedos: Fair/Olive/Bronze/Ebony are tints of their nearest one
+void Game::applySkin(Character& c, int tone) {
+    struct T { const char* tex; V3 tint; };
+    static const T kT[kSkinToneCount] = {
+        {"honey", {1.15f, 1.11f, 1.09f}}, {"honey", {1.f, 1.f, 1.f}}, {"honey", {0.93f, 0.95f, 0.83f}},
+        {"caramel", {1.06f, 0.98f, 0.88f}}, {"caramel", {1.f, 1.f, 1.f}}, {"deep", {1.f, 1.f, 1.f}}, {"deep", {0.72f, 0.70f, 0.70f}},
+    };
+    const T& t = kT[std::max(0, std::min(kSkinToneCount - 1, tone))];
+    c.setTone(t.tex);
+    c.skinTint = t.tint;
+}
+
+// years -> the content's age morph (age_up / age_dn, when shipped): the base model is the base age
+float Game::ageToMorph(float years, float base) {
+    years = std::max(kMinAge, std::min(kMaxAge, years));
+    return years < base ? (years - base) / (base - kMinAge) : (years - base) / (kMaxAge - base);
 }
 
 void Game::updateMenuCamera(float dt) {
@@ -526,10 +550,10 @@ void Game::applySpec(const Spec& s) {
         else if (kv.first == "belly") h.belly = kv.second; else if (kv.first == "length") h.length = kv.second;
         else if (kv.first == "girth") h.girth = kv.second;
     }
-    for (int i = 0; i < 3; ++i) {
-        if (s.get("tone") == kToneNames[i]) profile.her.tone = i;
-        if (s.get("mtone") == kToneNames[i]) profile.him.tone = i;
-    }
+    if (skinToneIndex(s.get("tone")) >= 0) profile.her.tone = skinToneIndex(s.get("tone"));
+    if (skinToneIndex(s.get("mtone")) >= 0) profile.him.tone = skinToneIndex(s.get("mtone"));
+    if (s.has("age")) profile.her.age = std::max(kMinAge, s.num("age", 42.f));
+    if (s.has("mage")) profile.him.age = std::max(kMinAge, s.num("mage", 40.f));
     if (s.has("hair")) profile.her.hair = (int)s.num("hair", 0.f);
     std::string q = s.get("quality");
     if (q == "low") settings.quality = 0; else if (q == "medium") settings.quality = 1; else if (q == "high") settings.quality = 2;

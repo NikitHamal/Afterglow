@@ -11,8 +11,9 @@ namespace ag {
 
 namespace {
 float clamp01(float v) { return v < 0.f ? 0.f : (v > 1.f ? 1.f : v); }
-const char* kToneLabel[3] = {"Honey", "Caramel", "Deep"};
-const Color kToneSwatch[3] = {{214, 160, 120, 255}, {170, 108, 72, 255}, {104, 62, 44, 255}};
+const char* kToneLabel[7] = {"Fair", "Honey", "Olive", "Bronze", "Caramel", "Deep", "Ebony"};
+const Color kToneSwatch[7] = {{238, 200, 172, 255}, {214, 160, 120, 255}, {192, 152, 106, 255}, {180, 118, 76, 255},
+                              {170, 108, 72, 255}, {104, 62, 44, 255}, {66, 40, 30, 255}};
 const Color kHairSwatch[6] = {{52, 32, 24, 255}, {104, 56, 34, 255}, {132, 52, 28, 255}, {150, 44, 30, 255}, {24, 20, 22, 255}, {196, 140, 82, 255}};
 const char* kHairLabel[6] = {"Espresso", "Chestnut", "Copper", "Auburn", "Raven", "Honey"};
 }  // namespace
@@ -177,81 +178,94 @@ void Game::drawCustomize() {
     if (custTab_ != before) { showcaseWho_ = custTab_; stage(Stage::Showcase); }
     y += U.u(70.f);
     bool changed = false;
+    std::vector<Color> toneCols(kToneSwatch, kToneSwatch + 7);
+    std::vector<std::string> toneNames(kToneLabel, kToneLabel + 7);
+    char agebuf[24];
     if (custTab_ == 0) {
         HerLook& h = profile.her;
-        U.sectionLabel("PRESETS", x, y, w);
+        U.sectionLabel("BODY TYPE", x, y, w);
         y += U.u(30.f);
-        struct Preset { const char* name; HerLook v; };
+        struct Preset { const char* name; float bust, hips, waist, butt, weight, muscle, belly; };
         const Preset presets[] = {
-            {"Natural", {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, h.tone, h.hair}},
-            {"Slim", {-0.55f, -0.45f, 0.45f, -0.4f, -0.75f, 0.15f, 0.f, h.tone, h.hair}},
-            {"Curvy", {0.6f, 0.7f, 0.35f, 0.65f, 0.15f, 0.f, 0.1f, h.tone, h.hair}},
-            {"Voluptuous", {1.f, 0.85f, -0.1f, 0.9f, 0.55f, 0.f, 0.3f, h.tone, h.hair}},
-            {"Athletic", {-0.2f, 0.1f, 0.55f, 0.35f, -0.35f, 0.85f, 0.f, h.tone, h.hair}},
+            {"Natural", 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},          {"Petite", -0.35f, -0.3f, 0.3f, -0.2f, -0.45f, 0.1f, 0.f},
+            {"Skinny", -0.6f, -0.55f, 0.6f, -0.55f, -1.f, 0.f, 0.f},  {"Slim", -0.3f, -0.25f, 0.45f, -0.2f, -0.55f, 0.15f, 0.f},
+            {"Athletic", -0.1f, 0.1f, 0.5f, 0.35f, -0.3f, 0.85f, 0.f}, {"Curvy", 0.6f, 0.7f, 0.35f, 0.65f, 0.15f, 0.f, 0.1f},
+            {"Chubby", 0.55f, 0.55f, -0.5f, 0.45f, 0.75f, 0.f, 0.6f}, {"BBW", 1.f, 1.f, -0.9f, 0.95f, 1.f, 0.f, 0.9f},
+            {"Voluptuous", 1.f, 0.85f, -0.1f, 0.9f, 0.55f, 0.f, 0.3f},
         };
-        float cx = x, cw = (w - U.u(4.f * 10.f)) / 5.f;
-        for (const Preset& p : presets) {
-            bool act = std::fabs(h.bust - p.v.bust) + std::fabs(h.hips - p.v.hips) + std::fabs(h.waist - p.v.waist) +
-                       std::fabs(h.butt - p.v.butt) + std::fabs(h.weight - p.v.weight) + std::fabs(h.muscle - p.v.muscle) < 0.05f;
-            if (U.chip(std::string("hp#") + p.name, p.name, Rectangle{cx, y, cw, U.u(38.f)}, act)) { h = p.v; changed = true; }
-            cx += cw + U.u(10.f);
+        float cw = (w - U.u(4.f * 10.f)) / 5.f;
+        for (int i = 0; i < 9; ++i) {
+            const Preset& p = presets[i];
+            bool act = std::fabs(h.bust - p.bust) + std::fabs(h.hips - p.hips) + std::fabs(h.waist - p.waist) + std::fabs(h.butt - p.butt) +
+                       std::fabs(h.weight - p.weight) + std::fabs(h.muscle - p.muscle) + std::fabs(h.belly - p.belly) < 0.05f;
+            Rectangle r{x + (float)(i % 5) * (cw + U.u(10.f)), y + (float)(i / 5) * U.u(46.f), cw, U.u(36.f)};
+            if (U.chip(std::string("hp#") + p.name, p.name, r, act)) {
+                h.bust = p.bust; h.hips = p.hips; h.waist = p.waist; h.butt = p.butt; h.weight = p.weight; h.muscle = p.muscle; h.belly = p.belly;
+                changed = true;
+            }
         }
-        y += U.u(66.f);
+        y += U.u(104.f);
         U.sectionLabel("FIGURE", x, y, w);
-        y += U.u(34.f);
+        y += U.u(32.f);
         struct S { const char* id; const char* label; float* v; float lo; };
         const S sl[] = {{"h_bust", "Bust", &h.bust, -1.f}, {"h_hips", "Hips", &h.hips, -1.f}, {"h_waist", "Waist", &h.waist, -1.f},
                         {"h_butt", "Bottom", &h.butt, -1.f}, {"h_weight", "Weight", &h.weight, -1.f}, {"h_muscle", "Tone", &h.muscle, 0.f},
                         {"h_belly", "Belly", &h.belly, 0.f}};
         float colW = (w - U.u(48.f)) * 0.5f;
         for (int i = 0; i < 7; ++i) {
-            float sx = x + (i % 2) * (colW + U.u(48.f)), sy = y + (float)(i / 2) * U.u(70.f);
+            float sx = x + (i % 2) * (colW + U.u(48.f)), sy = y + (float)(i / 2) * U.u(64.f);
             changed |= U.slider(sl[i].id, sl[i].label, sl[i].v, sl[i].lo, 1.f, Rectangle{sx, sy, colW, U.u(46.f)}, sl[i].lo < 0.f);
         }
-        y += U.u(4.f * 70.f + 14.f);
+        // adults only: 21 to 60 years
+        std::snprintf(agebuf, sizeof agebuf, "%d years", (int)std::lround(h.age));
+        changed |= U.slider("h_age", "Age", &h.age, kMinAge, kMaxAge, Rectangle{x + colW + U.u(48.f), y + 3.f * U.u(64.f), colW, U.u(46.f)}, false, agebuf);
+        y += U.u(4.f * 64.f + 12.f);
         U.sectionLabel("SKIN & HAIR", x, y, w);
-        y += U.u(34.f);
-        changed |= U.swatches("h_tone", "Skin tone", &h.tone, {kToneSwatch[0], kToneSwatch[1], kToneSwatch[2]},
-                              {kToneLabel[0], kToneLabel[1], kToneLabel[2]}, Rectangle{x, y, colW, U.u(80.f)});
+        y += U.u(30.f);
+        changed |= U.swatches("h_tone", "Skin tone", &h.tone, toneCols, toneNames, Rectangle{x, y, w, U.u(76.f)});
+        y += U.u(86.f);
         changed |= U.swatches("h_hair", "Hair colour", &h.hair, std::vector<Color>(kHairSwatch, kHairSwatch + 6),
-                              std::vector<std::string>(kHairLabel, kHairLabel + 6), Rectangle{x + colW + U.u(48.f), y, colW, U.u(80.f)});
-        y += U.u(100.f);
+                              std::vector<std::string>(kHairLabel, kHairLabel + 6), Rectangle{x, y, colW, U.u(76.f)});
+        U.text(ui::Face::SansMedium, U.u(19.f), "Hair style", x + colW + U.u(48.f), y, U.th.inkDim);
+        U.chip("h_style", "Low chignon", Rectangle{x + colW + U.u(48.f), y + U.u(36.f), U.u(170.f), U.u(36.f)}, true);
+        y += U.u(86.f);
     } else {
         HisLook& h = profile.him;
-        U.sectionLabel("PRESETS", x, y, w);
-        y += U.u(30.f);
-        struct Preset { const char* name; HisLook v; };
-        const Preset presets[] = {
-            {"Natural", {0.f, 0.f, 0.f, h.length, h.girth, h.tone}},
-            {"Lean", {0.2f, -0.6f, 0.f, h.length, h.girth, h.tone}},
-            {"Athletic", {0.85f, -0.2f, 0.f, h.length, h.girth, h.tone}},
-            {"Broad", {0.55f, 0.55f, 0.15f, h.length, h.girth, h.tone}},
-            {"Dad bod", {-0.2f, 0.45f, 0.75f, h.length, h.girth, h.tone}},
-        };
-        float cx = x, cw = (w - U.u(40.f)) / 5.f;
-        for (const Preset& p : presets) {
-            bool act = std::fabs(h.muscle - p.v.muscle) + std::fabs(h.weight - p.v.weight) + std::fabs(h.belly - p.v.belly) < 0.05f;
-            if (U.chip(std::string("mp#") + p.name, p.name, Rectangle{cx, y, cw, U.u(38.f)}, act)) { h = p.v; changed = true; }
-            cx += cw + U.u(10.f);
-        }
-        y += U.u(66.f);
         U.sectionLabel("BUILD", x, y, w);
-        y += U.u(34.f);
+        y += U.u(30.f);
+        struct Preset { const char* name; float muscle, weight, belly; };
+        const Preset presets[] = {{"Natural", 0.f, 0.f, 0.f}, {"Lean", 0.2f, -0.6f, 0.f}, {"Athletic", 0.85f, -0.2f, 0.f},
+                                  {"Broad", 0.55f, 0.55f, 0.15f}, {"Dad bod", -0.2f, 0.45f, 0.75f}};
+        float cw = (w - U.u(40.f)) / 5.f;
+        for (int i = 0; i < 5; ++i) {
+            const Preset& p = presets[i];
+            bool act = std::fabs(h.muscle - p.muscle) + std::fabs(h.weight - p.weight) + std::fabs(h.belly - p.belly) < 0.05f;
+            if (U.chip(std::string("mp#") + p.name, p.name, Rectangle{x + (float)i * (cw + U.u(10.f)), y, cw, U.u(36.f)}, act)) {
+                h.muscle = p.muscle; h.weight = p.weight; h.belly = p.belly; changed = true;
+            }
+        }
+        y += U.u(60.f);
         float colW = (w - U.u(48.f)) * 0.5f;
         changed |= U.slider("m_muscle", "Muscle", &h.muscle, -1.f, 1.f, Rectangle{x, y, colW, U.u(46.f)}, true);
         changed |= U.slider("m_weight", "Weight", &h.weight, -1.f, 1.f, Rectangle{x + colW + U.u(48.f), y, colW, U.u(46.f)}, true);
-        changed |= U.slider("m_belly", "Belly", &h.belly, 0.f, 1.f, Rectangle{x, y + U.u(70.f), colW, U.u(46.f)});
-        y += U.u(156.f);
+        changed |= U.slider("m_belly", "Belly", &h.belly, 0.f, 1.f, Rectangle{x, y + U.u(64.f), colW, U.u(46.f)});
+        std::snprintf(agebuf, sizeof agebuf, "%d years", (int)std::lround(h.age));
+        changed |= U.slider("m_age", "Age", &h.age, kMinAge, kMaxAge, Rectangle{x + colW + U.u(48.f), y + U.u(64.f), colW, U.u(46.f)}, false, agebuf);
+        y += U.u(140.f);
         U.sectionLabel("ENDOWMENT", x, y, w);
-        y += U.u(34.f);
+        y += U.u(32.f);
         changed |= U.slider("m_length", "Length", &h.length, -1.f, 1.f, Rectangle{x, y, colW, U.u(46.f)}, true);
         changed |= U.slider("m_girth", "Girth", &h.girth, -1.f, 1.f, Rectangle{x + colW + U.u(48.f), y, colW, U.u(46.f)}, true);
-        y += U.u(86.f);
+        y += U.u(80.f);
         U.sectionLabel("SKIN", x, y, w);
-        y += U.u(34.f);
-        changed |= U.swatches("m_tone", "Skin tone", &h.tone, {kToneSwatch[0], kToneSwatch[1], kToneSwatch[2]},
-                              {kToneLabel[0], kToneLabel[1], kToneLabel[2]}, Rectangle{x, y, colW, U.u(80.f)});
-        y += U.u(100.f);
+        y += U.u(30.f);
+        changed |= U.swatches("m_tone", "Skin tone", &h.tone, toneCols, toneNames, Rectangle{x, y, w, U.u(76.f)});
+        y += U.u(96.f);
+    }
+    {
+        const Character& c = custTab_ == 0 ? scene.vivian : scene.marcus;
+        if (c.loaded() && !c.hasMorph("age_up") && !c.hasMorph("age_dn"))
+            U.text(ui::Face::Sans, U.u(14.f), "Age shapes the face and body once the next character update arrives.", x, y - U.u(4.f), U.th.inkFaint);
     }
     if (changed) applyLooks();
     if (custTab_ == 1 && scene.marcus.loaded()) {
@@ -263,8 +277,8 @@ void Game::drawCustomize() {
     // footer
     float by = py + ph - U.u(86.f);
     if (U.button("cust#reset", "Reset", Rectangle{x, by, U.u(150.f), U.u(50.f)})) {
-        if (custTab_ == 0) { int tone = profile.her.tone, hair = profile.her.hair; profile.her = HerLook{}; profile.her.tone = tone; profile.her.hair = hair; }
-        else { int tone = profile.him.tone; profile.him = HisLook{}; profile.him.tone = tone; }
+        if (custTab_ == 0) { int tone = profile.her.tone, hair = profile.her.hair; float age = profile.her.age; profile.her = HerLook{}; profile.her.tone = tone; profile.her.hair = hair; profile.her.age = age; }
+        else { int tone = profile.him.tone; float age = profile.him.age; profile.him = HisLook{}; profile.him.tone = tone; profile.him.age = age; }
         applyLooks();
     }
     if (U.button("cust#done", "Done", Rectangle{x + w - U.u(200.f), by, U.u(200.f), U.u(50.f)}, true) || (U.in.back && !switching_)) {

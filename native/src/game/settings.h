@@ -38,14 +38,22 @@ struct Settings {
     bool save(const std::string& path) const;
 };
 
+// skin tones: index into kSkinTones (Fair, Honey, Olive, Bronze, Caramel, Deep, Ebony)
+const char* skinToneName(int i);
+int skinToneIndex(const std::string& name);   // -1 when unknown
+constexpr int kSkinToneCount = 7;
+constexpr float kMinAge = 21.f, kMaxAge = 60.f;   // adults only: nothing below 21, ever
+
 struct HerLook {
     float bust = 0.f, hips = 0.f, waist = 0.f, butt = 0.f, weight = 0.f, muscle = 0.f, belly = 0.f;   // -1..1 (muscle/belly 0..1)
-    int tone = 1;                  // honey, caramel, deep
+    int tone = 4;                  // skin tone index (caramel)
     int hair = 0;                  // index into the hair colour table
+    float age = 42.f;              // years, 21..60
 };
 struct HisLook {
     float muscle = 0.f, weight = 0.f, belly = 0.f, length = 0.f, girth = 0.f;
-    int tone = 1;
+    int tone = 4;
+    float age = 40.f;
 };
 
 struct SavedNight {

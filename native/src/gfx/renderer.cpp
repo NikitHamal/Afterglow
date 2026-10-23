@@ -162,7 +162,8 @@ void Renderer::bindMaterial(Program& p, const Model& m, int mi, const Character*
     p.sampler("u_texOcc", 3, mat.texOcc ? mat.texOcc : white_);
     p.sampler("u_texEmis", 4, mat.texEmis ? mat.texEmis : white_);
     bool hair = mat.shading == Shading::Hair;
-    p.set("u_tint", (ch && hair) ? ch->hairTint : V3{1, 1, 1});
+    bool skinLike = mat.shading == Shading::Skin || mat.name.find("genital") != std::string::npos;
+    p.set("u_tint", (ch && hair) ? ch->hairTint : ((ch && skinLike) ? ch->skinTint : V3{1, 1, 1}));
     p.set("u_hairShape", (ch && hair) ? 1 : 0);
     if (ch && hair) p.set("u_hairCenter", ch->hairCenter());
     bool skin = mat.shading == Shading::Skin;
