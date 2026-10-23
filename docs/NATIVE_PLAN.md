@@ -62,6 +62,5 @@ intended genital/mouth contact (BVH test), hands touching their targets, penetra
 
 ## CI (`.github/workflows/native.yml`)
 
-Windows/Linux/macOS Release builds (FetchContent cache), Linux QA job renders the shotlist under Xvfb +
-Mesa llvmpipe and uploads `qa-shots`; Windows job builds the Inno Setup installer; pushes to `main` update the
-`nightly` pre-release with all packages.
+Windows/Linux/macOS Release builds (FetchContent cache); Windows job builds the Inno Setup installer; pushes to
+`main` update the `nightly` pre-release with all packages. QA shots are rendered on the molab box, not in CI.

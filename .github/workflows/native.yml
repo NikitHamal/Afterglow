@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - 'native/**'
-      - 'tools/qa/**'
       - '.github/workflows/native.yml'
   workflow_dispatch:
 
@@ -97,43 +96,6 @@ jobs:
             dist/*.tar.gz
             dist/*.exe
           if-no-files-found: error
-
-  qa:
-    name: qa-screenshots
-    needs: build
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: afterglow-linux
-          path: dl
-      - name: Software GL
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends xvfb xauth libgl1-mesa-dri libglx-mesa0 mesa-utils
-      - name: Render QA shots (Mesa llvmpipe)
-        run: |
-          mkdir -p game qa-out
-          tar xzf dl/Afterglow-linux-x64.tar.gz -C game
-          cd game/Afterglow
-          export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
-          set +e
-          mkdir -p "$GITHUB_WORKSPACE/qa-out/game" "$GITHUB_WORKSPACE/qa-out/engine"
-          # game screens (title, menus, customisation, settings, play HUD, pause, results)
-          timeout 1800 xvfb-run -a -s "-screen 0 1920x1080x24" ./afterglow --shotlist "$GITHUB_WORKSPACE/tools/qa/game_shots.txt" --outdir "$GITHUB_WORKSPACE/qa-out/game" --res 1280x720 --frames 24 > "$GITHUB_WORKSPACE/qa-out/game/harness.log" 2>&1
-          echo "game harness exit $?" | tee -a "$GITHUB_WORKSPACE/qa-out/game/harness.log"
-          tail -25 "$GITHUB_WORKSPACE/qa-out/game/harness.log"
-          # engine sandbox (poses, cameras, deformation)
-          timeout 1800 xvfb-run -a -s "-screen 0 1920x1080x24" ./afterglow --sandbox --shotlist "$GITHUB_WORKSPACE/tools/qa/shots.txt" --outdir "$GITHUB_WORKSPACE/qa-out/engine" --res 1280x720 --frames 30 > "$GITHUB_WORKSPACE/qa-out/engine/harness.log" 2>&1
-          echo "engine harness exit $?" | tee -a "$GITHUB_WORKSPACE/qa-out/engine/harness.log"
-          tail -15 "$GITHUB_WORKSPACE/qa-out/engine/harness.log"
-          ls -la "$GITHUB_WORKSPACE/qa-out/game" "$GITHUB_WORKSPACE/qa-out/engine"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: qa-shots
-          path: qa-out
-          if-no-files-found: warn
 
   release:
     name: nightly-release
