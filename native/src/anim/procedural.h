@@ -59,6 +59,7 @@ private:
     std::vector<Spring> springs_;
 
     struct Chain {
+        float stiff = 1.f, drag = 0.35f, grav = 1.f, maxAng = 3.2f;   // content hairChains (maxAngleDeg: swing limit)
         std::vector<int> bones;          // root .. tip leaf
         std::vector<float> rest;         // rest length bone[i-1] -> bone[i]
         std::vector<V3> axis;            // rest direction of bone[i] in bone[i-1]'s local frame

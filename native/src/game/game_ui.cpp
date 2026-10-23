@@ -11,9 +11,9 @@ namespace ag {
 
 namespace {
 float clamp01(float v) { return v < 0.f ? 0.f : (v > 1.f ? 1.f : v); }
-const char* kToneLabel[7] = {"Fair", "Honey", "Olive", "Bronze", "Caramel", "Deep", "Ebony"};
-const Color kToneSwatch[7] = {{238, 200, 172, 255}, {214, 160, 120, 255}, {192, 152, 106, 255}, {180, 118, 76, 255},
-                              {170, 108, 72, 255}, {104, 62, 44, 255}, {66, 40, 30, 255}};
+const char* kToneLabel[8] = {"Porcelain", "Fair", "Honey", "Olive", "Caramel", "Bronze", "Deep", "Ebony"};
+const Color kToneSwatch[8] = {{246, 214, 196, 255}, {238, 200, 172, 255}, {214, 160, 120, 255}, {192, 152, 106, 255},
+                              {170, 108, 72, 255}, {150, 96, 62, 255}, {104, 62, 44, 255}, {66, 40, 30, 255}};
 const Color kHairSwatch[6] = {{52, 32, 24, 255}, {104, 56, 34, 255}, {132, 52, 28, 255}, {150, 44, 30, 255}, {24, 20, 22, 255}, {196, 140, 82, 255}};
 const char* kHairLabel[6] = {"Espresso", "Chestnut", "Copper", "Auburn", "Raven", "Honey"};
 }  // namespace
@@ -180,8 +180,8 @@ void Game::drawCustomize() {
     if (custTab_ != before) { showcaseWho_ = custTab_; stage(Stage::Showcase); }
     y += U.u(70.f);
     bool changed = false;
-    std::vector<Color> toneCols(kToneSwatch, kToneSwatch + 7);
-    std::vector<std::string> toneNames(kToneLabel, kToneLabel + 7);
+    std::vector<Color> toneCols(kToneSwatch, kToneSwatch + 8);
+    std::vector<std::string> toneNames(kToneLabel, kToneLabel + 8);
     char agebuf[24];
     // age shapes ship with a later character update; until then the slider says so instead of doing nothing silently
     auto soonTag = [&](const Character& c, float lx, float ly) {
@@ -196,26 +196,31 @@ void Game::drawCustomize() {
         HerLook& h = profile.her;
         U.sectionLabel("BODY TYPE", x, y, w);
         y += U.u(30.f);
-        struct Preset { const char* name; float bust, hips, waist, butt, weight, muscle, belly; };
-        const Preset presets[] = {
-            {"Natural", 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},          {"Petite", -0.35f, -0.3f, 0.3f, -0.2f, -0.45f, 0.1f, 0.f},
-            {"Skinny", -0.6f, -0.55f, 0.6f, -0.55f, -1.f, 0.f, 0.f},  {"Slim", -0.3f, -0.25f, 0.45f, -0.2f, -0.55f, 0.15f, 0.f},
-            {"Athletic", -0.1f, 0.1f, 0.5f, 0.35f, -0.3f, 0.85f, 0.f}, {"Curvy", 0.6f, 0.7f, 0.35f, 0.65f, 0.15f, 0.f, 0.1f},
-            {"Chubby", 0.55f, 0.55f, -0.5f, 0.45f, 0.75f, 0.f, 0.6f}, {"BBW", 1.f, 1.f, -0.9f, 0.95f, 1.f, 0.f, 0.9f},
-            {"Voluptuous", 1.f, 0.85f, -0.1f, 0.9f, 0.55f, 0.f, 0.3f},
-        };
+        // body types: the content's presets (characters/presets.json), with their skin tone and age
+        const Json& pr = clipsPresets_["vivian"]["presets"];
+        static const char* kSl[8] = {"bust", "hips", "waist", "butt", "weight", "muscle", "belly", "age"};
+        int np = 0;
         float cw = (w - U.u(4.f * 10.f)) / 5.f;
-        for (int i = 0; i < 9; ++i) {
-            const Preset& p = presets[i];
-            bool act = std::fabs(h.bust - p.bust) + std::fabs(h.hips - p.hips) + std::fabs(h.waist - p.waist) + std::fabs(h.butt - p.butt) +
-                       std::fabs(h.weight - p.weight) + std::fabs(h.muscle - p.muscle) + std::fabs(h.belly - p.belly) < 0.05f;
-            Rectangle r{x + (float)(i % 5) * (cw + U.u(10.f)), y + (float)(i / 5) * U.u(42.f), cw, U.u(34.f)};
-            if (U.chip(std::string("hp#") + p.name, p.name, r, act)) {
-                h.bust = p.bust; h.hips = p.hips; h.waist = p.waist; h.butt = p.butt; h.weight = p.weight; h.muscle = p.muscle; h.belly = p.belly;
+        for (auto& kv : pr.obj) {
+            const Json& sl = kv.second["sliders"];
+            float want[7];
+            for (int k = 0; k < 7; ++k) want[k] = sl[kSl[k]].f(0.f);
+            float cur[7] = {h.bust, h.hips, h.waist, h.butt, h.weight, h.muscle, h.belly};
+            float d = 0.f;
+            for (int k = 0; k < 7; ++k) d += std::fabs(cur[k] - want[k]);
+            int toneWant = skinToneIndex(kv.second["tone"].str());
+            bool act = d < 0.05f && (toneWant < 0 || toneWant == h.tone);
+            Rectangle r{x + (float)(np % 5) * (cw + U.u(10.f)), y + (float)(np / 5) * U.u(40.f), cw, U.u(32.f)};
+            if (U.chip(std::string("hp#") + kv.first, kv.first, r, act)) {
+                h.bust = want[0]; h.hips = want[1]; h.waist = want[2]; h.butt = want[3]; h.weight = want[4];
+                h.muscle = std::max(0.f, want[5]); h.belly = std::max(0.f, want[6]);
+                if (toneWant >= 0) h.tone = toneWant;
+                if (sl["age"].isNumber()) { float a = sl["age"].f(); h.age = a < 0.f ? 42.f + a * 17.f : 42.f + a * 18.f; }
                 changed = true;
             }
+            ++np;
         }
-        y += U.u(94.f);
+        y += U.u(40.f) * (float)((np + 4) / 5) + U.u(14.f);
         U.sectionLabel("FIGURE", x, y, w);
         y += U.u(30.f);
         struct S { const char* id; const char* label; float* v; float lo; };
@@ -224,14 +229,14 @@ void Game::drawCustomize() {
                         {"h_belly", "Belly", &h.belly, 0.f}};
         float colW = (w - U.u(48.f)) * 0.5f;
         for (int i = 0; i < 7; ++i) {
-            float sx = x + (i % 2) * (colW + U.u(48.f)), sy = y + (float)(i / 2) * U.u(58.f);
+            float sx = x + (i % 2) * (colW + U.u(48.f)), sy = y + (float)(i / 2) * U.u(54.f);
             changed |= U.slider(sl[i].id, sl[i].label, sl[i].v, sl[i].lo, 1.f, Rectangle{sx, sy, colW, U.u(46.f)}, sl[i].lo < 0.f);
         }
         // adults only: 21 to 60 years
         std::snprintf(agebuf, sizeof agebuf, "%d years", (int)std::lround(h.age));
-        changed |= U.slider("h_age", "Age", &h.age, kMinAge, kMaxAge, Rectangle{x + colW + U.u(48.f), y + 3.f * U.u(58.f), colW, U.u(46.f)}, false, agebuf);
-        soonTag(scene.vivian, x + colW + U.u(48.f), y + 3.f * U.u(58.f));
-        y += U.u(4.f * 58.f + 8.f);
+        changed |= U.slider("h_age", "Age", &h.age, kMinAge, kMaxAge, Rectangle{x + colW + U.u(48.f), y + 3.f * U.u(54.f), colW, U.u(46.f)}, false, agebuf);
+        soonTag(scene.vivian, x + colW + U.u(48.f), y + 3.f * U.u(54.f));
+        y += U.u(4.f * 54.f + 6.f);
         U.sectionLabel("SKIN & HAIR", x, y, w);
         y += U.u(30.f);
         changed |= U.swatches("h_tone", "Skin tone", &h.tone, toneCols, toneNames, Rectangle{x, y, w, U.u(72.f)});
@@ -245,17 +250,24 @@ void Game::drawCustomize() {
         HisLook& h = profile.him;
         U.sectionLabel("BUILD", x, y, w);
         y += U.u(30.f);
-        struct Preset { const char* name; float muscle, weight, belly; };
-        const Preset presets[] = {{"Natural", 0.f, 0.f, 0.f}, {"Lean", 0.2f, -0.6f, 0.f}, {"Athletic", 0.85f, -0.2f, 0.f},
-                                  {"Broad", 0.55f, 0.55f, 0.15f}, {"Dad bod", -0.2f, 0.45f, 0.75f}};
+        // builds: the content's presets (characters/presets.json)
+        const Json& pr = clipsPresets_["marcus"]["presets"];
         float cw = (w - U.u(40.f)) / 5.f;
-        for (int i = 0; i < 5; ++i) {
-            const Preset& p = presets[i];
-            bool act = std::fabs(h.muscle - p.muscle) + std::fabs(h.weight - p.weight) + std::fabs(h.belly - p.belly) < 0.05f;
-            if (U.chip(std::string("mp#") + p.name, p.name, Rectangle{x + (float)i * (cw + U.u(10.f)), y, cw, U.u(36.f)}, act)) {
-                h.muscle = p.muscle; h.weight = p.weight; h.belly = p.belly; changed = true;
+        int np = 0;
+        for (auto& kv : pr.obj) {
+            const Json& sl = kv.second["sliders"];
+            float mu = sl["muscle"].f(0.f), we = sl["weight"].f(0.f), be = std::max(0.f, sl["belly"].f(0.f));
+            bool act = std::fabs(h.muscle - mu) + std::fabs(h.weight - we) + std::fabs(h.belly - be) < 0.05f;
+            Rectangle r{x + (float)(np % 5) * (cw + U.u(10.f)), y + (float)(np / 5) * U.u(40.f), cw, U.u(32.f)};
+            if (U.chip(std::string("mp#") + kv.first, kv.first, r, act)) {
+                h.muscle = mu; h.weight = we; h.belly = be;
+                if (sl["length"].isNumber()) h.length = sl["length"].f();
+                if (sl["girth"].isNumber()) h.girth = sl["girth"].f();
+                changed = true;
             }
+            ++np;
         }
+        y += U.u(40.f) * (float)((np + 4) / 5) - U.u(40.f);
         y += U.u(60.f);
         float colW = (w - U.u(48.f)) * 0.5f;
         changed |= U.slider("m_muscle", "Muscle", &h.muscle, -1.f, 1.f, Rectangle{x, y, colW, U.u(46.f)}, true);

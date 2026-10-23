@@ -489,6 +489,7 @@ void Game::presentStory(float dt) {
     }
     renderer.settings.flash = 0.f;
     scene.update(dt);
+    if (inAct) applyContactTracks();
     if (black_ < 0.999f) directStory(dt);
 }
 

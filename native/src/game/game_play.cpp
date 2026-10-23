@@ -461,6 +461,15 @@ void Game::presentPlay(float dt) {
         v.setMorph("smile", clamp01(0.12f + 0.35f * night_.connection * (1.f - her) + 0.5f * smilePulse_ + 0.6f * std::exp(-afterT_ * 0.2f) * (night_.finished ? 1.f : 0.f)));
         v.setMorph("kiss", clamp01(embrace_ * 0.8f));
         if (v.hasMorph("oral")) v.setMorph("oral", p.id == "oral" ? 1.f : 0.f);
+        // the v3 face: her lip bitten as it builds, a gasp when a touch lands, the climax face, bliss afterwards
+        float after = night_.finished ? std::exp(-afterT_ * 0.12f) : 0.f;
+        v.setMorph("bite_lip", clamp01((smoothstepF(0.45f, 0.8f, her) * (0.35f + 0.25f * std::sin(time_ * 0.7f)) * (1.f - climaxH)) * (1.f - moanPulse_)));
+        v.setMorph("gasp", clamp01(0.7f * flinch_));
+        v.setMorph("orgasm", clamp01(1.1f * climaxH));
+        v.setMorph("bliss", clamp01(0.7f * after + 0.25f * smoothstepF(0.7f, 1.f, her) * (1.f - climaxH)));
+        // arousal: she swells and glistens (morph + the skin mask's wetness channel)
+        v.setMorph("vag_aroused", clamp01(0.2f + 0.9f * her + 0.3f * climaxH));
+        v.wet = clamp01(0.15f + 1.1f * her);
         v.flush = clamp01(0.15f + 0.8f * her + 0.3f * climaxH);
         v.sweat = sweat_;
         v.proc.breathRate = 0.22f + 0.38f * her + 0.3f * climaxH + 0.12f * touchAct_;
@@ -481,6 +490,10 @@ void Game::presentPlay(float dt) {
         v.proc.lookWeight = (together ? 0.45f : 0.8f) * front;
         v.proc.eyeWeight = (1.f - 0.7f * climaxH) * (0.35f + 0.65f * front);
         v.proc.lookTarget = front > 0.01f ? tgt : hc + hf;
+        // the upper lids follow where the eyes look (v3 gaze lids)
+        float pitch = std::asin(clampf(normalize(v.proc.lookTarget - hc).y, -1.f, 1.f));
+        v.setMorph("lids_down", clamp01(-pitch * 1.6f) * 0.6f);
+        v.setMorph("lids_up", clamp01(pitch * 1.4f) * 0.5f);
     }
     if (m.loaded()) {
         mBlinkT_ -= dt;
@@ -548,6 +561,38 @@ void Game::presentPlay(float dt) {
     postExpMul_ = 1.f + 0.06f * glow;
 
     scene.update(dt * slowmo_);
+    applyContactTracks();
+}
+
+// the content's hand / mouth contacts for the clip playing now (clips.json contacts): the skin they rest on gives
+// a little under them (vertex-shader dents, the same as the touch rig's fingertips)
+void Game::applyContactTracks() {
+    if (posIndex_ < 0 || posIndex_ >= (int)positions_.size()) return;
+    const PositionInfo& p = positions_[(size_t)posIndex_];
+    auto charOf = [&](const std::string& id) -> Character* { return id == "vivian" ? &scene.vivian : (id == "marcus" ? &scene.marcus : nullptr); };
+    auto run = [&](const std::string& clip, float t, float weight) {
+        if (weight < 0.3f) return;
+        const Json& cs = clipsMeta_["clips"][clip]["contacts"];
+        for (size_t i = 0; i < cs.size(); ++i) {
+            const Json& c = cs[i];
+            const Json& tr = c["t"];
+            if (tr.size() >= 2 && (t < tr[0].f() - 0.03f || t > tr[1].f() + 0.03f)) continue;
+            float gmin = c["gap_mm"].size() >= 1 ? c["gap_mm"][0].f(0.f) : 0.f;
+            if (gmin > 6.f) continue;   // hovering near the skin, not on it
+            Character* eff = charOf(c["char"].str());
+            Character* tgt = charOf(c["target"]["char"].str());
+            if (!eff || !tgt || !eff->loaded() || !tgt->loaded()) continue;
+            if ((tgt == &scene.vivian && !scene.showVivian) || (tgt == &scene.marcus && !scene.showMarcus)) continue;
+            int b = eff->bone(c["bone"].str());
+            if (b < 0 || tgt->touch.contacts.size() >= 8) continue;
+            V3 off{c["offset"][0].f(), c["offset"][1].f(), c["offset"][2].f()};
+            V3 pos = xformPoint(eff->anim.global(b), off);
+            tgt->touch.contacts.push_back({pos, c["radius"].f(0.012f) + 0.004f - 0.001f * std::max(0.f, gmin)});
+        }
+    };
+    run(p.solo ? std::string("solo.idle") : p.baseClip, p.depthDriven ? depth_ : (p.solo ? idlePhase_ : loopPhase_), 1.f);
+    if (p.solo) run("solo.rub", rubPhase_, 1.f);
+    else if (p.canTouch) run(p.id + ".rub", rubPhase_, rub_);
 }
 
 // her back arches with pleasure: the upper body rotates back about the shoulder line (world space)

@@ -40,10 +40,10 @@ struct Settings {
     bool save(const std::string& path) const;
 };
 
-// skin tones: index into kSkinTones (Fair, Honey, Olive, Bronze, Caramel, Deep, Ebony)
+// skin tones, lightest to darkest: Porcelain, Fair, Honey, Olive, Caramel, Bronze, Deep, Ebony
 const char* skinToneName(int i);
 int skinToneIndex(const std::string& name);   // -1 when unknown
-constexpr int kSkinToneCount = 7;
+constexpr int kSkinToneCount = 8;
 constexpr float kMinAge = 21.f, kMaxAge = 60.f;   // adults only: nothing below 21, ever
 
 struct HerLook {
