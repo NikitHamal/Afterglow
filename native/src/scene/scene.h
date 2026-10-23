@@ -43,6 +43,7 @@ public:
     bool hasClips = false;                  // content clips present (placement baked in clips)
     Particles particles;                    // shared FX (none by default)
     V3 bakeTint{1, 1, 1};                   // baked room irradiance multiplier (lighting mood x lightmap scale)
+    float bakeMix = 1.f, bakeSat = 1.f;     // baked vs live room light; baked room saturation
     int pointRole[6] = {0, 0, 0, 0, 0, 0};  // 0 candle, 1 lamp, 2 other (moods scale them by role)
 
     // Stand both characters beside the bed (used when no clips exist yet).

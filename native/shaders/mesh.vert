@@ -13,6 +13,9 @@ uniform mat4 u_viewProj;
 uniform int u_skinned;
 uniform sampler2D u_bones;
 uniform int u_skinRow;
+uniform int u_numContacts;        // soft tissue: finger/palm spheres dent the skin
+uniform vec4 u_contacts[8];       // xyz centre (world), w radius
+uniform vec4 u_noDent;            // skin joint ranges [x..y], [z..w] that never dent (the touching hands)
 
 out vec3 v_wpos;
 out vec3 v_nrm;
@@ -37,8 +40,27 @@ void main() {
     }
     vec4 wp = M * vec4(a_pos, 1.0);
     mat3 N = mat3(M);
+    vec3 nrm = normalize(N * a_nrm);
+    if (u_skinned == 1 && u_numContacts > 0) {
+        float hand = 0.0;
+        for (int k = 0; k < 4; ++k) {
+            float j = a_joints[k];
+            if ((j > u_noDent.x - 0.5 && j < u_noDent.y + 0.5) || (j > u_noDent.z - 0.5 && j < u_noDent.w + 0.5)) hand += a_weights[k];
+        }
+        float soft = 1.0 - clamp(hand * 1.5, 0.0, 1.0);
+        for (int i = 0; i < 8; ++i) {
+            if (i >= u_numContacts || soft <= 0.0) break;
+            vec3 d = wp.xyz - u_contacts[i].xyz;
+            float l = length(d), r = u_contacts[i].w;
+            if (l < r && l > 1e-5) {
+                float push = (r - l) * soft;
+                wp.xyz += d / l * push;
+                nrm = normalize(nrm + d / l * (push / r) * 0.6);
+            }
+        }
+    }
     v_wpos = wp.xyz;
-    v_nrm = normalize(N * a_nrm);
+    v_nrm = nrm;
     vec3 t = N * a_tan.xyz;
     v_tan = vec4(length(t) > 1e-6 ? normalize(t) : vec3(1.0, 0.0, 0.0), a_tan.w == 0.0 ? 1.0 : a_tan.w);
     v_uv0 = a_uv0;

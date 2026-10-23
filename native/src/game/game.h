@@ -143,6 +143,9 @@ private:
     void sfx(const std::string& prefix, float vol, float pitchJitter = 0.06f);
     float ambLevel_ = 0.f, musicLevel_ = 0.f;
     float mouthT_ = 0.f, mouthDur_ = 1.f;   // her mouth follows her voice lines (open over the sample)
+    // touch reactions: how much she is being touched (zone-weighted), the flinch when it starts, her arch
+    float touchAct_ = 0.f, flinch_ = 0.f, arch_ = 0.f;
+    void archBody(Animator& a) const;
 
     // ---- core objects ----
     Scene scene;

@@ -29,6 +29,8 @@ public:
     void init(Animator& a, float rootScale);
     void apply(Animator& a, float dt, const ProcParams& p);
     void reset() { needReset_ = true; }
+    // a push on a spring bone (e.g. a breast when it is touched or grabbed)
+    void impulse(int bone, const V3& velocity) { for (auto& sp : springs_) if (sp.bone == bone && sp.init) sp.v += velocity; }
     int hairChainCount() const { return (int)chains_.size(); }
     // rest-pose head axes in the head bone's local frame (face forward, crown up)
     const V3& headForwardLocal() const { return headFwd_; }

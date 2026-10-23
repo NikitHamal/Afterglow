@@ -21,6 +21,8 @@ play_daylight|screen=play;pos=cowgirl;depth=0.6;her=0.5;him=0.4;cam=side;mood=da
 play_climax|screen=play;pos=missionary;depth=0.85;her=0.95;him=0.97;climax=together;cam=front
 play_intro|screen=play;pos=missionary;depth=0.3;her=0.05;him=0.05;intro=1;cam=side
 play_solo|screen=play;pos=solo;depth=0.6;her=0.4;cam=side
+play_solo_front|screen=play;pos=solo;depth=0.7;her=0.5;cam=front
+play_touch|screen=play;pos=missionary;depth=0.4;her=0.4;him=0.3;rub=1;cam=front
 pause|screen=pause;pos=missionary;depth=0.5;her=0.4;him=0.3
 results|screen=results;result=together
 results_soon|screen=results;result=soon
