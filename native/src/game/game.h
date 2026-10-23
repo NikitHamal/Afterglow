@@ -5,11 +5,14 @@
 #pragma once
 #include "app/app.h"
 #include "audio/audio.h"
+#include "game/director.h"
 #include "game/night.h"
 #include "game/story.h"
+#include "game/voice.h"
 #include "game/settings.h"
 #include "gfx/renderer.h"
 #include "scene/camera.h"
+#include "scene/actor.h"
 #include "scene/collision.h"
 #include "scene/scene.h"
 #include "ui/ui.h"
@@ -178,6 +181,47 @@ private:
     Rectangle storyControlsRect_{0, 0, 0, 0};
     Screen pauseReturn_ = Screen::Play;
 
+    // ---- the story as a film (game_cinema.cpp): staging, voices + lip sync, acting, direction, intimacy ----
+    void storyStage(const StoryNode* n);
+    std::string resolvePlace(const StoryNode* n) const;
+    void storyLineStarted();
+    void storyAction(const std::string& action);
+    void storyShot(const StoryLine* l, bool newNode);
+    void applyStoryPose(float dt);
+    void directStory(float dt);
+    void storyStartPlay();
+    void storyBeats(float dt);
+    void startBeat(const std::string& trigger);
+    void leaveStoryWorld();
+    void drawSubtitle(const std::string& who, const std::string& text, int wordsShown, float alpha, float baseY);
+    float storyVoiceTime() const { return voiceHold_ >= 0.f ? voiceHold_ : voiceT_; }
+    VoiceBank voices_;
+    VoicePlayer voicePlayer_;
+    Director director_;
+    Actor actors_[2];
+    const VoiceBank::Take* take_ = nullptr;
+    std::string takeKey_;
+    float voiceT_ = 0.f, voiceHold_ = -1.f;   // harness: hold the voice clock (lip-sync stills)
+    int speaker_ = -1, prevSpeaker_ = -2;
+    float lastEnv_ = 0.f;
+    std::string pose_, place_;
+    float black_ = 0.f;
+    int blackDir_ = 0;                    // 1 going dark, -1 coming back
+    bool stagePending_ = false, playPending_ = false;
+    std::string posePending_;
+    float letterbox_ = 0.f;
+    float kiss_ = 0.f, kissTarget_ = 0.f, near_ = 0.f, nearTarget_ = 0.f;
+    std::string beatNode_, beatWho_, beatText_;
+    int beatLine_ = -1;
+    float beatT_ = 0.f, beatCool_ = 0.f, beatMouth_ = 0.f;
+    bool beatEdge_ = false, beatPeak_ = false;
+    const VoiceBank::Take* beatTake_ = nullptr;
+    int shotCount_ = 0;
+    std::string storyStyle_[2], storyAmb_;
+    void setStoryPose(const std::string& pose, float actT);
+    int actIndex(const std::string& id) const;
+    void enterStoryWorld();
+
     // ---- audio ----
     void initAudio();
     void shutdownAudio();
@@ -185,6 +229,8 @@ private:
     void voice(const std::string& name, float vol = 1.f, float pitch = 1.f);
     void sfx(const std::string& prefix, float vol, float pitchJitter = 0.06f);
     void breath(bool in, float vol);
+    void setAmbience(const std::string& places);   // party | sea | rain | fire | city | spa ("" = the night room)
+    void duckAmbience(float amount);
     float ambLevel_ = 0.f, musicLevel_ = 0.f;
     float mouthT_ = 0.f, mouthDur_ = 1.f;   // her mouth follows her voice lines (open over the sample)
     // touch reactions: how much she is being touched (zone-weighted), the flinch when it starts, her arch

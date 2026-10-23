@@ -15,10 +15,18 @@ namespace ag {
 struct StoryLine {
     std::string who;            // "", "narrator", "vivian", "marcus"
     std::string text;
-    std::string voice, sfx;     // optional cues
-    std::map<std::string, float> expr;   // face morphs for the speaker (or "her"/"him" prefixed)
+    std::string voice, sfx;     // voice: "none" keeps a line silent (else the TTS voice from voice/manifest.json)
+    std::string vox;            // a vocal sample under audio/vox (moan, sigh...) played with the line
+    std::string delivery;       // normal | soft | whisper | playful | urgent | breathless | tender (TTS + acting)
+    std::map<std::string, float> expr;   // face morphs for the speaker ("her.smile" / "him.smile" for either)
     float wait = 0.f;           // auto-advance after this many seconds (0 = wait for the player)
-    std::string cam;            // optional camera cut on this line
+    std::string cam;            // camera shot: establish | wide | two | ots | close | xclose | pov | side | front | top | face
+    // acting
+    std::string gesture;        // open | explain | point | shrug | chest | reach | touch_face | hips | wave | none
+    std::string look;           // partner (default) | away | down | camera
+    std::string head;           // nod | shake | tilt | down | up
+    std::string react;          // the listener: smile | laugh | nod | gasp | shy | sigh | frown
+    std::string action;         // staged: kiss | embrace | part | step_in | undress:<who>[:outer|under] | dress:<who> | to_bed | sit | stand
 };
 
 struct StoryChoice {
@@ -28,6 +36,11 @@ struct StoryChoice {
 
 struct StoryNode {
     std::string id, chapter, location, mood, cam;
+    std::string place;          // location asset wanted (hotel_room, cabin_bedroom, villa_terrace...; the engine
+                                // falls back to the closest one that exists)
+    std::string ambience;       // party | sea | rain | fire | city | spa | night ("" = from the place)
+    std::string pose;           // staging clip: stand | sit | lie | a clip name ("" = keep, or the act's pose)
+    std::map<std::string, std::string> wardrobe;  // character -> outfit style (overrides the story's)
     std::map<std::string, std::string> outfit;   // character -> dressed | partial | nude
     std::vector<std::string> show;                // characters on stage (empty = keep)
     bool showSet = false;
@@ -39,6 +52,9 @@ struct StoryNode {
     std::vector<std::pair<std::string, std::string>> set;   // applied on entering the node
     // hand over to free play: the night runs until the goal, then the story continues at playNext
     std::string playGoal, playNext;
+    std::vector<std::string> playActs;           // the acts offered while playing ("" = the node's act family)
+    std::map<std::string, std::string> beats;    // play moments -> beat node (start | desire | edge | her_peak | end)
+    bool beat = false;          // a beat node: lines spoken over the play, never entered as a scene
     // endings
     bool ending = false;
     std::string endTitle, endText;
@@ -49,6 +65,7 @@ struct StoryChapter { std::string id, title, start; };
 
 struct Story {
     std::string id, title, tagline, setting, mood;
+    std::map<std::string, std::string> wardrobe;  // character -> default outfit style ("cast")
     std::vector<StoryChapter> chapters;
     std::map<std::string, StoryNode> nodes;
     std::map<std::string, float> varsInit;
@@ -103,6 +120,7 @@ public:
     std::map<std::string, float> vars;
     bool autoMode = false, skipMode = false;
     float textSpeed = 42.f;     // characters per second
+    float voicedHold = -1.f;    // auto mode: seconds after a voiced line before going on (-1: by text length)
     struct Past { std::string who, text; };
     std::vector<Past> history;
     bool nodeChanged = true;    // consumer resets after staging

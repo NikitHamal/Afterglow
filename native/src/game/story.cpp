@@ -32,6 +32,8 @@ bool Story::load(const std::string& path, std::string& err) {
     tagline = j["tagline"].str();
     setting = j["setting"].str();
     mood = j["mood"].str("evening");
+    for (auto& kv : j["cast"].obj) if (kv.second["wardrobe"].isString()) wardrobe[kv.first] = kv.second["wardrobe"].s;
+    for (auto& kv : j["wardrobe"].obj) wardrobe[kv.first] = kv.second.str();
     for (auto& kv : j["vars"].obj) varsInit[kv.first] = kv.second.f(0.f);
     for (size_t i = 0; i < j["chapters"].size(); ++i) {
         const Json& c = j["chapters"][i];
@@ -46,7 +48,12 @@ bool Story::load(const std::string& path, std::string& err) {
         nd.chapter = n["chapter"].str();
         nd.location = n["location"].str();
         nd.mood = n["mood"].str();
-        nd.cam = n["camera"].str(n["cam"].str());
+        nd.cam = n["shot"].str(n["camera"].str(n["cam"].str()));
+        nd.place = n["place"].str();
+        nd.ambience = n["ambience"].str();
+        nd.pose = n["pose"].str();
+        for (auto& o : n["wardrobe"].obj) nd.wardrobe[o.first] = o.second.str();
+        nd.beat = n["beat"].boolean(false);
         for (auto& o : n["outfit"].obj) nd.outfit[o.first] = o.second.str();
         if (n["show"].isArray()) {
             nd.showSet = true;
@@ -61,7 +68,11 @@ bool Story::load(const std::string& path, std::string& err) {
             else if (l.isArray() && l.size() >= 2) { ln.who = l[0].str(); ln.text = l[1].str(); }
             else {
                 ln.who = l["who"].str(); ln.text = l["text"].str();
-                ln.voice = l["voice"].str(); ln.sfx = l["sfx"].str(); ln.cam = l["camera"].str(l["cam"].str());
+                ln.voice = l["voice"].str(); ln.sfx = l["sfx"].str(); ln.vox = l["vox"].str();
+                ln.cam = l["shot"].str(l["camera"].str(l["cam"].str()));
+                ln.delivery = l["delivery"].str();
+                ln.gesture = l["gesture"].str(); ln.look = l["look"].str(); ln.head = l["head"].str();
+                ln.react = l["react"].str(); ln.action = l["action"].str();
                 ln.wait = l["wait"].f(0.f);
                 for (auto& e : l["expr"].obj) ln.expr[e.first] = e.second.f(0.f);
             }
@@ -76,7 +87,12 @@ bool Story::load(const std::string& path, std::string& err) {
         }
         nd.next = n["next"].str();
         nd.set = readSet(n["set"]);
-        if (n["play"].isObject()) { nd.playGoal = n["play"]["goal"].str("together"); nd.playNext = n["play"]["next"].str(); nd.act = n["play"]["act"].str(nd.act); }
+        if (n["play"].isObject()) {
+            const Json& pl = n["play"];
+            nd.playGoal = pl["goal"].str("together"); nd.playNext = pl["next"].str(); nd.act = pl["act"].str(nd.act);
+            for (size_t i = 0; i < pl["acts"].size(); ++i) nd.playActs.push_back(pl["acts"][i].str());
+            for (auto& b : pl["beats"].obj) nd.beats[b.first] = b.second.str();
+        }
         if (n["end"].isObject()) {
             nd.ending = true;
             nd.endTitle = n["end"]["title"].str("The end");
@@ -92,6 +108,7 @@ bool Story::load(const std::string& path, std::string& err) {
         const StoryNode& n = kv.second;
         auto check = [&](const std::string& to) { if (!to.empty() && !node(to)) err += "node " + n.id + " -> missing " + to + "; "; };
         check(n.next); check(n.playNext);
+        for (auto& b : n.beats) check(b.second);
         for (auto& c : n.choices) check(c.next);
     }
     return err.empty();
@@ -273,7 +290,7 @@ void StoryPlayer::update(float dt) {
     reveal_ += dt * (skipMode ? 2000.f : textSpeed);
     if (lineDone()) {
         autoT_ += dt;
-        float hold = l->wait > 0.f ? l->wait : (autoMode ? 1.2f + 0.035f * (float)u8len(l->text) : -1.f);
+        float hold = l->wait > 0.f ? l->wait : (autoMode ? (voicedHold >= 0.f ? voicedHold : 1.2f + 0.035f * (float)u8len(l->text)) : -1.f);
         if (skipMode) hold = 0.06f;
         if (hold >= 0.f && autoT_ >= hold) advance();
     }

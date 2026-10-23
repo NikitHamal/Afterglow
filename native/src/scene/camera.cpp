@@ -15,6 +15,22 @@ void CameraRig::setOrbit(const V3& t, float y, float p, float d, float blendSeco
     if (blendSeconds <= 0.f) { target = t; yaw = toYaw_; pitch = p; dist = d; }
 }
 
+void CameraRig::setDirect(const V3& eye, const V3& tgt, float fovDeg, bool cut) {
+    mode_ = Mode::Direct;
+    dEye_ = eye; dTarget_ = tgt; dFov_ = fovDeg;
+    dCut_ = dCut_ || cut;
+    // keep the orbit in step, so leaving the directed shot doesn't jump
+    V3 d = eye - tgt;
+    float l = length(d);
+    if (l > 1e-3f) {
+        target = toTarget_ = fromTarget_ = tgt;
+        dist = toDist_ = fromDist_ = l;
+        yaw = toYaw_ = fromYaw_ = std::atan2(d.x, d.z);
+        pitch = toPitch_ = fromPitch_ = std::asin(clampf(d.y / l, -1.f, 1.f));
+        blendT_ = 1.f; blendDur_ = 0.f;
+    }
+}
+
 void CameraRig::setFirstPerson(Character* c, const std::string& bone, const V3& offset, float blendSeconds) {
     mode_ = Mode::FirstPerson;
     fpChar_ = c; fpBone_ = bone; fpOffset_ = offset; fpLocal_ = false;
@@ -72,6 +88,13 @@ CameraState CameraRig::update(float dt, float aspect) {
     V3 off{std::cos(pitch) * std::sin(yaw), std::sin(pitch), std::cos(pitch) * std::cos(yaw)};
     V3 eye = target + off * dist, tgt = target;
 
+    bool cut = false;
+    if (mode_ == Mode::Direct) {
+        eye = dEye_; tgt = dTarget_;
+        cs.fovy = dFov_ * kPi / 180.f;
+        cut = dCut_;
+        dCut_ = false;
+    }
     if (mode_ == Mode::FirstPerson && fpChar_ && fpChar_->loaded()) {
         fpBlend_ = blendDur_ > 0.f ? std::min(1.f, fpBlend_ + dt / blendDur_) : 1.f;
         M4 hb = fpChar_->boneWorld(fpBone_);
@@ -98,7 +121,7 @@ CameraState CameraRig::update(float dt, float aspect) {
         // ease into collision corrections (no popping), then guarantee the eye is clear this frame
         bool fp = mode_ == Mode::FirstPerson;
         V3 want = solve(eye, tgt, fp) - eye;
-        float k = dt > 0.f ? 1.f - std::exp(-dt * 12.f) : 1.f;
+        float k = dt > 0.f && !cut ? 1.f - std::exp(-dt * 12.f) : 1.f;
         corr_ = corr_ + (want - corr_) * k;
         eye = solve(eye + corr_, tgt, fp);
     }

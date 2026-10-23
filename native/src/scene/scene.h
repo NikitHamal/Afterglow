@@ -49,8 +49,15 @@ public:
     // Stand both characters beside the bed (used when no clips exist yet).
     void standingPlacement();
 
+    // the room around the bed: "room" (the default bedroom) or a story location (locations/<id>/<id>.glb,
+    // same conventions); all of them are built on the authoring bed, so every clip fits each of them
+    bool setLocation(const std::string& id);
+    static bool hasLocation(const std::string& id);
+    std::string location;
+
 private:
     void lightsFromRoomGlb();
+    void loadRoomFrom(const std::string& glbPath, const std::string& jsonPath);
 };
 
 }  // namespace ag

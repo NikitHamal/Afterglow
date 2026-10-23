@@ -457,7 +457,7 @@ void Game::presentPlay(float dt) {
         mouthT_ = std::max(0.f, mouthT_ - dt);
         float u = mouthDur_ > 0.f ? 1.f - mouthT_ / mouthDur_ : 1.f;   // 0 -> 1 over the line
         float voiceOpen = mouthT_ > 0.f ? std::sin(3.14159f * std::min(1.f, u * 1.15f)) * (0.55f + 0.15f * std::sin(u * 23.f)) : 0.f;
-        v.setMorph("moan", clamp01(moanPulse_ * (0.25f + 0.7f * her) + 0.85f * climaxH + voiceOpen));
+        v.setMorph("moan", clamp01(moanPulse_ * (0.25f + 0.7f * her) + 0.85f * climaxH + voiceOpen + 0.55f * beatMouth_));
         v.setMorph("smile", clamp01(0.12f + 0.35f * night_.connection * (1.f - her) + 0.5f * smilePulse_ + 0.6f * std::exp(-afterT_ * 0.2f) * (night_.finished ? 1.f : 0.f)));
         v.setMorph("kiss", clamp01(embrace_ * 0.8f));
         if (v.hasMorph("oral")) v.setMorph("oral", p.id == "oral" ? 1.f : 0.f);

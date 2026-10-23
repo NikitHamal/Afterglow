@@ -22,6 +22,8 @@ out vec3 v_nrm;
 out vec4 v_tan;
 out vec2 v_uv0;
 out vec2 v_uv1;
+out vec3 v_opos;                  // bind-space position / normal (garment patterns, undress wipe)
+out vec3 v_onrm;
 
 mat4 boneMat(float j) {
     int x = int(j + 0.5) * 4;
@@ -65,5 +67,7 @@ void main() {
     v_tan = vec4(length(t) > 1e-6 ? normalize(t) : vec3(1.0, 0.0, 0.0), a_tan.w == 0.0 ? 1.0 : a_tan.w);
     v_uv0 = a_uv0;
     v_uv1 = a_uv1;
+    v_opos = a_pos;
+    v_onrm = a_nrm;
     gl_Position = u_viewProj * wp;
 }

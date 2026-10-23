@@ -29,6 +29,10 @@ struct HandGoal {
     float amplitude = 0.012f;   // metres of rubbing motion along the surface
     float curl = 0.25f;         // finger curl per joint (radians); grabs curl more
     float press = 0.004f;       // how far the fingertips sink into the skin (dent depth)
+    // a hand on any surface (the partner's chest, waist, cheek...): world point + outward normal + finger direction
+    bool world = false;
+    V3 pos{0, 0, 0}, normal{0, 0, 1}, along{0, 1, 0};
+    bool dent = true;           // finger pads dent the skin they rest on
 };
 
 struct TouchGoals { HandGoal left, right; };

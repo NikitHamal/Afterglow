@@ -5,7 +5,9 @@
 #include "anim/animator.h"
 #include "anim/procedural.h"
 #include "scene/touch.h"
+#include "scene/outfit.h"
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -53,12 +55,22 @@ public:
     V3 skinTint{1, 1, 1};                                  // linear multiplier on skin (+ genital) albedo: tone variants
     float flush = 0.f;                                     // 0..1 arousal flush
     float sweat = 0.f;                                     // 0..1 sweat sheen
+    float wet = 0.f;                                       // 0..1 arousal wetness (skin mask alpha)
+
+    // ---- clothes (story mode): characters/outfits/<id>_<style>.glb, "" = none ----
+    bool setOutfit(const std::string& style);
+    Outfit* outfit() { return outfitCur_ >= 0 ? outfits_[(size_t)outfitCur_].get() : nullptr; }
+    const Outfit* outfit() const { return outfitCur_ >= 0 ? outfits_[(size_t)outfitCur_].get() : nullptr; }
+    bool hasOutfit(const std::string& style) const;
+    bool hideGenitals = false;                             // his genitals stay hidden under clothes
 
     // ---- placement + procedural ----
     M4 placement = M4::identity();                         // world transform of the model root
     ProcParams proc;
     // optional pose edit after the clips (world-space bone aims); runs before the procedural layers
     std::function<void(Animator&)> poseHook;
+    // optional edit after the procedural layers (look-at, breathing), before touch IK
+    std::function<void(Animator&)> postHook;
     // touch: hands onto her own body zones (IK after the procedural layers) + soft-tissue contacts
     TouchRig touch;
     TouchGoals touchGoals;
@@ -104,6 +116,8 @@ private:
     std::unordered_map<int, Quat> boneOffsets_;
     std::vector<GLuint> baseOverride_;
     std::unordered_map<std::string, GLuint> toneCache_;
+    std::vector<std::unique_ptr<Outfit>> outfits_;           // loaded styles (at most two kept)
+    int outfitCur_ = -1;
 };
 
 }  // namespace ag

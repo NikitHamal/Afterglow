@@ -26,6 +26,7 @@ struct RenderSettings {
     float renderScale = 1.f;          // internal resolution multiplier
     float exposure = 1.2f, warmth = 0.06f, saturation = 1.0f, contrast = 1.04f, vignette = 0.26f, grain = 0.024f;
     float flash = 0.f;                // climax flash 0..1
+    float dofAmount = 0.f, dofFocus = 2.f;   // depth of field (story close-ups): 0 = off
 };
 void applyQuality(RenderSettings& s, Quality q);
 
@@ -49,13 +50,14 @@ public:
 private:
     void ensureTargets(int w, int h);
     void setFrame(Program& p, Scene& s, const CameraState& cam, float time);
-    void drawModel(Program& p, Model& m, Animator& a, const Character* ch, int pass);
+    void drawModel(Program& p, Model& m, Animator& a, const Character* ch, int pass, const Outfit* outfit = nullptr);
+    void drawCharacter(Program& p, Character& c, int pass);   // body + the clothes it wears
     void bindMaterial(Program& p, const Model& m, int matIndex, const Character* ch, bool shadowPass);
     void fullscreen(Program& p);
     M4 computeShadowVP(const Scene& s) const;
 
-    Program pbr_, depth_, prefilter_, down_, up_, composite_, fxaa_, ssao_, ssaoBlur_;
-    RenderTarget hdr_, ldr_, aoRaw_, ao_;
+    Program pbr_, depth_, prefilter_, down_, up_, composite_, fxaa_, ssao_, ssaoBlur_, dof_;
+    RenderTarget hdr_, ldr_, aoRaw_, ao_, dofOut_;
     RenderTarget bloom_[8];
     RenderTarget blur_[4];             // 1/2, 1/4, 1/8 downsamples + 1/4 tent upsample (UI glass)
     int bloomCount_ = 0;

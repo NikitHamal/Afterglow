@@ -39,6 +39,9 @@ bool Character::load(const std::string& charId, const std::string& path, float t
 }
 
 void Character::destroy() {
+    outfits_.clear();
+    outfitCur_ = -1;
+    hideGenitals = false;
     for (auto& kv : toneCache_) { GLuint t = kv.second; textureDestroy(t); }
     toneCache_.clear();
     textureDestroy(skinMask_);
@@ -229,6 +232,29 @@ bool Character::setTone(const std::string& tone) {
 
 M4 Character::rootMatrix() const { return placement * m4scale({autoScale_, autoScale_, autoScale_}); }
 
+bool Character::hasOutfit(const std::string& style) const {
+    if (style.empty()) return false;
+    return paths::exists(paths::join(paths::join(dir_, "outfits"), id + "_" + style + ".glb"));
+}
+
+bool Character::setOutfit(const std::string& style) {
+    if (style.empty()) { outfitCur_ = -1; hideGenitals = false; return true; }
+    for (size_t i = 0; i < outfits_.size(); ++i)
+        if (outfits_[i]->style == style) { outfitCur_ = (int)i; return true; }
+    std::string file = paths::join(paths::join(dir_, "outfits"), id + "_" + style + ".glb");
+    if (!paths::exists(file)) { AG_WARN("AG: outfit %s missing", file.c_str()); outfitCur_ = -1; return false; }
+    auto o = std::make_unique<Outfit>();
+    if (!o->load(file, style, *this)) { outfitCur_ = -1; return false; }
+    // VRAM: keep the worn style and one more (a story changes clothes between days at most)
+    if (outfits_.size() >= 2) {
+        size_t drop = outfitCur_ == 0 ? 1 : 0;
+        outfits_.erase(outfits_.begin() + (long)drop);
+    }
+    outfits_.push_back(std::move(o));
+    outfitCur_ = (int)outfits_.size() - 1;
+    return true;
+}
+
 void Character::update(float dt) {
     if (!loaded_) return;
     anim.begin();
@@ -242,9 +268,15 @@ void Character::update(float dt) {
     anim.computeGlobals(rootMatrix());
     if (poseHook) poseHook(anim);
     procedural.apply(anim, dt, proc);
+    if (postHook) postHook(anim);
     if (touch.ready() && (touchGoals.left.active || touchGoals.right.active)) touch.apply(anim, touchGoals);
     else touch.contacts.clear();
     anim.finish();
+    if (Outfit* o = outfit()) {
+        o->update(dt);
+        o->syncMorphs(*this);
+        hideGenitals = o->visibility(0) > 0.5f || o->visibility(1) > 0.5f;
+    } else hideGenitals = false;
     // skull centre: hair shading bends card normals around it
     int hb = bone("頭");
     if (hb >= 0) hairCenter_ = xformPoint(anim.global(hb), procedural.headUpLocal() * 0.085f + procedural.headForwardLocal() * 0.01f);
