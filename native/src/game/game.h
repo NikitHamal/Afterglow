@@ -212,6 +212,7 @@ private:
     std::string posePending_;
     float letterbox_ = 0.f;
     float kiss_ = 0.f, kissTarget_ = 0.f, near_ = 0.f, nearTarget_ = 0.f;
+    float step_ = 0.f;                  // how far each has stepped (slid, seated) toward the other this frame (m)
     std::string beatNode_, beatWho_, beatText_;
     int beatLine_ = -1;
     float beatT_ = 0.f, beatCool_ = 0.f, beatMouth_ = 0.f;
