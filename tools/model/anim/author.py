@@ -104,10 +104,15 @@ his_seat = (np.linalg.norm(MB - np.array(root0), axis=1) < 0.28) & np.array([b.s
 # room furniture the bodies must never enter (the sheet/mattress are the support: checked by the floors instead)
 ROOM_HIT = ("headboard", "pillow", "duvet", "nightstand", "lamp", "bed_base", "candle", "book", "wine", "drawer", "knob")
 ROOM = None
-rv, rp = [], []
+rv, rp, rspan = [], [], []
 for o in list(bpy.context.scene.objects):
     if o.type == "MESH" and o.name.startswith(ROOM_HIT):
-        Vo, Po = SC.evaluated(o); base = len(rv); rv.extend(map(tuple, Vo)); rp.extend(tuple(base + i for i in f) for f in Po)
+        Vo, Po = SC.evaluated(o); base = len(rv); f0 = len(rp)
+        rv.extend(map(tuple, Vo)); rp.extend(tuple(base + i for i in f) for f in Po); rspan.append((f0, len(rp), o.name))
+def room_name(fi):
+    for a_, b_, n_ in rspan:
+        if a_ <= fi < b_: return n_
+    return "?"
 if rv:
     from mathutils.bvhtree import BVHTree as _BVH
     ROOM = _BVH.FromPolygons(rv, rp)
@@ -161,11 +166,12 @@ def verify(clip, t):
         log(f"   DIAG {clip} t={t}: her dist-from-entrance cm p10/50/90 {np.round(np.percentile(dA, [10, 50, 90]) * 100, 1)} "
             f"his dist-from-root {np.round(np.percentile(dB, [10, 50, 90]) * 100, 1)} | her world z-bed cm {np.round(np.percentile(A[ia, 2] - SC.BED_TOP, [10, 50, 90]) * 100, 1)} "
             f"x {np.round(np.percentile(np.abs(A[ia, 0]), [10, 50, 90]) * 100, 1)}")
-    room_pairs = 0
+    room_pairs = 0; room_hit = {}
     if ROOM is not None:
         from mathutils.bvhtree import BVHTree as _BVH
         for P_, F_ in ((A, Pa), (Bm, Pb)):
-            room_pairs += len(ROOM.overlap(_BVH.FromPolygons([tuple(v) for v in P_], F_)))
+            ov = ROOM.overlap(_BVH.FromPolygons([tuple(v) for v in P_], F_)); room_pairs += len(ov)
+            for fi, _ in ov: n_ = room_name(fi); room_hit[n_] = room_hit.get(n_, 0) + 1
     hair_floor = hair_his = None
     if hair_o is not None:
         Hv, Hp = SC.evaluated(hair_o)
@@ -188,8 +194,8 @@ def verify(clip, t):
                 bvh = trunk[tgt] if tgt == who else full[tgt]
                 best = (1e9, None, None)
                 for i in idx:
-                    loc, nrm_, fi, _ = bvh.find_nearest(Vector(X[i]))
-                    if loc is None: continue
+                    loc, nrm_, fi, dist_ = bvh.find_nearest(Vector(X[i]))
+                    if loc is None or dist_ > 0.03: continue
                     d = (Vector(X[i]) - loc).dot(nrm_)
                     if d < best[0]: best = (d, i, loc)
                 if best[1] is None or best[0] > 0.025: continue
@@ -205,7 +211,7 @@ def verify(clip, t):
                 her_floor_mm=round((her_min - SC.BED_TOP) * 1000, 1), his_floor_mm=round((his_min - SC.BED_TOP) * 1000, 1), lowest=list(low),
                 extent_y=[round(float(min(A[:, 1].min(), Bm[:, 1].min())), 3), round(float(max(A[:, 1].max(), Bm[:, 1].max())), 3)],
                 extent_x=[round(float(min(A[:, 0].min(), Bm[:, 0].min())), 3), round(float(max(A[:, 0].max(), Bm[:, 0].max())), 3)],
-                room_pairs=room_pairs, hair_floor_mm=hair_floor, hair_vs_him=hair_his,
+                room_pairs=room_pairs, room_hit=room_hit, hair_floor_mm=hair_floor, hair_vs_him=hair_his,
                 pelvic_depth_mm=round(SC.LAST_ZONE_DEPTH * 1000, 1), contacts=contacts, rom_excess_deg=round(rom, 1),
                 beyond_play_mm=round(max(0.0, float(max(A[:, 1].max(), Bm[:, 1].max())) - PLAY_Y1) * 1000, 1))
 
