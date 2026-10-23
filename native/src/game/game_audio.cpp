@@ -157,6 +157,11 @@ void Game::voice(const std::string& name, float vol, float pitch) {
     float g = 1.f;
     for (const auto& k : kGain) if (name == k.n) g = k.g;
     if (audio.ready()) audio.play("vox/" + name, vol * g * settings.voice, pitch);
+    // simple lip sync: open her mouth for the length of the line (moans longer, words shorter)
+    if (name == "moan02" || name == "loveyou" || name == "takeme") {
+        mouthDur_ = (name == "moan02" ? 1.9f : 0.9f) / std::max(0.5f, pitch);
+        mouthT_ = mouthDur_;
+    }
 }
 
 void Game::sfx(const std::string& prefix, float vol, float jitter) {

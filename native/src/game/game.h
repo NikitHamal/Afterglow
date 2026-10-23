@@ -136,6 +136,7 @@ private:
     void voice(const std::string& name, float vol = 1.f, float pitch = 1.f);
     void sfx(const std::string& prefix, float vol, float pitchJitter = 0.06f);
     float ambLevel_ = 0.f, musicLevel_ = 0.f;
+    float mouthT_ = 0.f, mouthDur_ = 1.f;   // her mouth follows her voice lines (open over the sample)
 
     // ---- core objects ----
     Scene scene;
