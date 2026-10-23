@@ -16,6 +16,9 @@ uniform int u_skinRow;
 uniform int u_numContacts;        // soft tissue: finger/palm spheres dent the skin
 uniform vec4 u_contacts[8];       // xyz centre (world), w radius
 uniform vec4 u_noDent;            // skin joint ranges [x..y], [z..w] that never dent (the touching hands)
+uniform int u_fitMode;            // garment fit: 0 none, 1 skin under a worn garment, 2 garment
+uniform sampler2D u_fit;          // per vertex (gl_VertexID): skin: cover by outer, by under; garment: border (m), cover
+uniform float u_fitInflate;       // garments: clearance off the skin along the normal (m)
 
 out vec3 v_wpos;
 out vec3 v_nrm;
@@ -24,6 +27,7 @@ out vec2 v_uv0;
 out vec2 v_uv1;
 out vec3 v_opos;                  // bind-space position / normal (garment patterns, undress wipe)
 out vec3 v_onrm;
+out vec2 v_fit;
 
 mat4 boneMat(float j) {
     int x = int(j + 0.5) * 4;
@@ -61,6 +65,7 @@ void main() {
             }
         }
     }
+    if (u_fitMode == 2) wp.xyz += nrm * u_fitInflate;
     v_wpos = wp.xyz;
     v_nrm = nrm;
     vec3 t = N * a_tan.xyz;
@@ -69,5 +74,6 @@ void main() {
     v_uv1 = a_uv1;
     v_opos = a_pos;
     v_onrm = a_nrm;
+    v_fit = u_fitMode != 0 ? texelFetch(u_fit, ivec2(gl_VertexID & 1023, gl_VertexID >> 10), 0).xy : vec2(0.0, 1.0);
     gl_Position = u_viewProj * wp;
 }

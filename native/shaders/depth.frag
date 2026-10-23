@@ -19,6 +19,16 @@ float vnoise3(vec3 p) {
     float b = mix(mix(h3(i + vec3(0, 0, 1)), h3(i + vec3(1, 0, 1)), f.x), mix(h3(i + vec3(0, 1, 1)), h3(i + vec3(1, 1, 1)), f.x), f.y);
     return mix(a, b, f.z);
 }
+// garment fit: skin under a worn garment is never drawn (x: the outer layer is worn, y: the under layer is);
+// a garment trims along its smoothed border (x: trim in m) and hides under the worn outer layer (y)
+in vec2 v_fit;
+uniform int u_fitMode;
+uniform vec2 u_fitHide;
+bool fitHidden() {
+    if (u_fitMode == 1) return v_fit.x * u_fitHide.x > 0.5 || v_fit.y * u_fitHide.y > 0.5;
+    if (u_fitMode == 2) return v_fit.x < u_fitHide.x || v_fit.y * u_fitHide.y > 0.5;
+    return false;
+}
 float undressMargin(vec3 op) {
     if (u_dissolve >= 0.999) return 1.0;
     float h = clamp((op.y - u_wipe.x) / max(u_wipe.y - u_wipe.x, 1e-3), 0.0, 1.0);
@@ -29,7 +39,7 @@ float undressMargin(vec3 op) {
 }
 
 void main() {
-    if (undressMargin(v_opos) < 0.0) discard;
+    if (fitHidden() || undressMargin(v_opos) < 0.0) discard;
     if (u_alphaMode == 1) {
         float a = u_baseColor.a * (u_hasBase == 1 ? texture(u_texBase, v_uv0).a : 1.0);
         if (a < u_cutoff) discard;

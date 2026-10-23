@@ -105,6 +105,16 @@ float vnoise3(vec3 p) {
     float b = mix(mix(h3(i + vec3(0, 0, 1)), h3(i + vec3(1, 0, 1)), f.x), mix(h3(i + vec3(0, 1, 1)), h3(i + vec3(1, 1, 1)), f.x), f.y);
     return mix(a, b, f.z);
 }
+// garment fit: skin under a worn garment is never drawn (x: the outer layer is worn, y: the under layer is);
+// a garment trims along its smoothed border (x: trim in m) and hides under the worn outer layer (y)
+in vec2 v_fit;
+uniform int u_fitMode;
+uniform vec2 u_fitHide;
+bool fitHidden() {
+    if (u_fitMode == 1) return v_fit.x * u_fitHide.x > 0.5 || v_fit.y * u_fitHide.y > 0.5;
+    if (u_fitMode == 2) return v_fit.x < u_fitHide.x || v_fit.y * u_fitHide.y > 0.5;
+    return false;
+}
 // undressing: the garment wipes away along its bind-space height with a ragged, fabric-like edge (< 0: gone)
 float undressMargin(vec3 op) {
     if (u_dissolve >= 0.999) return 1.0;
@@ -242,6 +252,7 @@ vec3 shade(Surf s, vec3 L, vec3 radiance) {
 }
 
 void main() {
+    if (fitHidden()) discard;
     vec4 texS = u_hasBase == 1 ? texture(u_texBase, uvSel(u_uvBase)) : vec4(1.0);
     vec4 base = u_baseColor * texS;
     base.rgb *= u_tint;
