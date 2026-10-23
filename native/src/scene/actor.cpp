@@ -95,7 +95,8 @@ void Actor::update(float dt, const V3& partnerHead, bool hasPartner, const V3& c
     if (react_ == "shy" && reactT_ < 3.f) tgt = lerp(tgt, hc + flat * 0.8f + side * (0.5f * tiltSide_) + V3{0.f, -0.6f, 0.f}, smoothstep(0.f, 0.4f, reactT_) * (1.f - smoothstep(2.4f, 3.f, reactT_)));
     c_->proc.lookAt = true;
     c_->proc.lookTarget = tgt;
-    c_->proc.lookWeight = (look_ == "camera" ? 0.5f : 0.62f) * acting + 0.25f;
+    // (close in for a kiss the neck does less of the work: the lean and the step bring the faces together)
+    c_->proc.lookWeight = ((look_ == "camera" ? 0.5f : 0.62f) * acting + 0.25f) * (1.f - 0.45f * lean);
     c_->proc.eyeWeight = 1.f;
     c_->proc.saccades = !eyesClosed;
     face(dt);

@@ -41,15 +41,15 @@ ShotFrame Director::frame(float dt, const ActorView& her, const ActorView& him, 
     V3 axis = both ? flat(him.head - her.head) : flat(cross(S.face, up));
     V3 perp = normalize(cross(up, axis));
     if (!sideSet_) {
-        // in front of their faces when they look the same way (sitting side by side), else on the open side
-        float s1 = dot(perp, flat(her.face) * (her.shown ? 1.f : 0.f) + flat(him.face) * (him.shown ? 1.f : 0.f));
+        // in front of them when their bodies face the same way (sitting side by side), else on the open side
+        float s1 = dot(perp, flat(her.body) * (her.shown ? 1.f : 0.f) + flat(him.body) * (him.shown ? 1.f : 0.f));
         side_ = std::fabs(s1) > 0.35f ? (s1 > 0.f ? 1.f : -1.f) : (dot(perp, room - mid) >= 0.f ? 1.f : -1.f);
         sideSet_ = true;
     }
     V3 side = perp * side_;
     float sep = both ? length(him.head - her.head) : 0.6f;
     std::string k = kind_;
-    if (!both && (k == "two" || k == "ots")) k = "medium";
+    if (!both && (k == "two" || k == "ots" || k == "kiss")) k = "medium";
     if (k == "establish") {
         f.eye = mid + side * 3.7f + axis * ((vary_ - 0.5f) * 1.6f - 0.45f * u) + up * 0.42f;
         f.target = mid - up * 0.5f + axis * ((vary_ - 0.5f) * 0.3f);
@@ -76,7 +76,7 @@ ShotFrame Director::frame(float dt, const ActorView& her, const ActorView& him, 
         V3 sl = side - dir * dot(side, dir);
         sl = length(sl) > 1e-3f ? normalize(sl) : side;
         f.eye = L.head - dir * (0.52f - 0.07f * u) + sl * 0.3f + up * 0.06f;
-        f.target = S.head + up * 0.005f - dir * 0.02f;
+        f.target = S.head - up * 0.07f - dir * 0.02f;   // eyes on the upper third
         f.fov = 30.f;
         f.aperture = 0.9f;
     } else {
@@ -84,11 +84,12 @@ ShotFrame Director::frame(float dt, const ActorView& her, const ActorView& him, 
         V3 looks = both ? flat(L.head - S.head) : flat(S.face);
         float ang = 0.55f + (vary_ - 0.5f) * 0.25f;
         V3 cdir = normalize(looks * std::cos(ang) + side * std::sin(ang));
-        float d = k == "xclose" ? 0.44f : (k == "close" ? 0.74f : 1.3f);
-        d *= 1.f - (k == "medium" ? 0.05f : 0.11f) * u;
-        f.eye = S.head + cdir * d + up * (k == "medium" ? -0.05f : 0.035f);
-        f.target = S.head + up * (k == "medium" ? -0.22f : 0.01f);
-        f.fov = k == "xclose" ? 24.f : (k == "close" ? 27.f : 32.f);
+        // close-up: head and shoulders, the eyes on the upper third; extreme close-up: the face
+        float d = k == "xclose" ? 0.58f : (k == "close" ? 0.98f : 1.4f);
+        d *= 1.f - (k == "medium" ? 0.05f : 0.1f) * u;
+        f.eye = S.head + cdir * d + up * (k == "medium" ? -0.05f : 0.0f);
+        f.target = S.head + up * (k == "medium" ? -0.24f : (k == "close" ? -0.075f : -0.03f));
+        f.fov = k == "xclose" ? 25.f : (k == "close" ? 28.f : 32.f);
         f.aperture = k == "xclose" ? 1.4f : (k == "close" ? 1.15f : 0.45f);
     }
     // ease within a shot (breathing heads, gestures), snap on a cut

@@ -43,7 +43,7 @@ story_close_lipsync|screen=story;story=old_flames;node=c1_reception;line=4;shot=
 story_ots|screen=story;story=old_flames;node=c1_reception;line=6;shot=ots
 story_kiss|screen=story;story=old_flames;node=c4_kiss;line=1;kiss=1
 story_undress|screen=story;story=old_flames;node=c5_room;line=6;undress=vivian:0.45;shot=two
-story_lace|screen=story;story=old_flames;node=c5_room;line=8;undress=vivian:0;shot=close
+story_lace|screen=story;story=old_flames;node=c5_room;line=8;undress=vivian:0;shot=medium
 story_storm|screen=story;story=the_storm;node=c3_dark;line=3;shot=two
 story_storm_sweater|screen=story;story=the_storm;node=c6_night;line=3;undress=vivian:0.5;shot=two
 story_villa|screen=story;story=salt_and_sun;node=c4_terrace;line=3;shot=ots
@@ -52,6 +52,7 @@ story_neighbours|screen=story;story=neighbours;node=c4_balcony;line=2;shot=close
 story_choice|screen=story;story=old_flames;node=c1_reception;line=99
 story_intimate|screen=story;story=salt_and_sun;node=c6_bed;line=5
 story_menu|screen=story;story=old_flames;node=c2_terrace;line=2;overlay=5
+story_play|screen=story;story=old_flames;node=c5_room;line=99;storyplay=1;frames=300;render_from=294
 story_ending|screen=story;story=the_storm;node=c7_dawn;line=99
 results|screen=results;result=together
 results_soon|screen=results;result=soon

@@ -227,7 +227,8 @@ void Renderer::drawModel(Program& p, Model& m, Animator& a, const Character* ch,
                 p.set("u_model", a.global((int)ni));
                 p.set("u_skinned", 0);
             }
-            bindMaterial(p, m, prim.material, ch, pass == 0 || pass == 3);
+            // garments are their own materials: the character's tone swaps / skin masks / tints are not theirs
+            bindMaterial(p, m, prim.material, outfit ? nullptr : ch, pass == 0 || pass == 3);
             if (outfit) {
                 size_t mi = (size_t)std::max(0, prim.material);
                 p.set("u_dissolve", vis);

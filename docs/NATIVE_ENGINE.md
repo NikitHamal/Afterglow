@@ -165,6 +165,39 @@ graphics, audio, controls, game) / the night -> pause -> results.
 - Installer extras: offers to remove an all-users copy left by early nightlies; `licenses/OFL-*.txt` ship with
   the embedded fonts; SIGTERM/SIGINT/SIGHUP quit gracefully on Linux/macOS.
 
+## Story mode as a film (`game_cinema.cpp`, `story.*`, `director.*`, `voice.*`, `scene/actor.*`, `scene/outfit.*`)
+
+Scripts and their staging fields: `docs/STORY_ASSETS.md`; voices: `docs/VOICE.md`.
+
+- **Staging** (`stageStoryNode` / `storyStage`): a node names a place; `Scene::setLocation` loads
+  `locations/<id>/<id>.glb` (same conventions as the room, all built on the authoring bed) or the closest one that
+  exists, behind a cut through black. Mood and ambience come with the node (or the place's json); wardrobe and
+  dress state per character; the pose is a staging clip (`stand.idle`, `sit.bed`, `cuddle.idle`...) or an act.
+- **Outfits** (`Outfit`): garment meshes skinned with the character's own bone texture (joints re-indexed by name),
+  morph weights mirrored from the character every frame, layers `outer` / `under` that come off with a wipe along
+  the garment's bind-space height (ragged noise edge, shadowed rim; the same discard in the shadow / depth passes),
+  procedural fabrics in `pbr.frag` mode 6 (`u_fabric`: weave bump from bind-space triplanar patterns, plaid, lace
+  holes over the skin, sheen). `Character::hideGenitals` while anything is worn.
+- **Voices** (`VoiceBank`, `VoicePlayer`): `story/voice/manifest.json` lines by story / node / index (a take whose
+  text no longer matches the script is ignored), streamed with raylib `Music`; ambience and pad are ducked under
+  them. Lip sync: loudness envelope (30 fps) x word gate x a viseme from the letters of the current word
+  (open / spread / round / bite / closed) -> Vivian `moan gasp smile pout kiss bite_lip`, Marcus `moan kiss`.
+  Subtitles reveal word by word with the take; auto-advance waits for the voice (+0.65 s).
+- **Acting** (`Actor`, installed as the characters' `poseHook` / `postHook`): gaze at the partner / away / down /
+  camera with saccades, nods, shakes, tilts, small dips on stressed words, talk gestures (additive rotations in
+  the body frame: shoulder flex / abduction, elbow hinge, wrist roll), a lean while speaking, listener reactions,
+  blinks, expressions blended at 5/s. Kiss / embrace: the two step in along their axis, lean, heads to each other,
+  hands on chest / waist through the touch rig's world goals.
+- **Direction** (`Director`): shots composed per frame from the heads (establish, wide, two, ots, close, xclose,
+  kiss, medium), one side of the line per scene, push-ins over the line's length, eased within a shot and cut
+  between shots; the camera rig's `Direct` mode keeps collision. Depth of field (`dof.frag`: blur chain + depth CoC)
+  for ots / close-ups; letterbox ~2.2:1; a film key light from the camera side and a brighter bake while actors
+  stand away from the lamps.
+- **Intimacy**: `undress:<who>:<layer>`, `kiss`, `to_bed` actions; the play node hands over to the night with its
+  allowed acts and goal, beat nodes spoken over it (start, desire, edge, her peak), then the story continues.
+- **Ambience** (generated, `game_audio.cpp`): party murmur + glasses, sea swell + foam, storm rain + gusts +
+  thunder, blizzard wind, hearth crackle, city traffic, spa water + chimes; combinable (`rain+fire`).
+
 ## Harness (visual QA)
 
 ```
@@ -180,7 +213,8 @@ Sandbox spec keys: `pos`, `depth`, `rub`, `embrace`, `auto`, `aroused`, `face=na
 `flex=0..1` (bone-offset deformation test), `frames` (sandbox). Game specs: `screen=title|menu|customize|settings|play|pause|results`, `tab=her|him`,
 `settab`, `pos`, `depth`, `her`, `him`, `connection`, `desire`, `rub`, `embrace`, `cam=side|front|top|fpv`, `bar=1`,
 `climax=her|him|together`, `result=together|soon`, `intro=1`, `body`, `mbody`, `tone`, `mtone`, `hair`, `quality`,
-`hints`, `t` (seconds into the screen).
+`hints`, `t` (seconds into the screen); stories: `story`, `node`, `line`, `overlay`, `card`, `reveal`, `shot=<kind>`,
+`vt=<s>` (voice clock held: lip sync mid-word), `kiss=<0..1>`, `undress=<who>:<0..1>`, `pose`.
 
 CI (`.github/workflows/native.yml`) renders `tools/qa/shots.txt` under Xvfb + Mesa llvmpipe on every push to
 `main` and uploads the PNGs as the `qa-shots` artifact; packages go to the rolling `nightly` release.

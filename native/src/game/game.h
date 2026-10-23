@@ -86,6 +86,7 @@ private:
     void drawPositionBar(float a);
     void drawActionBar();
     void actById(const std::string& id);
+    bool actAllowed(const std::string& id) const;
     int nextCamMode(int cur, bool solo) const;
     int lastAct_ = -1;
     Rectangle actionBarRect_{0, 0, 0, 0};

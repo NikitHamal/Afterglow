@@ -20,6 +20,7 @@ struct ActorView {
     V3 head{0, 1.5f, 0};        // skull centre
     V3 face{0, 0, 1};           // face forward
     V3 hips{0, 0.9f, 0};
+    V3 body{0, 0, 1};           // body forward (from the shoulder line)
 };
 
 class Director {
