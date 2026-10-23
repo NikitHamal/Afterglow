@@ -8,9 +8,9 @@ namespace ag {
 void applyQuality(RenderSettings& s, Quality q) {
     s.quality = q;
     switch (q) {
-        case Quality::Low: s.shadowRes = 1024; s.shadowSoft = 1.6f; s.bloomLevels = 4; s.hairSoft = false; s.renderScale = 0.8f; s.fxaa = true; break;
-        case Quality::Medium: s.shadowRes = 2048; s.shadowSoft = 2.2f; s.bloomLevels = 5; s.hairSoft = true; s.renderScale = 1.f; s.fxaa = true; break;
-        case Quality::High: s.shadowRes = 4096; s.shadowSoft = 3.0f; s.bloomLevels = 6; s.hairSoft = true; s.renderScale = 1.f; s.fxaa = true; break;
+        case Quality::Low: s.shadowRes = 1024; s.shadowSoft = 1.6f; s.bloomLevels = 4; s.hairSoft = false; s.renderScale = 0.8f; s.fxaa = true; s.ssao = false; break;
+        case Quality::Medium: s.shadowRes = 2048; s.shadowSoft = 2.2f; s.bloomLevels = 5; s.hairSoft = true; s.renderScale = 1.f; s.fxaa = true; s.ssao = true; s.ssaoSamples = 10; break;
+        case Quality::High: s.shadowRes = 4096; s.shadowSoft = 3.0f; s.bloomLevels = 6; s.hairSoft = true; s.renderScale = 1.f; s.fxaa = true; s.ssao = true; s.ssaoSamples = 16; break;
     }
 }
 
@@ -32,13 +32,15 @@ bool Renderer::reloadShaders() {
     ok = up_.build("bloom_up", fsv, shaderSource("bloom_up.frag")) && ok;
     ok = composite_.build("composite", fsv, shaderSource("composite.frag")) && ok;
     ok = fxaa_.build("fxaa", fsv, shaderSource("fxaa.frag")) && ok;
+    ok = ssao_.build("ssao", fsv, shaderSource("ssao.frag")) && ok;
+    ok = ssaoBlur_.build("ssao_blur", fsv, shaderSource("ssao_blur.frag")) && ok;
     if (!ok) AG_ERROR("AG: shader build failed");
     return ok;
 }
 
 void Renderer::shutdown() {
-    for (Program* p : {&pbr_, &depth_, &prefilter_, &down_, &up_, &composite_, &fxaa_}) p->destroy();
-    hdr_.destroy(); ldr_.destroy();
+    for (Program* p : {&pbr_, &depth_, &prefilter_, &down_, &up_, &composite_, &fxaa_, &ssao_, &ssaoBlur_}) p->destroy();
+    hdr_.destroy(); ldr_.destroy(); aoRaw_.destroy(); ao_.destroy();
     for (auto& b : bloom_) b.destroy();
     shadow_.destroy();
     if (emptyVao_) glDeleteVertexArrays(1, &emptyVao_);
@@ -49,8 +51,10 @@ void Renderer::shutdown() {
 void Renderer::ensureTargets(int w, int h) {
     if (w == w_ && h == h_ && hdr_.fbo) return;
     w_ = w; h_ = h;
-    hdr_.create(w, h, GL_RGBA16F, true, false, GL_LINEAR);
+    hdr_.create(w, h, GL_RGBA16F, true, true, GL_LINEAR);      // depth as texture (SSAO)
     ldr_.create(w, h, GL_RGBA8, false, false, GL_LINEAR);
+    aoRaw_.create(std::max(1, w / 2), std::max(1, h / 2), GL_R8, false, false, GL_LINEAR);
+    ao_.create(std::max(1, w / 2), std::max(1, h / 2), GL_R8, false, false, GL_LINEAR);
     for (auto& b : bloom_) b.destroy();
     bloomCount_ = 0;
     int bw = std::max(1, w / 2), bh = std::max(1, h / 2);
@@ -168,6 +172,7 @@ void Renderer::drawModel(Program& p, Model& m, Animator& a, const Character* ch,
         for (Primitive& prim : mesh.prims) {
             const Material& mat = m.materials[(size_t)std::max(0, prim.material)];
             if (pass == 0 && (!mat.castShadow || mat.alpha == AlphaMode::Blend)) continue;
+            if (pass == 3 && mat.alpha == AlphaMode::Blend) continue;
             if (pass == 2 && !(mat.alpha == AlphaMode::Mask && mat.shading == Shading::Hair)) continue;
             bool skinned = prim.skinned && n.skin >= 0 && a.boneTexture();
             if (skinned) {
@@ -179,7 +184,7 @@ void Renderer::drawModel(Program& p, Model& m, Animator& a, const Character* ch,
                 p.set("u_model", a.global((int)ni));
                 p.set("u_skinned", 0);
             }
-            bindMaterial(p, m, prim.material, ch, pass == 0);
+            bindMaterial(p, m, prim.material, ch, pass == 0 || pass == 3);
             p.set("u_pass", pass == 2 ? 1 : 0);
             if (mat.doubleSided || pass == 0) glDisable(GL_CULL_FACE);
             else { glEnable(GL_CULL_FACE); glCullFace(GL_BACK); }
@@ -216,15 +221,51 @@ void Renderer::render(Scene& s, const CameraState& cam, int fbW, int fbH, float 
         glDisable(GL_POLYGON_OFFSET_FILL);
     }
 
-    // ---- main HDR pass ----
+    // ---- depth prepass + SSAO ----
+    bool ssaoOn = settings.ssao && ao_.fbo;
     glBindFramebuffer(GL_FRAMEBUFFER, hdr_.fbo);
     glViewport(0, 0, hdr_.w, hdr_.h);
     glClearColor(0.008f, 0.006f, 0.008f, 1.f);
     glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL); glDepthMask(GL_TRUE);
     glDisable(GL_BLEND);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    if (ssaoOn) {
+        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+        depth_.use();
+        depth_.set("u_viewProj", cam.viewProj);
+        drawModel(depth_, s.room, s.roomAnim, nullptr, 3);
+        for (auto& c : chars) if (c.second && c.first->loaded()) drawModel(depth_, c.first->model, c.first->anim, c.first, 3);
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_CULL_FACE);
+        aoRaw_.bind();
+        ssao_.use();
+        ssao_.sampler("u_depth", 0, hdr_.depth);
+        ssao_.set("u_proj", cam.proj);
+        ssao_.set("u_invProj", inverse(cam.proj));
+        ssao_.set("u_texel", V2{1.f / (float)hdr_.w, 1.f / (float)hdr_.h});
+        ssao_.set("u_radius", settings.ssaoRadius);
+        ssao_.set("u_intensity", settings.ssaoIntensity);
+        ssao_.set("u_samples", settings.ssaoSamples);
+        fullscreen(ssao_);
+        ao_.bind();
+        ssaoBlur_.use();
+        ssaoBlur_.sampler("u_ao", 0, aoRaw_.color);
+        ssaoBlur_.sampler("u_depth", 1, hdr_.depth);
+        ssaoBlur_.set("u_texel", V2{1.f / (float)aoRaw_.w, 1.f / (float)aoRaw_.h});
+        ssaoBlur_.set("u_near_far", V2{cam.znear, cam.zfar});
+        fullscreen(ssaoBlur_);
+        glBindFramebuffer(GL_FRAMEBUFFER, hdr_.fbo);
+        glViewport(0, 0, hdr_.w, hdr_.h);
+        glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL); glDepthMask(GL_TRUE);
+    }
+
+    // ---- main HDR pass ----
     pbr_.use();
     setFrame(pbr_, s, cam, time);
+    pbr_.set("u_ssaoOn", ssaoOn ? 1 : 0);
+    pbr_.set("u_screenSize", V2{(float)hdr_.w, (float)hdr_.h});
+    pbr_.sampler("u_ssao", 7, ssaoOn ? ao_.color : white_);
     drawModel(pbr_, s.room, s.roomAnim, nullptr, 1);
     for (auto& c : chars) if (c.second && c.first->loaded()) drawModel(pbr_, c.first->model, c.first->anim, c.first, 1);
     if (settings.hairSoft) {

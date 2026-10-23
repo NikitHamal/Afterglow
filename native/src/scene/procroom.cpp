@@ -173,7 +173,7 @@ GLuint texWallpaper() {
             float diamond = smoothstep(0.42f, 0.38f, du + dv * 0.75f) - smoothstep(0.30f, 0.26f, du + dv * 0.75f);
             float stripe = smoothstep(0.02f, 0.0f, std::fabs(std::fmod(u * 8.f, 1.f) - 0.5f) - 0.47f);
             V3 base{0.33f, 0.115f, 0.145f};
-            V3 c = base * (0.9f + 0.2f * fbm(u * 40.f, v * 40.f, 3)) + V3{0.14f, 0.07f, 0.05f} * (diamond * 0.8f + stripe * 0.4f);
+            V3 c = base * (0.9f + 0.2f * fbm(u * 40.f, v * 40.f, 3)) + V3{0.06f, 0.035f, 0.025f} * (diamond * 0.6f + stripe * 0.25f);
             put(px, N, x, y, c);
         }
     return textureFromRGBA(px.data(), N, N, true);
@@ -256,8 +256,8 @@ void buildPlaceholderRoom(Model& out, RoomInfo& info) {
     int mWall = mat("wallpaper", {1, 1, 1, 1}, 0.85f, 0.f, texWallpaper());
     int mPanel = mat("wainscot", {0.10f, 0.04f, 0.045f, 1}, 0.5f, 0.f);
     int mFrame = mat("bed_frame", {0.11f, 0.055f, 0.035f, 1}, 0.36f, 0.f);
-    int mMattress = mat("mattress", {0.30f, 0.07f, 0.10f, 1}, 0.8f, 0.f);
-    int mSheet = mat("sheet_satin", {0.30f, 0.065f, 0.095f, 1}, 0.3f, 0.f);
+    int mMattress = mat("mattress", {0.15f, 0.03f, 0.045f, 1}, 0.8f, 0.f);
+    int mSheet = mat("sheet_satin", {0.17f, 0.028f, 0.045f, 1}, 0.28f, 0.f);
     int mPillow = mat("pillow", {0.78f, 0.70f, 0.64f, 1}, 0.7f, 0.f);
     int mHead = mat("headboard_velvet", {0.24f, 0.05f, 0.08f, 1}, 0.72f, 0.f);
     int mDuvet = mat("duvet", {0.40f, 0.10f, 0.13f, 1}, 0.62f, 0.f);
@@ -276,9 +276,9 @@ void buildPlaceholderRoom(Model& out, RoomInfo& info) {
 
     // floor + walls
     add("floor", facing(grid(1, 1, [](float u, float v) { return V3{-4.f + u * 8.f, 0.f, 4.f - v * 7.5f}; }, 4.f, 3.75f), {0, 1, 0}), mWood, false);
-    add("wall_back", facing(grid(1, 1, [](float u, float v) { return V3{-4.f + u * 8.f, v * 3.2f, -2.4f}; }, 6.f, 2.4f), {0, 0, 1}), mWall, false);
-    add("wall_left", facing(grid(1, 1, [](float u, float v) { return V3{-3.4f, v * 3.2f, 4.f - u * 6.4f}; }, 5.f, 2.4f), {1, 0, 0}), mWall, false);
-    add("wall_right", facing(grid(1, 1, [](float u, float v) { return V3{3.4f, v * 3.2f, -2.4f + u * 6.4f}; }, 5.f, 2.4f), {-1, 0, 0}), mWall, false);
+    add("wall_back", facing(grid(1, 1, [](float u, float v) { return V3{-4.f + u * 8.f, v * 3.2f, -2.4f}; }, 10.f, 4.f), {0, 0, 1}), mWall, false);
+    add("wall_left", facing(grid(1, 1, [](float u, float v) { return V3{-3.4f, v * 3.2f, 4.f - u * 6.4f}; }, 8.f, 4.f), {1, 0, 0}), mWall, false);
+    add("wall_right", facing(grid(1, 1, [](float u, float v) { return V3{3.4f, v * 3.2f, -2.4f + u * 6.4f}; }, 8.f, 4.f), {-1, 0, 0}), mWall, false);
     MeshData wain = box({0.f, 0.45f, -2.37f}, {8.f, 0.9f, 0.05f});
     append(wain, box({-3.37f, 0.45f, 0.8f}, {0.05f, 0.9f, 6.4f}));
     append(wain, box({3.37f, 0.45f, 0.8f}, {0.05f, 0.9f, 6.4f}));
