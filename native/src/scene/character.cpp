@@ -28,6 +28,7 @@ bool Character::load(const std::string& charId, const std::string& path, float t
     footY_ = mn;
     AG_INFO("AG: character %s: bind height %.3f m -> scale %.3f (target %.2f m)", id.c_str(), h, autoScale_, targetHeight);
     procedural.init(anim, autoScale_);
+    model.releaseCpuData();   // bind height measured: the GPU has the rest
     loaded_ = true;
     return true;
 }

@@ -102,6 +102,8 @@ private:
     float breathT_ = 0.f, moanT_ = 3.f, wetT_ = 0.f;
     bool together_ = false;
     std::vector<std::pair<float, std::string>> toasts_;   // floating feedback (age, text)
+    float introCard_ = 0.f;               // first night: how-to card (seconds left)
+    void drawIntroCard(float a);
 
     // ---- results ----
     struct Results { int score = 0; float minutes = 0.f, connection = 0.f; int herClimaxes = 0; bool together = false;

@@ -64,7 +64,8 @@ void Ui::begin(float dt, bool readInput) {
     W = (float)GetScreenWidth(); H = (float)GetScreenHeight();
     fbW = std::max(1, GetRenderWidth()); fbH = std::max(1, GetRenderHeight());
     dpi = W > 0.f ? (float)fbW / W : 1.f;
-    s = std::max(0.45f, std::min(W / 1920.f, H / 1080.f));
+    // sub-linear: small windows keep readable type, large ones do not balloon
+    s = std::max(0.5f, std::pow(std::min(W / 1920.f, H / 1080.f), 0.8f));
     focusCount_ = 0;
     in = Input{};
     if (!readInput) return;
@@ -542,10 +543,11 @@ float Ui::keyHint(float x, float y, const std::string& key, const std::string& l
     float lp = u(px);
     float kw = std::max(measure(Face::SansBold, kp, key).x + u(14.f), u(26.f));
     float kh = u(px * 1.55f);
-    Box b; b.radius = u(6.f); b.fill = Color{255, 236, 224, 18}; b.border = std::max(1.f, u(1.f)); b.borderCol = Color{255, 232, 214, 70};
+    Box b; b.radius = u(6.f); b.fill = Color{20, 12, 16, 150}; b.border = std::max(1.f, u(1.f)); b.borderCol = Color{255, 232, 214, 110};
+    b.shadow = u(10.f); b.shadowCol = Color{0, 0, 0, 90};
     box(Rectangle{x, y, kw, kh}, b);
     text(Face::SansBold, kp, key, x + kw * 0.5f, y + (kh - kp) * 0.5f - u(1.f), th.ink, Center);
-    text(Face::Sans, lp, label, x + kw + u(9.f), y + (kh - lp) * 0.5f - u(1.f), th.inkDim);
+    text(Face::SansMedium, lp, label, x + kw + u(9.f), y + (kh - lp) * 0.5f - u(1.f), th.ink);
     return kw + u(9.f) + measure(Face::Sans, lp, label).x;
 }
 

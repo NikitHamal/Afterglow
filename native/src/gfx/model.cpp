@@ -102,6 +102,9 @@ void computeTangents(const std::vector<float>& pos, const std::vector<float>& nr
     }
 }
 
+static long long gBufBytes = 0;
+long long Model::bufferBytes() { return gBufBytes; }
+
 void Model::uploadPrimitive(Primitive& p, const std::vector<float>& uv0, const std::vector<float>& uv1) {
     glGenVertexArrays(1, &p.vao);
     glBindVertexArray(p.vao);
@@ -113,6 +116,7 @@ void Model::uploadPrimitive(Primitive& p, const std::vector<float>& uv0, const s
         glGenBuffers(1, &p.vbo[slot]);
         glBindBuffer(GL_ARRAY_BUFFER, p.vbo[slot]);
         glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(data.size() * sizeof(float)), data.data(), dyn ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
+        gBufBytes += (long long)(data.size() * sizeof(float));
         glVertexAttribPointer((GLuint)slot, comps, GL_FLOAT, GL_FALSE, 0, nullptr);
         glEnableVertexAttribArray((GLuint)slot);
     };
@@ -129,6 +133,7 @@ void Model::uploadPrimitive(Primitive& p, const std::vector<float>& uv0, const s
     glGenBuffers(1, &p.ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, p.ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(p.idx.size() * sizeof(uint32_t)), p.idx.data(), GL_STATIC_DRAW);
+    gBufBytes += (long long)(p.idx.size() * sizeof(uint32_t));
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     // generic defaults for missing attributes
@@ -138,28 +143,66 @@ void Model::uploadPrimitive(Primitive& p, const std::vector<float>& uv0, const s
     if (!p.dynamic) { std::vector<float>().swap(p.tan); }
 }
 
+// dense per-target deltas -> only the vertices each target actually moves
+static void packTargets(Primitive& p) {
+    size_t nv = p.pos.size() / 3;
+    p.targetCount = (int)p.dPos.size();
+    p.targets.assign(p.dPos.size(), {});
+    for (size_t t = 0; t < p.dPos.size(); ++t) {
+        const std::vector<float>& dp = p.dPos[t];
+        const std::vector<float>* dn = t < p.dNrm.size() && p.dNrm[t].size() == nv * 3 ? &p.dNrm[t] : nullptr;
+        Primitive::Sparse& sp = p.targets[t];
+        if (dp.size() != nv * 3) continue;
+        for (size_t v = 0; v < nv; ++v) {
+            float a = std::fabs(dp[v * 3]) + std::fabs(dp[v * 3 + 1]) + std::fabs(dp[v * 3 + 2]);
+            float b = dn ? std::fabs((*dn)[v * 3]) + std::fabs((*dn)[v * 3 + 1]) + std::fabs((*dn)[v * 3 + 2]) : 0.f;
+            if (a < 1e-7f && b < 1e-6f) continue;
+            sp.idx.push_back((uint32_t)v);
+            sp.dp.insert(sp.dp.end(), {dp[v * 3], dp[v * 3 + 1], dp[v * 3 + 2]});
+            if (dn) sp.dn.insert(sp.dn.end(), {(*dn)[v * 3], (*dn)[v * 3 + 1], (*dn)[v * 3 + 2]});
+        }
+        sp.idx.shrink_to_fit(); sp.dp.shrink_to_fit(); sp.dn.shrink_to_fit();
+    }
+    std::vector<std::vector<float>>().swap(p.dPos);
+    std::vector<std::vector<float>>().swap(p.dNrm);
+}
+
 void Model::updateMorph(Primitive& p, const float* w, int count) {
     if (!p.dynamic || !p.vbo[0]) return;
     p.scratchPos = p.pos;
     p.scratchNrm = p.nrm;
     bool anyN = false;
-    for (int t = 0; t < count && t < (int)p.dPos.size(); ++t) {
+    for (int t = 0; t < count && t < (int)p.targets.size(); ++t) {
         float wt = w[t];
         if (std::fabs(wt) < 1e-4f) continue;
-        const auto& dp = p.dPos[t];
-        if (!dp.empty()) for (size_t i = 0; i < dp.size(); ++i) p.scratchPos[i] += wt * dp[i];
-        if (t < (int)p.dNrm.size() && !p.dNrm[t].empty()) {
-            const auto& dn = p.dNrm[t];
-            for (size_t i = 0; i < dn.size(); ++i) p.scratchNrm[i] += wt * dn[i];
+        const Primitive::Sparse& sp = p.targets[t];
+        const size_t n = sp.idx.size();
+        float* P = p.scratchPos.data();
+        for (size_t k = 0; k < n; ++k) {
+            float* d = P + (size_t)sp.idx[k] * 3;
+            d[0] += wt * sp.dp[k * 3]; d[1] += wt * sp.dp[k * 3 + 1]; d[2] += wt * sp.dp[k * 3 + 2];
+        }
+        if (!sp.dn.empty()) {
+            float* N = p.scratchNrm.data();
+            for (size_t k = 0; k < n; ++k) {
+                float* d = N + (size_t)sp.idx[k] * 3;
+                d[0] += wt * sp.dn[k * 3]; d[1] += wt * sp.dn[k * 3 + 1]; d[2] += wt * sp.dn[k * 3 + 2];
+            }
             anyN = true;
         }
     }
-    if (anyN)
-        for (size_t v = 0; v * 3 < p.scratchNrm.size(); ++v) {
-            float* n = &p.scratchNrm[v * 3];
-            float l = std::sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
-            if (l > 1e-8f) { n[0] /= l; n[1] /= l; n[2] /= l; }
+    if (anyN) {
+        // renormalise only what the active targets touched (idempotent where they overlap)
+        float* N = p.scratchNrm.data();
+        for (int t = 0; t < count && t < (int)p.targets.size(); ++t) {
+            if (std::fabs(w[t]) < 1e-4f || p.targets[t].dn.empty()) continue;
+            for (uint32_t v : p.targets[t].idx) {
+                float* n = N + (size_t)v * 3;
+                float l = std::sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+                if (l > 1e-8f) { float k = 1.f / l; n[0] *= k; n[1] *= k; n[2] *= k; }
+            }
         }
+    }
     glBindBuffer(GL_ARRAY_BUFFER, p.vbo[0]);
     glBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)(p.scratchPos.size() * sizeof(float)), p.scratchPos.data());
     glBindBuffer(GL_ARRAY_BUFFER, p.vbo[1]);
@@ -359,6 +402,7 @@ bool Model::load(const std::string& p) {
                 prim.bmin.z = std::min(prim.bmin.z, prim.pos[v * 3 + 2]); prim.bmax.z = std::max(prim.bmax.z, prim.pos[v * 3 + 2]);
             }
             uploadPrimitive(prim, uv0, uv1);
+            packTargets(prim);
             mesh.prims.push_back(std::move(prim));
         }
     }
@@ -436,6 +480,19 @@ bool Model::load(const std::string& p) {
     AG_INFO("AG: loaded %s: %d nodes, %d meshes, %zu tris, %d materials, %d skins, %d clips, %d textures",
             p.c_str(), (int)nodes.size(), (int)meshes.size(), tris, (int)materials.size(), (int)skins.size(), (int)clips.size(), (int)textures.size());
     return true;
+}
+
+void Model::releaseCpuData() {
+    for (auto& m : meshes)
+        for (auto& p : m.prims) {
+            std::vector<uint32_t>().swap(p.idx);
+            std::vector<uint16_t>().swap(p.joints);
+            std::vector<float>().swap(p.weights);
+            std::vector<float>().swap(p.tan);
+            if (!p.dynamic) { std::vector<float>().swap(p.pos); std::vector<float>().swap(p.nrm); }
+            std::vector<float>().swap(p.scratchPos);
+            std::vector<float>().swap(p.scratchNrm);
+        }
 }
 
 void Model::destroy() {

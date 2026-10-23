@@ -29,6 +29,7 @@ bool Scene::load(const std::function<void(float, const char*)>& progress) {
         if ((*ex)["lamp"].isArray()) info.lampPos = {(*ex)["lamp"][0].f(), (*ex)["lamp"][1].f(), (*ex)["lamp"][2].f()};
     } else {
         buildPlaceholderRoom(room, info);
+        room.releaseCpuData();
         roomFromGlb = false;
     }
     // room.json (content pipeline): bed / lamp metadata, lenient about the exact layout

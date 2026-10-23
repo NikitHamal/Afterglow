@@ -114,18 +114,63 @@ baked or lit room) -> soft hair edges (blended) -> particles -> bloom -> ACES + 
 `contrast`, `vignette`, `grain`, `bloomStrength`, `flash` (climax flash 0..1). `reloadShaders()` (F5 in the
 sandbox) recompiles from `shaders/` next to the asset folder when present, else the embedded copies.
 
+## The game (`src/game`, `src/ui`, `src/app`)
+
+`afterglow` starts the game; `afterglow --sandbox` the engine sandbox. Flow: loading (progress between load
+steps) -> title over the live bedroom -> main menu (Continue / New night / Customize / Settings / Quit) ->
+customisation (live turntable preview: her bust/hips/waist/bottom/weight/tone/belly via the `_up/_dn` morphs,
+skin tone, hair colour, presets; his muscle/weight/belly, endowment, tone, presets) / settings (display,
+graphics, audio, controls, game) / the night -> pause -> results.
+
+- `ui::Ui` — immediate-mode kit drawn over the 3D frame: embedded OFL fonts (`native/res/fonts`, rasterised at the
+  exact pixel size, HiDPI aware), `ui_rect.frag` SDF shapes (rounded, gradients, borders, soft shadows) and
+  frosted glass sampling `Renderer::blurTexture()` (enabled by `renderer.uiBlur`), widgets with hover/press
+  animation and keyboard focus (arrows/Enter/Esc, Tab/Q/E for tabs). Layouts are written in 1920x1080 units (`u()`).
+- `Night` — the simulation (pure C++, balance-tested headless): strokes are detected from the depth signal
+  (tempo, amplitude, energy); her arousal follows rhythm match x position x freshness x her favourite, touch and
+  kisses, scaled by connection; his follows energy and her pleasure and cools off when you slow down (edging).
+  Desires (faster, slower, deeper, gentler, touch, kiss, change position) time out; meeting them builds a
+  streak and connection. Her climax keeps the night going; his ends it (together = big payoff, too soon = penalty).
+- Presentation (`game_play.cpp`): clip layers per position (`<pos>.in` at the played depth, `.rub`/`.embrace`
+  layers, solo idle + rub), expressions (blink, pleasure, moan pulses on strokes, smile, kiss, eye roll at
+  climax), flush/sweat/breathing/jiggle by state, gaze, cinematic camera cuts between the clips.json presets,
+  first person (V), climax flash/bloom/slow motion, afterglow pull-back.
+- Audio (`game_audio.cpp`): strokes/plaps/wet by impact and her arousal, moans/breaths by arousal (breaths and UI
+  sounds are synthesised), generated room ambience + a slow pad on an audio-thread stream.
+- Persistence: `<user>/settings.json`, `<user>/profile.json` (looks, stats, the night to continue), written
+  atomically; autosave every 20 s in play. User folder: `%APPDATA%\Afterglow`, `~/.config/afterglow`,
+  `~/Library/Application Support/Afterglow`; logs in `logs/afterglow.log` (+ `.prev.log`, crash notes).
+- Lifecycle (`main.cpp`, `app/platform`): single instance (Windows mutex `AfterglowGameMutex`, shared with the
+  installer's AppMutex; a lock file elsewhere), pause + 20 fps when unfocused, sleep while minimised, F11 /
+  Alt+Enter borderless toggle, graceful shutdown (save, stop audio, free GL).
+- Updater (`app/updater`): CI builds `0.<run>.0` and publishes `latest.json` (`version`, `notes`, `page`,
+  `assets.<windows|windows-portable|linux|macos> = {url, sha256, size}`) with the nightly release. The game
+  checks it on start (setting), shows a card in the menu, downloads with progress (WinHTTP / `curl`), verifies
+  the SHA-256, then runs `Afterglow-Setup.exe /VERYSILENT /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS /NORESTART
+  /RELAUNCH` and quits (Linux/macOS open the release page). Dev builds (`0.0.0-dev`) never update.
+- Installer (`native/installer/afterglow.iss`): per-user (`%LOCALAPPDATA%\Programs\Afterglow`, no UAC), in-place
+  upgrades, Start menu + optional desktop shortcut, uninstaller that clears logs/caches and asks whether to
+  keep saves. Linux tarballs carry `afterglow.desktop` + `install-desktop-entry.sh`.
+- Memory/CPU: textures capped per quality (1K Low, 2K Medium, full on High; tone swaps replace the embedded
+  albedo), CPU mesh copies released after upload (morph meshes keep base + sparse deltas), sparse CPU morphing,
+  frosted-glass blur only while a menu shows. F1 shows fps, frame time, draws, RAM and GPU memory.
+
 ## Harness (visual QA)
 
 ```
 afterglow --shot out.png --scene "pos=missionary;depth=0.6;cam=side" [--frames 45] [--res 1280x720]
-afterglow --shotlist tools/qa/shots.txt --outdir qa-out            # lines: name|spec
+afterglow --shotlist tools/qa/game_shots.txt --outdir qa-out       # game screens; lines: name|spec
+afterglow --sandbox --shotlist tools/qa/shots.txt --outdir qa-out  # engine sandbox shots
 ```
 The harness drives any `App` (`reset()`, `applySpec(spec)`, fixed 1/60 s updates, PNG of the last frame).
 Sandbox spec keys: `pos`, `depth`, `rub`, `embrace`, `auto`, `aroused`, `face=name:w,...`, `mface=...` (Marcus),
 `body=bust:0.6,...`, `mbody=...`, `tone`, `mtone`,
 `cam=front|side|top|close|portrait|wide|fpv|orbit:yaw,pitch,dist[,x,y,z]` (orbit values in radians, engine yaw),
 `char=both|vivian|marcus`, `quality=low|medium|high`, `debug=1` (overlay), `hair=0`, `exposure`, `flush`, `sweat`,
-`flex=0..1` (bone-offset deformation test), `frames`. A gameplay App should accept `screen=title|customize|play` plus these keys.
+`flex=0..1` (bone-offset deformation test), `frames` (sandbox). Game specs: `screen=title|menu|customize|settings|play|pause|results`, `tab=her|him`,
+`settab`, `pos`, `depth`, `her`, `him`, `connection`, `desire`, `rub`, `embrace`, `cam=side|front|top|fpv`, `bar=1`,
+`climax=her|him|together`, `result=together|soon`, `intro=1`, `body`, `mbody`, `tone`, `mtone`, `hair`, `quality`,
+`hints`, `t` (seconds into the screen).
 
 CI (`.github/workflows/native.yml`) renders `tools/qa/shots.txt` under Xvfb + Mesa llvmpipe on every push to
 `main` and uploads the PNGs as the `qa-shots` artifact; packages go to the rolling `nightly` release.
