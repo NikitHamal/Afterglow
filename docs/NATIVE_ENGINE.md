@@ -216,8 +216,9 @@ Sandbox spec keys: `pos`, `depth`, `rub`, `embrace`, `auto`, `aroused`, `face=na
 `hints`, `t` (seconds into the screen); stories: `story`, `node`, `line`, `overlay`, `card`, `reveal`, `shot=<kind>`,
 `vt=<s>` (voice clock held: lip sync mid-word), `kiss=<0..1>`, `undress=<who>:<0..1>`, `pose`.
 
-CI (`.github/workflows/native.yml`) renders `tools/qa/shots.txt` under Xvfb + Mesa llvmpipe on every push to
-`main` and uploads the PNGs as the `qa-shots` artifact; packages go to the rolling `nightly` release.
+CI (`.github/workflows/native.yml`) builds Windows / Linux / macOS on every push to `main` and updates the rolling
+`nightly` release; it no longer renders QA shots (that job took ~55 min). Render the shot lists on the molab box
+instead: Release build + `xvfb-run` with Mesa llvmpipe, the same commands as above.
 
 ## Adding things
 
