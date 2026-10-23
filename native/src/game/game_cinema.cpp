@@ -16,6 +16,9 @@
 namespace ag {
 
 namespace {
+// staging distances (m): standing, the necks' gap for an embrace (her hands on his chest) and for a kiss; seated,
+// the hips' gap where sliding along the bed stops
+constexpr float kEmbraceNeck = 0.40f, kKissNeck = 0.30f, kSitHips = 0.38f;
 float clamp01(float v) { return v < 0.f ? 0.f : (v > 1.f ? 1.f : v); }
 float approachF(float v, float t, float step) { return v < t ? std::min(t, v + step) : std::max(t, v - step); }
 V3 flatv(V3 v) { v.y = 0.f; float l = length(v); return l > 1e-4f ? v / l : V3{1, 0, 0}; }
@@ -437,46 +440,90 @@ void Game::applyStoryPose(float dt) {
         c->clearLayers();
         if (c->hasClip(clip)) c->setLayer(0, clip, idlePhase_, 1.f);
     }
-    // the kiss / embrace: step in toward each other (sitting: lean in), heads together, hands on each other
+    // the kiss / embrace: step in toward each other (seated: slide along the bed until the hips meet), lean in, the
+    // lips meet at a point between their mouths, hands on each other
     kiss_ = approachF(kiss_, kissTarget_, dt / 1.1f);
     near_ = approachF(near_, std::max(nearTarget_, kissTarget_), dt / 1.3f);
     float k = smoothstep(0.f, 1.f, kiss_), nr = smoothstep(0.f, 1.f, near_);
     bool sit = pose_ == "sit";
-    float step = (sit ? 0.1f : 0.16f) * nr;
+    bool both = v.loaded() && m.loaded();
     V3 axis = flatv(m.bonePos("センター") - v.bonePos("センター"));
+    // the gaps without any step (last frame's bones minus last frame's step): standing, the necks end where a
+    // natural bend brings the lips together (the embrace leaves room for her hands on his chest); seated, the hips
+    // stop just short of each other and the turn + lean + neck do the rest
+    float step = 0.f;
+    if (both && nr > 0.001f) {
+        float neckGap = dot(m.bonePos("首") - v.bonePos("首"), axis) + 2.f * step_;
+        float hipGap = dot(m.bonePos("下半身") - v.bonePos("下半身"), axis) + 2.f * step_;
+        float want = sit ? 0.5f * (hipGap - kSitHips) : 0.5f * (neckGap - lerpf(kEmbraceNeck, kKissNeck, k));
+        step = std::max(0.f, want) * nr;
+    }
+    step_ = step;
     v.placement = m4translate(axis * step);
     m.placement = m4translate(axis * -step);
+    V3 mv = actors_[0].mouthRest, mm = actors_[1].mouthRest;   // last frame, before the kiss IK
+    bool meet = both && k > 0.001f && length(mv) > 0.1f && length(mm) > 0.1f;
+    V3 u = flatv(mm - mv), meetAt = (mv + mm) * 0.5f;
+    meetAt.y = mv.y + 0.45f * (mm.y - mv.y);                    // he bends down a little more than she reaches up
     for (int w = 0; w < 2; ++w) {
         actors_[w].lean = 0.35f * nr + 0.65f * k;
+        actors_[w].leanMax = sit ? 0.2f : 0.12f;
+        actors_[w].turn = sit ? std::max(nr, k) : 0.f;
         actors_[w].eyesClosed = k > 0.6f;
+        actors_[w].kissW = meet ? k : 0.f;
+        actors_[w].kissRoll = 0.38f;
+        actors_[w].kissTarget = meetAt + u * (w ? 0.001f : -0.001f);
         float& kissExpr = actors_[w].expr["kiss"];
         kissExpr = std::max(kissExpr * (kissTarget_ > 0.5f ? 1.f : 0.f), 0.85f * k);
     }
-    // hands: hers on his chest, his at her waist, each on the partner's side facing it (her left on his right) so the
-    // arms never cross; resting on the real surface (anchors found on the bind mesh), over the clothes when dressed
+    // hands: hers flat on his chest, fingers up and a little out toward his shoulder; his at her waist, fingers
+    // around toward her back. Each hand on the partner's side facing it (her left on his right: arms never cross),
+    // on the real surface (anchors found on the bind mesh), over the clothes' thickness when dressed; elbows low
     TouchGoals tv, tm;
-    if (nr > 0.05f && !sit && v.loaded() && m.loaded()) {
+    auto cloth = [](const Character& c) { const Outfit* o = c.outfit(); return o && o->loaded() && o->visibility(1) > 0.5f ? 0.012f : 0.004f; };
+    if (nr > 0.05f && !sit && both) {
         V3 hc = m.bonePos("上半身2"), hr = flatv(m.bonePos("腕.R") - m.bonePos("腕.L"));
         V3 hf = flatv(cross(V3{0, 1, 0}, hr));
         V3 vc = v.bonePos("下半身"), vr = flatv(v.bonePos("腕.R") - v.bonePos("腕.L"));
         V3 vf = flatv(cross(V3{0, 1, 0}, vr));
-        auto cloth = [](const Character& c) { const Outfit* o = c.outfit(); return o && o->loaded() && o->visibility(1) > 0.5f ? 0.012f : 0.004f; };
         for (int s = 0; s < 2; ++s) {
             float sg = s ? 1.f : -1.f;   // the hand's own side: -1 left, +1 right
             V3 zp, zn;
             HandGoal g;
-            g.active = true; g.world = true; g.dent = false; g.weight = nr; g.curl = 0.18f; g.press = 0.f;
+            g.active = true; g.world = true; g.flat = true; g.dent = false; g.weight = nr; g.curl = 0.12f; g.press = 0.f;
+            g.palmLift = 0.017f;
             if (m.touch.zoneWorld(m.anim, s ? Zone::ChestL : Zone::ChestR, zp, zn)) { g.pos = zp + zn * cloth(m); g.normal = zn; }
             else { g.pos = hc + hf * 0.12f + V3{0.f, 0.1f, 0.f} - hr * (0.085f * sg); g.normal = hf; }
-            g.along = V3{0, 1, 0};
+            g.along = normalize(V3{0.f, 1.f, 0.f} + flatv(g.pos - hc) * 0.35f);
+            g.elbowHint = normalize(V3{0.f, -1.f, 0.f} + vr * (0.5f * sg) - vf * 0.25f);
             (s ? tv.right : tv.left) = g;
             HandGoal h = g;
+            h.palmLift = 0.02f;
+            h.curl = 0.2f;
             if (v.touch.zoneWorld(v.anim, s ? Zone::WaistL : Zone::WaistR, zp, zn)) { h.pos = zp + zn * cloth(v); h.normal = zn; }
             else { h.pos = vc + V3{0.f, 0.06f, 0.f} - vr * (0.15f * sg) - vf * 0.02f; h.normal = vr * -sg; }
-            h.along = vf * -1.f;
-            h.curl = 0.3f;
+            h.along = normalize(vf * -1.f + V3{0.f, -0.2f, 0.f});
+            h.elbowHint = normalize(V3{0.f, -1.f, 0.f} + hr * (0.6f * sg) - hf * 0.3f);
             (s ? tm.right : tm.left) = h;
         }
+    }
+    // "me": the right hand laid flat on one's own upper chest, a little to the heart side, fingers toward the left
+    // shoulder, the elbow down and out
+    for (int w = 0; w < 2; ++w) {
+        Character& c = w ? m : v;
+        TouchGoals& tg = w ? tm : tv;
+        float gw = actors_[w].gestureWeight("chest");
+        V3 zp, zn;
+        if (gw < 0.01f || tg.right.active || !c.loaded() || !c.touch.zoneWorld(c.anim, Zone::Sternum, zp, zn)) continue;
+        V3 cr = flatv(c.bonePos("腕.R") - c.bonePos("腕.L"));
+        HandGoal g;
+        g.active = true; g.world = true; g.flat = true; g.dent = false; g.weight = gw; g.curl = 0.15f; g.press = 0.f;
+        g.palmLift = w ? 0.02f : 0.017f;
+        g.pos = zp - cr * 0.025f + zn * cloth(c);
+        g.normal = zn;
+        g.along = normalize(V3{0.f, 1.f, 0.f} - cr * 0.45f);
+        g.elbowHint = normalize(V3{0.f, -1.f, 0.f} + cr * 0.6f + flatv(cross(V3{0, 1, 0}, cr)) * 0.2f);
+        tg.right = g;
     }
     v.touchGoals = tv;
     m.touchGoals = tm;

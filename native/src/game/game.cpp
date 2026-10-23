@@ -690,6 +690,7 @@ void Game::applySpec(const Spec& s) {
             // stills: the voice clock held mid-line (lip sync), a kiss, an undress half done, a forced shot
             voiceHold_ = s.has("vt") ? s.num("vt", 0.f) : -1.f;
             if (s.has("kiss")) { kiss_ = kissTarget_ = near_ = nearTarget_ = s.num("kiss", 1.f); }
+            if (s.has("near")) { near_ = nearTarget_ = s.num("near", 1.f); }   // an embrace without the kiss
             std::string und = s.get("undress");
             if (!und.empty()) {
                 size_t c = und.find(':');
