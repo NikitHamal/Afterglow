@@ -159,7 +159,16 @@ void Game::cameraForPosition(float blend) {
     }
 }
 
+// story play offers the acts the chapter allows (play.acts); free play offers everything
+bool Game::actAllowed(const std::string& id) const {
+    if (screen_ != Screen::Story && !(screen_ == Screen::Pause && pauseReturn_ == Screen::Story)) return true;
+    const StoryNode* n = story_.node();
+    if (!n || n->playActs.empty()) return true;
+    return std::find(n->playActs.begin(), n->playActs.end(), id) != n->playActs.end();
+}
+
 void Game::actById(const std::string& id) {
+    if (!actAllowed(id)) return;
     if (posIndex_ >= 0 && positions_[(size_t)posIndex_].id == id) {
         if (lastAct_ >= 0 && lastAct_ != posIndex_) setPosition(lastAct_);
         return;
@@ -196,7 +205,7 @@ void Game::updatePlay(float dt) {
         if (IsKeyPressed(KEY_ESCAPE)) { pauseReturn_ = screen_; go(Screen::Pause, 0.15f); return; }
         if (IsKeyPressed(KEY_TAB)) barOpen_ = !barOpen_;
         for (int k = 0; k < 10 && k < (int)positions_.size(); ++k)
-            if (IsKeyPressed(k == 9 ? KEY_ZERO : KEY_ONE + k)) setPosition(k);
+            if (IsKeyPressed(k == 9 ? KEY_ZERO : KEY_ONE + k) && actAllowed(positions_[(size_t)k].id)) setPosition(k);
         if ((IsKeyPressed(KEY_R) || IsKeyPressed(KEY_T)) && p.canTouch) rubTarget_ = rubTarget_ > 0.5f ? 0.f : 1.f;
         if ((IsKeyPressed(KEY_E) || IsKeyPressed(KEY_K)) && p.canKiss) embraceTarget_ = embraceTarget_ > 0.5f ? 0.f : 1.f;
         if (IsKeyPressed(KEY_O)) actById("oral");
@@ -648,7 +657,7 @@ void Game::drawHud() {
         U.text(ui::Face::SerifBold, U.u(30.f), cb, rx - U.u(40.f), ry, U.th.ink, ui::Right);
         U.text(ui::Face::SansBold, U.u(12.f), "CONNECTION", rx - U.u(40.f), ry + U.u(36.f), U.th.inkFaint, ui::Right, 0.22f);
         char sb[24]; std::snprintf(sb, sizeof sb, "%d", (int)std::lround(night_.score));
-        U.text(ui::Face::Sans, U.u(17.f), sb, rx, ry + U.u(64.f), U.th.inkDim, ui::Right);
+        if (screen_ != Screen::Story) U.text(ui::Face::Sans, U.u(17.f), sb, rx, ry + U.u(64.f), U.th.inkDim, ui::Right);
         // ---- position name ----
         U.text(ui::Face::SerifItalic, U.u(26.f), p.name, U.W * 0.5f, U.u(40.f), ui::withA(U.th.inkDim, 0.9f), ui::Center);
 
@@ -761,7 +770,7 @@ void Game::drawIntroCard(float a) {
 void Game::drawActionBar() {
     ui::Ui& U = ui;
     const PositionInfo& p = positions_[(size_t)posIndex_];
-    auto has = [&](const char* id) { for (auto& q : positions_) if (q.id == id) return true; return false; };
+    auto has = [&](const char* id) { for (auto& q : positions_) if (q.id == id) return actAllowed(id); return false; };
     const char* camNames[5] = {"Side", "Front", "Above", "His view", "Her face"};
     struct Btn { const char* key; std::string label; bool enabled, active; int action; const char* tip; };
     std::vector<Btn> bs = {
@@ -860,7 +869,7 @@ void Game::drawPositionBar(float a) {
     float cw = U.u(158.f), ch = U.u(96.f), gap = U.u(12.f), headW = U.u(150.f);
     int maxRow = 0;
     int counts[4] = {0, 0, 0, 0};
-    for (auto& q : positions_) for (int g = 0; g < 4; ++g) if (q.group == groups[g]) ++counts[g];
+    for (auto& q : positions_) for (int g = 0; g < 4; ++g) if (q.group == groups[g] && actAllowed(q.id)) ++counts[g];
     // no foreplay acts in the clips yet: the Foreplay row offers kissing and her touch, which join the current act
     const bool foreplayToggles = counts[0] == 0;
     int rows = 0;
@@ -917,7 +926,7 @@ void Game::drawPositionBar(float a) {
         float x = x0 + U.u(28.f) + headW;
         for (size_t i = 0; i < positions_.size(); ++i) {
             const PositionInfo& p = positions_[i];
-            if (p.group != groups[g]) continue;
+            if (p.group != groups[g] || !actAllowed(p.id)) continue;
             Rectangle r{x, y, cw, ch};
             bool cur = (int)i == posIndex_;
             bool over = CheckCollisionPointRec(U.in.mouse, r);

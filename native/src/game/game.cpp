@@ -701,6 +701,12 @@ void Game::applySpec(const Spec& s) {
             std::string sh = s.get("shot");
             if (!sh.empty()) { StoryLine fl = story_.line() ? *story_.line() : StoryLine{}; fl.cam = sh; storyShot(&fl, false); }
             if (s.has("pose")) setStoryPose(s.get("pose"), s.num("actT", 0.3f));
+            // the hand-over to play (the node must be a play node): autoplay drives the night
+            if (s.has("storyplay") && story_.node() && !story_.node()->playGoal.empty()) {
+                storyStartPlay();
+                autoplay_ = true;
+                night_.nextDesire = 4.f;
+            }
         }
     }
     screen_ = target;

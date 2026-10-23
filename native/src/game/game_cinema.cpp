@@ -388,6 +388,9 @@ void Game::directStory(float dt) {
         V3 up;
         c.headAxes(out.head, out.face, up);
         out.hips = c.bonePos("下半身");
+        V3 sr = c.bonePos("腕.R") - c.bonePos("腕.L");
+        sr.y = 0.f;
+        if (length(sr) > 1e-3f) out.body = normalize(cross(V3{0, 1, 0}, normalize(sr)));
     };
     view(scene.vivian, scene.showVivian, her);
     view(scene.marcus, scene.showMarcus, him);
@@ -431,7 +434,7 @@ void Game::applyStoryPose(float dt) {
     near_ = approachF(near_, std::max(nearTarget_, kissTarget_), dt / 1.3f);
     float k = smoothstep(0.f, 1.f, kiss_), nr = smoothstep(0.f, 1.f, near_);
     bool sit = pose_ == "sit";
-    float step = (sit ? 0.11f : 0.22f) * nr;
+    float step = (sit ? 0.1f : 0.16f) * nr;
     V3 axis = flatv(m.bonePos("センター") - v.bonePos("センター"));
     v.placement = m4translate(axis * step);
     m.placement = m4translate(axis * -step);
