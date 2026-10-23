@@ -152,7 +152,11 @@ void Game::shutdownAudio() {
 }
 
 void Game::voice(const std::string& name, float vol, float pitch) {
-    if (audio.ready()) audio.play("vox/" + name, vol * settings.voice, pitch);
+    // per-sample gains measured offline (RMS/peak): the moan is mastered hot, the whispered lines quiet
+    static const struct { const char* n; float g; } kGain[] = {{"moan02", 0.4f}, {"loveyou", 0.8f}, {"takeme", 3.f}, {"suck05", 4.f}, {"swallow04", 1.5f}};
+    float g = 1.f;
+    for (const auto& k : kGain) if (name == k.n) g = k.g;
+    if (audio.ready()) audio.play("vox/" + name, vol * g * settings.voice, pitch);
 }
 
 void Game::sfx(const std::string& prefix, float vol, float jitter) {
