@@ -11,7 +11,8 @@ namespace ag {
 class Animator;
 class Character;
 
-enum class Zone { Vulva = 0, BreastL, BreastR, Count };
+// L / R are the character's own sides (MMD .L / .R); Chest* / Waist* are where a partner's hands rest in an embrace
+enum class Zone { Vulva = 0, BreastL, BreastR, ChestL, ChestR, WaistL, WaistR, Count };
 
 struct BodyZone {
     int bone = -1;              // node the zone rides on

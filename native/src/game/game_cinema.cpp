@@ -452,23 +452,28 @@ void Game::applyStoryPose(float dt) {
         float& kissExpr = actors_[w].expr["kiss"];
         kissExpr = std::max(kissExpr * (kissTarget_ > 0.5f ? 1.f : 0.f), 0.85f * k);
     }
-    // hands: hers on his chest, his at her waist (resting palms, no dents)
+    // hands: hers on his chest, his at her waist, each on the partner's side facing it (her left on his right) so the
+    // arms never cross; resting on the real surface (anchors found on the bind mesh), over the clothes when dressed
     TouchGoals tv, tm;
     if (nr > 0.05f && !sit && v.loaded() && m.loaded()) {
         V3 hc = m.bonePos("上半身2"), hr = flatv(m.bonePos("腕.R") - m.bonePos("腕.L"));
         V3 hf = flatv(cross(V3{0, 1, 0}, hr));
         V3 vc = v.bonePos("下半身"), vr = flatv(v.bonePos("腕.R") - v.bonePos("腕.L"));
         V3 vf = flatv(cross(V3{0, 1, 0}, vr));
+        auto cloth = [](const Character& c) { const Outfit* o = c.outfit(); return o && o->loaded() && o->visibility(1) > 0.5f ? 0.012f : 0.004f; };
         for (int s = 0; s < 2; ++s) {
-            float sg = s ? 1.f : -1.f;
+            float sg = s ? 1.f : -1.f;   // the hand's own side: -1 left, +1 right
+            V3 zp, zn;
             HandGoal g;
             g.active = true; g.world = true; g.dent = false; g.weight = nr; g.curl = 0.18f; g.press = 0.f;
-            g.pos = hc + hf * 0.12f + V3{0.f, 0.1f, 0.f} + hr * (0.085f * sg);
-            g.normal = hf; g.along = V3{0, 1, 0};
+            if (m.touch.zoneWorld(m.anim, s ? Zone::ChestL : Zone::ChestR, zp, zn)) { g.pos = zp + zn * cloth(m); g.normal = zn; }
+            else { g.pos = hc + hf * 0.12f + V3{0.f, 0.1f, 0.f} - hr * (0.085f * sg); g.normal = hf; }
+            g.along = V3{0, 1, 0};
             (s ? tv.right : tv.left) = g;
             HandGoal h = g;
-            h.pos = vc + V3{0.f, 0.06f, 0.f} + vr * (0.15f * sg) - vf * 0.02f;
-            h.normal = vr * sg; h.along = vf * -1.f;
+            if (v.touch.zoneWorld(v.anim, s ? Zone::WaistL : Zone::WaistR, zp, zn)) { h.pos = zp + zn * cloth(v); h.normal = zn; }
+            else { h.pos = vc + V3{0.f, 0.06f, 0.f} - vr * (0.15f * sg) - vf * 0.02f; h.normal = vr * -sg; }
+            h.along = vf * -1.f;
             h.curl = 0.3f;
             (s ? tm.right : tm.left) = h;
         }

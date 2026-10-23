@@ -137,8 +137,48 @@ void TouchRig::init(Character& c) {
         }
     }
     ready_ = arms_[0].wrist >= 0 || arms_[1].wrist >= 0;   // zones are optional (world goals work on anyone)
-    AG_INFO("AG: touch: vulva %s, breasts %s/%s, hand joints L %d-%d R %d-%d", zones_[0].valid ? "yes" : "no",
-            zones_[1].valid ? "yes" : "no", zones_[2].valid ? "yes" : "no", handJointLo[0], handJointHi[0], handJointLo[1], handJointHi[1]);
+    // ---- where a partner's hands rest (embraces): the skin a ray from inside the body (bind pose) meets first ----
+    auto anchor = [&](Zone z, const char* boneName, V3 offset, V3 dir) {
+        int bone = node(boneName);
+        if (bone < 0) return;
+        V3 o = a.global(bone).translation() + offset;
+        float best = 0.35f;
+        V3 hitN{0, 0, 0};
+        for (const Node& nd : m.nodes) {
+            if (nd.mesh < 0 || nd.name.find("_body") == std::string::npos) continue;
+            for (const Primitive& pr : m.meshes[(size_t)nd.mesh].prims) {
+                if (pr.idx.empty() || pr.pos.empty()) continue;
+                auto P = [&](uint32_t i) { return V3{pr.pos[i * 3], pr.pos[i * 3 + 1], pr.pos[i * 3 + 2]}; };
+                for (size_t t = 0; t + 2 < pr.idx.size(); t += 3) {
+                    V3 A = P(pr.idx[t]), e1 = P(pr.idx[t + 1]) - A, e2 = P(pr.idx[t + 2]) - A;
+                    V3 pv = cross(dir, e2);
+                    float det = dot(e1, pv);
+                    if (std::fabs(det) < 1e-12f) continue;
+                    float inv = 1.f / det;
+                    V3 tv = o - A;
+                    float u = dot(tv, pv) * inv;
+                    if (u < 0.f || u > 1.f) continue;
+                    V3 qv = cross(tv, e1);
+                    float w = dot(dir, qv) * inv;
+                    if (w < 0.f || u + w > 1.f) continue;
+                    float s = dot(e2, qv) * inv;
+                    if (s > 0.f && s < best) { best = s; hitN = normalize(cross(e1, e2)); }
+                }
+            }
+        }
+        if (best >= 0.35f) return;
+        if (dot(hitN, dir) < 0.f) hitN = hitN * -1.f;
+        M4 inv = inverse(a.global(bone));
+        zones_[(int)z] = {bone, xformPoint(inv, o + dir * best), normalize(xformDir(inv, hitN)), true};
+    };
+    // bind pose faces +Z; the character's left (.L) is +X
+    anchor(Zone::ChestL, "上半身2", V3{0.085f, 0.1f, 0.f}, V3{0.f, 0.f, 1.f});
+    anchor(Zone::ChestR, "上半身2", V3{-0.085f, 0.1f, 0.f}, V3{0.f, 0.f, 1.f});
+    anchor(Zone::WaistL, "下半身", V3{0.f, 0.06f, 0.f}, normalize(V3{1.f, 0.f, 0.15f}));
+    anchor(Zone::WaistR, "下半身", V3{0.f, 0.06f, 0.f}, normalize(V3{-1.f, 0.f, 0.15f}));
+    AG_INFO("AG: touch: vulva %s, breasts %s/%s, chest %s/%s, waist %s/%s, hand joints L %d-%d R %d-%d", zones_[0].valid ? "yes" : "no",
+            zones_[1].valid ? "yes" : "no", zones_[2].valid ? "yes" : "no", zones_[3].valid ? "yes" : "no", zones_[4].valid ? "yes" : "no",
+            zones_[5].valid ? "yes" : "no", zones_[6].valid ? "yes" : "no", handJointLo[0], handJointHi[0], handJointLo[1], handJointHi[1]);
 }
 
 bool TouchRig::zoneWorld(const Animator& a, Zone z, V3& pos, V3& normal) const {
