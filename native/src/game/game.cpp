@@ -117,6 +117,7 @@ bool Game::init() {
     };
     std::stable_sort(positions_.begin(), positions_.end(), [&](const PositionInfo& x, const PositionInfo& y) { return rank(x) < rank(y); });
     if (positions_.empty()) { PositionInfo p; p.id = "none"; p.name = "\xe2\x80\x94"; positions_.push_back(p); }
+    loadStories();
     sceneReady_ = true;
     camSafety_.boundsMin = scene.info.camMin;
     camSafety_.boundsMax = scene.info.camMax;
@@ -189,8 +190,11 @@ void Game::enterScreen(Screen s) {
     confirmQuit_ = confirmNew_ = false;
     renderer.uiBlur = s != Screen::Play;
     switch (s) {
-        case Screen::Title: case Screen::Menu:
+        case Screen::Title: case Screen::Menu: case Screen::Stories:
             if (stage_ != Stage::Bedroom) stage(Stage::Bedroom);
+            storyMood_ = -1;
+            break;
+        case Screen::Story:
             break;
         case Screen::Customize:
             stage(Stage::Showcase);
@@ -360,7 +364,11 @@ void Game::update(float dt) {
         } else if (fadeDir_ < 0.f && fade_ <= 0.f) { fade_ = 0.f; fadeDir_ = 0.f; }
     }
 
-    if (screen_ == Screen::Play || screen_ == Screen::Pause || screen_ == Screen::Results ||
+    if (screen_ == Screen::Story) {
+        updateStory(dt);
+    } else if (screen_ == Screen::Settings && settingsReturn_ == Screen::Story) {
+        presentStory(0.f);
+    } else if (screen_ == Screen::Play || screen_ == Screen::Pause || screen_ == Screen::Results ||
         (screen_ == Screen::Settings && settingsReturn_ == Screen::Pause)) {
         updatePlay(screen_ == Screen::Play ? dt : 0.f);
         presentPlay(screen_ == Screen::Play ? dt : (screen_ == Screen::Results ? dt : 0.f));
@@ -400,9 +408,10 @@ void Game::render(int w, int h) {
     // lighting mood (+ the player's brightness/warmth), then the night's own grade on top
     LightingSetup ls;
     ls.mood = (Mood)settings.lightMood; ls.brightness = settings.brightness; ls.warmth = settings.warmth;
+    if ((screen_ == Screen::Story || (screen_ == Screen::Settings && settingsReturn_ == Screen::Story)) && storyMood_ >= 0) ls.mood = (Mood)storyMood_;
     applyLighting(scene, rs, ls, cam_);
     bool night = screen_ == Screen::Play || screen_ == Screen::Pause || screen_ == Screen::Results ||
-                 (screen_ == Screen::Settings && settingsReturn_ == Screen::Pause);
+                 (screen_ == Screen::Settings && settingsReturn_ == Screen::Pause) || (screen_ == Screen::Story && storyPlaying_);
     if (night) {
         rs.bloomStrength += postBloomAdd_; rs.saturation += postSatAdd_; rs.vignette += postVigAdd_;
         rs.warmth += postWarmAdd_; rs.exposure *= postExpMul_;
@@ -443,6 +452,8 @@ void Game::render(int w, int h) {
         case Screen::Play: drawHud(); break;
         case Screen::Pause: drawHud(); drawPause(); break;
         case Screen::Results: drawResults(); break;
+        case Screen::Stories: drawStories(); break;
+        case Screen::Story: drawStory(); break;
     }
     if (debug_) drawDebug();
     if (shotPending_) {
@@ -575,6 +586,8 @@ void Game::applySpec(const Spec& s) {
     else if (scr == "play") target = Screen::Play;
     else if (scr == "pause") target = Screen::Pause;
     else if (scr == "results") target = Screen::Results;
+    else if (scr == "stories") target = Screen::Stories;
+    else if (scr == "story") target = Screen::Story;
     custTab_ = s.get("tab") == "him" ? 1 : 0;
     showcaseWho_ = custTab_;
     setTab_ = (int)s.num("settab", 0.f);
@@ -622,6 +635,19 @@ void Game::applySpec(const Spec& s) {
             night_.herClimaxes = night_.together ? 2 : 0;
             night_.desiresMet = 9; night_.desiresMissed = 2; night_.bestStreak = 5; night_.connection = 0.86f;
             endNight(true);
+        }
+    }
+    if (target == Screen::Story) {
+        const Story* st = storyById(s.get("story"));
+        if (!st && !stories_.empty()) st = &stories_[0];
+        if (st) {
+            std::string nodeId = s.get("node", st->chapters[0].start);
+            stage(Stage::Night);
+            story_.start(st, nodeId, nullptr, (int)s.num("line", 0.f));
+            storyPlaying_ = false; storyOverlay_ = (int)s.num("overlay", 0.f);
+            storyCardT_ = s.has("card") ? 0.8f : 99.f;
+            story_.nodeChanged = true;
+            for (int k = 0; k < (int)s.num("reveal", 999.f); ++k) story_.update(1.f / 30.f);
         }
     }
     screen_ = target;

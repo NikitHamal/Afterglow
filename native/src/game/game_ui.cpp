@@ -76,7 +76,8 @@ void Game::drawMenu() {
     struct Item { const char* id; const char* label; };
     std::vector<Item> items;
     if (canContinue) items.push_back({"m_cont", "Continue the night"});
-    items.push_back({"m_new", canContinue ? "A new night" : "Begin the night"});
+    items.push_back({"m_story", "Stories"});
+    items.push_back({"m_new", canContinue ? "A new night" : "Free play"});
     items.push_back({"m_cust", "Customize"});
     items.push_back({"m_set", "Settings"});
     items.push_back({"m_quit", "Quit"});
@@ -90,6 +91,7 @@ void Game::drawMenu() {
                 if (canContinue && !confirmNew_) confirmNew_ = true;
                 else { startNight(false); go(Screen::Play, 0.6f); }
             }
+            else if (id == "m_story") go(Screen::Stories, 0.4f);
             else if (id == "m_cust") go(Screen::Customize, 0.4f);
             else if (id == "m_set") { settingsReturn_ = Screen::Menu; go(Screen::Settings, 0.3f); }
             else if (id == "m_quit") { saveAll(); quit_ = true; }
@@ -445,15 +447,22 @@ void Game::drawPause() {
     U.panel(Rectangle{px, py, pw, ph}, 28.f, 0.55f);
     U.text(ui::Face::Serif, U.u(64.f), "Paused", U.W * 0.5f, py + U.u(44.f), U.th.ink, ui::Center);
     float y = py + U.u(150.f), x = px + U.u(70.f);
-    if (U.menuItem("p_res", "Resume", x, y, pw - U.u(140.f)) || (U.in.back && !switching_ && screenTime_ > 0.2f)) go(Screen::Play, 0.15f);
+    if (U.menuItem("p_res", "Resume", x, y, pw - U.u(140.f)) || (U.in.back && !switching_ && screenTime_ > 0.2f)) go(pauseReturn_, 0.15f);
     y += U.u(70.f);
-    if (U.menuItem("p_pos", "Positions", x, y, pw - U.u(140.f))) { barOpen_ = true; go(Screen::Play, 0.15f); }
+    if (U.menuItem("p_pos", "Acts", x, y, pw - U.u(140.f))) { barOpen_ = true; go(pauseReturn_, 0.15f); }
     y += U.u(70.f);
     if (U.menuItem("p_set", "Settings", x, y, pw - U.u(140.f))) { settingsReturn_ = Screen::Pause; go(Screen::Settings, 0.2f); }
     y += U.u(70.f);
-    if (U.menuItem("p_end", "End the night", x, y, pw - U.u(140.f))) { endNight(false); go(Screen::Results, 0.6f); }
+    if (U.menuItem("p_end", pauseReturn_ == Screen::Story ? "Skip ahead" : "End the night", x, y, pw - U.u(140.f))) {
+        if (pauseReturn_ == Screen::Story) {
+            storyPlaying_ = false;
+            if (story_.node() && !story_.node()->playNext.empty()) story_.jump(story_.node()->playNext);
+            go(Screen::Story, 0.4f);
+        } else { endNight(false); go(Screen::Results, 0.6f); }
+    }
     y += U.u(70.f);
     if (U.menuItem("p_menu", "Main menu", x, y, pw - U.u(140.f))) {
+        if (pauseReturn_ == Screen::Story) { storyAutosave(); story_.stop(); storyPlaying_ = false; go(Screen::Menu, 0.5f); return; }
         profile.night = night_.snapshot();
         if (!harness) profile.save(profilePath_);
         go(Screen::Menu, 0.5f);

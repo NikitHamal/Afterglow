@@ -2,7 +2,7 @@
 # Format: name|spec. Keys: screen=title|menu|customize|settings|play|pause|results, tab=her|him, settab=0..4,
 # pos, depth, her, him, connection, desire, rub, embrace, cam=side|front|top|fpv|face|touch, bar=1, climax=her|him|together,
 # result=together|soon, body/mbody/tone/mtone/hair, quality, hints, mood=evening|candle|day, bright, warm,
-# t (seconds into the screen).
+# story=<id>;node=<node>;line=<n>;overlay=1..5;card=1;reveal=<frames>, t (seconds into the screen).
 title|screen=title;t=4
 menu|screen=menu;t=3
 customize_her|screen=customize;tab=her;t=2
@@ -34,6 +34,13 @@ face_climax|screen=play;pos=missionary;depth=0.8;her=0.95;him=0.6;climax=her;cam
 face_doggy|screen=play;pos=doggy;depth=0.6;her=0.6;him=0.4;cam=face
 face_oral|screen=play;pos=oral;depth=0.5;her=0.3;him=0.6;cam=face
 pause|screen=pause;pos=missionary;depth=0.5;her=0.4;him=0.3
+stories|screen=stories;t=2
+story_card|screen=story;story=the_storm;node=c1_knock;card=1;line=0;reveal=20
+story_reading|screen=story;story=old_flames;node=c1_reception;line=4
+story_choice|screen=story;story=old_flames;node=c1_reception;line=99
+story_intimate|screen=story;story=salt_and_sun;node=c6_bed;line=2
+story_menu|screen=story;story=old_flames;node=c2_terrace;line=2;overlay=5
+story_ending|screen=story;story=the_storm;node=c7_dawn;line=99
 results|screen=results;result=together
 results_soon|screen=results;result=soon
 autoplay_60s|screen=play;pos=missionary;autoplay=1;frames=3600;render_from=3594;cam=side
