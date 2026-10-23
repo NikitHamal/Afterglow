@@ -96,15 +96,19 @@ def dominant_bone(obj):
         out.append(names.get(best.group, "?") if best else "?")
     return out
 
-def interpenetration(A, Pa, allowA, B, Pb, allowB, sample=2, boneA=None, boneB=None):
-    """intersecting triangle pairs not covered by the allowed regions, max depth of A-verts inside B,
-    and the worst offending bone pairs"""
+def interpenetration(A, Pa, allowA, B, Pb, allowB, sample=2, boneA=None, boneB=None, handA=None, handB=None, extra=()):
+    """intersecting triangle pairs not covered by the allowed regions (hands may touch anything: holding is
+    intended contact), max depth of A-verts inside B, and the worst offending bone pairs"""
     ta = BVHTree.FromPolygons([tuple(v) for v in A], Pa); tb = BVHTree.FromPolygons([tuple(v) for v in B], Pb)
     pairs = ta.overlap(tb)
     bad = []
     for i, j in pairs:
+        if handA is not None and any(handA[k] for k in Pa[i]): continue
+        if handB is not None and any(handB[k] for k in Pb[j]): continue
         okA = any(allowA[k] for k in Pa[i]); okB = any(allowB[k] for k in Pb[j])
-        if not (okA and okB): bad.append((i, j))
+        if okA and okB: continue
+        if any(any(za[k] for k in Pa[i]) and any(zb[k] for k in Pb[j]) for za, zb in extra): continue
+        bad.append((i, j))
     depth = 0.0
     if bad:
         verts = {k for i, _ in bad for k in Pa[i]}
@@ -126,6 +130,6 @@ def flips(prev, cur, limit_deg=35.0):
     for n, m in cur.items():
         if n not in prev: continue
         q0 = prev[n].to_quaternion(); q1 = m.to_quaternion()
-        a = math.degrees(q0.rotation_difference(q1).angle)
+        a = math.degrees(q0.rotation_difference(q1).angle); a = min(a, 360.0 - a)
         if a > worst: worst, who = a, n
     return worst, who

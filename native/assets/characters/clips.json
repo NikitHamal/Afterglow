@@ -5,7 +5,8 @@
  "fps": 24,
  "world": "Both characters' clips share the room's world space (bed centre x=0, z=-1.22, mattress top y=0.604); no runtime placement needed.",
  "conventions": {
-  "depth_clips": "sample <pos>.in at t = depth * duration for BOTH characters with the same t",
+  "depth_clips": "sample <pos>.in at t = depth * duration for BOTH characters with the same t; insert_m = shaft length inside her at t=0 / t=1 (cowgirl + reverse ride the upper shaft, so they never leave her)",
+  "contact": "verify counts triangle pairs outside the intended contact: genitals, hands, mouth (oral/lick), the shaft vs her inner thighs/buttocks within 6 cm of the entrance, and pelvis-to-pelvis flesh (her within 19 cm of the entrance, his within 22 cm of the shaft root)",
   "layers": "<pos>.rub only keys the listed bones; blend it over <pos>.in with a bone mask (rub phase loops 0..1)",
   "embrace": "missionary.embrace is a pose layer for upper body + arms; blend weight = embrace amount",
   "not_animated": "hair chains 髪.* and eyes 目.L/目.R are not keyed: simulate hair (colliders in node extras) and drive gaze live",
@@ -20,6 +21,10 @@
    "rubHand": null,
    "layerBones": null,
    "stroke_m": 0.11,
+   "insert_m": [
+    -0.006,
+    0.104
+   ],
    "morphs": {
     "vivian": {
      "vag_open": "smoothstep(0, 0.12, depth)"
@@ -32,9 +37,9 @@
    "cameras": {
     "orbit_side": {
      "target": [
-      -0.0078,
-      1.0028,
-      -0.9067
+      0.0,
+      1.0072,
+      -0.9065
      ],
      "yaw": 90,
      "pitch": 18,
@@ -42,9 +47,9 @@
     },
     "orbit_front": {
      "target": [
-      -0.0078,
-      1.0028,
-      -0.9067
+      0.0,
+      1.0072,
+      -0.9065
      ],
      "yaw": 200,
      "pitch": 24,
@@ -52,9 +57,9 @@
     },
     "orbit_top": {
      "target": [
-      -0.0078,
-      1.0028,
-      -0.9067
+      0.0,
+      1.0072,
+      -0.9065
      ],
      "yaw": 120,
      "pitch": 55,
@@ -77,23 +82,23 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 10,
+    "max_bad_tri_pairs": 0,
     "max_depth_mm": 0.0,
-    "worst_flip_deg": 6.0,
+    "worst_flip_deg": 8.5,
     "floors_mm": {
      "vivian": [
-      -12.0,
-      -12.0,
-      -12.0,
-      -12.0,
-      -12.0
+      -8.0,
+      -8.0,
+      -8.0,
+      -8.0,
+      -8.0
      ],
      "marcus": [
-      2.8,
       2.0,
-      2.0,
-      2.0,
-      2.0
+      1.6,
+      -1.0,
+      -1.0,
+      -1.0
      ]
     }
    }
@@ -108,6 +113,7 @@
     "vivian": "arm.R"
    },
    "stroke_m": 0.0,
+   "insert_m": null,
    "morphs": {
     "vivian": {},
     "marcus": {
@@ -118,9 +124,9 @@
    "cameras": {
     "orbit_side": {
      "target": [
-      -0.0078,
-      1.0028,
-      -0.9067
+      0.0,
+      1.0072,
+      -0.9065
      ],
      "yaw": 90,
      "pitch": 18,
@@ -128,9 +134,9 @@
     },
     "orbit_front": {
      "target": [
-      -0.0078,
-      1.0028,
-      -0.9067
+      0.0,
+      1.0072,
+      -0.9065
      ],
      "yaw": 200,
      "pitch": 24,
@@ -138,9 +144,9 @@
     },
     "orbit_top": {
      "target": [
-      -0.0078,
-      1.0028,
-      -0.9067
+      0.0,
+      1.0072,
+      -0.9065
      ],
      "yaw": 120,
      "pitch": 55,
@@ -168,18 +174,18 @@
     "worst_flip_deg": 1.5,
     "floors_mm": {
      "vivian": [
-      -12.0,
-      -12.0,
-      -12.0,
-      -12.0,
-      -12.0
+      -8.0,
+      -8.0,
+      -8.0,
+      -8.0,
+      -8.0
      ],
      "marcus": [
-      2.0,
-      2.0,
-      2.0,
-      2.0,
-      2.0
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0,
+      -1.0
      ]
     }
    }
@@ -195,6 +201,7 @@
     "marcus": "upper"
    },
    "stroke_m": 0.0,
+   "insert_m": null,
    "morphs": {
     "vivian": {},
     "marcus": {
@@ -205,9 +212,9 @@
    "cameras": {
     "orbit_side": {
      "target": [
-      -0.0078,
-      1.0028,
-      -0.9067
+      0.0,
+      1.0072,
+      -0.9065
      ],
      "yaw": 90,
      "pitch": 18,
@@ -215,9 +222,9 @@
     },
     "orbit_front": {
      "target": [
-      -0.0078,
-      1.0028,
-      -0.9067
+      0.0,
+      1.0072,
+      -0.9065
      ],
      "yaw": 200,
      "pitch": 24,
@@ -225,9 +232,9 @@
     },
     "orbit_top": {
      "target": [
-      -0.0078,
-      1.0028,
-      -0.9067
+      0.0,
+      1.0072,
+      -0.9065
      ],
      "yaw": 120,
      "pitch": 55,
@@ -250,12 +257,12 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 598,
-    "max_depth_mm": 33.0,
+    "max_bad_tri_pairs": 12,
+    "max_depth_mm": 3.3,
     "worst_flip_deg": 0.0,
     "floors_mm": {
      "vivian": [
-      -12.0
+      -8.0
      ],
      "marcus": [
       2.0
@@ -271,6 +278,7 @@
    "rubHand": null,
    "layerBones": null,
    "stroke_m": 0.0,
+   "insert_m": null,
    "morphs": {
     "vivian": {},
     "marcus": {
@@ -282,7 +290,7 @@
     "orbit_side": {
      "target": [
       0.0,
-      0.785,
+      0.7904,
       -1.02
      ],
      "yaw": 90,
@@ -292,7 +300,7 @@
     "orbit_front": {
      "target": [
       0.0,
-      0.785,
+      0.7904,
       -1.02
      ],
      "yaw": 200,
@@ -302,7 +310,7 @@
     "orbit_top": {
      "target": [
       0.0,
-      0.785,
+      0.7904,
       -1.02
      ],
      "yaw": 120,
@@ -331,18 +339,18 @@
     "worst_flip_deg": 3.0,
     "floors_mm": {
      "vivian": [
-      -13.4,
-      -13.4,
-      -13.4,
-      -13.3,
-      -13.4
+      -11.4,
+      -11.4,
+      -11.4,
+      -11.4,
+      -11.4
      ],
      "marcus": [
-      -1115.6,
-      -1115.6,
-      -1115.6,
-      -1115.6,
-      -1115.6
+      -604.0,
+      -604.0,
+      -604.0,
+      -604.0,
+      -604.0
      ]
     }
    }
@@ -355,6 +363,7 @@
    "rubHand": null,
    "layerBones": null,
    "stroke_m": 0.0,
+   "insert_m": null,
    "morphs": {
     "vivian": {},
     "marcus": {
@@ -366,7 +375,7 @@
     "orbit_side": {
      "target": [
       0.0,
-      0.785,
+      0.789,
       -1.02
      ],
      "yaw": 90,
@@ -376,7 +385,7 @@
     "orbit_front": {
      "target": [
       0.0,
-      0.785,
+      0.789,
       -1.02
      ],
      "yaw": 200,
@@ -386,7 +395,7 @@
     "orbit_top": {
      "target": [
       0.0,
-      0.785,
+      0.789,
       -1.02
      ],
      "yaw": 120,
@@ -415,18 +424,18 @@
     "worst_flip_deg": 0.1,
     "floors_mm": {
      "vivian": [
-      -7.3,
-      -7.3,
-      -7.3,
-      -7.3,
-      -7.3
+      -3.3,
+      -3.3,
+      -3.3,
+      -3.3,
+      -3.3
      ],
      "marcus": [
-      -1115.6,
-      -1115.6,
-      -1115.6,
-      -1115.6,
-      -1115.6
+      -604.0,
+      -604.0,
+      -604.0,
+      -604.0,
+      -604.0
      ]
     }
    }
@@ -439,6 +448,10 @@
    "rubHand": null,
    "layerBones": null,
    "stroke_m": 0.11,
+   "insert_m": [
+    -0.006,
+    0.104
+   ],
    "morphs": {
     "vivian": {
      "vag_open": "smoothstep(0, 0.12, depth)"
@@ -451,7 +464,7 @@
    "cameras": {
     "orbit_side": {
      "target": [
-      -0.0049,
+      0.0,
       0.9808,
       -0.8996
      ],
@@ -461,7 +474,7 @@
     },
     "orbit_front": {
      "target": [
-      -0.0049,
+      0.0,
       0.9808,
       -0.8996
      ],
@@ -471,7 +484,7 @@
     },
     "orbit_top": {
      "target": [
-      -0.0049,
+      0.0,
       0.9808,
       -0.8996
      ],
@@ -496,9 +509,9 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 538,
-    "max_depth_mm": 23.5,
-    "worst_flip_deg": 6.3,
+    "max_bad_tri_pairs": 31,
+    "max_depth_mm": 8.8,
+    "worst_flip_deg": 0.6,
     "floors_mm": {
      "vivian": [
       -4.3,
@@ -508,11 +521,11 @@
       -4.3
      ],
      "marcus": [
-      -11.5,
-      -13.0,
-      -13.0,
-      -13.0,
-      -13.0
+      1.6,
+      1.6,
+      1.6,
+      1.7,
+      1.5
      ]
     }
    }
@@ -525,6 +538,10 @@
    "rubHand": null,
    "layerBones": null,
    "stroke_m": 0.11,
+   "insert_m": [
+    -0.006,
+    0.104
+   ],
    "morphs": {
     "vivian": {
      "vag_open": "smoothstep(0, 0.12, depth)"
@@ -537,9 +554,9 @@
    "cameras": {
     "orbit_side": {
      "target": [
-      0.0085,
-      1.2338,
-      -0.8338
+      0.0,
+      1.2405,
+      -0.8364
      ],
      "yaw": 90,
      "pitch": 18,
@@ -547,9 +564,9 @@
     },
     "orbit_front": {
      "target": [
-      0.0085,
-      1.2338,
-      -0.8338
+      0.0,
+      1.2405,
+      -0.8364
      ],
      "yaw": 200,
      "pitch": 24,
@@ -557,9 +574,9 @@
     },
     "orbit_top": {
      "target": [
-      0.0085,
-      1.2338,
-      -0.8338
+      0.0,
+      1.2405,
+      -0.8364
      ],
      "yaw": 120,
      "pitch": 55,
@@ -582,9 +599,9 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 195,
-    "max_depth_mm": 14.0,
-    "worst_flip_deg": 360.0,
+    "max_bad_tri_pairs": 0,
+    "max_depth_mm": 0.0,
+    "worst_flip_deg": 1.0,
     "floors_mm": {
      "vivian": [
       -0.8,
@@ -594,11 +611,11 @@
       -0.8
      ],
      "marcus": [
-      14.1,
-      14.1,
-      14.1,
-      14.1,
-      14.2
+      -0.3,
+      -2.0,
+      -3.6,
+      -5.2,
+      -6.1
      ]
     }
    }
@@ -613,6 +630,7 @@
     "vivian": "arm.R"
    },
    "stroke_m": 0.0,
+   "insert_m": null,
    "morphs": {
     "vivian": {},
     "marcus": {
@@ -623,9 +641,9 @@
    "cameras": {
     "orbit_side": {
      "target": [
-      0.0085,
-      1.2338,
-      -0.8338
+      0.0,
+      1.2405,
+      -0.8364
      ],
      "yaw": 90,
      "pitch": 18,
@@ -633,9 +651,9 @@
     },
     "orbit_front": {
      "target": [
-      0.0085,
-      1.2338,
-      -0.8338
+      0.0,
+      1.2405,
+      -0.8364
      ],
      "yaw": 200,
      "pitch": 24,
@@ -643,9 +661,9 @@
     },
     "orbit_top": {
      "target": [
-      0.0085,
-      1.2338,
-      -0.8338
+      0.0,
+      1.2405,
+      -0.8364
      ],
      "yaw": 120,
      "pitch": 55,
@@ -668,8 +686,8 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 183,
-    "max_depth_mm": 10.0,
+    "max_bad_tri_pairs": 0,
+    "max_depth_mm": 0.0,
     "worst_flip_deg": 0.3,
     "floors_mm": {
      "vivian": [
@@ -680,11 +698,11 @@
       -0.8
      ],
      "marcus": [
-      14.1,
-      14.1,
-      14.1,
-      14.1,
-      14.1
+      -3.6,
+      -3.6,
+      -3.6,
+      -3.6,
+      -3.6
      ]
     }
    }
@@ -697,6 +715,10 @@
    "rubHand": null,
    "layerBones": null,
    "stroke_m": 0.11,
+   "insert_m": [
+    -0.006,
+    0.104
+   ],
    "morphs": {
     "vivian": {
      "vag_open": "smoothstep(0, 0.12, depth)"
@@ -709,9 +731,9 @@
    "cameras": {
     "orbit_side": {
      "target": [
-      0.015,
-      1.0161,
-      -0.8499
+      0.0,
+      1.0226,
+      -0.8493
      ],
      "yaw": 90,
      "pitch": 18,
@@ -719,9 +741,9 @@
     },
     "orbit_front": {
      "target": [
-      0.015,
-      1.0161,
-      -0.8499
+      0.0,
+      1.0226,
+      -0.8493
      ],
      "yaw": 200,
      "pitch": 24,
@@ -729,9 +751,9 @@
     },
     "orbit_top": {
      "target": [
-      0.015,
-      1.0161,
-      -0.8499
+      0.0,
+      1.0226,
+      -0.8493
      ],
      "yaw": 120,
      "pitch": 55,
@@ -754,23 +776,23 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 875,
-    "max_depth_mm": 35.3,
-    "worst_flip_deg": 0.2,
+    "max_bad_tri_pairs": 100,
+    "max_depth_mm": 15.3,
+    "worst_flip_deg": 0.4,
     "floors_mm": {
      "vivian": [
-      -57.6,
-      -57.6,
-      -57.6,
-      -57.6,
-      -57.6
+      -9.0,
+      -9.0,
+      -9.0,
+      -9.0,
+      -9.0
      ],
      "marcus": [
-      -69.4,
-      -69.8,
-      -70.3,
-      -70.8,
-      -71.2
+      -2.5,
+      -2.5,
+      -2.5,
+      -2.5,
+      -2.5
      ]
     }
    }
@@ -782,10 +804,14 @@
    "time": "normalized depth (0 = tip at the entrance, 1 = full)",
    "rubHand": null,
    "layerBones": null,
-   "stroke_m": 0.075,
+   "stroke_m": 0.06,
+   "insert_m": [
+    0.039,
+    0.099
+   ],
    "morphs": {
     "vivian": {
-     "vag_open": "smoothstep(0, 0.12, depth)"
+     "vag_open": 1.0
     },
     "marcus": {
      "aroused": 1.0
@@ -795,9 +821,9 @@
    "cameras": {
     "orbit_side": {
      "target": [
-      -0.0074,
-      1.0282,
-      -0.9863
+      0.0,
+      1.0304,
+      -0.8986
      ],
      "yaw": 90,
      "pitch": 18,
@@ -805,9 +831,9 @@
     },
     "orbit_front": {
      "target": [
-      -0.0074,
-      1.0282,
-      -0.9863
+      0.0,
+      1.0304,
+      -0.8986
      ],
      "yaw": 200,
      "pitch": 24,
@@ -815,9 +841,9 @@
     },
     "orbit_top": {
      "target": [
-      -0.0074,
-      1.0282,
-      -0.9863
+      0.0,
+      1.0304,
+      -0.8986
      ],
      "yaw": 120,
      "pitch": 55,
@@ -840,23 +866,23 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 366,
-    "max_depth_mm": 36.9,
-    "worst_flip_deg": 5.7,
+    "max_bad_tri_pairs": 112,
+    "max_depth_mm": 37.1,
+    "worst_flip_deg": 2.3,
     "floors_mm": {
      "vivian": [
-      7.1,
-      -8.4,
-      -11.0,
-      -11.7,
-      -12.1
+      0.8,
+      0.8,
+      0.8,
+      0.8,
+      0.8
      ],
      "marcus": [
-      -7.6,
-      -7.6,
-      -7.6,
-      -7.6,
-      -7.5
+      -7.2,
+      -7.2,
+      -7.2,
+      -7.2,
+      -7.2
      ]
     }
    }
@@ -871,6 +897,7 @@
     "vivian": "arm.R"
    },
    "stroke_m": 0.0,
+   "insert_m": null,
    "morphs": {
     "vivian": {},
     "marcus": {
@@ -881,9 +908,9 @@
    "cameras": {
     "orbit_side": {
      "target": [
-      -0.0074,
-      1.0282,
-      -0.9863
+      0.0,
+      1.0304,
+      -0.8986
      ],
      "yaw": 90,
      "pitch": 18,
@@ -891,9 +918,9 @@
     },
     "orbit_front": {
      "target": [
-      -0.0074,
-      1.0282,
-      -0.9863
+      0.0,
+      1.0304,
+      -0.8986
      ],
      "yaw": 200,
      "pitch": 24,
@@ -901,9 +928,9 @@
     },
     "orbit_top": {
      "target": [
-      -0.0074,
-      1.0282,
-      -0.9863
+      0.0,
+      1.0304,
+      -0.8986
      ],
      "yaw": 120,
      "pitch": 55,
@@ -926,23 +953,23 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 337,
-    "max_depth_mm": 31.9,
-    "worst_flip_deg": 1.0,
+    "max_bad_tri_pairs": 60,
+    "max_depth_mm": 32.4,
+    "worst_flip_deg": 1.9,
     "floors_mm": {
      "vivian": [
-      -11.0,
-      -11.0,
-      -11.0,
-      -11.0,
-      -11.0
+      0.8,
+      0.8,
+      0.8,
+      0.8,
+      0.8
      ],
      "marcus": [
-      -7.6,
-      -7.6,
-      -7.6,
-      -7.6,
-      -7.6
+      -7.2,
+      -7.2,
+      -7.2,
+      -7.2,
+      -7.2
      ]
     }
    }
@@ -954,10 +981,14 @@
    "time": "normalized depth (0 = tip at the entrance, 1 = full)",
    "rubHand": null,
    "layerBones": null,
-   "stroke_m": 0.075,
+   "stroke_m": 0.06,
+   "insert_m": [
+    0.064,
+    0.124
+   ],
    "morphs": {
     "vivian": {
-     "vag_open": "smoothstep(0, 0.12, depth)"
+     "vag_open": 1.0
     },
     "marcus": {
      "aroused": 1.0
@@ -967,9 +998,9 @@
    "cameras": {
     "orbit_side": {
      "target": [
-      0.0074,
-      1.0282,
-      -0.889
+      0.0,
+      1.0151,
+      -0.9827
      ],
      "yaw": 90,
      "pitch": 18,
@@ -977,9 +1008,9 @@
     },
     "orbit_front": {
      "target": [
-      0.0074,
-      1.0282,
-      -0.889
+      0.0,
+      1.0151,
+      -0.9827
      ],
      "yaw": 200,
      "pitch": 24,
@@ -987,9 +1018,9 @@
     },
     "orbit_top": {
      "target": [
-      0.0074,
-      1.0282,
-      -0.889
+      0.0,
+      1.0151,
+      -0.9827
      ],
      "yaw": 120,
      "pitch": 55,
@@ -1012,23 +1043,23 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 980,
-    "max_depth_mm": 34.3,
-    "worst_flip_deg": 0.3,
+    "max_bad_tri_pairs": 52,
+    "max_depth_mm": 31.2,
+    "worst_flip_deg": 0.9,
     "floors_mm": {
      "vivian": [
-      79.2,
-      67.3,
-      56.0,
-      45.2,
-      35.1
+      6.6,
+      6.6,
+      6.6,
+      6.6,
+      6.6
      ],
      "marcus": [
-      -6.6,
-      -6.6,
-      -6.6,
-      -6.6,
-      -6.6
+      -3.9,
+      -3.9,
+      -3.9,
+      -3.9,
+      -3.9
      ]
     }
    }
@@ -1043,6 +1074,7 @@
     "vivian": "arm.R"
    },
    "stroke_m": 0.0,
+   "insert_m": null,
    "morphs": {
     "vivian": {},
     "marcus": {
@@ -1053,9 +1085,9 @@
    "cameras": {
     "orbit_side": {
      "target": [
-      0.0074,
-      1.0282,
-      -0.889
+      0.0,
+      1.0151,
+      -0.9827
      ],
      "yaw": 90,
      "pitch": 18,
@@ -1063,9 +1095,9 @@
     },
     "orbit_front": {
      "target": [
-      0.0074,
-      1.0282,
-      -0.889
+      0.0,
+      1.0151,
+      -0.9827
      ],
      "yaw": 200,
      "pitch": 24,
@@ -1073,9 +1105,9 @@
     },
     "orbit_top": {
      "target": [
-      0.0074,
-      1.0282,
-      -0.889
+      0.0,
+      1.0151,
+      -0.9827
      ],
      "yaw": 120,
      "pitch": 55,
@@ -1098,23 +1130,23 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 914,
-    "max_depth_mm": 39.8,
-    "worst_flip_deg": 1.0,
+    "max_bad_tri_pairs": 14,
+    "max_depth_mm": 26.5,
+    "worst_flip_deg": 1.6,
     "floors_mm": {
      "vivian": [
-      56.0,
-      56.0,
-      56.0,
-      56.0,
-      56.0
+      6.6,
+      6.6,
+      6.6,
+      6.6,
+      6.6
      ],
      "marcus": [
-      -6.6,
-      -6.6,
-      -6.6,
-      -6.6,
-      -6.6
+      -3.9,
+      -3.9,
+      -3.9,
+      -3.9,
+      -3.9
      ]
     }
    }
@@ -1127,6 +1159,10 @@
    "rubHand": null,
    "layerBones": null,
    "stroke_m": 0.11,
+   "insert_m": [
+    -0.006,
+    0.104
+   ],
    "morphs": {
     "vivian": {
      "vag_open": "smoothstep(0, 0.12, depth)"
@@ -1139,9 +1175,9 @@
    "cameras": {
     "orbit_side": {
      "target": [
-      -0.1342,
-      1.0632,
-      -0.9092
+      -0.1987,
+      1.0417,
+      -0.9424
      ],
      "yaw": 90,
      "pitch": 18,
@@ -1149,9 +1185,9 @@
     },
     "orbit_front": {
      "target": [
-      -0.1342,
-      1.0632,
-      -0.9092
+      -0.1987,
+      1.0417,
+      -0.9424
      ],
      "yaw": 200,
      "pitch": 24,
@@ -1159,9 +1195,9 @@
     },
     "orbit_top": {
      "target": [
-      -0.1342,
-      1.0632,
-      -0.9092
+      -0.1987,
+      1.0417,
+      -0.9424
      ],
      "yaw": 120,
      "pitch": 55,
@@ -1184,23 +1220,23 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 99,
-    "max_depth_mm": 10.4,
-    "worst_flip_deg": 10.1,
+    "max_bad_tri_pairs": 0,
+    "max_depth_mm": 0.0,
+    "worst_flip_deg": 0.4,
     "floors_mm": {
      "vivian": [
-      -52.8,
-      -52.8,
-      -52.8,
-      -52.8,
-      -52.8
+      -1.9,
+      -1.9,
+      -1.9,
+      -1.9,
+      -1.9
      ],
      "marcus": [
-      -75.7,
-      -83.1,
-      -84.9,
-      -86.8,
-      -88.6
+      1.2,
+      1.2,
+      1.2,
+      1.2,
+      1.2
      ]
     }
    }
@@ -1215,6 +1251,7 @@
     "vivian": "arm.R"
    },
    "stroke_m": 0.0,
+   "insert_m": null,
    "morphs": {
     "vivian": {},
     "marcus": {
@@ -1225,9 +1262,9 @@
    "cameras": {
     "orbit_side": {
      "target": [
-      -0.1342,
-      1.0632,
-      -0.9092
+      -0.1987,
+      1.0417,
+      -0.9424
      ],
      "yaw": 90,
      "pitch": 18,
@@ -1235,9 +1272,9 @@
     },
     "orbit_front": {
      "target": [
-      -0.1342,
-      1.0632,
-      -0.9092
+      -0.1987,
+      1.0417,
+      -0.9424
      ],
      "yaw": 200,
      "pitch": 24,
@@ -1245,9 +1282,9 @@
     },
     "orbit_top": {
      "target": [
-      -0.1342,
-      1.0632,
-      -0.9092
+      -0.1987,
+      1.0417,
+      -0.9424
      ],
      "yaw": 120,
      "pitch": 55,
@@ -1270,23 +1307,23 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 12,
-    "max_depth_mm": 1.0,
+    "max_bad_tri_pairs": 0,
+    "max_depth_mm": 0.0,
     "worst_flip_deg": 0.3,
     "floors_mm": {
      "vivian": [
-      -52.8,
-      -52.8,
-      -52.8,
-      -52.8,
-      -52.8
+      -1.9,
+      -1.9,
+      -1.9,
+      -1.9,
+      -1.9
      ],
      "marcus": [
-      -84.9,
-      -84.9,
-      -84.9,
-      -84.9,
-      -84.9
+      1.2,
+      1.2,
+      1.2,
+      1.2,
+      1.2
      ]
     }
    }
@@ -1299,6 +1336,10 @@
    "rubHand": null,
    "layerBones": null,
    "stroke_m": 0.075,
+   "insert_m": [
+    -0.004,
+    0.071
+   ],
    "morphs": {
     "vivian": {},
     "marcus": {
@@ -1354,23 +1395,23 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 83,
-    "max_depth_mm": 19.3,
-    "worst_flip_deg": 9.8,
+    "max_bad_tri_pairs": 0,
+    "max_depth_mm": 0.0,
+    "worst_flip_deg": 5.8,
     "floors_mm": {
      "vivian": [
-      13.1,
-      13.1,
-      13.1,
-      13.1,
-      13.1
+      -3.2,
+      -3.7,
+      -3.4,
+      -3.9,
+      -3.5
      ],
      "marcus": [
-      -35.7,
-      -35.7,
-      -35.7,
-      -35.7,
-      -35.7
+      -7.1,
+      -7.1,
+      -7.1,
+      -7.1,
+      -7.1
      ]
     }
    }
@@ -1383,19 +1424,20 @@
    "rubHand": null,
    "layerBones": null,
    "stroke_m": 0.016,
+   "insert_m": null,
    "morphs": {
     "vivian": {},
     "marcus": {
-     "aroused": 1.0
+     "aroused": 0.0
     }
    },
    "marcusHidden": false,
    "cameras": {
     "orbit_side": {
      "target": [
-      -0.0038,
-      0.755,
-      -0.673
+      -0.0,
+      0.8437,
+      -0.9085
      ],
      "yaw": 90,
      "pitch": 18,
@@ -1403,9 +1445,9 @@
     },
     "orbit_front": {
      "target": [
-      -0.0038,
-      0.755,
-      -0.673
+      -0.0,
+      0.8437,
+      -0.9085
      ],
      "yaw": 200,
      "pitch": 24,
@@ -1413,9 +1455,9 @@
     },
     "orbit_top": {
      "target": [
-      -0.0038,
-      0.755,
-      -0.673
+      -0.0,
+      0.8437,
+      -0.9085
      ],
      "yaw": 120,
      "pitch": 55,
@@ -1438,9 +1480,9 @@
     }
    },
    "verify": {
-    "max_bad_tri_pairs": 526,
-    "max_depth_mm": 5.0,
-    "worst_flip_deg": 0.2,
+    "max_bad_tri_pairs": 34,
+    "max_depth_mm": 2.0,
+    "worst_flip_deg": 0.7,
     "floors_mm": {
      "vivian": [
       1.1,
@@ -1450,11 +1492,11 @@
       1.1
      ],
      "marcus": [
-      -258.3,
-      -258.3,
-      -258.3,
-      -258.3,
-      -258.3
+      -9.1,
+      -9.1,
+      -9.1,
+      -9.1,
+      -9.1
      ]
     }
    }

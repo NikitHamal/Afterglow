@@ -12,7 +12,7 @@ Blender (Z-up, +Y toward the headboard); the exporter converts.
 | `characters/marcus.glb` | Marcus, 1.83 m, 70 bones (MMD set + `竿根/竿中/竿先/竿端` + `玉袋`), 7 meshes, 17 clips |
 | `characters/<who>_skin_{honey,caramel,deep}.jpg` | alternate 4K skin albedos (caramel is embedded); Marcus also has `marcus_genital_*.jpg` |
 | `characters/clips.json` | per-clip duration, kind, stroke, morph rules, layer bones, camera presets (orbit + his first-person eye), verification numbers |
-| `room/room.glb`, `room/room.json` | the bedroom with a baked lightmap + light rig / bed / camera bounds (see below) |
+| `room/room.glb`, `room/room.json` | the bedroom with a Cycles-baked lightmap + light rig / bed / camera bounds (next push; the engine falls back to its procedural room) |
 | `audio/sfx/<group>/*.ogg`, `audio/vox/*.wav` | sound pack (CC BY-SA 4.0, `audio/sfx/LICENSE_soundpack.txt`) and voice samples |
 
 ## Morph targets (mesh `extras.targetNames`, all 0 at rest)
@@ -40,11 +40,17 @@ Marcus' hair shell whose `COLOR_0.a` is a soft hairline fringe (RGB = 1).
 `missionary.in, missionary.rub, missionary.embrace, legsup.in, doggy.in, doggy.rub, prone.in, cowgirl.in,
 cowgirl.rub, revcowgirl.in, revcowgirl.rub, spoon.in, spoon.rub, oral.in, lick.in, solo.rub, solo.idle`
 
-- `.in`: 25 frames, normalized time = penetration depth (0 = tip at the entrance, 1 = full). Sample both
-  characters at the same t. Her canal is aligned to his shaft in every frame (his `竿根` is aimed along her canal
-  axis, his pelvis rides that axis); knees/hands are re-planted by IK each frame so nothing slides.
+- `.in`: 25 frames, normalized time = penetration depth. Sample both characters at the same t. Her canal is
+  aligned to his shaft in every frame (his `竿根` is aimed along her canal axis, his pelvis rides that axis);
+  knees/hands are re-planted by IK each frame so nothing slides. `clips.json → insert_m` gives the shaft length
+  inside her at t=0 and t=1: −6 → 104 mm for most positions; cowgirl 39 → 99 mm and reverse cowgirl 64 → 124 mm
+  (she rides the upper shaft and never leaves him, so `vag_open` is 1 there); oral −4 → 71 mm into her mouth.
 - `.rub`: 25-frame loop, only Vivian's right arm is keyed (`rubHand: "vivian.R"`): her fingertips circle on her clit.
-- `missionary.embrace`: single pose layer (he goes down on his forearms, her arms wrap his back).
+- `missionary.embrace`: single pose layer (he goes down on his forearms, she holds his upper arms).
+- `spoon.*`: both on their left sides, he lies behind her; she arches (pelvis tipped ~70°) so her canal opens
+  toward him; bottom arms under the pillows, his top hand on her hip.
+- `lick.in`: he lies on his front between her knees, chest raised on his elbows, hands holding her knees apart;
+  t is the tongue stroke (16 mm). He is flaccid here (`aroused` 0, shaft tucked under him).
 - `solo.*`: Marcus stands beside the bed (`marcusHidden: true` — hide him or keep him as a watcher).
 - Hair chains and eyes are never keyed: simulate the hair (colliders in the armature node's
   `extras.afterglow.hairColliders`) and drive the eyes from gaze.
@@ -56,20 +62,60 @@ bash tools/model/native/setup_toolchain.sh  # Blender 4.2.3 + MPFB 2.0.18 + Make
 bash tools/model/native/run_chars.sh        # Vivian (build5 → hair → rig_export @1.68 m) then Marcus (build → genitals → paint → hair → rig_export @1.83 m)
 blender -b /root/agb/male/out/marcus_game.blend --python tools/model/native/prepare.py -- marcus
 blender -b /root/agb/out/vivian_game.blend      --python tools/model/native/prepare.py -- vivian
-xvfb-run blender -b --python tools/model/anim/author.py      # bake + verify every clip, previews in /root/agb/native/previews
+xvfb-run blender -b --python tools/model/anim/author.py [-- clip,clip --norender]  # bake + verify, previews in /root/agb/native/previews
+                                                    # (a partial run keeps the other clips' actions in anim.blend)
 blender -b /root/agb/native/anim.blend --python tools/model/native/export_chars.py
 python3 tools/model/native/textures.py && node tools/model/native/post.mjs <raw.glb> <out.glb> <who> /root/agb/native/tex/<who>
 bash tools/model/native/stage_assets.sh     # copy into native/assets + regenerate clips.json
+BAKE_RES=1536 BAKE_SAMPLES=40 blender -b --python tools/model/room/build_room.py   # room + Cycles lightmap (~2 h on 2 vCPU)
+node tools/model/room/post.mjs /root/agb/native/room/room_raw.glb /root/agb/native/room/room.json /root/agb/native/room
 ```
 
 Animation authoring (`tools/model/anim/`): `rigkit.py` is a deterministic pose solver (armature-space FK, anatomical
 orient/aim, analytic two-bone IK that keeps each limb's rest hinge, palm-aware hands, finger curl, direct keyframing);
 `body.py` wraps it per character; `positions.py` / `positions2.py` define every clip; `scene.py` loads both
 characters + the room/bed, settles bodies on the mattress from the evaluated mesh and runs the BVH checks;
-`author.py` bakes, verifies (`/root/agb/native/verify.json`) and renders previews.
+`author.py` bakes, verifies (`/root/agb/native/verify.json`) and renders previews. Where a pose has several
+reasonable layouts (her knee width in cowgirl, his straddle vs. kneeling between her legs in prone, where her
+hands go in the embrace, his hands in lick and reverse cowgirl) `positions.best_of` poses each candidate, scores
+it with the same contact/floor check and keeps the cleanest one; the choice is made once per clip at mid-stroke
+so it never changes between frames. Limbs are always placed by their real world side (`sides()`), never by the
+L/R label, and the measured canal axis is kept in the sagittal plane (the raw PCA axis leaned 3.8°).
 
 ## Verification
 
-Each clip is checked at t = 0, .25, .5, .75, 1 (numbers in `clips.json` → `verify`): intersecting triangle pairs
-between the two bodies outside the intended genital/mouth/hand contact, the deepest such penetration, each body's
-lowest point vs the mattress (mm), and the largest per-bone rotation jump between frames.
+Each clip is checked at t = 0, .25, .5, .75, 1 (numbers in `clips.json` → `verify`, raw data in
+`/root/agb/native/verify.json`): intersecting triangle pairs between the two bodies outside the intended
+contact, the deepest such penetration, each body's lowest point vs. the mattress top (mm; − = pressed into the
+mattress, which is soft), and the largest per-bone rotation step between frames.
+
+Intended contact (not counted): genitals (her `v_*` masks × his shaft/scrotum + pubic mound), hands on
+anything, her mouth (oral) / his mouth (lick), his shaft vs. her inner thighs and buttocks within 6 cm of the
+entrance, and pelvis-to-pelvis flesh (her thighs/buttocks within 19 cm of the entrance × his groin, hips,
+upper thighs and lower belly within 22 cm of the shaft root) — that flesh compresses in every penetrative
+position, rigid meshes can only overlap there.
+
+| Clip | bad tri pairs (max) | deepest (mm) | her lowest (mm) | his lowest (mm) | max joint step (deg) |
+|---|---|---|---|---|---|
+| `missionary.in` | 0 | 0.0 | -8..-8 | -1..2 | 8.5 |
+| `missionary.rub` | 0 | 0.0 | -8..-8 | -1..-1 | 1.5 |
+| `missionary.embrace` | 12 | 3.3 | -8..-8 | 2..2 | 0.0 |
+| `legsup.in` | 31 | 8.8 | -4..-4 | 2..2 | 0.6 |
+| `doggy.in` | 0 | 0.0 | -1..-1 | -6..-0 | 1.0 |
+| `doggy.rub` | 0 | 0.0 | -1..-1 | -4..-4 | 0.3 |
+| `prone.in` | 100 | 15.3 | -9..-9 | -2..-2 | 0.4 |
+| `cowgirl.in` | 112 | 37.1 | 1..1 | -7..-7 | 2.3 |
+| `cowgirl.rub` | 60 | 32.4 | 1..1 | -7..-7 | 1.9 |
+| `revcowgirl.in` | 52 | 31.2 | 7..7 | -4..-4 | 0.9 |
+| `revcowgirl.rub` | 14 | 26.5 | 7..7 | -4..-4 | 1.6 |
+| `spoon.in` | 0 | 0.0 | -2..-2 | 1..1 | 0.4 |
+| `spoon.rub` | 0 | 0.0 | -2..-2 | 1..1 | 0.3 |
+| `oral.in` | 0 | 0.0 | -4..-3 | -7..-7 | 5.8 |
+| `lick.in` | 34 | 2.0 | 1..1 | -9..-9 | 0.7 |
+| `solo.rub` | 0 | 0.0 | -11..-11 | floor (standing) | 3.0 |
+| `solo.idle` | 0 | 0.0 | -3..-3 | floor (standing) | 0.1 |
+
+Known residuals: in cowgirl / reverse cowgirl her inner mid-thighs overlap the outside of his hips by up to
+~3 cm where she straddles him (soft tissue that would squash; seen from the side it reads as her thighs
+hugging his hips). In prone at full depth his chest meets her lower back (~1.5 cm). Legs-up and lick have
+only light (≤ 9 mm) contact of his forearms with her legs. `solo.*` floors for Marcus are the room floor.

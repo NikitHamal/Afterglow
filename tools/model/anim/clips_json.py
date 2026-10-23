@@ -39,9 +39,13 @@ for name, (fn, frames, kind) in PO.CLIPS.items():
         time="normalized depth (0 = tip at the entrance, 1 = full)" if kind == "depth" else ("loop phase 0..1" if kind == "loop" else "single pose"),
         rubHand=("vivian.R" if lay.get("vivian") == "arm.R" else None),
         layerBones=lay or None,
-        stroke_m=(0.0 if kind != "depth" else (0.075 if name.startswith(("cowgirl", "revcowgirl")) else (0.075 if name.startswith("oral") else (0.016 if name.startswith("lick") else PO.LINS)))),
-        morphs=dict(vivian=({"vag_open": "smoothstep(0, 0.12, depth)"} if kind == "depth" and not name.startswith(("oral", "lick")) else {}),
-                    marcus=({"aroused": 1.0} if not solo else {"aroused": "0..1 by arousal"})),
+        stroke_m=(0.0 if kind != "depth" else (0.06 if name.startswith(("cowgirl", "revcowgirl")) else (0.075 if name.startswith("oral") else (0.016 if name.startswith("lick") else PO.LINS)))),
+        insert_m=(None if kind != "depth" or name.startswith("lick") else
+                  ([0.039, 0.099] if name.startswith("cowgirl") else [0.064, 0.124] if name.startswith("revcowgirl") else
+                   [-0.004, 0.071] if name.startswith("oral") else [-PO.TIP_OUT, round(PO.LINS - PO.TIP_OUT, 3)])),
+        morphs=dict(vivian=({"vag_open": 1.0} if name.startswith(("cowgirl", "revcowgirl")) and kind == "depth" else
+                            {"vag_open": "smoothstep(0, 0.12, depth)"} if kind == "depth" and not name.startswith(("oral", "lick")) else {}),
+                    marcus=({"aroused": "0..1 by arousal"} if solo else ({"aroused": 0.0} if name.startswith("lick") else {"aroused": 1.0}))),
         marcusHidden=solo,
         cameras=dict(
             orbit_side=orbit(90 if side.x else 0, 18, 2.3),
@@ -56,7 +60,8 @@ for name, (fn, frames, kind) in PO.CLIPS.items():
 doc = dict(version=1, units="m", up="+Y", fps=24,
            world="Both characters' clips share the room's world space (bed centre x=0, z=-1.22, mattress top y=0.604); no runtime placement needed.",
            conventions=dict(
-               depth_clips="sample <pos>.in at t = depth * duration for BOTH characters with the same t",
+               depth_clips="sample <pos>.in at t = depth * duration for BOTH characters with the same t; insert_m = shaft length inside her at t=0 / t=1 (cowgirl + reverse ride the upper shaft, so they never leave her)",
+               contact="verify counts triangle pairs outside the intended contact: genitals, hands, mouth (oral/lick), the shaft vs her inner thighs/buttocks within 6 cm of the entrance, and pelvis-to-pelvis flesh (her within 19 cm of the entrance, his within 22 cm of the shaft root)",
                layers="<pos>.rub only keys the listed bones; blend it over <pos>.in with a bone mask (rub phase loops 0..1)",
                embrace="missionary.embrace is a pose layer for upper body + arms; blend weight = embrace amount",
                not_animated="hair chains 髪.* and eyes 目.L/目.R are not keyed: simulate hair (colliders in node extras) and drive gaze live",

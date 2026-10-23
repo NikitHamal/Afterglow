@@ -1,7 +1,7 @@
 # Afterglow native room: a real-scale night bedroom (Blender, Z-up; exported Y-up).
 #   blender -b --python build_room.py            BAKE_RES=2048 BAKE_SAMPLES=96 (env)
 # Output: /root/agb/native/room/room_raw.glb + lightmap.png + room.json (lights, bed, camera bounds)
-# The post step (tools/model/room/post.mjs) attaches the lightmap as occlusionTexture(texCoord 1) + scene extras.
+# The post step (tools/model/room/post.mjs) checks the lightmap (emissive, texCoord 1) and writes the scene extras.
 import bpy, bmesh, math, os, sys, json, time
 import numpy as np
 from mathutils import Vector, Matrix
@@ -292,10 +292,19 @@ def add_light(kind, name, loc, color, power, radius=0.05, rot=None, spot=None):
     ob = link(bpy.data.objects.new(name, ld)); ob.location = loc
     if rot: ob.rotation_euler = rot
     d = dict(name=name, type=kind.lower(), position=[loc[0], loc[2], -loc[1]], color=list(color), power_w=power, radius=radius)
+    if kind == "SPOT":
+        dv = ob.matrix_world.to_3x3() @ Vector((0, 0, -1)); d["direction"] = [dv.x, dv.z, -dv.y]; d["outer_rad"] = ld.spot_size / 2
     if kind == "SUN":
         dv = ob.matrix_world.to_3x3() @ Vector((0, 0, -1)); d["direction"] = [dv.x, dv.z, -dv.y]; d.pop("position")
     LIGHTS.append(d); return ob
-for i, p in enumerate(lamps): add_light("POINT", f"lamp_{i}", p, (1.0, 0.64, 0.36), 38.0, 0.08)
+BAKE_W = {}                                            # bake power (W); export power is converted for the engine below
+aim = Vector((bx, by - 0.15, MAT_TOP + 0.1))
+for i, p in enumerate(lamps):
+    if i == 1:
+        rot = (aim - p).to_track_quat("-Z", "Y").to_euler()
+        add_light("SPOT", "lamp_key", p, (1.0, 0.66, 0.40), 120.0, 0.09, rot=rot, spot=math.radians(110))
+    else:
+        add_light("POINT", f"lamp_{i}", p, (1.0, 0.64, 0.36), 32.0, 0.08)
 for i, p in enumerate(candles): add_light("POINT", f"candle_{i}", p, (1.0, 0.56, 0.24), 2.2, 0.02)
 add_light("SUN", "moon", (-RX - 1, WY, 3), (0.55, 0.66, 1.0), 0.55, rot=(math.radians(52), 0, math.radians(-90)))
 add_light("AREA", "window_glow", (-RX - 0.2, WY, WZ), (0.45, 0.55, 0.9), 18.0)
@@ -341,36 +350,39 @@ def blur(a):
 den = blur(px * cov[..., None]) / np.maximum(blur(cov), 1e-4)[..., None]
 den = np.where(cov[..., None] > 0, den, px)
 scale = float(np.percentile(den[cov > 0].max(-1), 99.5)) or 1.0
-enc = np.clip(den / scale, 0, 1) ** (1 / 2.2)
+enc = np.clip(den / scale, 0, 1)
+enc = np.where(enc <= 0.0031308, enc * 12.92, 1.055 * enc ** (1 / 2.4) - 0.055)       # sRGB-encoded linear irradiance
 from PIL import Image
 Image.fromarray(np.flipud(np.clip(enc * 255 + 0.5, 0, 255).astype(np.uint8))).save(OUT + "/lightmap.png", optimize=True)
 log(f"lightmap encoded (scale {scale:.3f})")
-# swap the float bake target for the encoded lightmap, wired to glTF occlusion on UV1 (exports TEXCOORD_1 + occlusionTexture.texCoord=1)
-lmimg = bpy.data.images.load(OUT + "/lightmap.png"); lmimg.colorspace_settings.name = "Non-Color"
-g = bpy.data.node_groups.get("glTF Material Output") or bpy.data.node_groups.new("glTF Material Output", "ShaderNodeTree")
-if not g.interface.items_tree: g.interface.new_socket("Occlusion", in_out="INPUT", socket_type="NodeSocketFloat")
+# swap the float bake target for the encoded lightmap, wired as EMISSIVE on UV1 (engine: room = base x emissive(uv1))
+lmimg = bpy.data.images.load(OUT + "/lightmap.png"); lmimg.colorspace_settings.name = "sRGB"
 done = set()
 for o in lit:
     for m in o.data.materials:
         if m.name in done: continue
         done.add(m.name); nt = m.node_tree
-        if "LM_TEX" in nt.nodes: nt.nodes["LM_TEX"].image = lmimg
-        lmt = nt.nodes["LM_TEX"]
-        gn = nt.nodes.new("ShaderNodeGroup"); gn.node_tree = g
-        nt.links.new(lmt.outputs[0], gn.inputs["Occlusion"])
+        lmt = nt.nodes["LM_TEX"]; lmt.image = lmimg
+        bs = [n for n in nt.nodes if n.type == "BSDF_PRINCIPLED"][0]
+        nt.links.new(lmt.outputs[0], bs.inputs["Emission Color"]); bs.inputs["Emission Strength"].default_value = 1.0
 bpy.data.images.remove(lm)
 
 # ------------------------------------------------------------------ publish layout for the engine + export
 meta = dict(version=1, units="m", up="+Y",
-            bedTop=BED_TOP, bed=dict(center=[bx, BED_TOP, -by], width=MAT_W, length=MAT_L, headboard="-Z", headZ=-(by + MAT_L / 2), footZ=-(by - MAT_L / 2)),
-            lights=LIGHTS, lightmap=dict(file="lightmap.png", texCoord=1, encoding="gamma2.2", scale=scale, mode="full diffuse irradiance (direct+indirect) from all static lights"),
+            bedTop=BED_TOP, bed=dict(center=[bx, BED_TOP, -by], width=MAT_W, length=MAT_L, size=[MAT_W, MAT_L], headboard="-Z", headZ=-(by + MAT_L / 2), footZ=-(by - MAT_L / 2)),
+            lights=LIGHTS, lightmap=dict(slot="emissiveTexture", texCoord=1, encoding="sRGB", scale=scale, mode="full diffuse irradiance (direct+indirect) from all static lights; room colour = base x lightmap"),
+            bedCenter=[bx, BED_TOP, -by], lamp=[lamps[1].x, lamps[1].z, -lamps[1].y],
             cameraBounds=dict(min=[-RX + 0.25, 0.15, -(RY1 - 0.25)], max=[RX - 0.25, RZ - 0.15, -(RY0 + 0.25)]),
             window=dict(center=[-RX, WZ, -WY]))
 json.dump(meta, open(OUT + "/room.json", "w"), indent=1)
 sc["afterglow"] = json.dumps(meta)
-for o in [o for o in sc.objects if o.type == "LIGHT"]: bpy.data.objects.remove(o)
+ENGINE = {"lamp_key": 120.0, "lamp_0": 0.55, "moon": 0.45, "window_glow": None}      # engine units (see scene.cpp lightsFromRoomGlb)
+for o in [o for o in sc.objects if o.type == "LIGHT"]:
+    if o.name.startswith("candle_"): o.data.energy = 0.12
+    elif o.name in ENGINE and ENGINE[o.name] is None: bpy.data.objects.remove(o)
+    elif o.name in ENGINE: o.data.energy = ENGINE[o.name]
 bpy.ops.wm.save_as_mainfile(filepath=OUT + "/room.blend")
 bpy.ops.export_scene.gltf(filepath=OUT + "/room_raw.glb", export_format="GLB", use_selection=False, export_yup=True, export_apply=True,
                           export_texcoords=True, export_normals=True, export_tangents=False, export_materials="EXPORT",
-                          export_cameras=False, export_lights=False, export_extras=True, export_image_format="AUTO")
+                          export_cameras=False, export_lights=True, export_import_convert_lighting_mode="RAW", export_extras=True, export_image_format="AUTO")
 log(f"room exported ({time.time()-t0:.0f}s): {os.path.getsize(OUT + '/room_raw.glb')/1e6:.1f} MB")

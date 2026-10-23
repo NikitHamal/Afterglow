@@ -19,6 +19,11 @@ def log(*a): print("[anim]", *a, flush=True)
 t0 = time.time()
 
 objs = SC.load_scene(room=True)
+if set(only) != set(PO.CLIPS) and os.path.exists(NAT + "/anim.blend"):     # partial run: keep the other clips' actions
+    with bpy.data.libraries.load(NAT + "/anim.blend", link=False) as (src, dst):
+        dst.actions = [a for a in src.actions if "|" in a and a.split("|", 1)[1] not in only]
+    for a in dst.actions:
+        if a is not None: a.use_fake_user = True
 V = Body(objs["VivianRig"], objs["vivian_body"], "vivian")
 M = Body(objs["MarcusRig"], objs["marcus_body"], "marcus")
 viv_meas = json.load(open(NAT + "/vivian_measure.json")); mar_meas = json.load(open(NAT + "/marcus_measure.json"))
@@ -77,11 +82,22 @@ hh0 = M.rig.rest["頭"].translation
 his_mouth = his_head & (HM[:, 2] < hh0.z + 0.06) & (HM[:, 1] < hh0.y - 0.05)
 root0 = Vector(mb.parent.data.bones["竿根"].head_local)
 his_allow |= np.linalg.norm(MB - np.array(root0), axis=1) < 0.07          # pubic mound around the shaft root
+his_shaft = SC.vgroup_mask(mb, ("竿根", "竿中", "竿先", "玉袋"), 0.2)
+E0 = np.array(viv_meas["vagina"]["entrance"], np.float32)
+her_vulva_zone = np.linalg.norm(B - E0, axis=1) < 0.06                    # inner thighs / buttocks squeezing the shaft
+# pelvis-to-pelvis contact (her buttocks / inner thighs on his groin, hips, upper thighs): flesh that compresses in
+# every penetrative position, so touching there is intended contact
+her_seat = (np.linalg.norm(B - E0, axis=1) < 0.19) & np.array([b.startswith(("足", "下半身")) for b in SC.dominant_bone(body)])
+his_seat = (np.linalg.norm(MB - np.array(root0), axis=1) < 0.22) & np.array([b.startswith(("足", "下半身", "上半身")) for b in SC.dominant_bone(mb)])
 
 def keys_for(clip, t):
     sex = clip.split(".")[0] not in ("solo",)
-    viv = {"vag_open": PO.ss(0.0, 0.12, t) if clip.endswith(".in") and not clip.startswith(("oral", "lick")) else 0.0}
-    mar = {"aroused": 1.0 if sex else 0.0}
+    pen = sex and not clip.startswith(("oral", "lick"))
+    if not pen: vo = 0.0
+    elif clip.startswith(("cowgirl", "revcowgirl")) or not clip.endswith(".in"): vo = 1.0   # always inserted (rides / rub / embrace)
+    else: vo = PO.ss(0.0, 0.12, t)
+    viv = {"vag_open": vo}
+    mar = {"aroused": 1.0 if sex and not clip.startswith("lick") else 0.0}     # lick: he lies on it, flaccid + tucked
     return viv, mar
 
 def evaluate(clip, t):
@@ -96,10 +112,19 @@ def verify(clip, t):
     allowA = her_allow | her_hand; allowB = his_allow | his_hand
     if clip.startswith("oral"): allowA = allowA | mouth_mask
     if clip.startswith("lick"): allowB = allowB | his_mouth
-    pairs, bad, depth, worst = SC.interpenetration(A, Pa, allowA, Bm, Pb, allowB, boneA=her_bones, boneB=his_bones)
+    pen = not clip.startswith(("oral", "lick", "solo"))
+    extra = [(her_vulva_zone, his_shaft), (her_seat, his_seat | his_shaft)] if pen else []
+    pairs, bad, depth, worst = SC.interpenetration(A, Pa, allowA, Bm, Pb, allowB, boneA=her_bones, boneB=his_bones,
+                                                   handA=her_hand, handB=his_hand, extra=extra)
     her_min = float(A[:, 2].min()); his_min = float(Bm[:, 2].min())
+    low = (her_bones[int(A[:, 2].argmin())], his_bones[int(Bm[:, 2].argmin())])
     return dict(t=round(t, 2), pairs=pairs, bad=bad, depth_mm=round(depth * 1000, 1), worst=[f"{a}x{b}:{n}" for (a, b), n in worst],
-                her_floor_mm=round((her_min - SC.BED_TOP) * 1000, 1), his_floor_mm=round((his_min - SC.BED_TOP) * 1000, 1))
+                her_floor_mm=round((her_min - SC.BED_TOP) * 1000, 1), his_floor_mm=round((his_min - SC.BED_TOP) * 1000, 1), lowest=list(low))
+
+def _score():
+    r_ = verify(PO.CURRENT, 0.5)
+    return r_["bad"] + 3.0 * r_["depth_mm"] + 8.0 * max(0.0, -10.0 - r_["her_floor_mm"]) + 8.0 * max(0.0, -10.0 - r_["his_floor_mm"])
+PO.SCORE = _score
 
 mouth_mask = np.zeros(len(B), bool)
 hb = V.rig.rest["頭"].translation
@@ -135,6 +160,8 @@ for clip in only:
         if old: bpy.data.actions.remove(old)
         act = bpy.data.actions.new(nm); act.use_fake_user = True
         body_.arm.animation_data_create(); body_.arm.animation_data.action = act; acts[who] = act
+    PO.CURRENT = clip
+    fn(ctx, 0.5)                                       # best_of choices are made once, at mid-stroke
     prev = {"VIV": None, "MAR": None}; worst_flip = (0.0, None)
     for f in range(frames):
         t = f / (frames - 1) if kind != "loop" else f / (frames - 1)
@@ -165,5 +192,6 @@ for clip in only:
             render(f"{PRE}/{clip.replace('.', '_')}_{tag}.png", pel + Vector((0, 0.15, 0.05)), eye)
 json.dump(report, open(NAT + "/verify.json", "w"), indent=1)
 for b in (V, M): b.arm.animation_data.action = None
-bpy.ops.wm.save_as_mainfile(filepath=NAT + "/anim.blend")
+for lib in list(bpy.data.libraries): bpy.data.libraries.remove(lib)      # appended actions are local; drop the source ref
+bpy.ops.wm.save_as_mainfile(filepath=NAT + "/anim_new.blend"); os.replace(NAT + "/anim_new.blend", NAT + "/anim.blend")
 log(f"done ({time.time()-t0:.0f}s), saved anim.blend")
