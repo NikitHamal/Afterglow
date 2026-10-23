@@ -272,7 +272,7 @@ void Game::presentPlay(float dt) {
         switch (e.type) {
             case NightEvent::Stroke: moanPulse_ = std::min(1.f, moanPulse_ + 0.35f + 0.4f * her); break;
             case NightEvent::DesireNew:
-                if (settings.hints > 0) { subtitle_ = Night::desireLine(e.desire, night_.sinceStroke < 1.5f); subtitleT_ = 0.f; subtitleDur_ = night_.desireTimeout; }
+                if (settings.hints > 0) { subtitle_ = Night::desireLine(e.desire, night_.stroking()); subtitleT_ = 0.f; subtitleDur_ = night_.desireTimeout; }
                 shownDesire_ = e.desire;
                 break;
             case NightEvent::DesireMet:

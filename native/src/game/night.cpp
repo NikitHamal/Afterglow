@@ -91,16 +91,16 @@ void Night::detectStrokes(float dt, float d) {
         if (d < extreme_) extreme_ = d;
         if (d > extreme_ + 0.04f) { lastTrough_ = extreme_; goingIn_ = true; extreme_ = d; maxVel_ = 0.f; }
     }
-    // no stroke for a while: tempo and amplitude relax toward stillness
-    if (sinceStroke > 1.6f) { tempo = approach(tempo, 0.f, dt * 1.5f); amplitude = approach(amplitude, 0.f, dt * 0.8f); }
+    // no stroke for longer than the rhythm explains: tempo and amplitude relax toward stillness
+    if (!stroking()) { tempo = approach(tempo, 0.f, dt * 1.5f); amplitude = approach(amplitude, 0.f, dt * 0.8f); }
 }
 
 bool Night::desireSatisfied(const Input& in) const {
     switch (desire) {
-        case Desire::Faster: return tempo > wantTempo - 0.15f && sinceStroke < 1.2f;
-        case Desire::Slower: return tempo < wantTempo + 0.15f && sinceStroke < 2.5f;
-        case Desire::Deeper: return amplitude > wantAmp - 0.08f && sinceStroke < 1.5f;
-        case Desire::Gentler: return amplitude < wantAmp + 0.1f && sinceStroke < 2.5f;
+        case Desire::Faster: return tempo > wantTempo - 0.15f && stroking();
+        case Desire::Slower: return tempo < wantTempo + 0.15f && sinceStroke < 3.5f;
+        case Desire::Deeper: return amplitude > wantAmp - 0.08f && stroking();
+        case Desire::Gentler: return amplitude < wantAmp + 0.1f && sinceStroke < 3.5f;
         case Desire::Touch: return in.rub > 0.5f;
         case Desire::Kiss: return in.embrace > 0.5f;
         case Desire::Change: return pos != desirePos_;
@@ -111,11 +111,11 @@ bool Night::desireSatisfied(const Input& in) const {
 void Night::pickDesire(const Input& in) {
     const PositionInfo& p = *in.pos;
     std::vector<std::pair<Desire, float>> c;
-    bool stroking = sinceStroke < 1.5f;
+    bool isStroking = stroking();
     if (!p.solo) {
         float dt = tempo - wantTempo, da = amplitude - wantAmp;
         if (p.penetrative || p.id == "oral" || p.id == "lick") {
-            if (dt < -0.25f || !stroking) c.push_back({Desire::Faster, 2.f + std::max(0.f, -dt) * 3.f});
+            if (dt < -0.25f || !isStroking) c.push_back({Desire::Faster, 2.f + std::max(0.f, -dt) * 3.f});
             if (dt > 0.3f) c.push_back({Desire::Slower, 2.f + dt * 3.f});
             if (da < -0.15f) c.push_back({Desire::Deeper, 1.5f + std::max(0.f, -da) * 4.f});
             if (da > 0.2f) c.push_back({Desire::Gentler, 1.2f + da * 3.f});
@@ -185,7 +185,7 @@ void Night::update(float dt, const Input& in) {
     if (p.id == "lick") { wantTempo = 0.9f + 1.1f * her; wantAmp = 0.45f + 0.3f * her; }
     if (p.id == "oral") { wantTempo = 0.6f + 0.9f * him; wantAmp = 0.35f + 0.45f * him; }
 
-    bool stroking = sinceStroke < 1.4f;
+    bool stroking = this->stroking();
     float match = stroking ? gauss(tempo - wantTempo, 0.42f) * gauss(amplitude - wantAmp, 0.3f) : 0.f;
     sync = approach(sync, match, dt * 2.f);
     energy = approach(energy, stroking ? tempo * (0.25f + amplitude) : 0.f, dt * 2.5f);
@@ -210,7 +210,8 @@ void Night::update(float dt, const Input& in) {
     }
     stim += 0.45f * in.rub * (p.canTouch ? 1.f : 0.f) * (p.solo ? 0.f : 1.f);
     stim += 0.18f * in.embrace;
-    herRate = stim * fresh * liked * (0.65f + 0.7f * connection) * 0.0062f;
+    // early on every good stroke shows on her (faster start), the last stretch takes patience
+    herRate = stim * fresh * liked * (0.65f + 0.7f * connection) * 0.0062f * (1.45f - 0.6f * her);
     if (stim < 0.05f) herRate = -0.004f;
     if (herClimaxAge < 4.f) herRate *= 0.2f;     // afterglow of her climax
     her = clamp01(her + herRate * dt);

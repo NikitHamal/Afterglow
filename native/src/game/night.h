@@ -5,6 +5,7 @@
 // player has to read her desires, pace him (edging pays) and aim for a shared climax.
 #pragma once
 #include "game/settings.h"
+#include <algorithm>
 #include <map>
 #include <string>
 #include <vector>
@@ -40,6 +41,8 @@ public:
         float embrace = 0.f;         // embrace / kiss layer weight 0..1
     };
     void update(float dt, const Input& in);
+    // still in rhythm: the gap since the last stroke is within the current stroke period (slow strokes count)
+    bool stroking() const { return sinceStroke < std::max(1.4f, 1.35f / std::max(tempo, 0.2f) + 0.3f); }
     std::vector<NightEvent> events;  // produced by the last update
 
     // what she says for a desire (and when it is met)
