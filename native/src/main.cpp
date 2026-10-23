@@ -86,6 +86,7 @@ int main(int argc, char** argv) {
 
     ag::platform::openLog(verbose);
     ag::platform::installCrashHandler();
+    ag::platform::installQuitSignals();
     SetTraceLogLevel(verbose ? LOG_INFO : LOG_INFO);
     AG_INFO("AG: Afterglow %s starting", ag::Updater::current().c_str());
     if (!ag::platform::acquireSingleInstance()) {
@@ -132,7 +133,7 @@ int main(int argc, char** argv) {
     bool wasFocused = true;
     int lastCap = -2;
     while (!game.wantsQuit()) {
-        if (WindowShouldClose()) break;
+        if (WindowShouldClose() || ag::platform::quitRequested()) break;
         bool minimized = IsWindowMinimized();
         bool focused = IsWindowFocused();
         if (wasFocused && !focused) game.onFocusLost();

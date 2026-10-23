@@ -18,6 +18,10 @@ std::string logPath();
 // writes a crash note to the log and flushes it before the process dies
 void installCrashHandler();
 
+// SIGTERM / SIGINT / SIGHUP (logout, shutdown, kill) ask the main loop to quit gracefully (saves first)
+void installQuitSignals();
+bool quitRequested();
+
 // resident memory of this process in bytes (0 when unknown)
 long long residentBytes();
 long long peakResidentBytes();

@@ -1,6 +1,7 @@
 #include "app/platform.h"
 #include "core/paths.h"
 #include "raylib.h"
+#include <csignal>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -133,6 +134,20 @@ void installCrashHandler() {
     for (int s : {SIGSEGV, SIGABRT, SIGFPE, SIGILL, SIGBUS}) std::signal(s, onSignal);
 }
 #endif
+
+namespace { volatile std::sig_atomic_t gQuit = 0; }
+#if defined(_WIN32)
+void installQuitSignals() {}
+#else
+static void onQuitSignal(int) { gQuit = 1; }
+void installQuitSignals() {
+    struct sigaction sa{};
+    sa.sa_handler = onQuitSignal;
+    sigemptyset(&sa.sa_mask);
+    for (int s : {SIGTERM, SIGINT, SIGHUP}) sigaction(s, &sa, nullptr);
+}
+#endif
+bool quitRequested() { return gQuit != 0; }
 
 long long residentBytes() {
 #if defined(_WIN32)
