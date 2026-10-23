@@ -35,9 +35,11 @@ std::string fitGarment(std::vector<FitPart>& parts, bool drape);
 
 // per vertex: 0..1 cover by `over` — a garment triangle facing the same way crosses the segment from `inner` below
 // the vertex to `reach` above it along its normal, at least margin0 (fully from margin1) inside the smoothed border;
-// then eroded over `erode` metres (the hidden region always ends inside the cloth: no holes at the garment's edge)
+// then eroded over `erode` metres (the hidden region always ends inside the cloth: no holes at the garment's edge).
+// Skin under cloth that bridges well clear of it (a dress over the cleavage) stays: the cloth hides it anyway, and a
+// hidden patch there would show as a hole when seen down the gap.
 std::vector<float> coverage(const std::vector<float>& pos, const std::vector<float>& nrm, const std::vector<FitSurface>& over,
-                            float reach = 0.03f, float inner = 0.008f, float margin0 = 0.003f, float margin1 = 0.008f,
+                            float reach = 0.012f, float inner = 0.008f, float margin0 = 0.003f, float margin1 = 0.008f,
                             float erode = 0.01f);
 
 }  // namespace ag
