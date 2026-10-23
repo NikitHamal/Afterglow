@@ -14,10 +14,15 @@ bool Scene::load(const std::function<void(float, const char*)>& progress) {
     std::string roomPath = paths::findAsset({"room/room.glb"});
     if (!roomPath.empty() && room.load(roomPath)) {
         roomFromGlb = true;
+        // the lightmap rides in the emissive slot: on UV1 for textured materials and on UV0 for plain-coloured
+        // ones (their only UV set is their lightmap chart). Any material carrying that same texture is baked.
+        GLuint lightmap = 0;
+        for (auto& m : room.materials)
+            if (m.texEmis && m.uvEmis == 1) { lightmap = m.texEmis; break; }
         for (auto& m : room.materials) {
             if (m.shading == Shading::Unlit) { roomBaked = true; continue; }
-            if (m.texEmis && m.uvEmis == 1) { m.shading = Shading::Room; roomBaked = true; continue; }
             m.shading = Shading::Room;
+            if (lightmap && m.texEmis == lightmap) { m.baked = true; roomBaked = true; }
         }
         const Json& ag = room.sceneExtras["afterglow"];
         Json parsed;

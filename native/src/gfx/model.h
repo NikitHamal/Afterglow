@@ -27,6 +27,7 @@ struct Material {
     float cutoff = 0.5f;
     bool doubleSided = false, unlit = false;
     Shading shading = Shading::Generic;
+    bool baked = false;      // emissive texture is the room lightmap (colour = base x lightmap), on whichever UV set
     bool castShadow = true;
     Json extras;
 };

@@ -252,6 +252,17 @@ void Game::drawStories() {
         U.text(ui::Face::Sans, U.u(20.f), "No stories found in assets/story.", x, y, U.th.inkFaint);
     }
     float cw = (U.W - 2.f * x - U.u(2.f * 28.f)) / 3.f, ch = U.H - y - U.u(200.f);
+    // titles and taglines take the tallest height of the three, so the chapter lists line up across the cards
+    float titleH = 0.f, tagH = 0.f;
+    {
+        float a0 = U.alpha;
+        U.alpha = 0.f;
+        for (size_t i = 0; i < stories_.size() && i < 3; ++i) {
+            titleH = std::max(titleH, U.paragraph(ui::Face::Serif, U.u(44.f), stories_[i].title, 0.f, 0.f, cw - U.u(68.f), U.th.ink, 1.05f));
+            tagH = std::max(tagH, U.paragraph(ui::Face::SerifItalic, U.u(22.f), stories_[i].tagline, 0.f, 0.f, cw - U.u(68.f), U.th.inkDim, 1.3f));
+        }
+        U.alpha = a0;
+    }
     for (size_t i = 0; i < stories_.size() && i < 3; ++i) {
         const Story& s = stories_[i];
         Rectangle r{x + (float)i * (cw + U.u(28.f)), y + (1.f - ui::easeOut((t - 0.1f * (float)i) / 0.6f)) * U.u(30.f), cw, ch};
@@ -265,8 +276,10 @@ void Game::drawStories() {
         float ix = r.x + U.u(34.f), iw = r.width - U.u(68.f), iy = r.y + U.u(34.f);
         U.text(ui::Face::SansBold, U.u(13.f), s.setting.empty() ? "A STORY" : s.setting, ix, iy, U.th.accent, ui::Left, 0.22f);
         iy += U.u(30.f);
-        iy += U.paragraph(ui::Face::Serif, U.u(44.f), s.title, ix, iy, iw, U.th.ink, 1.05f) + U.u(10.f);
-        iy += U.paragraph(ui::Face::SerifItalic, U.u(22.f), s.tagline, ix, iy, iw, U.th.inkDim, 1.3f) + U.u(18.f);
+        U.paragraph(ui::Face::Serif, U.u(44.f), s.title, ix, iy, iw, U.th.ink, 1.05f);
+        iy += titleH + U.u(10.f);
+        U.paragraph(ui::Face::SerifItalic, U.u(22.f), s.tagline, ix, iy, iw, U.th.inkDim, 1.3f);
+        iy += tagH + U.u(18.f);
         const auto& ch = storyProgress_.chapters[s.id];
         const auto& en = storyProgress_.endings[s.id];
         char b2[96];
@@ -330,11 +343,16 @@ void Game::drawStory() {
     if (storyCardT_ < 4.f && n) {
         float a = clamp01(storyCardT_ * 1.6f) * clamp01((4.f - storyCardT_) * 1.2f);
         U.alpha = a;
+        // a soft dark band behind the card: it reads over the lamp as well as over the dark
+        int ci = storyCardKind_ == 0 ? s->chapterIndex(n->chapter) : -1;
+        if (ci >= 0 || !storyLocation_.empty()) {
+            float top = U.H * 0.24f + (ci >= 0 ? -U.u(6.f) : U.u(24.f)), hgt = ci >= 0 ? U.u(160.f) : U.u(56.f);
+            ui::Box sc; sc.radius = U.u(40.f); sc.shadow = U.u(200.f); sc.shadowCol = Color{8, 4, 6, 170};
+            U.box(Rectangle{U.W * 0.5f - U.u(330.f), top, U.u(660.f), hgt}, sc);
+        }
         if (storyCardKind_ == 0) {
-            int ci = s->chapterIndex(n->chapter);
             if (ci >= 0) {
                 char b[32]; std::snprintf(b, sizeof b, "CHAPTER %d", ci + 1);
-                U.glow(U.W * 0.5f, U.H * 0.3f, U.u(260.f), ui::withA(Color{0, 0, 0, 255}, 0.35f));
                 U.text(ui::Face::SansBold, U.u(15.f), b, U.W * 0.5f, U.H * 0.24f, U.th.accent, ui::Center, 0.3f);
                 U.text(ui::Face::Serif, U.u(68.f), s->chapters[(size_t)ci].title, U.W * 0.5f, U.H * 0.24f + U.u(30.f), U.th.ink, ui::Center);
             }

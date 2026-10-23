@@ -529,6 +529,8 @@ bool Ui::chip(const std::string& id, const std::string& label, Rectangle r, bool
     bool fire = interact(id, r, fidx, true, ws);
     float h = ws.hover;
     float on = anim(id + "#on", active ? 1.f : 0.f, 14.f);
+    float shrink = ws.press * u(1.5f);   // pressed: the chip gives a little
+    r = Rectangle{r.x + shrink, r.y + shrink, r.width - 2.f * shrink, r.height - 2.f * shrink};
     Box b; b.radius = r.height * 0.5f;
     b.fill = mixc(Color{255, 236, 224, (unsigned char)(12 + 18 * h)}, withA(th.accent, 0.22f), on);
     b.border = std::max(1.f, u(1.f)); b.borderCol = mixc(th.hairline, withA(th.accent, 0.85f), std::max(on, std::max(h * 0.5f, ws.focusT)));
