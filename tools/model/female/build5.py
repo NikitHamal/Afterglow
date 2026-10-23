@@ -114,13 +114,20 @@ log(f"expression morphs {list(EXPR)} on body + lashes/brows/teeth/tongue")
 # Deltas are masked off the head/neck (face + hair stay put) and re-centred on the pelvis (skeleton stays seated).
 import copy
 VARIANTS = {
-    "body_bust":   ({"cupsize": 1.0, "firmness": 0.6}, {}),
-    "body_hips":   ({}, {"hip-scale-horiz-incr": 0.35, "measure-hips-circ-incr": 0.35}),
-    "body_waist":  ({}, {"measure-waist-circ-decr": 0.45}),
-    "body_butt":   ({}, {"buttocks-volume-incr": 0.5}),
-    "body_weight": ({"weight": 0.84}, {}),
-    "body_muscle": ({"muscle": 0.82}, {}),
-    "body_belly":  ({}, {"stomach-pregnant-incr": 0.35}),
+    # native: bidirectional pairs (slider -1..+1 -> _dn/_up), strong but natural adult ranges.
+    # target values are ADDED to Vivian's own sculpt targets (negative undoes them).
+    "bust_up":   ({"cupsize": 1.0, "firmness": 0.62}, {"breast-volume-vert-up": 0.45, "measure-bust-circ-incr": 0.55}),
+    "bust_dn":   ({"cupsize": 0.22, "firmness": 0.62}, {"measure-bust-circ-decr": 0.35}),
+    "hips_up":   ({}, {"hip-scale-horiz-incr": 0.45, "measure-hips-circ-incr": 0.45}),
+    "hips_dn":   ({}, {"hip-scale-horiz-incr": -0.32, "hip-scale-horiz-decr": 0.3, "measure-hips-circ-incr": -0.3, "measure-hips-circ-decr": 0.3}),
+    "waist_up":  ({}, {"measure-waist-circ-decr": -0.5, "measure-waist-circ-incr": 0.35}),
+    "waist_dn":  ({}, {"measure-waist-circ-decr": 0.5}),
+    "butt_up":   ({}, {"buttocks-volume-incr": 0.4}),
+    "butt_dn":   ({}, {"buttocks-volume-incr": -0.6, "buttocks-volume-decr": 0.4}),
+    "weight_up": ({"weight": 0.9}, {}),
+    "weight_dn": ({"weight": 0.36}, {}),
+    "muscle_up": ({"muscle": 0.88}, {}),
+    "belly_up":  ({}, {"stomach-pregnant-incr": 0.4, "stomach-pregnant-decr": -0.15}),
 }
 def vg_w(o, name):
     w = np.zeros(len(o.data.vertices), np.float32)
@@ -136,7 +143,7 @@ for vname, (pheno, tg) in VARIANTS.items():
     inf = HumanService._create_default_human_info_dict()
     inf["phenotype"] = copy.deepcopy(info["phenotype"]); inf["phenotype"].update(pheno)
     tt = dict(targets)
-    for k_, v_ in tg.items(): tt[k_] = tt.get(k_, 0) + v_
+    for k_, v_ in tg.items(): tt[k_] = max(0.0, tt.get(k_, 0) + v_)
     inf["targets"] = [{"target": t_, "value": v_} for t_, v_ in tt.items() if t_ in known]
     vo = HumanService.deserialize_from_dict(inf, settings)
     TargetService.bake_targets(vo)
@@ -252,7 +259,7 @@ else:
     POS = bake("pos", geo("Position"))[..., :3]; NRM = bake("nrm", geo("Normal"))[..., :3]
     MN = bake("m_nails", attr("m_nails"))[..., 0]; MG = bake("m_gen", attr("m_gen"))[..., 0]; MH = bake("m_head", attr("m_head"))[..., 0]
     MDZ = bake("m_mdz", attr("m_mdz"))[..., 0]
-    HP = bake("hproc", proc_height)[..., :3]; AO = bake("ao", None, samples=64, btype="AO")[..., 0]
+    HP = bake("hproc", proc_height)[..., :3]; AO = bake("ao", None, samples=int(os.environ.get("AO_SAMPLES", "24")), btype="AO")[..., 0]
     VM = np.stack([bake(n, attr(n))[..., 0] for n in VMN], 0)
     np.savez(CACHE, COV=COV, POS=POS, NRM=NRM, MN=MN, MG=MG, MH=MH, MDZ=MDZ, HP=HP, AO=AO, VM=VM); log(f"4K bakes done ({time.time()-t0:.0f}s)")
 

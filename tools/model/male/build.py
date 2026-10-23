@@ -42,8 +42,10 @@ def drop(o):
 bpy.ops.wm.read_factory_settings(use_empty=True)
 # ---- shape variants (same topology) captured first, then discarded
 VARS = {}
-for name, ph, ex in [("body_muscle", dict(BASE, muscle=1.0), None), ("body_weight", dict(BASE, weight=0.92), None),
-                     ("body_belly", BASE, {"stomach-pregnant-incr": 0.55, "stomach-pregnant-decr": 0.0})]:
+# native: bidirectional pairs (slider -1..+1 -> _dn/_up)
+for name, ph, ex in [("muscle_up", dict(BASE, muscle=1.0), None), ("muscle_dn", dict(BASE, muscle=0.38), None),
+                     ("weight_up", dict(BASE, weight=0.92), None), ("weight_dn", dict(BASE, weight=0.3), None),
+                     ("belly_up", BASE, {"stomach-pregnant-incr": 0.55, "stomach-pregnant-decr": 0.0})]:
     v = build_human(ph, ex); VARS[name] = co(v); drop(v)
 log(f"variants captured: {list(VARS)}")
 

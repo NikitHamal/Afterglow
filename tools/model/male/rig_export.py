@@ -7,7 +7,7 @@ from mathutils import Vector, Matrix
 OUT = "/root/agb/male/out"; EXP = "/root/agb/male/export"; PRE = "/root/agb/out/preview"
 GEN = json.load(open(OUT + "/genital.json"))
 for d in (EXP, PRE): os.makedirs(d, exist_ok=True)
-GAME_H = 1.70                    # matches the procedural male (him3 ~1.70 game units incl. hair)
+GAME_H = float(os.environ.get("AG_HEIGHT", "1.70"))   # web: 1.70 incl. hair; native: real body height with AG_BODY_ONLY=1
 def prog(*a): os.system("python3 /root/agb/progress.py " + " ".join(shlex.quote(str(x)) for x in a))
 def log(*a): print("[male-rig]", *a, flush=True); prog("log", "[male] " + " ".join(str(x) for x in a))
 t0 = time.time()
@@ -27,6 +27,8 @@ log(f"helper geometry removed: body now {len(body.data.vertices)} verts")
 # ------------------------------------------------------------------ 2. MPFB joint positions (world)
 J = {b.name: (mrig.matrix_world @ b.head_local, mrig.matrix_world @ b.tail_local) for b in mrig.data.bones}
 zs = [(o.matrix_world @ v.co).z for o in meshes for v in o.data.vertices]
+if os.environ.get("AG_BODY_ONLY"):
+    zs = [(body.matrix_world @ v.co).z for v in body.data.vertices]
 top = max(zs); S = GAME_H / top
 log(f"model height {top:.3f} m (incl. hair) -> scale {S:.4f}")
 goat = {b["n"]: b for b in json.load(open("/root/agb/goat_bones.json"))}
