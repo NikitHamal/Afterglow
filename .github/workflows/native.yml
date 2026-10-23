@@ -121,11 +121,11 @@ jobs:
           set +e
           mkdir -p "$GITHUB_WORKSPACE/qa-out/game" "$GITHUB_WORKSPACE/qa-out/engine"
           # game screens (title, menus, customisation, settings, play HUD, pause, results)
-          timeout 1800 xvfb-run -a -s "-screen 0 1920x1080x24" ./afterglow --shotlist "$GITHUB_WORKSPACE/tools/qa/game_shots.txt" --outdir "$GITHUB_WORKSPACE/qa-out/game" --res 1280x720 > "$GITHUB_WORKSPACE/qa-out/game/harness.log" 2>&1
+          timeout 1800 xvfb-run -a -s "-screen 0 1920x1080x24" ./afterglow --shotlist "$GITHUB_WORKSPACE/tools/qa/game_shots.txt" --outdir "$GITHUB_WORKSPACE/qa-out/game" --res 1280x720 --frames 24 > "$GITHUB_WORKSPACE/qa-out/game/harness.log" 2>&1
           echo "game harness exit $?" | tee -a "$GITHUB_WORKSPACE/qa-out/game/harness.log"
           tail -25 "$GITHUB_WORKSPACE/qa-out/game/harness.log"
           # engine sandbox (poses, cameras, deformation)
-          timeout 1800 xvfb-run -a -s "-screen 0 1920x1080x24" ./afterglow --sandbox --shotlist "$GITHUB_WORKSPACE/tools/qa/shots.txt" --outdir "$GITHUB_WORKSPACE/qa-out/engine" --res 1280x720 > "$GITHUB_WORKSPACE/qa-out/engine/harness.log" 2>&1
+          timeout 1800 xvfb-run -a -s "-screen 0 1920x1080x24" ./afterglow --sandbox --shotlist "$GITHUB_WORKSPACE/tools/qa/shots.txt" --outdir "$GITHUB_WORKSPACE/qa-out/engine" --res 1280x720 --frames 30 > "$GITHUB_WORKSPACE/qa-out/engine/harness.log" 2>&1
           echo "engine harness exit $?" | tee -a "$GITHUB_WORKSPACE/qa-out/engine/harness.log"
           tail -15 "$GITHUB_WORKSPACE/qa-out/engine/harness.log"
           ls -la "$GITHUB_WORKSPACE/qa-out/game" "$GITHUB_WORKSPACE/qa-out/engine"
