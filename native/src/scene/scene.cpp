@@ -29,6 +29,21 @@ bool Scene::load() {
         buildPlaceholderRoom(room, info);
         roomFromGlb = false;
     }
+    // room.json (content pipeline): bed / lamp metadata, lenient about the exact layout
+    std::string rj = paths::findAsset({"room/room.json"});
+    if (!rj.empty()) {
+        Json j = Json::parse(paths::readText(rj));
+        const Json& bed = j["bed"].isObject() ? j["bed"] : j;
+        auto v3 = [](const Json& a, V3 def) { return a.isArray() && a.size() >= 3 ? V3{a[0].f(), a[1].f(), a[2].f()} : def; };
+        if (bed["top"].isNumber()) info.bedTop = bed["top"].f();
+        if (j["bedTop"].isNumber()) info.bedTop = j["bedTop"].f();
+        info.bedCenter = v3(bed["center"].isArray() ? bed["center"] : j["bedCenter"], info.bedCenter);
+        info.bedCenter.y = info.bedTop;
+        const Json& size = bed["size"].isArray() ? bed["size"] : j["bedSize"];
+        if (size.isArray() && size.size() >= 2) info.bedHalf = {size[0].f() * 0.5f, 0.f, size[size.size() - 1].f() * 0.5f};
+        const Json& lamp = j["lamp"].isObject() ? j["lamp"]["pos"] : j["lamp"];
+        info.lampPos = v3(lamp, info.lampPos);
+    }
     roomAnim.init(&room);
     roomAnim.begin();
     roomAnim.computeGlobals(M4::identity());
@@ -61,15 +76,18 @@ bool Scene::load() {
     }
     // Vivian's hair texture is neutral grey: the tint gives it its colour (rich dark chestnut)
     if (vivian.loaded()) vivian.hairTint = {0.42f, 0.21f, 0.11f};
-    if (!hasClips) standingPlacement();
+    standingPlacement();
     particles.init();
     return vivian.loaded() || marcus.loaded();
 }
 
 void Scene::standingPlacement() {
-    // beside the bed, facing the room (+Z), feet on the floor
-    if (vivian.loaded()) vivian.placement = m4trs({-0.42f, -vivian.footOffset(), 1.75f}, qaxis({0, 1, 0}, 0.18f), {1, 1, 1});
-    if (marcus.loaded()) marcus.placement = m4trs({0.42f, -marcus.footOffset(), 1.70f}, qaxis({0, 1, 0}, -0.18f), {1, 1, 1});
+    // characters without clips stand beside the bed, facing the room (+Z), feet on the floor;
+    // characters with clips keep an identity root (placement is authored in the clips)
+    if (vivian.loaded()) vivian.placement = vivian.model.clips.empty()
+        ? m4trs({-0.42f, -vivian.footOffset(), 1.75f}, qaxis({0, 1, 0}, 0.18f), {1, 1, 1}) : M4::identity();
+    if (marcus.loaded()) marcus.placement = marcus.model.clips.empty()
+        ? m4trs({0.42f, -marcus.footOffset(), 1.70f}, qaxis({0, 1, 0}, -0.18f), {1, 1, 1}) : M4::identity();
 }
 
 void Scene::lightsFromRoomGlb() {

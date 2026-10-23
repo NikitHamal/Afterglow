@@ -75,6 +75,7 @@ void Sandbox::reset() {
     scene.showVivian = scene.showMarcus = true;
     scene.vivian.flush = scene.vivian.sweat = scene.marcus.flush = scene.marcus.sweat = 0.f;
     flex_ = 0.f;
+    forceChars_ = false;
     hairSim_ = breathing_ = lookAt_ = true;
     applyQuality(renderer.settings, Quality::High);
     posIndex_ = 0;
@@ -90,15 +91,35 @@ V3 Sandbox::focusPoint() const {
     return c + V3{0.f, 0.12f, 0.f};
 }
 
+// clips.json camera yaw is measured from the head (-Z) side; the engine orbit yaw from +Z (foot side)
+static constexpr float kContentYawOffsetDeg = 180.f;
+
+const Json& Sandbox::clipMeta(const std::string& clip) const { return clipsMeta_["clips"][clip]; }
+
 void Sandbox::cameraPreset(const std::string& name, float blend) {
     camPreset_ = name;
-    const Json& cm = clipsMeta_["clips"][currentPos() + ".in"]["camera"][name];
-    if (cm.isObject() && cm["target"].isArray()) {
-        camera.setOrbit({cm["target"][0].f(), cm["target"][1].f(), cm["target"][2].f()}, cm["yaw"].f(), cm["pitch"].f(0.3f), cm["dist"].f(2.4f), blend);
+    std::string pos = currentPos();
+    std::string clip = pos == "solo" ? "solo.idle" : pos + ".in";
+    const Json& cams = clipMeta(clip)["cameras"];
+    if (name == "fpv" && scene.marcus.loaded()) {
+        const Json& f = cams["fpv"];
+        if (f.isObject() && f["offset_local"].isArray()) {
+            camera.setFirstPersonLocal(&scene.marcus, f["bone"].str("頭"), {f["offset_local"][0].f(), f["offset_local"][1].f(), f["offset_local"][2].f()},
+                                       {f["forward_local"][0].f(), f["forward_local"][1].f(), f["forward_local"][2].f(1.f)}, blend);
+        } else {
+            camera.setFirstPerson(&scene.marcus, "頭", {0.f, 0.07f, 0.09f}, blend);
+        }
+        return;
+    }
+    const Json& c = cams["orbit_" + name];
+    if (c.isObject() && c["target"].isArray()) {
+        const float d2r = kPi / 180.f;
+        float dist = c["distance"].isNumber() ? c["distance"].f() : c["dist"].f(2.4f);
+        camera.setOrbit({c["target"][0].f(), c["target"][1].f(), c["target"][2].f()},
+                        (c["yaw"].f() + kContentYawOffsetDeg) * d2r, c["pitch"].f(20.f) * d2r, dist, blend);
         return;
     }
     V3 f = focusPoint();
-    if (name == "fpv" && scene.marcus.loaded()) { camera.setFirstPerson(&scene.marcus, "頭", {0.f, 0.07f, 0.09f}, blend); return; }
     if (name == "side") camera.setOrbit(f, 1.45f, 0.22f, scene.hasClips ? 2.3f : 3.0f, blend);
     else if (name == "top") camera.setOrbit(f, 0.2f, 1.18f, 2.3f, blend);
     else if (name == "close") {
@@ -106,6 +127,19 @@ void Sandbox::cameraPreset(const std::string& name, float blend) {
         camera.setOrbit(head, 0.3f, 0.08f, 0.62f, blend);
     } else if (name == "wide") camera.setOrbit(f, 0.55f, 0.36f, 4.3f, blend);
     else camera.setOrbit(f, 0.32f, 0.26f, scene.hasClips ? 2.5f : 3.1f, blend);
+}
+
+// clips.json morph rules: numbers, or "smoothstep(a, b, depth)"; anything else is left to gameplay
+static float evalMorphRule(const Json& rule, float depth, bool& ok) {
+    ok = true;
+    if (rule.isNumber()) return rule.f();
+    if (rule.isString() && rule.s.rfind("smoothstep(", 0) == 0) {
+        float a = 0.f, b = 1.f;
+        if (std::sscanf(rule.s.c_str(), "smoothstep(%f , %f", &a, &b) == 2 || std::sscanf(rule.s.c_str(), "smoothstep(%f,%f", &a, &b) == 2)
+            return smoothstep(a, b, depth);
+    }
+    ok = false;
+    return 0.f;
 }
 
 void Sandbox::applySpec(const Spec& s) {
@@ -132,6 +166,7 @@ void Sandbox::applySpec(const Spec& s) {
     else if (q == "high") applyQuality(renderer.settings, Quality::High);
     if (s.has("debug")) overlay = s.num("debug", 1.f) > 0.5f;
     std::string ch = s.get("char");
+    forceChars_ = !ch.empty();
     if (ch == "vivian") { scene.showVivian = true; scene.showMarcus = false; }
     else if (ch == "marcus") { scene.showVivian = false; scene.showMarcus = true; }
     else if (ch == "both") scene.showVivian = scene.showMarcus = true;
@@ -166,50 +201,63 @@ void Sandbox::applyPose() {
         c->proc.breathAmp = breathing_ ? 1.f : 0.f;
         c->proc.lookAt = lookAt_;
     }
+    auto charOf = [&](const std::string& id) -> Character* { return id == "vivian" ? &v : (id == "marcus" ? &m : nullptr); };
+    // layer with per-character masks from clips.json "layerBones" ({char: mask}); falls back to the given default
+    auto layered = [&](int layer, const std::string& clip, float t, float w, const char* defChar, const char* defMask) {
+        if (w <= 0.f) return;
+        const Json& lb = clipMeta(clip)["layerBones"];
+        if (lb.isObject() && lb.size()) {
+            for (auto& kv : lb.obj) {
+                Character* c = charOf(kv.first);
+                if (c && c->loaded()) c->setLayer(layer, clip, t, w, kv.second.str("all"));
+            }
+        } else if (defChar) {
+            Character* c = charOf(defChar);
+            if (c && c->loaded()) c->setLayer(layer, clip, t, w, defMask);
+        } else {
+            for (Character* c : {&v, &m}) if (c->loaded()) c->setLayer(layer, clip, t, w, defMask);
+        }
+    };
+    std::string baseClip;
     if (!pos.empty()) {
         if (pos == "solo") {
-            scene.showMarcus = false;
-            v.setLayer(0, "solo.idle", idlePhase_, 1.f);
-            v.setLayer(1, "solo.rub", rubPhase_, rub_);
+            baseClip = "solo.idle";
+            for (Character* c : {&v, &m}) if (c->loaded()) c->setLayer(0, "solo.idle", idlePhase_, 1.f);
+            for (Character* c : {&v, &m}) if (c->loaded() && rub_ > 0.f) c->setLayer(1, "solo.rub", rubPhase_, rub_);
         } else {
-            for (Character* c : {&v, &m}) {
-                if (!c->loaded()) continue;
-                c->setLayer(0, pos + ".in", depth_, 1.f);
-                c->setLayer(2, pos + ".embrace", 0.f, embrace_);
-            }
-            const Json& meta = clipsMeta_["clips"][pos + ".rub"];
-            std::string who = meta["rubHand"].str("marcus");
-            std::string mask = meta["mask"].str("arm.R");
-            Character* rc = who == "vivian" ? &v : &m;
-            if (rc->loaded()) rc->setLayer(1, pos + ".rub", rubPhase_, rub_, mask);
+            baseClip = pos + ".in";
+            for (Character* c : {&v, &m}) if (c->loaded()) c->setLayer(0, baseClip, depth_, 1.f);
+            layered(1, pos + ".rub", rubPhase_, rub_, "vivian", "arm.R");
+            layered(2, pos + ".embrace", 0.f, embrace_, nullptr, "upper");
         }
+        if (!forceChars_) scene.showMarcus = !clipMeta(baseClip)["marcusHidden"].boolean(false);
     }
     for (auto& kv : face_) if (v.loaded()) v.setMorph(kv.first, kv.second > 0.001f ? kv.second : -1.f);
     for (auto& kv : mface_) if (m.loaded()) m.setMorph(kv.first, kv.second > 0.001f ? kv.second : -1.f);
     for (auto& kv : body_) if (v.loaded()) v.setBody(kv.first, kv.second);
     for (auto& kv : mbody_) if (m.loaded()) m.setBody(kv.first, kv.second);
     if (m.loaded() && m.hasMorph("aroused")) m.setMorph("aroused", aroused_);
-    // deformation test pose (QA): bend elbows, knees, hips, spine, curl fingers
-    for (Character* c : {&v, &m}) {
-        if (!c->loaded()) continue;
-        c->clearBoneOffsets();
-        if (flex_ <= 0.f) continue;
-        const float f = flex_;
-        for (const char* sd : {".L", ".R"}) {
-            std::string S = sd;
-            c->setBoneOffset("ひじ" + S, {1.7f * f, 0.f, 0.f});
-            c->setBoneOffset("ひざ" + S, {1.4f * f, 0.f, 0.f});
-            c->setBoneOffset("足" + S, {-0.9f * f, 0.f, 0.f});
-            for (const char* fg : {"人指", "中指", "薬指", "小指"})
-                for (const char* k : {"０", "１", "２"}) c->setBoneOffset(std::string(fg) + k + S, {0.9f * f, 0.f, 0.f});
+    // per-clip morph rules (vag_open with depth, aroused = 1 in sex clips, ...)
+    const Json& rules = clipMeta(baseClip)["morphs"];
+    for (auto& who : rules.obj) {
+        Character* c = charOf(who.first);
+        if (!c || !c->loaded()) continue;
+        for (auto& r : who.second.obj) {
+            bool ok = false;
+            float w = evalMorphRule(r.second, depth_, ok);
+            if (ok && c->hasMorph(r.first)) c->setMorph(r.first, w);
         }
-        c->setBoneOffset("上半身", {0.25f * f, 0.f, 0.f});
-        c->setBoneOffset("首", {0.2f * f, 0.f, 0.f});
+    }
+    // Marcus' length/girth are erect-state deltas: scale by 0.35 + 0.65 * aroused
+    if (m.loaded() && m.hasMorph("aroused")) {
+        float k = 0.35f + 0.65f * m.morph("aroused");
+        for (const char* p : {"length", "girth"}) m.setBody(p, mbody_[p] * k);
     }
     if (v.loaded()) v.setTone(kTones[tone_]);
     if (m.loaded()) m.setTone(kTones[mtone_]);
-    // gaze: she looks at the camera (or him), he looks at her face
-    if (v.loaded()) v.proc.lookTarget = (pos.empty() || pos == "solo") ? cam_.eye : (m.loaded() ? m.bonePos("頭") : cam_.eye);
+    // gaze: she looks at him (or the camera when alone), he looks at her face
+    bool together = !pos.empty() && pos != "solo" && m.loaded() && scene.showMarcus;
+    if (v.loaded()) v.proc.lookTarget = together ? m.bonePos("頭") : cam_.eye;
     if (m.loaded()) m.proc.lookTarget = v.loaded() ? v.bonePos("頭") : cam_.eye;
 }
 

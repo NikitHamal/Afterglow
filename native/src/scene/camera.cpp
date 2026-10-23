@@ -17,10 +17,17 @@ void CameraRig::setOrbit(const V3& t, float y, float p, float d, float blendSeco
 
 void CameraRig::setFirstPerson(Character* c, const std::string& bone, const V3& offset, float blendSeconds) {
     mode_ = Mode::FirstPerson;
-    fpChar_ = c; fpBone_ = bone; fpOffset_ = offset;
+    fpChar_ = c; fpBone_ = bone; fpOffset_ = offset; fpLocal_ = false;
     fpYaw_ = 0.f; fpPitch_ = -0.35f;
     fpBlend_ = blendSeconds > 0.f ? 0.f : 1.f;
     blendDur_ = blendSeconds;
+}
+
+void CameraRig::setFirstPersonLocal(Character* c, const std::string& bone, const V3& offLocal, const V3& fwdLocal, float blendSeconds) {
+    setFirstPerson(c, bone, offLocal, blendSeconds);
+    fpLocal_ = true;
+    fpForwardLocal_ = normalize(fwdLocal);
+    fpPitch_ = -0.15f;
 }
 
 void CameraRig::handleInput(float dt) {
@@ -70,8 +77,16 @@ CameraState CameraRig::update(float dt, float aspect) {
         M4 hb = fpChar_->boneWorld(fpBone_);
         V3 head = hb.translation();
         V3 fwd = fpChar_->forward();
+        V3 fEye;
+        if (fpLocal_) {
+            fEye = xformPoint(hb, fpOffset_);
+            fwd = normalize(xformDir(hb, fpForwardLocal_));
+        } else {
+            V3 r0 = normalize(cross(fwd, V3{0, 1, 0}));
+            fEye = head + V3{0, fpOffset_.y, 0} + fwd * fpOffset_.z + r0 * fpOffset_.x;
+        }
         V3 right = normalize(cross(fwd, V3{0, 1, 0}));
-        V3 fEye = head + V3{0, fpOffset_.y, 0} + fwd * fpOffset_.z + right * fpOffset_.x;
+        if (length(right) < 0.5f) right = V3{1, 0, 0};
         Quat q = qmul(qaxis({0, 1, 0}, fpYaw_), qaxis(right, fpPitch_));
         V3 dir = normalize(qrotate(q, fwd));
         float u = smoothstep(0.f, 1.f, fpBlend_);

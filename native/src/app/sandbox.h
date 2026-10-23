@@ -37,6 +37,7 @@ private:
     void drawOverlay(int w, int h);
     std::string currentPos() const { return positions_.empty() ? std::string() : positions_[(size_t)posIndex_]; }
     V3 focusPoint() const;
+    const Json& clipMeta(const std::string& clip) const;
 
     std::vector<std::string> positions_;
     int posIndex_ = 0;
@@ -52,6 +53,7 @@ private:
     std::string camPreset_ = "front";
     bool quit_ = false;
     bool dropdownEdit_ = false;
+    bool forceChars_ = false;
     int fbW_ = 1280, fbH_ = 720;
 };
 

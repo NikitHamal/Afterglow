@@ -20,6 +20,8 @@ public:
     // Orbit around target: yaw 0 looks from +Z toward -Z, pitch up positive (radians).
     void setOrbit(const V3& target, float yaw, float pitch, float dist, float blendSeconds = 0.8f);
     void setFirstPerson(Character* c, const std::string& bone, const V3& offset, float blendSeconds = 0.6f);
+    // eye point + look axis given in the bone's local frame (clips.json "fpv")
+    void setFirstPersonLocal(Character* c, const std::string& bone, const V3& offsetLocal, const V3& forwardLocal, float blendSeconds = 0.6f);
     void setFov(float degrees) { fovDeg_ = degrees; }
     Mode mode() const { return mode_; }
 
@@ -43,6 +45,8 @@ private:
     Character* fpChar_ = nullptr;
     std::string fpBone_;
     V3 fpOffset_{0, 0.08f, 0.08f};
+    bool fpLocal_ = false;
+    V3 fpForwardLocal_{0, 0, 1};
     float fpYaw_ = 0.f, fpPitch_ = -0.35f, fpBlend_ = 0.f;
     V3 lastEye_{0, 1.4f, 3.f}, lastTarget_{0, 0.8f, 0};
     float fovDeg_ = 38.f, time_ = 0.f;
