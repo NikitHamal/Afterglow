@@ -129,6 +129,147 @@ static void cleanChain(const std::vector<V3>& qp, const std::vector<V3>& qt, boo
     }
 }
 
+int fillHoles(std::vector<FitPart>& parts, const std::vector<FitBone>& bones, float maxPerimeter) {
+    std::vector<float> P;
+    std::vector<uint32_t> I, part;
+    std::vector<size_t> base;
+    for (size_t pi = 0; pi < parts.size(); ++pi) {
+        FitPart& f = parts[pi];
+        base.push_back(P.size() / 3);
+        if (!f.pos || !f.idx) continue;
+        P.insert(P.end(), f.pos->begin(), f.pos->end());
+        part.resize(P.size() / 3, (uint32_t)pi);
+        for (uint32_t i : *f.idx) I.push_back(i + (uint32_t)base[pi]);
+    }
+    if (P.empty() || I.size() < 3) return 0;
+    std::vector<uint32_t> rep;
+    std::vector<uint32_t> w = weld(P, rep);
+    std::unordered_map<uint64_t, int> uses;
+    for (size_t t = 0; t + 2 < I.size(); t += 3)
+        for (int e = 0; e < 3; ++e) {
+            uint32_t a = w[I[t + e]], b = w[I[t + (e + 1) % 3]];
+            if (a != b) ++uses[ekey(a, b)];
+        }
+    // border half-edges as their triangle runs them (the cloth on their left), with the primitive that owns them
+    std::unordered_map<uint32_t, std::vector<uint32_t>> next;
+    std::unordered_map<uint64_t, uint32_t> owner;
+    std::unordered_map<uint64_t, uint32_t> local;   // (primitive, welded vertex) -> that primitive's vertex
+    for (size_t t = 0; t + 2 < I.size(); t += 3)
+        for (int e = 0; e < 3; ++e) {
+            uint32_t ga = I[t + e], gb = I[t + (e + 1) % 3], a = w[ga], b = w[gb];
+            if (a == b || uses[ekey(a, b)] != 1) continue;
+            next[a].push_back(b);
+            uint32_t pi = part[ga];
+            owner[(uint64_t)a << 32 | b] = pi;
+            local.emplace((uint64_t)pi << 32 | a, ga - (uint32_t)base[pi]);
+            local.emplace((uint64_t)pi << 32 | b, gb - (uint32_t)base[part[gb]]);
+        }
+    std::unordered_map<uint32_t, char> done;
+    int filled = 0;
+    for (auto& kv : next) {
+        uint32_t s = kv.first;
+        if (done[s] || kv.second.size() != 1) continue;
+        std::vector<uint32_t> L{s};
+        done[s] = 1;
+        bool closed = false;
+        for (uint32_t cur = kv.second[0], guard = 0; guard < 4096; ++guard) {
+            if (cur == s) { closed = true; break; }
+            auto it = next.find(cur);
+            if (done[cur] || it == next.end() || it->second.size() != 1) break;   // touching loops: leave them alone
+            done[cur] = 1;
+            L.push_back(cur);
+            cur = it->second[0];
+        }
+        if (!closed || L.size() < 3) continue;
+        // small, and of one primitive
+        const size_t Ln = L.size();
+        float per = 0.f;
+        V3 c{0, 0, 0};
+        uint32_t pi = UINT32_MAX;
+        bool onePart = true;
+        for (size_t i = 0; i < Ln; ++i) {
+            V3 a = at(P, rep[L[i]]), b = at(P, rep[L[(i + 1) % Ln]]);
+            per += length(b - a);
+            c += a;
+            auto o = owner.find((uint64_t)L[i] << 32 | L[(i + 1) % Ln]);
+            uint32_t op = o == owner.end() ? UINT32_MAX : o->second;
+            if (pi == UINT32_MAX) pi = op;
+            onePart = onePart && op == pi && op != UINT32_MAX;
+        }
+        if (per > maxPerimeter || !onePart) continue;
+        c = c / (float)Ln;
+        // the fill runs the border backwards (its inside then lies on its left, like the cloth's): Newell normal
+        std::vector<V3> Q(Ln);
+        for (size_t i = 0; i < Ln; ++i) Q[i] = at(P, rep[L[Ln - 1 - i]]);
+        V3 N{0, 0, 0};
+        float rad = 0.f;
+        for (size_t i = 0; i < Ln; ++i) {
+            const V3 &a = Q[i], &b = Q[(i + 1) % Ln];
+            N += V3{(a.y - b.y) * (a.z + b.z), (a.z - b.z) * (a.x + b.x), (a.x - b.x) * (a.y + b.y)};
+            rad = std::max(rad, length(a - c));
+        }
+        if (length(N) < 1e-9f) continue;
+        N = normalize(N);
+        // a limb through it: an opening (a cuff, a hem, the neck), not a hole
+        bool opening = false;
+        for (const FitBone& bn : bones) {
+            V3 a{bn.a[0], bn.a[1], bn.a[2]}, b{bn.b[0], bn.b[1], bn.b[2]};
+            float d0 = dot(a - c, N), d1 = dot(b - c, N);
+            if (d0 * d1 > 0.f || std::fabs(d0 - d1) < 1e-9f) continue;
+            V3 hit = a + (b - a) * (d0 / (d0 - d1));
+            if (length(hit - c) < rad) { opening = true; break; }
+        }
+        if (opening) continue;
+        // minimum-area triangulation over the border's own vertices (a border around a part of the body is far from
+        // flat, so no projection is needed); ties go to short edges. Triangles (i, k, j), i < k < j, run like Q.
+        std::vector<float> best(Ln * Ln, 0.f);
+        std::vector<int> split(Ln * Ln, -1);
+        auto chord = [&](size_t a, size_t b) {   // a diagonal the cloth already has: closing over it would double that edge
+            size_t d = a > b ? a - b : b - a;
+            return d != 1 && d != Ln - 1 && uses.count(ekey(L[Ln - 1 - a], L[Ln - 1 - b])) > 0;
+        };
+        auto cost = [&](size_t a, size_t b, size_t d) {
+            V3 e1 = Q[b] - Q[a], e2 = Q[d] - Q[a], e3 = Q[d] - Q[b];
+            float c = 0.5f * length(cross(e1, e2)) + 0.002f * (dot(e1, e1) + dot(e2, e2) + dot(e3, e3));
+            return chord(a, b) || chord(b, d) || chord(a, d) ? c + 1e6f : c;
+        };
+        for (size_t len = 2; len < Ln; ++len)
+            for (size_t i = 0; i + len < Ln; ++i) {
+                size_t j = i + len;
+                float bv = 1e30f;
+                for (size_t k = i + 1; k < j; ++k) {
+                    float v = best[i * Ln + k] + best[k * Ln + j] + cost(i, k, j);
+                    if (v < bv) { bv = v; split[i * Ln + j] = (int)k; }
+                }
+                best[i * Ln + j] = bv;
+            }
+        std::vector<uint32_t> tris;
+        std::vector<std::pair<size_t, size_t>> todo{{0, Ln - 1}};
+        while (!todo.empty()) {
+            auto [i, j] = todo.back();
+            todo.pop_back();
+            if (j < i + 2) continue;
+            size_t k = (size_t)split[i * Ln + j];
+            tris.insert(tris.end(), {(uint32_t)i, (uint32_t)k, (uint32_t)j});
+            todo.push_back({i, k});
+            todo.push_back({k, j});
+        }
+        // back to the primitive's own vertices
+        std::vector<uint32_t> out;
+        bool ok = true;
+        for (uint32_t q : tris) {
+            auto it = local.find((uint64_t)pi << 32 | L[Ln - 1 - q]);
+            if (it == local.end()) { ok = false; break; }
+            out.push_back(it->second);
+        }
+        if (!ok) continue;
+        parts[pi].idx->insert(parts[pi].idx->end(), out.begin(), out.end());
+        parts[pi].idxChanged = true;
+        ++filled;
+    }
+    return filled;
+}
+
 std::string fitGarment(std::vector<FitPart>& parts, bool drapeIt) {
     // ---- the layer as one welded surface ----
     std::vector<float> P;
