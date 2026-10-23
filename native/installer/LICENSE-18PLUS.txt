@@ -1,0 +1,19 @@
+AFTERGLOW — ADULTS ONLY (18+)
+
+This software contains explicit sexual content intended exclusively for adults.
+
+By installing it you confirm that:
+  * you are at least 18 years old (or the age of majority where you live), and
+  * viewing sexually explicit material is legal where you are.
+
+Afterglow is a work of fiction. Every character in it is an adult (Vivian, about 42; Marcus, about 40)
+and is depicted as a consenting partner.
+
+The game runs entirely offline. It collects no data and makes no network connections.
+
+Credits
+  * Engine: raylib (zlib licence), cgltf (MIT), stb_image (public domain / MIT), raygui (zlib licence).
+  * Characters generated with MPFB 2 / MakeHuman (CC0 assets).
+  * Sound effects: "Lewd Sound Pack" by Shinlalala, licensed CC BY-SA 4.0.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.

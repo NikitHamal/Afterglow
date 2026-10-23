@@ -1,0 +1,15 @@
+# Afterglow visual QA — rendered on CI by the harness under Mesa llvmpipe (1280x720).
+# Format: name|scene spec   (keys: see docs/NATIVE_ENGINE.md, "Harness")
+overview|cam=wide
+front|cam=front
+side|cam=side
+vivian_close|cam=close;char=vivian
+vivian_pleasure|cam=close;char=vivian;face=pleasure:0.85
+vivian_smile|cam=close;char=vivian;face=smile:0.8;tone=honey
+vivian_deep|cam=front;char=vivian;tone=deep
+vivian_curvy|cam=front;char=vivian;body=bust:1,hips:0.8,butt:0.8,waist:0.6
+marcus_front|cam=front;char=marcus
+flushed|cam=close;char=vivian;flush=0.9;sweat=0.8;face=moan:0.7
+debug_overlay|cam=front;debug=1
+missionary|pos=missionary;depth=0.6;cam=side
+doggy|pos=doggy;depth=0.8;cam=side
