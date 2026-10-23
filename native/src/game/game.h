@@ -122,6 +122,8 @@ private:
     void drawUpdateCard(float x, float y, float w);
     void drawDebug();
     void drawLoading(float f, const char* what);
+    float loadF_ = 0.f;
+    std::string loadWhat_;
     void heroLogo(float cx, float y, float size, float a);
     int custTab_ = 0, setTab_ = 0;
     bool confirmQuit_ = false, confirmNew_ = false;

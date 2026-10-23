@@ -5,6 +5,7 @@
 #include "core/mathx.h"
 #include "core/json.h"
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -107,6 +108,8 @@ public:
     // after load-time queries: drop CPU copies the GPU already has (keeps what morphing needs)
     void releaseCpuData();
     static long long bufferBytes();      // GPU vertex/index bytes uploaded by all models
+    // called on the main thread while worker threads decode textures (keep the window alive, redraw a loader)
+    static std::function<void()> loadPump;
 
     int findNode(const std::string& name) const;
     int findClip(const std::string& name) const;
