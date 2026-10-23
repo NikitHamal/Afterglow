@@ -391,6 +391,9 @@ void Game::render(int w, int h) {
         scene.lights.fillIntensity = std::max(scene.lights.fillIntensity, 0.9f);
     }
     rs.renderScale = settings.renderScale * (settings.quality == 0 ? 0.85f : 1.f);
+    // 4K panels: shade at most ~1440p worth of pixels (FXAA + bilinear upscale); invisible at laptop sizes
+    float px = (float)w * (float)h * rs.renderScale * rs.renderScale;
+    if (px > 3.7e6f) rs.renderScale *= std::sqrt(3.7e6f / px);
     rs.bloom = settings.bloom;
     rs.ssao = settings.ssao && settings.quality > 0;
     rs.grain = settings.filmGrain ? 0.024f : 0.f;
