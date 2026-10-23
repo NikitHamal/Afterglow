@@ -22,13 +22,24 @@ struct FitSurface {
     const std::vector<float>* border = nullptr;   // per vertex: signed distance to the smoothed border
 };
 
-// one primitive of a garment layer; pos is edited in place (filled notches, drape), border is written
+// one primitive of a garment layer; pos is edited in place (filled notches, drape), idx grows when holes are closed,
+// border is written
 struct FitPart {
     std::vector<float>* pos = nullptr;
     const std::vector<float>* nrm = nullptr;
-    const std::vector<uint32_t>* idx = nullptr;
+    std::vector<uint32_t>* idx = nullptr;
     std::vector<float> border;
+    bool idxChanged = false;
 };
+
+// a bone of the wearer in bind space: from a joint to its child
+struct FitBone { float a[3], b[3]; };
+
+// holes: where the cloth was cut around a part of the body (the content cuts garments from the skin), it has small open
+// borders that no limb passes through. Each such border (perimeter under `maxPerimeter`, crossed by none of `bones` —
+// the wearer's long bones the layer is weighted to) is closed with triangles over its own vertices, wound like the
+// cloth around it. Returns how many were closed; parts whose idx changed are flagged.
+int fillHoles(std::vector<FitPart>& parts, const std::vector<FitBone>& bones, float maxPerimeter = 0.30f);
 
 // borders, notches and drape for one garment layer (all of its primitives); returns a one-line report
 std::string fitGarment(std::vector<FitPart>& parts, bool drape);

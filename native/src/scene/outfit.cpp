@@ -196,15 +196,50 @@ GLuint fitTex(const std::vector<float>& a, const std::vector<float>& b) {
 // smooth borders for every garment surface; the under layer and the wearer's skin hidden where an opaque garment of
 // the layer above covers them (lace and other see-through fabrics cover nothing)
 void Outfit::computeFit(const Character& owner) {
-    // each garment mesh is one layer, taken whole (seams between its primitives are not borders): a clean cut along
-    // every border, outer layers draped; the edited bind shape goes back to the GPU
+    // the wearer's bones in bind space (joint -> child), for telling a garment's openings from its holes
+    const Model& cm = owner.model;
+    std::vector<V3> jointAt(cm.nodes.size(), V3{0, 0, 0});
+    std::vector<int> jointOf(cm.nodes.size(), -1);
+    if (!cm.skins.empty())
+        for (size_t j = 0; j < cm.skins[0].joints.size() && j < cm.skins[0].invBind.size(); ++j) {
+            int nd = cm.skins[0].joints[j];
+            if (nd < 0 || (size_t)nd >= cm.nodes.size()) continue;
+            jointAt[(size_t)nd] = inverse(cm.skins[0].invBind[j]).translation();
+            jointOf[(size_t)nd] = (int)j;
+        }
+    // each garment mesh is one layer, taken whole (seams between its primitives are not borders): holes closed, a clean
+    // cut along every border, outer layers draped; the edited bind shape and triangles go back to the GPU
     std::vector<std::vector<std::vector<float>>> border(model.meshes.size());
     for (size_t mi = 0; mi < model.meshes.size(); ++mi) {
         Mesh& me = model.meshes[mi];
         std::vector<FitPart> parts;
         for (Primitive& p : me.prims) parts.push_back(FitPart{&p.pos, &p.nrm, &p.idx, {}});
+        // the long bones (6 cm and more: limbs, spine, neck) this layer is weighted to; a border one of them passes
+        // through is an opening, any other small border is a hole cut around a part of the body
+        std::vector<int> weight(cm.skins.empty() ? 0 : cm.skins[0].joints.size(), 0);
+        for (const Primitive& p : me.prims)
+            for (size_t k = 0; k < p.joints.size() && k < p.weights.size(); ++k)
+                if (p.weights[k] > 0.05f && p.joints[k] < weight.size()) ++weight[p.joints[k]];
+        std::vector<FitBone> bones;
+        for (size_t nd = 0; nd < cm.nodes.size(); ++nd) {
+            int par = cm.nodes[nd].parent;
+            if (jointOf[nd] < 0 || par < 0 || jointOf[(size_t)par] < 0 || weight[(size_t)jointOf[(size_t)par]] < 20) continue;
+            V3 a = jointAt[(size_t)par], b = jointAt[nd];
+            if (length(b - a) < 0.06f) continue;
+            bones.push_back(FitBone{{a.x, a.y, a.z}, {b.x, b.y, b.z}});
+        }
+        int holes = fillHoles(parts, bones);
         std::string report = fitGarment(parts, meshLayer[mi] == 0);
-        AG_INFO("AG: outfit %s %s: %s", style.c_str(), meshLayer[mi] ? "under" : "outer", report.c_str());
+        AG_INFO("AG: outfit %s %s: %d holes closed, %s", style.c_str(), meshLayer[mi] ? "under" : "outer", holes, report.c_str());
+        for (size_t pi = 0; pi < me.prims.size(); ++pi) {
+            Primitive& p = me.prims[pi];
+            if (!parts[pi].idxChanged || !p.ebo || !p.vao) continue;
+            glBindVertexArray(p.vao);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, p.ebo);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(p.idx.size() * sizeof(uint32_t)), p.idx.data(), GL_STATIC_DRAW);
+            glBindVertexArray(0);
+            p.indexCount = (int)p.idx.size();
+        }
         border[mi].resize(me.prims.size());
         for (size_t pi = 0; pi < me.prims.size(); ++pi) {
             Primitive& p = me.prims[pi];
@@ -232,7 +267,6 @@ void Outfit::computeFit(const Character& owner) {
             std::vector<float> under = meshLayer[mi] == 1 ? coverage(p.pos, p.nrm, layer[0]) : std::vector<float>{};
             fit_[mi].push_back(fitTex(border[mi][pi], under));
         }
-    const Model& cm = owner.model;
     bodyFit_.assign(cm.meshes.size(), {});
     int skinPrims = 0;
     size_t hidden[2] = {0, 0}, verts = 0;
