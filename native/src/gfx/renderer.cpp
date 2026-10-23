@@ -112,6 +112,8 @@ void Renderer::setFrame(Program& p, Scene& s, const CameraState& cam, float time
     p.set("u_groundColor", L.ground);
     p.set("u_ambient", L.ambient);
     p.set("u_bakeScale", s.bakeTint);
+    p.set("u_bakeMix", s.bakeMix);
+    p.set("u_bakeSat", s.bakeSat);
     V3 pp[6], pc[6]; float pi[6], pr[6];
     for (int i = 0; i < 6; ++i) { pp[i] = L.points[i].pos; pc[i] = L.points[i].color; pi[i] = L.points[i].intensity; pr[i] = L.points[i].range; }
     p.set("u_numPoints", L.numPoints);
@@ -186,7 +188,18 @@ void Renderer::drawModel(Program& p, Model& m, Animator& a, const Character* ch,
             if (pass == 2 && !(mat.alpha == AlphaMode::Mask && mat.shading == Shading::Hair)) continue;
             bool skinned = prim.skinned && n.skin >= 0 && a.boneTexture();
             if (skinned) {
-                if (!bonesBound) { p.sampler("u_bones", 6, a.boneTexture()); bonesBound = true; }
+                if (!bonesBound) {
+                    p.sampler("u_bones", 6, a.boneTexture()); bonesBound = true;
+                    // soft tissue: finger contacts dent the skin (the touching hands themselves excluded)
+                    int nc = ch && pass != 0 ? std::min(8, (int)ch->touch.contacts.size()) : 0;
+                    p.set("u_numContacts", nc);
+                    if (nc > 0) {
+                        V4 cs[8];
+                        for (int i = 0; i < nc; ++i) cs[i] = V4{ch->touch.contacts[(size_t)i].c.x, ch->touch.contacts[(size_t)i].c.y, ch->touch.contacts[(size_t)i].c.z, ch->touch.contacts[(size_t)i].r};
+                        p.setArray("u_contacts", cs, nc);
+                        p.set("u_noDent", V4{(float)ch->touch.handJointLo[0], (float)ch->touch.handJointHi[0], (float)ch->touch.handJointLo[1], (float)ch->touch.handJointHi[1]});
+                    }
+                }
                 p.set("u_model", M4::identity());
                 p.set("u_skinned", 1);
                 p.set("u_skinRow", n.skin);

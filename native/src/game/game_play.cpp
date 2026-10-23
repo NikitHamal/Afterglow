@@ -2,6 +2,7 @@
 #include "app/platform.h"
 #include "core/log.h"
 #include "scene/lighting.h"
+#include "scene/touch.h"
 #include "raylib.h"
 #include <algorithm>
 #include <cmath>
@@ -368,6 +369,34 @@ void Game::presentPlay(float dt) {
     }
     scene.showVivian = v.loaded();
 
+    // ---- touch: her hands find the real surface; being touched makes her react ----
+    if (v.loaded()) {
+        TouchGoals tg;
+        if (p.solo) {
+            float inten = clamp01(0.35f + 0.65f * depth_);
+            tg.right.active = true; tg.right.zone = Zone::Vulva; tg.right.weight = 0.92f; tg.right.phase = rubPhase_;
+            tg.right.amplitude = 0.006f + 0.01f * inten; tg.right.curl = 0.28f; tg.right.press = 0.003f + 0.003f * inten;
+            tg.left.active = true; tg.left.zone = Zone::BreastL; tg.left.weight = 0.85f * clamp01(0.45f + her);
+            tg.left.phase = std::fmod(rubPhase_ * 0.5f + 0.25f, 1.f); tg.left.amplitude = 0.01f; tg.left.curl = 0.6f; tg.left.press = 0.007f;
+        } else if (p.canTouch && rub_ > 0.02f) {
+            tg.right.active = true; tg.right.zone = Zone::Vulva; tg.right.weight = 0.95f * rub_; tg.right.phase = rubPhase_;
+            tg.right.amplitude = 0.012f; tg.right.curl = 0.28f; tg.right.press = 0.004f;
+        }
+        v.touchGoals = tg;
+        // sensitivity by zone: vulva 1, breast 0.55
+        float act = (tg.right.active ? tg.right.weight : 0.f) + (tg.left.active ? tg.left.weight * 0.55f : 0.f);
+        float before = touchAct_;
+        touchAct_ = approach(touchAct_, clamp01(act), 6.f, dt);
+        if (dt > 0.f && before < 0.25f && touchAct_ >= 0.25f) {
+            // a touch begins: a small flinch, a caught breath, a jolt through the breasts
+            flinch_ = 1.f;
+            if (audio.ready()) audio.playRandom("breath/in", 0.55f * settings.voice, 0.05f);
+            voice("moan02", 0.35f + 0.3f * her, 1.25f);
+            for (const char* b : {"乳親.L", "乳親.R"}) { int bi = v.bone(b); if (bi >= 0) v.procedural.impulse(bi, V3{0.f, 0.25f, 0.1f}); }
+        }
+        flinch_ = approach(flinch_, 0.f, 3.5f, dt);
+    }
+
     // ---- bodies, faces, skin ----
     float climaxH = std::exp(-herClimaxT_ * 0.9f) * (herClimaxT_ < 6.f ? 1.f : 0.f);
     float climaxM = std::exp(-hisClimaxT_ * 0.9f) * (hisClimaxT_ < 6.f ? 1.f : 0.f);
@@ -377,7 +406,7 @@ void Game::presentPlay(float dt) {
         blinkV_ = approach(blinkV_, 0.f, 14.f, dt);
         float eyesClosed = clamp01(0.25f * her * her + 0.8f * climaxH);
         v.setMorph("blink", clamp01(std::max(blinkV_, eyesClosed)));
-        v.setMorph("pleasure", clamp01(0.15f + 0.75f * std::pow(her, 0.8f) + 0.4f * climaxH));
+        v.setMorph("pleasure", clamp01(0.15f + 0.75f * std::pow(her, 0.8f) + 0.4f * climaxH + 0.25f * touchAct_ + 0.3f * flinch_));
         mouthT_ = std::max(0.f, mouthT_ - dt);
         float u = mouthDur_ > 0.f ? 1.f - mouthT_ / mouthDur_ : 1.f;   // 0 -> 1 over the line
         float voiceOpen = mouthT_ > 0.f ? std::sin(3.14159f * std::min(1.f, u * 1.15f)) * (0.55f + 0.15f * std::sin(u * 23.f)) : 0.f;
@@ -387,8 +416,9 @@ void Game::presentPlay(float dt) {
         if (v.hasMorph("oral")) v.setMorph("oral", p.id == "oral" ? 1.f : 0.f);
         v.flush = clamp01(0.15f + 0.8f * her + 0.3f * climaxH);
         v.sweat = sweat_;
-        v.proc.breathRate = 0.22f + 0.38f * her + 0.3f * climaxH;
-        v.proc.breathAmp = 1.f + 1.4f * her + 1.5f * climaxH;
+        v.proc.breathRate = 0.22f + 0.38f * her + 0.3f * climaxH + 0.12f * touchAct_;
+        v.proc.breathAmp = 1.f + 1.4f * her + 1.5f * climaxH + 0.8f * touchAct_ + 1.2f * flinch_;
+        arch_ = 0.07f * touchAct_ * (0.5f + her) + 0.06f * flinch_ + 0.1f * climaxH;
         v.proc.eyeRollUp = clamp01(0.85f * climaxH);
         v.proc.jiggleGain = 0.8f + 0.9f * std::min(1.f, night_.energy);
         v.proc.hair = settings.hairPhysics;
@@ -462,6 +492,18 @@ void Game::presentPlay(float dt) {
     postExpMul_ = 1.f + 0.06f * glow;
 
     scene.update(dt * slowmo_);
+}
+
+// her back arches with pleasure: the upper body rotates back about the shoulder line (world space)
+void Game::archBody(Animator& a) const {
+    if (arch_ < 0.002f) return;
+    const Model* m = a.model();
+    int upper = m->findNode("上半身"), sl = m->findNode("腕.L"), sr = m->findNode("腕.R");
+    if (upper < 0 || sl < 0 || sr < 0) return;
+    V3 axis = a.global(sr).translation() - a.global(sl).translation();
+    if (length(axis) < 1e-4f) return;
+    a.setWorldRot(upper, qnormalize(qmul(qaxis(normalize(axis), arch_), a.worldRot(upper))));
+    a.recomputeSubtree(upper);
 }
 
 // ------------------------------------------------------------------ HUD

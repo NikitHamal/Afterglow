@@ -70,6 +70,10 @@ void Program::sampler(const char* n, int unit, GLuint tex, GLenum target) {
     GLint l = loc(n);
     if (l >= 0) glUniform1i(l, unit);
 }
+void Program::setArray(const char* n, const V4* v, int count) {
+    GLint l = loc(n);
+    if (l >= 0) glUniform4fv(l, count, &v[0].x);
+}
 
 std::string shaderSource(const std::string& file) {
     // dev hot-reload: a shaders/ folder next to the assets wins over the embedded copy

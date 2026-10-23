@@ -25,6 +25,7 @@ struct MoodDef {
     V3 sky, ground; float ambient;
     float candles, lamp2;                 // point lights by role
     float bake; V3 bakeTint;              // baked room irradiance (x lightmap scale)
+    float bakeMix, bakeSat;               // baked vs live room light; saturation of the baked room
     float exposure, warmth, saturation, contrast, vignette, bloom;
 };
 
@@ -36,24 +37,24 @@ const MoodDef kMoods[3] = {
      {0.80f, 0.86f, 1.0f}, 0.32f,
      {0.62f, 0.58f, 0.56f}, {0.26f, 0.21f, 0.18f}, 1.0f,
      0.10f, 0.55f,
-     1.3f, {1.0f, 0.95f, 0.91f},
-     1.2f, 0.01f, 1.0f, 1.03f, 0.16f, 0.06f},
+     1.45f, {1.0f, 0.96f, 0.93f}, 0.9f, 0.62f,
+     1.28f, 0.0f, 1.0f, 1.03f, 0.16f, 0.06f},
     // candlelit night: warmer, deeper shadows, faces still clear
     {{1.0f, 0.76f, 0.56f}, 9.f, 0.55f, 1.15f, false,
      {1.0f, 0.90f, 0.84f}, 0.55f,
      {0.62f, 0.72f, 1.0f}, 0.42f,
      {0.44f, 0.39f, 0.41f}, {0.17f, 0.13f, 0.12f}, 0.66f,
      0.16f, 0.4f,
-     0.95f, {1.0f, 0.93f, 0.86f},
-     1.28f, 0.06f, 1.0f, 1.05f, 0.26f, 0.08f},
+     1.05f, {1.0f, 0.93f, 0.87f}, 1.0f, 0.78f,
+     1.3f, 0.05f, 1.0f, 1.05f, 0.26f, 0.08f},
     // bright daylight: soft window light, neutral colour, open shadows
     {{1.0f, 0.97f, 0.93f}, 24.f, 0.8f, 1.4f, true,
      {1.0f, 0.99f, 0.97f}, 1.05f,
      {0.95f, 0.97f, 1.0f}, 0.85f,
      {0.84f, 0.88f, 0.94f}, {0.46f, 0.42f, 0.38f}, 1.75f,
      0.0f, 0.0f,
-     2.6f, {0.97f, 1.03f, 1.12f},
-     1.06f, -0.02f, 1.02f, 1.02f, 0.10f, 0.035f},
+     2.2f, {0.97f, 1.03f, 1.12f}, 0.22f, 0.6f,
+     1.08f, -0.02f, 1.02f, 1.02f, 0.10f, 0.035f},
 };
 }  // namespace
 
@@ -93,6 +94,8 @@ void applyLighting(Scene& s, RenderSettings& rs, const LightingSetup& set, const
         if (L.points[i].flicker <= 0.f) L.points[i].intensity = base;
     }
     s.bakeTint = m.bakeTint * (m.bake * ri.bakeScale);
+    s.bakeMix = m.bakeMix;
+    s.bakeSat = m.bakeSat;
     rs.exposure = m.exposure * std::pow(2.f, 0.8f * clampf(set.brightness, -1.f, 1.f));
     rs.warmth = m.warmth + 0.1f * w;
     rs.saturation = m.saturation;

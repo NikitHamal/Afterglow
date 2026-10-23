@@ -24,6 +24,7 @@ public:
     void set(const char* n, const M4& m);
     void setArray(const char* n, const V3* v, int count);
     void setArray(const char* n, const float* v, int count);
+    void setArray(const char* n, const V4* v, int count);
     void sampler(const char* n, int unit, GLuint tex, GLenum target = GL_TEXTURE_2D);
 
 private:

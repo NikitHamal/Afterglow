@@ -41,6 +41,8 @@ uniform float u_flush;
 uniform float u_sweat;
 uniform int u_baked;              // room: emissive(uv1) / unlit carries baked light
 uniform vec3 u_bakeScale;         // lightmap scale x lighting mood
+uniform float u_bakeMix;          // 1 = baked room light, 0 = live lights (daylight relights the night bake)
+uniform float u_bakeSat;          // saturation of the baked room (tames strongly coloured bedding)
 uniform sampler2D u_skinMask;     // content skin support map (linear): R flush, G translucency, B sweat
 uniform int u_hasSkinMask;
 uniform sampler2D u_detailN;      // tileable pore/crosshatch normal (uv0 * 48)
@@ -241,14 +243,21 @@ void main() {
     float keyAtt = spot * fall * fall / (dk * dk + 0.25);
     float sh = keyAtt > 0.0 ? shadowFactor(v_wpos, Ng, Lk) : 1.0;
 
-    if (u_mode == 5 || (u_mode == 4 && u_baked == 1)) {
+    vec3 bakedCol = vec3(0.0);
+    bool bakedRoom = u_mode == 4 && u_baked == 1;
+    if (u_mode == 5 || bakedRoom) {
         // baked lighting carried by the material: unlit base, or base x lightmap(emissive uv1)
         vec3 lit = (u_mode == 5) ? base.rgb : base.rgb * emis * u_bakeScale;
+        if (bakedRoom) lit = mix(vec3(dot(lit, vec3(0.2126, 0.7152, 0.0722))), lit, u_bakeSat);
         float keyShare = sat(dot(Ng, Lk)) * keyAtt * u_keyIntensity * 0.35;
         float darken = 1.0 - 0.6 * (1.0 - sh) * sat(keyShare);
-        vec3 c = lit * darken * mix(1.0, ssao, 0.7);
-        o_color = vec4(c, u_pass == 1 ? sat(alpha / max(u_cutoff, 1e-3)) : 1.0);
-        return;
+        bakedCol = lit * darken * mix(1.0, ssao, 0.7);
+        if (u_mode == 5 || u_bakeMix >= 0.999) {
+            o_color = vec4(bakedCol, u_pass == 1 ? sat(alpha / max(u_cutoff, 1e-3)) : 1.0);
+            return;
+        }
+        emis = vec3(0.0);   // live path below: the lightmap is not emission
+        s.albedo = mix(vec3(dot(s.albedo, vec3(0.2126, 0.7152, 0.0722))), s.albedo, u_bakeSat);
     }
 
     vec3 col = vec3(0.0);
@@ -276,6 +285,7 @@ void main() {
     vec3 specAmb = env * Fa * specOcc * (1.0 - s.rough * 0.7) * (u_mode == 3 ? 3.0 : 1.0);
     if (u_mode == 2) specAmb *= 0.12;
     col += diffAmb + specAmb + emis;
+    if (bakedRoom) col = mix(col, bakedCol, u_bakeMix);
 
     if (u_mode == 3) {
         // wet cornea glint from the key light

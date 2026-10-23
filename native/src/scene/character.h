@@ -4,6 +4,7 @@
 #include "gfx/model.h"
 #include "anim/animator.h"
 #include "anim/procedural.h"
+#include "scene/touch.h"
 #include <functional>
 #include <string>
 #include <vector>
@@ -37,6 +38,10 @@ public:
     float morph(const std::string& name) const;
     std::vector<std::string> morphNames() const;
     bool hasMorph(const std::string& name) const { return morphIndex_.count(name) > 0; }
+    const std::vector<std::pair<int, int>>* morphTargets(const std::string& name) const {
+        auto it = morphIndex_.find(name);
+        return it == morphIndex_.end() ? nullptr : &it->second;
+    }
     // body slider -1..1: drives <p>_up / <p>_dn pairs, or legacy body_<p> (positive only)
     void setBody(const std::string& param, float v);
     float body(const std::string& param) const;
@@ -53,6 +58,9 @@ public:
     ProcParams proc;
     // optional pose edit after the clips (world-space bone aims); runs before the procedural layers
     std::function<void(Animator&)> poseHook;
+    // touch: hands onto her own body zones (IK after the procedural layers) + soft-tissue contacts
+    TouchRig touch;
+    TouchGoals touchGoals;
     void resetSimulation() { procedural.reset(); }
 
     void update(float dt);

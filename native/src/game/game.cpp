@@ -174,6 +174,7 @@ void Game::stage(Stage st) {
         c->clearLayers();
         c->clearBoneOffsets();
         c->poseHook = nullptr;
+        c->touchGoals = TouchGoals{};
         c->placement = M4::identity();
         c->proc.hair = settings.hairPhysics;
         c->proc.lookAt = true;
@@ -199,6 +200,7 @@ void Game::stage(Stage st) {
         }
         case Stage::Night:
             scene.showVivian = v.loaded(); scene.showMarcus = m.loaded();
+            if (v.loaded()) v.poseHook = [this](Animator& a) { archBody(a); };
             break;
     }
 }
