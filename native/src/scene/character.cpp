@@ -19,6 +19,10 @@ bool Character::load(const std::string& charId, const std::string& path, float t
         for (size_t t = 0; t < model.meshes[mi].targetNames.size(); ++t)
             morphIndex_[model.meshes[mi].targetNames[t]].push_back({(int)mi, (int)t});
     baseOverride_.assign(model.materials.size(), 0);
+    // optional skin support maps next to the GLB (linear data)
+    std::string maskFile = paths::join(dir_, id + "_skin_mask.png"), detailFile = paths::join(dir_, "skin_detail_n.png");
+    if (paths::exists(maskFile)) skinMask_ = textureFromFile(maskFile, false);
+    if (paths::exists(detailFile)) skinDetail_ = textureFromFile(detailFile, false);
 
     float mn = 0.f, mx = 0.f;
     measureBindHeight(mn, mx);
@@ -36,6 +40,8 @@ bool Character::load(const std::string& charId, const std::string& path, float t
 void Character::destroy() {
     for (auto& kv : toneCache_) { GLuint t = kv.second; textureDestroy(t); }
     toneCache_.clear();
+    textureDestroy(skinMask_);
+    textureDestroy(skinDetail_);
     anim.destroy();
     model.destroy();
     morphIndex_.clear(); masks_.clear(); bodyValues_.clear(); baseOverride_.clear();

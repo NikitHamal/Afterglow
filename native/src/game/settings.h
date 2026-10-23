@@ -16,6 +16,9 @@ struct Settings {
     // graphics
     int quality = 2;               // 0 low, 1 medium, 2 high
     bool bloom = true, ssao = true, filmGrain = true, hairPhysics = true;
+    // lighting (live): mood 0 warm evening, 1 candlelit night, 2 bright daylight; offsets -1..1
+    int lightMood = 0;
+    float brightness = 0.f, warmth = 0.f;
     // audio (0..1)
     float master = 0.85f, voice = 1.f, effects = 0.9f, ambience = 0.65f, music = 0.45f;
     // controls

@@ -284,15 +284,19 @@ void Game::drawSettings() {
     ui::Ui& U = ui;
     float t = screenTime_;
     float ea = ui::easeOut(t / 0.5f);
-    if (settingsReturn_ == Screen::Pause) U.backdrop(1.f);
-    float pw = U.u(1060.f), ph = U.u(800.f);
-    float px = U.W * 0.5f - pw * 0.5f, py = U.H * 0.5f - ph * 0.5f + (1.f - ea) * U.u(24.f);
+    const bool lighting = setTab_ == 2;
+    // lighting previews live: the panel moves aside and the scene stays clear (even from pause)
+    float side = U.anim("set#side", lighting ? 1.f : 0.f, 9.f);
+    if (settingsReturn_ == Screen::Pause) U.backdrop(1.f - side);
+    float pw = U.u(1060.f - 300.f * side), ph = U.u(800.f);
+    float cx = U.W * 0.5f + side * (U.W * 0.5f - U.u(56.f) - pw * 0.5f);
+    float px = cx - pw * 0.5f, py = U.H * 0.5f - ph * 0.5f + (1.f - ea) * U.u(24.f);
     U.alpha = ea;
     U.panel(Rectangle{px, py, pw, ph}, 28.f, 0.62f);
     float x = px + U.u(56.f), w = pw - U.u(112.f), y = py + U.u(44.f);
     U.text(ui::Face::Serif, U.u(56.f), "Settings", x, y, U.th.ink);
     y += U.u(88.f);
-    U.tabs("set#tabs", &setTab_, {"DISPLAY", "GRAPHICS", "AUDIO", "CONTROLS", "GAME"}, Rectangle{x, y, w, U.u(44.f)});
+    U.tabs("set#tabs", &setTab_, {"DISPLAY", "GRAPHICS", "LIGHTING", "AUDIO", "CONTROLS", "GAME"}, Rectangle{x, y, w, U.u(44.f)});
     y += U.u(78.f);
     float rowH = U.u(60.f);
     Settings before = settings;
@@ -332,6 +336,31 @@ void Game::drawSettings() {
             break;
         }
         case 2: {
+            U.sectionLabel("MOOD", x, y, w);
+            y += U.u(34.f);
+            struct M { const char* name; const char* line; };
+            const M moods[3] = {{"Warm evening", "Lamp-lit and natural"}, {"Candlelit night", "Warmer, deeper shadows"}, {"Bright daylight", "Soft window light"}};
+            float cw = (w - U.u(2.f * 14.f)) / 3.f, ch = U.u(96.f);
+            for (int i = 0; i < 3; ++i) {
+                Rectangle r{x + (float)i * (cw + U.u(14.f)), y, cw, ch};
+                bool act = settings.lightMood == i;
+                if (U.chip(std::string("lm#") + std::to_string(i), "", r, act)) settings.lightMood = i;
+                U.text(ui::Face::Serif, U.u(25.f), moods[i].name, r.x + r.width * 0.5f, r.y + U.u(18.f), act ? U.th.ink : U.th.inkDim, ui::Center);
+                U.text(ui::Face::Sans, U.u(15.f), moods[i].line, r.x + r.width * 0.5f, r.y + U.u(58.f), U.th.inkFaint, ui::Center);
+            }
+            y += ch + U.u(36.f);
+            char b[32];
+            std::snprintf(b, sizeof b, "%+.1f EV", (double)(settings.brightness * 0.8f));
+            U.slider("s_bright", "Brightness", &settings.brightness, -1.f, 1.f, Rectangle{x, y, w, U.u(52.f)}, true, b);
+            y += rowH + U.u(16.f);
+            const char* wt = settings.warmth < -0.15f ? "cooler" : (settings.warmth > 0.15f ? "warmer" : "neutral");
+            U.slider("s_warm", "Warmth", &settings.warmth, -1.f, 1.f, Rectangle{x, y, w, U.u(52.f)}, true, wt);
+            y += rowH + U.u(20.f);
+            if (U.button("s_lreset", "Reset lighting", Rectangle{x, y, U.u(220.f), U.u(46.f)})) { settings.lightMood = 0; settings.brightness = settings.warmth = 0.f; }
+            U.text(ui::Face::Sans, U.u(15.f), "M cycles the mood during the night.", x + U.u(240.f), y + U.u(14.f), U.th.inkFaint);
+            break;
+        }
+        case 3: {
             U.slider("s_master", "Master volume", &settings.master, 0.f, 1.f, Rectangle{x, y, w, U.u(52.f)}); y += rowH + U.u(16.f);
             U.slider("s_voice", "Her voice", &settings.voice, 0.f, 1.f, Rectangle{x, y, w, U.u(52.f)}); y += rowH + U.u(16.f);
             U.slider("s_fx", "Effects", &settings.effects, 0.f, 1.f, Rectangle{x, y, w, U.u(52.f)}); y += rowH + U.u(16.f);
@@ -340,7 +369,7 @@ void Game::drawSettings() {
             audio.setMasterVolume(settings.master);
             break;
         }
-        case 3: {
+        case 4: {
             char b[16]; std::snprintf(b, sizeof b, "%.1f\xc3\x97", (double)settings.mouseSens);
             U.slider("s_sens", "Mouse sensitivity", &settings.mouseSens, 0.2f, 3.f, Rectangle{x, y, w, U.u(52.f)}, false, b);
             y += rowH + U.u(16.f);
@@ -354,7 +383,7 @@ void Game::drawSettings() {
                         x, y, w, U.th.inkFaint);
             break;
         }
-        case 4: {
+        case 5: {
             U.choice("s_hints", "Her hints", &settings.hints, {"Off", "Subtle", "Clear"}, Rectangle{x, y, w, rowH}); y += rowH + U.u(10.f);
             U.toggle("s_cine", "Cinematic camera", &settings.cinematicCamera, Rectangle{x, y, w, rowH}); y += rowH + U.u(10.f);
             U.toggle("s_unf", "Pause when the window loses focus", &settings.pauseWhenUnfocused, Rectangle{x, y, w, rowH}); y += rowH + U.u(10.f);

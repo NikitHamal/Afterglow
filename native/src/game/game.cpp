@@ -5,6 +5,7 @@
 #include "core/paths.h"
 #include "gfx/gl.h"
 #include "gfx/texture.h"
+#include "scene/lighting.h"
 #include "raylib.h"
 #include "rlgl.h"
 #include <ctime>
@@ -80,6 +81,11 @@ bool Game::init() {
     }
     if (positions_.empty()) { PositionInfo p; p.id = "none"; p.name = "\xe2\x80\x94"; positions_.push_back(p); }
     sceneReady_ = true;
+    camSafety_.boundsMin = scene.info.camMin;
+    camSafety_.boundsMax = scene.info.camMax;
+    camera.solve = [this](const V3& eye, const V3& target, bool fp) {
+        return resolveCamera(proxies_, camSafety_, eye, target, fp ? 1 : -1);   // first person sits in his head
+    };
     if (enableAudio) initAudio();
     ui.onSound = [this](int k) {
         if (!audio.ready()) return;
@@ -176,14 +182,7 @@ void Game::stage(Stage st) {
         c->flush = 0.f; c->sweat = 0.f;
         c->resetSimulation();
     }
-    // lights back to the room defaults (the showcase moves the key)
-    Lights base = scene.lights;
-    base.keyPos = scene.info.lampPos;
-    base.keyDir = normalize(scene.info.bedCenter + V3{0.f, 0.25f, 0.2f} - scene.info.lampPos);
-    base.keyIntensity = 9.f; base.keyInner = 0.55f; base.keyOuter = 1.15f;
-    base.fillIntensity = 0.42f;
-    scene.lights = base;
-    scene.dust = true;
+    postBloomAdd_ = postSatAdd_ = postVigAdd_ = postWarmAdd_ = 0.f; postExpMul_ = 1.f;
     switch (st) {
         case Stage::Bedroom:
             scene.showVivian = v.loaded(); scene.showMarcus = false;
@@ -195,12 +194,6 @@ void Game::stage(Stage st) {
             scene.showVivian = showcaseWho_ == 0 && v.loaded();
             scene.showMarcus = showcaseWho_ == 1 && m.loaded();
             standPose(c);
-            // studio key from the front left, softer room
-            scene.lights.keyPos = {-1.5f, 2.3f, 2.4f};
-            scene.lights.keyDir = normalize(V3{0.f, 1.1f, 0.f} - scene.lights.keyPos);
-            scene.lights.keyInner = 0.35f; scene.lights.keyOuter = 0.75f; scene.lights.keyIntensity = 26.f;
-            scene.lights.fillIntensity = 0.9f;
-            scene.dust = false;
             turntable_ = 0.25f; turnVel_ = 0.f; showcaseZoom_ = 0.f;
             break;
         }
@@ -317,6 +310,11 @@ void Game::update(float dt) {
         renderer.settings.flash = 0.f;
         scene.update(dt);
     }
+    {
+        const Character* cs[2] = {&scene.vivian, &scene.marcus};
+        bool shown[2] = {scene.showVivian, scene.showMarcus};
+        proxies_.build(cs, shown, 2);
+    }
     updateAudio(dt);
 
     // autosave the night now and then (crash safety)
@@ -333,13 +331,30 @@ void Game::render(int w, int h) {
     float rdt = frameDt_ > 0.f ? frameDt_ : 1.f / 60.f;
     cam_ = camera.update(rdt, (float)w / (float)std::max(1, h));
     RenderSettings& rs = renderer.settings;
+    // lighting mood (+ the player's brightness/warmth), then the night's own grade on top
+    LightingSetup ls;
+    ls.mood = (Mood)settings.lightMood; ls.brightness = settings.brightness; ls.warmth = settings.warmth;
+    applyLighting(scene, rs, ls, cam_);
+    bool night = screen_ == Screen::Play || screen_ == Screen::Pause || screen_ == Screen::Results ||
+                 (screen_ == Screen::Settings && settingsReturn_ == Screen::Pause);
+    if (night) {
+        rs.bloomStrength += postBloomAdd_; rs.saturation += postSatAdd_; rs.vignette += postVigAdd_;
+        rs.warmth += postWarmAdd_; rs.exposure *= postExpMul_;
+    } else rs.flash = 0.f;
+    if (stage_ == Stage::Showcase) {
+        // customisation: a soft studio key from the front left so the body reads clearly in any mood
+        scene.lights.keyPos = {-1.5f, 2.3f, 2.4f};
+        scene.lights.keyDir = normalize(V3{0.f, 1.1f, 0.f} - scene.lights.keyPos);
+        scene.lights.keyInner = 0.35f; scene.lights.keyOuter = 0.75f; scene.lights.keyIntensity = 24.f;
+        scene.lights.fillIntensity = std::max(scene.lights.fillIntensity, 0.9f);
+    }
     rs.renderScale = settings.renderScale * (settings.quality == 0 ? 0.85f : 1.f);
     rs.bloom = settings.bloom;
     rs.ssao = settings.ssao && settings.quality > 0;
     rs.grain = settings.filmGrain ? 0.024f : 0.f;
     // paused: once the frosted backdrop fully covers the frozen scene, keep the last blur and skip the 3D
     bool pausedBackdrop = screen_ == Screen::Pause || (screen_ == Screen::Settings && settingsReturn_ == Screen::Pause);
-    bool frozen = pausedBackdrop && blurFresh_ >= 2 && screenTime_ > 0.6f && renderer.blurTexture() != 0 &&
+    bool frozen = pausedBackdrop && setTab_ != 2 && blurFresh_ >= 2 && screenTime_ > 0.6f && renderer.blurTexture() != 0 &&
                   w == lastRenderW_ && h == lastRenderH_ && !debug_;
     if (frozen) ClearBackground(Color{6, 3, 5, 255});
     else {
@@ -476,6 +491,10 @@ void Game::applySpec(const Spec& s) {
     applyQuality(renderer.settings, (Quality)settings.quality);
     if (s.has("debug")) debug_ = s.num("debug", 1.f) > 0.5f;
     if (s.has("hints")) settings.hints = (int)s.num("hints", 2.f);
+    std::string mood = s.get("mood");
+    settings.lightMood = mood == "candle" ? 1 : (mood == "day" ? 2 : 0);
+    settings.brightness = s.num("bright", 0.f);
+    settings.warmth = s.num("warm", 0.f);
     applyLooks();
     if (s.has("update") && updater) updater->checkAsync("file://fake");   // QA: the card's "checking" look
 

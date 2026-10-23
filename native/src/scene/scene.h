@@ -41,16 +41,15 @@ public:
     Lights lights;
     float time = 0.f;
     bool hasClips = false;                  // content clips present (placement baked in clips)
-    Particles particles;                    // shared FX (dust motes are maintained by the scene)
-    bool dust = true;
-    int dustTarget = 140;
+    Particles particles;                    // shared FX (none by default)
+    V3 bakeTint{1, 1, 1};                   // baked room irradiance multiplier (lighting mood x lightmap scale)
+    int pointRole[6] = {0, 0, 0, 0, 0, 0};  // 0 candle, 1 lamp, 2 other (moods scale them by role)
 
     // Stand both characters beside the bed (used when no clips exist yet).
     void standingPlacement();
 
 private:
     void lightsFromRoomGlb();
-    void updateDust(float dt);
 };
 
 }  // namespace ag

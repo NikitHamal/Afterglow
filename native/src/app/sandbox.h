@@ -6,6 +6,8 @@
 #include "audio/audio.h"
 #include "gfx/renderer.h"
 #include "scene/camera.h"
+#include "scene/lighting.h"
+#include "scene/collision.h"
 #include "scene/scene.h"
 #include <map>
 #include <string>
@@ -51,6 +53,9 @@ private:
     bool hairSim_ = true, breathing_ = true, lookAt_ = true;
     float time_ = 0.f;
     CameraState cam_;
+    LightingSetup lighting_;
+    BodyProxies proxies_;
+    CameraSafety camSafety_;
     Json clipsMeta_;
     std::string camPreset_ = "front";
     float camBlend_ = 0.f;

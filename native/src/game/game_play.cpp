@@ -1,6 +1,7 @@
 #include "game/game.h"
 #include "app/platform.h"
 #include "core/log.h"
+#include "scene/lighting.h"
 #include "raylib.h"
 #include <algorithm>
 #include <cmath>
@@ -157,6 +158,10 @@ void Game::updatePlay(float dt) {
         if (IsKeyPressed(KEY_R) && p.canTouch) rubTarget_ = rubTarget_ > 0.5f ? 0.f : 1.f;
         if (IsKeyPressed(KEY_E) && p.canKiss) embraceTarget_ = embraceTarget_ > 0.5f ? 0.f : 1.f;
         if (IsKeyPressed(KEY_H)) hudHidden_ = !hudHidden_;
+        if (IsKeyPressed(KEY_M)) {
+            settings.lightMood = (settings.lightMood + 1) % 3;
+            toasts_.push_back({0.f, moodName((Mood)settings.lightMood)});
+        }
         if (IsKeyPressed(KEY_C)) { camMode_ = (camMode_ + 1) % (p.solo ? 3 : 4); cameraForPosition(0.9f); camUser_ = false; }
         if (IsKeyPressed(KEY_V) && !p.solo) { camMode_ = camMode_ == 3 ? 0 : 3; cameraForPosition(0.7f); }
         if (settings.holdRhythm) rhythm_ = IsKeyDown(KEY_SPACE) || rhythmToggle_;   // (toggle only set by autoplay)
@@ -388,9 +393,17 @@ void Game::presentPlay(float dt) {
         v.proc.jiggleGain = 0.8f + 0.9f * std::min(1.f, night_.energy);
         v.proc.hair = settings.hairPhysics;
         bool together = scene.showMarcus;
-        v.proc.lookWeight = together ? 0.45f : 0.85f;
-        v.proc.lookTarget = together && m.loaded() ? m.bonePos("頭") : cam_.eye;
-        v.proc.eyeWeight = 1.f - 0.7f * climaxH;
+        // gaze: toward him only when he is in front of her face; behind her (from behind, prone, spooning)
+        // she keeps the pose's own head and looks ahead - never a craned neck
+        V3 hc, hf, hu;
+        v.headAxes(hc, hf, hu);
+        V3 tgt = together && m.loaded() ? m.bonePos("頭") : cam_.eye;
+        V3 to = tgt - hc;
+        float off = length(to) > 1e-3f ? std::acos(clampf(dot(normalize(to), hf), -1.f, 1.f)) : 0.f;
+        float front = 1.f - smoothstepF(0.9f, 1.4f, off);
+        v.proc.lookWeight = (together ? 0.45f : 0.8f) * front;
+        v.proc.eyeWeight = (1.f - 0.7f * climaxH) * (0.35f + 0.65f * front);
+        v.proc.lookTarget = front > 0.01f ? tgt : hc + hf;
     }
     if (m.loaded()) {
         mBlinkT_ -= dt;
@@ -439,14 +452,14 @@ void Game::presentPlay(float dt) {
     }
 
     // ---- post: arousal warms and saturates, climax blooms ----
-    RenderSettings& rs = renderer.settings;
+    // the grade follows the night (applied on top of the player's lighting mood)
     float glow = clamp01(climaxGlow_);
-    rs.flash = clamp01(flash_);
-    rs.bloomStrength = 0.07f + 0.05f * her + 0.18f * glow;
-    rs.warmth = 0.06f + 0.05f * her;
-    rs.saturation = 1.0f + 0.08f * her + 0.1f * glow;
-    rs.vignette = 0.26f + 0.12f * him + 0.1f * glow;
-    rs.exposure = 1.2f + 0.08f * glow;
+    renderer.settings.flash = clamp01(flash_);
+    postBloomAdd_ = 0.03f * her + 0.16f * glow;
+    postWarmAdd_ = 0.04f * her;
+    postSatAdd_ = 0.06f * her + 0.08f * glow;
+    postVigAdd_ = 0.08f * him + 0.08f * glow;
+    postExpMul_ = 1.f + 0.06f * glow;
 
     scene.update(dt * slowmo_);
 }

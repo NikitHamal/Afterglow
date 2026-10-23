@@ -1,6 +1,7 @@
 // Afterglow engine — camera rig: orbit with smooth preset transitions, first-person bone attach, sway.
 #pragma once
 #include "core/mathx.h"
+#include <functional>
 #include <string>
 
 namespace ag {
@@ -32,6 +33,8 @@ public:
     CameraState update(float dt, float aspect);
 
     float sway = 0.f;            // handheld sway amount (0 off)
+    // collision: returns a safe eye for (eye, target, firstPerson); the rig eases into corrections
+    std::function<V3(const V3&, const V3&, bool)> solve;
     bool inputEnabled = true;
     // live orbit parameters (readable)
     V3 target{0, 0.8f, 0};
@@ -52,6 +55,7 @@ private:
     float fpYaw_ = 0.f, fpPitch_ = -0.35f, fpBlend_ = 0.f;
     V3 lastEye_{0, 1.4f, 3.f}, lastTarget_{0, 0.8f, 0};
     float fovDeg_ = 38.f, fpFovDeg_ = 58.f, time_ = 0.f;
+    V3 corr_{0, 0, 0};
 };
 
 }  // namespace ag

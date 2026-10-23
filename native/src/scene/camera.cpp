@@ -94,6 +94,14 @@ CameraState CameraRig::update(float dt, float aspect) {
         tgt = lerp(tgt, fEye + dir, u);
         cs.fovy = lerpf(fovDeg_, fpFovDeg_, u) * kPi / 180.f;   // first person wants a natural, wider view
     }
+    if (solve) {
+        // ease into collision corrections (no popping), then guarantee the eye is clear this frame
+        bool fp = mode_ == Mode::FirstPerson;
+        V3 want = solve(eye, tgt, fp) - eye;
+        float k = dt > 0.f ? 1.f - std::exp(-dt * 12.f) : 1.f;
+        corr_ = corr_ + (want - corr_) * k;
+        eye = solve(eye + corr_, tgt, fp);
+    }
     if (sway > 0.f) {
         V3 s{vnoise1(time_ * 0.37f), vnoise1(time_ * 0.29f + 5.f), vnoise1(time_ * 0.31f + 9.f)};
         eye = eye + s * (0.012f * sway);

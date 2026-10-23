@@ -9,6 +9,7 @@
 #include "game/settings.h"
 #include "gfx/renderer.h"
 #include "scene/camera.h"
+#include "scene/collision.h"
 #include "scene/scene.h"
 #include "ui/ui.h"
 #include "core/json.h"
@@ -98,6 +99,8 @@ private:
     float blinkT_ = 2.f, blinkV_ = 0.f, mBlinkT_ = 3.f, mBlinkV_ = 0.f;
     float moanPulse_ = 0.f, smilePulse_ = 0.f, climaxGlow_ = 0.f, flash_ = 0.f, sweat_ = 0.f, slowmo_ = 1.f;
     float herClimaxT_ = 99.f, hisClimaxT_ = 99.f, afterT_ = 0.f;
+    // the night's effect on the grade, applied on top of the lighting mood
+    float postBloomAdd_ = 0.f, postSatAdd_ = 0.f, postVigAdd_ = 0.f, postWarmAdd_ = 0.f, postExpMul_ = 1.f;
     std::string subtitle_, subtitle2_;
     float subtitleT_ = 0.f, subtitleDur_ = 0.f;
     Desire shownDesire_ = Desire::None;
@@ -145,6 +148,8 @@ private:
     Scene scene;
     Renderer renderer;
     CameraRig camera;
+    BodyProxies proxies_;
+    CameraSafety camSafety_;
     Audio audio;
     ui::Ui ui;
     CameraState cam_;

@@ -40,6 +40,12 @@ uniform vec3 u_hairCenter;
 uniform float u_flush;
 uniform float u_sweat;
 uniform int u_baked;              // room: emissive(uv1) / unlit carries baked light
+uniform vec3 u_bakeScale;         // lightmap scale x lighting mood
+uniform sampler2D u_skinMask;     // content skin support map (linear): R flush, G translucency, B sweat
+uniform int u_hasSkinMask;
+uniform sampler2D u_detailN;      // tileable pore/crosshatch normal (uv0 * 48)
+uniform int u_hasDetailN;
+vec3 g_mask = vec3(0.6, 0.4, 0.5);
 uniform vec3 u_camPos;
 uniform float u_time;
 
@@ -150,13 +156,14 @@ vec3 shade(Surf s, vec3 L, vec3 radiance) {
         // skin: second broader lobe + per-channel wrapped diffuse (pre-integrated scattering look)
         float a2 = max(min(s.rough * 1.45, 1.0) * min(s.rough * 1.45, 1.0), 0.002);
         vec3 spec2 = D_GGX(NoH, a2) * V_Smith(NoV, NoL, a2) * F;
-        spec = mix(spec, spec2, 0.45) * (1.0 + u_sweat * 0.9);
+        // skin is never plastic: a soft sheen, wetter only where people actually sweat (mask.b)
+        spec = mix(spec, spec2, 0.38) * 0.82 * (1.0 + 0.55 * u_sweat * g_mask.b);
         vec3 w = vec3(0.52, 0.30, 0.22);
         vec3 d = clamp((vec3(NoLraw) + w) / (1.0 + w), 0.0, 1.0);
         d = d * d * (3.0 - 2.0 * d) * 0.5 + d * 0.5;
         vec3 diff = s.albedo / PI * d * (1.0 - F);
         // light bleeding through thin parts (ears, fingers, nose) when back-lit
-        vec3 trans = s.albedo * vec3(1.0, 0.38, 0.22) * pow(sat(dot(s.V, -L)), 6.0) * 0.18 * (1.0 - NoL);
+        vec3 trans = s.albedo * vec3(1.0, 0.38, 0.22) * pow(sat(dot(s.V, -L)), 6.0) * 0.18 * (1.0 - NoL) * (g_mask.g * 2.5);
         return (diff + trans + spec * NoL) * radiance;
     }
     vec3 kd = (1.0 - F) * (1.0 - s.metal);
@@ -178,16 +185,23 @@ void main() {
     vec3 Tg = normalize(v_tan.xyz - Ng * dot(Ng, v_tan.xyz));
     vec3 Bg = cross(Ng, Tg) * v_tan.w;
     vec3 N = Ng;
+    if (u_mode == 1 && u_hasSkinMask == 1) g_mask = texture(u_skinMask, v_uv0).rgb;
     if (u_hasNormal == 1) {
         vec3 tn = texture(u_texNormal, uvSel(u_uvNormal)).xyz * 2.0 - 1.0;
         tn.xy *= u_normalScale;
+        if (u_mode == 1 && u_hasDetailN == 1) {
+            // pores + fine lines, only up close (fades out with distance), smoothed where skin is wet
+            float near = 1.0 - smoothstep(0.6, 2.4, length(u_camPos - v_wpos));
+            vec2 d = texture(u_detailN, v_uv0 * 48.0).xy * 2.0 - 1.0;
+            tn.xy += d * 0.35 * near * (1.0 - g_mask.b * u_sweat);
+        }
         N = normalize(mat3(Tg, Bg, Ng) * tn);
     }
     if (u_mode == 1 && u_sweat > 0.01) {
         // sweat beads: sparse micro bumps in world space
         vec3 q = v_wpos * 220.0;
         float h = hash12(floor(q.xy) + floor(q.z) * 17.0);
-        float bead = smoothstep(0.92, 1.0, h) * u_sweat;
+        float bead = smoothstep(0.92, 1.0, h) * u_sweat * g_mask.b;
         N = normalize(N + (vec3(fract(q.x) - 0.5, fract(q.y) - 0.5, 0.0)) * bead * 0.6);
     }
 
@@ -196,8 +210,9 @@ void main() {
     if (u_hasMR == 1) { vec4 mr = texture(u_texMR, uvSel(u_uvMR)); rough *= mr.g; metal *= mr.b; }
     if (u_hasOcc == 1 && u_baked == 0) ao = mix(1.0, texture(u_texOcc, uvSel(u_uvOcc)).r, u_occStrength);
     if (u_mode == 1) {
-        rough = clamp(rough * (1.0 - 0.45 * u_sweat), 0.18, 1.0);
-        base.rgb *= mix(vec3(1.0), vec3(1.0, 0.86, 0.85), sat(u_flush) * 0.55);
+        rough = max(rough, 0.44);
+        rough = clamp(rough * (1.0 - 0.38 * u_sweat * g_mask.b), 0.26, 1.0);
+        base.rgb *= mix(vec3(1.0), vec3(1.0, 0.84, 0.83), sat(u_flush) * 0.6 * g_mask.r);
     }
     if (u_mode == 3) rough = min(rough, 0.08);
 
@@ -228,7 +243,7 @@ void main() {
 
     if (u_mode == 5 || (u_mode == 4 && u_baked == 1)) {
         // baked lighting carried by the material: unlit base, or base x lightmap(emissive uv1)
-        vec3 lit = (u_mode == 5) ? base.rgb : base.rgb * emis;
+        vec3 lit = (u_mode == 5) ? base.rgb : base.rgb * emis * u_bakeScale;
         float keyShare = sat(dot(Ng, Lk)) * keyAtt * u_keyIntensity * 0.35;
         float darken = 1.0 - 0.6 * (1.0 - sh) * sat(keyShare);
         vec3 c = lit * darken * mix(1.0, ssao, 0.7);
