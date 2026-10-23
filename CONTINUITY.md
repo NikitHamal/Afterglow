@@ -36,16 +36,27 @@ shirt; story clips (`stand.embrace`, `kiss.stand`, `dance.slow`, ...); more hair
 new sex-act clips, genital texture / geometry polish, his hands in the positions, undress clips, arousal mechanics,
 explicit story text, renders/videos of the acts. They stay open for whoever owns that track.
 
-## In flight
+## In flight (blocked: the molab render box died, HTTP 410, 2026-10-23 ~23:30 UTC)
 
-1. Verify the merged kiss + garment work on molab (fresh CMake configure: shaders are embedded at configure time,
-   `cmake --build` alone keeps old shaders), push.
+Round-2 polish was written but could NOT be rendered, so it is not on `main` (patches kept in the AgentSky task
+folder, branches in local worktrees):
+- `task/agentC/0001..0002*.patch` (branch `agent-staging2`): embrace hands rest on the measured cloth surface (his far
+  hand sank ~15 mm into her dress), hands come in between 0.5 and 1 of the embrace; seated kiss: her hand on his
+  chest, his on her waist (elbow hints untuned). Verify: old_flames c4_kiss line 1 `near=1` (two, wide), line 2
+  `near=0.35`, the_storm c4_close line 1 `kiss=1` (two, wide), salt_and_sun c3_siesta line 3 `kiss=1` (two, kiss).
+- `task/agentD/0001*.patch` (branch `agent-garments2`): small holes cut around the body in a garment layer (his
+  trouser crotch, her briefs) are closed at load (a border under 30 cm around that no long bone passes through);
+  unit-tested, never rendered. `task/agentD/look_tuning_UNTESTED.patch`: bloom from HDR 1.05 (whites stop glowing),
+  daylight mood toned down (villa overexposed). `task/agentD/skirt_spec.md`: the evening dress wraps each thigh (reads
+  as shorts) — what the outfit builder must change.
+- Still open from the passes: gestures point / reach / wave unchecked; strapless tops' 1–2 px dark slivers;
+  salt_and_sun siesta: cyan bikini cups show through her back in the two-shot (not the fit weights; cause open).
 
 ## Exact next step
 
-`spa_suite` (The Massage, 4 scenes) with `tools/model/room/build_place.py`: a treatment bed on the authoring bed's
-footprint (0.604 m top, 1.8 x 2.0 m, centre (0, 0.604, -1.22) engine) so every bed clip works there; then
-villa_terrace, apartment_hall, hotel_ballroom.
+Get a render box back (restart the molab notebook; `uvx marimo@latest pair prompt --url <new url> --with-token`),
+Blender 4.2.3 + cmake/xvfb/mesa as at the top of `tools/model/native/setup_toolchain.sh`; fresh CMake configure; apply
+and render the two round-2 patches above; merge what looks right; then `spa_suite` with `build_place.py`.
 
 ## Commands
 
