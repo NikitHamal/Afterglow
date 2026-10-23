@@ -156,6 +156,8 @@ graphics, audio, controls, game) / the night -> pause -> results.
   frosted-glass blur only while a menu shows, heap trimmed after loading. F1 shows fps, frame time, draws, RAM
   and GPU memory. Measured (Mesa llvmpipe, same scene): peak RSS 877 -> 727 MB; Low quality 343 MB RSS with
   100 MB of textures vs 340 MB on High; simulation + animation + morphing ~1-1.5 ms CPU per frame.
+- Pause: once the frosted backdrop covers the frozen scene the 3D pass is skipped (only the cached blur is
+  shown). F12 saves a screenshot (UI included) to `<user>/screenshots`.
 - Loading: a model's embedded images decode on worker threads while the main thread keeps pumping window events
   and redrawing the loader (`Model::loadPump`); first start picks Low for software GL, Medium for integrated GPUs.
 - Audio levels (measured offline): generated room tone ~-35 dBFS, pad ~-30 dBFS; voice samples normalised with
