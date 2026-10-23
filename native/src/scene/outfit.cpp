@@ -1,5 +1,6 @@
 #include "scene/outfit.h"
 #include "scene/character.h"
+#include "scene/fit.h"
 #include "core/log.h"
 #include <algorithm>
 #include <cmath>
@@ -126,6 +127,7 @@ bool Outfit::load(const std::string& path, const std::string& st, const Characte
             if (ct && !ct->empty()) links_[mi][t] = Link{(*ct)[0].first, (*ct)[0].second};
         }
     }
+    computeFit(owner);
     model.releaseCpuData();
     loaded_ = true;
     vis_[0] = vis_[1] = target_[0] = target_[1] = 1.f;
@@ -134,7 +136,101 @@ bool Outfit::load(const std::string& path, const std::string& st, const Characte
     return true;
 }
 
+namespace {
+// one RG16F texel per vertex, 1024 wide (the vertex shader reads it by gl_VertexID)
+GLuint fitTex(const std::vector<float>& a, const std::vector<float>& b) {
+    if (a.empty()) return 0;
+    const int W = 1024, H = (int)((a.size() + W - 1) / W);
+    std::vector<float> d((size_t)W * (size_t)H * 2, 0.f);
+    for (size_t i = 0; i < a.size(); ++i) { d[i * 2] = a[i]; d[i * 2 + 1] = i < b.size() ? b[i] : 0.f; }
+    GLuint t = 0;
+    glGenTextures(1, &t);
+    glBindTexture(GL_TEXTURE_2D, t);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, W, H, 0, GL_RG, GL_FLOAT, d.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return t;
+}
+}  // namespace
+
+// smooth borders for every garment surface; the under layer and the wearer's skin hidden where an opaque garment of
+// the layer above covers them (lace and other see-through fabrics cover nothing)
+void Outfit::computeFit(const Character& owner) {
+    std::vector<std::vector<std::vector<float>>> border(model.meshes.size());
+    for (size_t mi = 0; mi < model.meshes.size(); ++mi) {
+        border[mi].resize(model.meshes[mi].prims.size());
+        for (size_t pi = 0; pi < model.meshes[mi].prims.size(); ++pi) {
+            Primitive& p = model.meshes[mi].prims[pi];
+            border[mi][pi] = borderDistance(p.pos, p.nrm, p.idx);
+            // the cloth drapes over the skin's small detail (its border stays where it is)
+            if (p.idx.empty() || p.pos.empty() || !p.vbo[0]) continue;
+            std::vector<float> before = p.pos;
+            drape(p.pos, p.idx, border[mi][pi]);
+            float moved = 0.f, edge = 0.f;
+            size_t trimmed = 0;
+            for (size_t i = 0; i < p.pos.size(); ++i) moved = std::max(moved, std::fabs(p.pos[i] - before[i]));
+            for (float b : border[mi][pi]) { edge += b < 0.03f; trimmed += b < 0.0005f; }
+            AG_INFO("AG: outfit %s drape mesh %d prim %d: %zu verts, moved up to %.1f mm, %.0f near the border, %zu trimmed",
+                    style.c_str(), (int)mi, (int)pi, p.pos.size() / 3, moved * 1000.f, edge, trimmed);
+            glBindBuffer(GL_ARRAY_BUFFER, p.vbo[0]);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)(p.pos.size() * sizeof(float)), p.pos.data());
+            p.scratchPos.clear();
+        }
+    }
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    std::vector<FitSurface> layer[2];
+    for (size_t mi = 0; mi < model.meshes.size(); ++mi)
+        for (size_t pi = 0; pi < model.meshes[mi].prims.size(); ++pi) {
+            const Primitive& p = model.meshes[mi].prims[pi];
+            int mat = p.material;
+            bool opaque = mat >= 0 && (size_t)mat < fabric.size() && fabric[(size_t)mat] != (int)Fabric::Lace &&
+                          model.materials[(size_t)mat].alpha == AlphaMode::Opaque;
+            if (opaque && !p.idx.empty()) layer[meshLayer[mi] ? 1 : 0].push_back({&p.pos, &p.nrm, &p.idx, &border[mi][pi]});
+        }
+    fit_.assign(model.meshes.size(), {});
+    for (size_t mi = 0; mi < model.meshes.size(); ++mi)
+        for (size_t pi = 0; pi < model.meshes[mi].prims.size(); ++pi) {
+            const Primitive& p = model.meshes[mi].prims[pi];
+            std::vector<float> under = meshLayer[mi] == 1 ? coverage(p.pos, p.nrm, layer[0]) : std::vector<float>{};
+            fit_[mi].push_back(fitTex(border[mi][pi], under));
+        }
+    const Model& cm = owner.model;
+    bodyFit_.assign(cm.meshes.size(), {});
+    int skinPrims = 0;
+    size_t hidden[2] = {0, 0}, verts = 0;
+    for (const Node& nd : cm.nodes) {
+        if (nd.mesh < 0 || lowerS(nd.name).find("_body") == std::string::npos) continue;
+        const Mesh& me = cm.meshes[(size_t)nd.mesh];
+        auto& out = bodyFit_[(size_t)nd.mesh];
+        out.assign(me.prims.size(), 0);
+        for (size_t pi = 0; pi < me.prims.size(); ++pi) {
+            const Primitive& p = me.prims[pi];
+            if (p.pos.empty() || p.nrm.size() != p.pos.size()) continue;
+            std::vector<float> c0 = coverage(p.pos, p.nrm, layer[0]), c1 = coverage(p.pos, p.nrm, layer[1]);
+            for (size_t v = 0; v < c0.size(); ++v) { hidden[0] += c0[v] > 0.5f; hidden[1] += c1[v] > 0.5f; }
+            verts += c0.size();
+            out[pi] = fitTex(c0, c1);
+            ++skinPrims;
+        }
+    }
+    AG_INFO("AG: outfit %s fit: %d skin primitives, %zu verts, hidden under outer %zu / under %zu", style.c_str(), skinPrims, verts,
+            hidden[0], hidden[1]);
+}
+
+GLuint Outfit::fitTexture(int mesh, size_t prim) const {
+    return mesh >= 0 && (size_t)mesh < fit_.size() && prim < fit_[(size_t)mesh].size() ? fit_[(size_t)mesh][prim] : 0;
+}
+GLuint Outfit::bodyFitTexture(int mesh, size_t prim) const {
+    return mesh >= 0 && (size_t)mesh < bodyFit_.size() && prim < bodyFit_[(size_t)mesh].size() ? bodyFit_[(size_t)mesh][prim] : 0;
+}
+
 void Outfit::destroy() {
+    for (auto* set : {&fit_, &bodyFit_})
+        for (auto& v : *set) for (GLuint t : v) if (t) glDeleteTextures(1, &t);
+    fit_.clear(); bodyFit_.clear();
     model.destroy();
     meshLayer.clear(); fabric.clear(); pattern.clear(); heightRange.clear(); wipeDown.clear();
     links_.clear(); lastW_.clear();

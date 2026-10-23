@@ -199,7 +199,8 @@ void Renderer::drawModel(Program& p, Model& m, Animator& a, const Character* ch,
             vis = outfit->visibility(layer);
             if (vis <= 0.002f) continue;   // taken off
         }
-        for (Primitive& prim : mesh.prims) {
+        for (size_t pi = 0; pi < mesh.prims.size(); ++pi) {
+            Primitive& prim = mesh.prims[pi];
             const Material& mat = m.materials[(size_t)std::max(0, prim.material)];
             // his genitals stay out of sight while he still wears something
             if (ch && ch->hideGenitals && !outfit && mat.shading == Shading::Skin && mat.name.find("genital") != std::string::npos) continue;
@@ -238,6 +239,21 @@ void Renderer::drawModel(Program& p, Model& m, Animator& a, const Character* ch,
                     p.set("u_fabric", mi < outfit->fabric.size() ? outfit->fabric[mi] : 0);
                     p.set("u_fabric2", mi < outfit->pattern.size() ? outfit->pattern[mi] : V3{0, 0, 0});
                 }
+            }
+            // garment fit: skin under a worn garment is not drawn (it can never show through); garments trim along
+            // their smoothed border, an under layer hides where the outer one covers it
+            const Outfit* worn = !outfit && ch ? ch->outfit() : nullptr;
+            GLuint fitT = outfit ? outfit->fitTexture(n.mesh, pi) : (worn && worn->loaded() ? worn->bodyFitTexture(n.mesh, pi) : 0);
+            p.set("u_fitMode", fitT ? (outfit ? 2 : 1) : 0);
+            if (fitT) {
+                p.sampler("u_fit", 11, fitT);
+                if (outfit) {
+                    p.set("u_fitHide", V2{0.0005f, outfit->visibility(0) > 0.999f ? 1.f : 0.f});
+                    // a little clearance off the skin (reads as the fabric's thickness): more for the outer layer
+                    bool under = (size_t)n.mesh < outfit->meshLayer.size() && outfit->meshLayer[(size_t)n.mesh] == 1;
+                    p.set("u_fitInflate", under ? 0.0015f : 0.003f);
+                }
+                else p.set("u_fitHide", V2{worn->visibility(0) > 0.999f ? 1.f : 0.f, worn->visibility(1) > 0.999f ? 1.f : 0.f});
             }
             p.set("u_pass", pass == 2 ? 1 : 0);
             if (mat.doubleSided || pass == 0) glDisable(GL_CULL_FACE);

@@ -44,12 +44,19 @@ public:
     std::vector<V2> heightRange;         // per material: bind-space height span (undress wipe)
     std::vector<int> wipeDown;           // per material: 1 = comes off from the top (dress, trousers), 0 = from below (sweater)
 
+    // garment fit (scene/fit.h), per-vertex textures by mesh then primitive (0: none). A garment's: x = signed distance
+    // to its smoothed border (m), y = cover by the outer layer; the wearer's skin: x = cover by outer, y = cover by under
+    GLuint fitTexture(int mesh, size_t prim) const;
+    GLuint bodyFitTexture(int mesh, size_t prim) const;
+
 private:
     bool loaded_ = false;
     float vis_[2] = {1.f, 1.f}, target_[2] = {1.f, 1.f}, rate_[2] = {1.f, 1.f};
     struct Link { int mesh = -1, target = -1; };
     std::vector<std::vector<Link>> links_;   // per outfit mesh, per target: the character's (mesh, target)
     std::vector<std::vector<float>> lastW_;
+    std::vector<std::vector<GLuint>> fit_, bodyFit_;
+    void computeFit(const Character& owner);
 };
 
 }  // namespace ag
