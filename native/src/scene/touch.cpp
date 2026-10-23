@@ -3,6 +3,7 @@
 #include "core/log.h"
 #include <algorithm>
 #include <cmath>
+#include <unordered_map>
 
 namespace ag {
 
@@ -137,48 +138,117 @@ void TouchRig::init(Character& c) {
         }
     }
     ready_ = arms_[0].wrist >= 0 || arms_[1].wrist >= 0;   // zones are optional (world goals work on anyone)
-    // ---- where a partner's hands rest (embraces): the skin a ray from inside the body (bind pose) meets first ----
+    // ---- where a partner's hands rest (embraces): the outermost trunk skin along a direction from a bone (bind
+    // pose). Only skin weighted to the trunk counts: the arms and any surfaces inside the body never do ----
+    std::vector<char> trunk;
+    if (!m.skins.empty()) {
+        trunk.assign(m.skins[0].joints.size(), 0);
+        for (const char* b : {"センター", "グルーブ", "腰", "上半身", "上半身2", "下半身", "乳親.L", "乳親.R"}) {
+            int nb = node(b);
+            for (size_t j = 0; j < m.skins[0].joints.size(); ++j) if (m.skins[0].joints[j] == nb) trunk[j] = 1;
+        }
+    }
     auto anchor = [&](Zone z, const char* boneName, V3 offset, V3 dir) {
         int bone = node(boneName);
-        if (bone < 0) return;
+        if (bone < 0 || trunk.empty()) return;
         V3 o = a.global(bone).translation() + offset;
-        float best = 0.35f;
-        V3 hitN{0, 0, 0};
+        float best = 0.03f;
+        V3 bp{0, 0, 0}, bn{0, 0, 0};
         for (const Node& nd : m.nodes) {
             if (nd.mesh < 0 || nd.name.find("_body") == std::string::npos) continue;
             for (const Primitive& pr : m.meshes[(size_t)nd.mesh].prims) {
-                if (pr.idx.empty() || pr.pos.empty()) continue;
-                auto P = [&](uint32_t i) { return V3{pr.pos[i * 3], pr.pos[i * 3 + 1], pr.pos[i * 3 + 2]}; };
-                for (size_t t = 0; t + 2 < pr.idx.size(); t += 3) {
-                    V3 A = P(pr.idx[t]), e1 = P(pr.idx[t + 1]) - A, e2 = P(pr.idx[t + 2]) - A;
-                    V3 pv = cross(dir, e2);
-                    float det = dot(e1, pv);
-                    if (std::fabs(det) < 1e-12f) continue;
-                    float inv = 1.f / det;
-                    V3 tv = o - A;
-                    float u = dot(tv, pv) * inv;
-                    if (u < 0.f || u > 1.f) continue;
-                    V3 qv = cross(tv, e1);
-                    float w = dot(dir, qv) * inv;
-                    if (w < 0.f || u + w > 1.f) continue;
-                    float s = dot(e2, qv) * inv;
-                    if (s > 0.f && s < best) { best = s; hitN = normalize(cross(e1, e2)); }
+                if (pr.joints.empty() || pr.weights.empty() || pr.pos.empty() || pr.nrm.empty()) continue;
+                size_t nv = pr.pos.size() / 3;
+                for (size_t v = 0; v < nv; ++v) {
+                    float tw = 0.f;
+                    for (int k = 0; k < 4; ++k) if (pr.joints[v * 4 + k] < trunk.size() && trunk[pr.joints[v * 4 + k]]) tw += pr.weights[v * 4 + k];
+                    if (tw < 0.9f) continue;
+                    V3 rel = V3{pr.pos[v * 3], pr.pos[v * 3 + 1], pr.pos[v * 3 + 2]} - o;
+                    float along = dot(rel, dir);
+                    if (along <= best || length(rel - dir * along) > 0.02f) continue;
+                    best = along;
+                    bp = o + rel;
+                    bn = V3{pr.nrm[v * 3], pr.nrm[v * 3 + 1], pr.nrm[v * 3 + 2]};
                 }
             }
         }
-        if (best >= 0.35f) return;
-        if (dot(hitN, dir) < 0.f) hitN = hitN * -1.f;
+        if (length(bn) < 0.5f) return;
         M4 inv = inverse(a.global(bone));
-        zones_[(int)z] = {bone, xformPoint(inv, o + dir * best), normalize(xformDir(inv, hitN)), true};
+        zones_[(int)z] = {bone, xformPoint(inv, bp), normalize(xformDir(inv, bn)), true};
     };
+    // ---- the face: lip front at the midline (the vertices the kiss pucker moves), the nose tip, the surface around ----
+    int headBone = node("頭");
+    const auto* kissT = c.morphTargets("kiss");
+    if (headBone >= 0 && kissT) {
+        struct LV { V3 p, d; };
+        std::vector<LV> lip;
+        float maxD = 0.f;
+        int bodyMesh = -1;
+        for (const auto& mt : *kissT) {
+            bool body = false;
+            for (const Node& nd : m.nodes) if (nd.mesh == mt.first && nd.name.find("_body") != std::string::npos) body = true;
+            if (!body) continue;
+            bodyMesh = mt.first;
+            for (const Primitive& pr : m.meshes[(size_t)mt.first].prims) {
+                if (mt.second >= (int)pr.targets.size() || pr.pos.empty()) continue;
+                const Primitive::Sparse& sp = pr.targets[(size_t)mt.second];
+                for (size_t k = 0; k < sp.idx.size(); ++k) {
+                    uint32_t v = sp.idx[k];
+                    V3 d{sp.dp[k * 3], sp.dp[k * 3 + 1], sp.dp[k * 3 + 2]};
+                    maxD = std::max(maxD, length(d));
+                    lip.push_back({V3{pr.pos[v * 3], pr.pos[v * 3 + 1], pr.pos[v * 3 + 2]}, d});
+                }
+            }
+        }
+        lip.erase(std::remove_if(lip.begin(), lip.end(), [&](const LV& l) { return length(l.d) < maxD * 0.4f; }), lip.end());
+        if (!lip.empty() && bodyMesh >= 0) {
+            float xc = 0.f;
+            for (auto& l : lip) xc += l.p.x;
+            xc /= (float)lip.size();
+            float front = -1e9f, ys = 0.f;
+            int ny = 0;
+            for (auto& l : lip) if (std::fabs(l.p.x - xc) < 0.006f) { front = std::max(front, l.p.z); ys += l.p.y; ++ny; }
+            if (ny > 0) {
+                V3 dsum{0, 0, 0};
+                int nd = 0;
+                for (auto& l : lip) if (std::fabs(l.p.x - xc) < 0.006f && l.p.z > front - 0.004f) { dsum += l.d; ++nd; }
+                V3 mp{xc, ys / (float)ny, front};
+                M4 inv = inverse(a.global(headBone));
+                zones_[(int)Zone::Mouth] = {headBone, xformPoint(inv, mp), normalize(xformDir(inv, V3{0, 0, 1})), true};
+                kissDelta_ = xformDir(inv, nd > 0 ? dsum / (float)nd : V3{0, 0, 0});
+                // the nose tip: the front-most skin on the midline between the mouth and the eyes; the face surface
+                // around (front-facing skin within 9 cm of the mouth, ~4 mm apart) for clearance checks
+                V3 nose{xc, mp.y, -1e9f};
+                std::unordered_map<long long, int> seen;
+                for (const Primitive& pr : m.meshes[(size_t)bodyMesh].prims) {
+                    size_t nv = pr.pos.size() / 3;
+                    for (size_t v = 0; v < nv; ++v) {
+                        V3 p{pr.pos[v * 3], pr.pos[v * 3 + 1], pr.pos[v * 3 + 2]};
+                        if (std::fabs(p.x - xc) < 0.004f && p.y > mp.y + 0.012f && p.y < mp.y + 0.06f && p.z > nose.z) nose = p;
+                        V3 nr = pr.nrm.empty() ? V3{0, 0, 1} : V3{pr.nrm[v * 3], pr.nrm[v * 3 + 1], pr.nrm[v * 3 + 2]};
+                        if (length(p - mp) > 0.09f || nr.z < 0.2f) continue;
+                        long long key = ((long long)std::lround(p.x / 0.004f) * 1000003LL + std::lround(p.y / 0.004f)) * 1000003LL + std::lround(p.z / 0.004f);
+                        if (!seen.emplace(key, 1).second) continue;
+                        faceP_.push_back(xformPoint(inv, p));
+                        faceN_.push_back(normalize(xformDir(inv, nr)));
+                    }
+                }
+                if (nose.z > -1e8f) zones_[(int)Zone::Nose] = {headBone, xformPoint(inv, nose), normalize(xformDir(inv, V3{0, 0, 1})), true};
+            }
+        }
+    }
     // bind pose faces +Z; the character's left (.L) is +X
-    anchor(Zone::ChestL, "上半身2", V3{0.085f, 0.1f, 0.f}, V3{0.f, 0.f, 1.f});
-    anchor(Zone::ChestR, "上半身2", V3{-0.085f, 0.1f, 0.f}, V3{0.f, 0.f, 1.f});
-    anchor(Zone::WaistL, "下半身", V3{0.f, 0.06f, 0.f}, normalize(V3{1.f, 0.f, 0.15f}));
-    anchor(Zone::WaistR, "下半身", V3{0.f, 0.06f, 0.f}, normalize(V3{-1.f, 0.f, 0.15f}));
-    AG_INFO("AG: touch: vulva %s, breasts %s/%s, chest %s/%s, waist %s/%s, hand joints L %d-%d R %d-%d", zones_[0].valid ? "yes" : "no",
-            zones_[1].valid ? "yes" : "no", zones_[2].valid ? "yes" : "no", zones_[3].valid ? "yes" : "no", zones_[4].valid ? "yes" : "no",
-            zones_[5].valid ? "yes" : "no", zones_[6].valid ? "yes" : "no", handJointLo[0], handJointHi[0], handJointLo[1], handJointHi[1]);
+    anchor(Zone::ChestL, "上半身2", V3{0.09f, 0.22f, 0.f}, V3{0.f, 0.f, 1.f});    // over the pectorals
+    anchor(Zone::ChestR, "上半身2", V3{-0.09f, 0.22f, 0.f}, V3{0.f, 0.f, 1.f});
+    anchor(Zone::WaistL, "下半身", V3{0.f, 0.10f, 0.f}, normalize(V3{1.f, 0.f, 0.15f}));    // the natural waist
+    anchor(Zone::WaistR, "下半身", V3{0.f, 0.10f, 0.f}, normalize(V3{-1.f, 0.f, 0.15f}));
+    anchor(Zone::Sternum, "上半身2", V3{0.f, 0.29f, 0.f}, V3{0.f, 0.f, 1.f});
+    static const char* kZoneName[(int)Zone::Count] = {"vulva", "breast.L", "breast.R", "chest.L", "chest.R", "waist.L", "waist.R",
+                                                      "sternum", "mouth", "nose"};
+    std::string zs;
+    for (int z = 0; z < (int)Zone::Count; ++z) if (zones_[z].valid) zs += std::string(zs.empty() ? "" : " ") + kZoneName[z];
+    AG_INFO("AG: touch: zones %s, face %d pts, hand joints L %d-%d R %d-%d", zs.c_str(), (int)faceP_.size(), handJointLo[0], handJointHi[0],
+            handJointLo[1], handJointHi[1]);
 }
 
 bool TouchRig::zoneWorld(const Animator& a, Zone z, V3& pos, V3& normal) const {
@@ -188,6 +258,28 @@ bool TouchRig::zoneWorld(const Animator& a, Zone z, V3& pos, V3& normal) const {
     pos = xformPoint(g, bz.local);
     normal = normalize(xformDir(g, bz.normalLocal));
     return true;
+}
+
+bool TouchRig::mouthWorld(const Animator& a, float kissMorph, V3& pos) const {
+    const BodyZone& bz = zones_[(int)Zone::Mouth];
+    if (!bz.valid) return false;
+    pos = xformPoint(a.global(bz.bone), bz.local + kissDelta_ * clampf(kissMorph, 0.f, 1.f));
+    return true;
+}
+
+float TouchRig::faceDistance(const Animator& a, const V3& p) const {
+    const BodyZone& bz = zones_[(int)Zone::Mouth];
+    if (!bz.valid || faceP_.empty()) return 1.f;
+    V3 q = xformPoint(inverse(a.global(bz.bone)), p);
+    float best = 1e9f;
+    size_t bi = 0;
+    for (size_t i = 0; i < faceP_.size(); ++i) {
+        V3 d = q - faceP_[i];
+        float l = dot(d, d);
+        if (l < best) { best = l; bi = i; }
+    }
+    float s = dot(q - faceP_[bi], faceN_[bi]);
+    return s < 0.f ? s : std::sqrt(best);
 }
 
 void TouchRig::apply(Animator& a, const TouchGoals& goals) {
@@ -218,6 +310,10 @@ void TouchRig::solveArm(Animator& a, const Arm& arm, const HandGoal& g) {
     if (breast) tip = zp + zn * (0.006f - g.press) + f * (0.035f + 0.008f * std::sin(ph));   // fingertips beyond the nipple
     V3 wristT = breast ? zp + zn * 0.05f - f * 0.055f + lat * (0.01f * std::cos(ph))
                        : tip - f * (arm.handLen * 0.9f) + zn * 0.035f;
+    if (g.world && g.flat) {   // a palm laid flat, centred on the point, fingertips resting on the surface
+        tip = zp + f * (arm.handLen * 0.55f) + zn * 0.004f;
+        wristT = zp - f * (arm.handLen * 0.42f) + zn * g.palmLift;
+    }
     float w = clampf(g.weight, 0.f, 1.f);
 
     // ---- two-bone IK: shoulder -> elbow -> wrist, keeping the clip's bend plane ----
@@ -231,6 +327,7 @@ void TouchRig::solveArm(Animator& a, const Arm& arm, const HandGoal& g) {
     if (d > maxReach) { T = S + st * (maxReach / d); st = T - S; d = maxReach; }
     V3 dir = st / d;
     V3 pole = (E - S) - dir * dot(E - S, dir);
+    if (length(g.elbowHint) > 0.5f) pole = g.elbowHint - dir * dot(g.elbowHint, dir);   // where the goal wants the elbow
     if (length(pole) < 1e-3f) pole = (up * -0.6f) + cross(dir, up) * arm.side;
     pole = normalize(pole);
     float x = (L1 * L1 - L2 * L2 + d * d) / (2.f * d);
@@ -248,8 +345,16 @@ void TouchRig::solveArm(Animator& a, const Arm& arm, const HandGoal& g) {
         V3 n0 = normalize(cross(f0, l0)) * arm.side;
         V3 f1 = normalize(tip - Wn);
         V3 n1 = zn * -1.f;
-        Quat r = alignFrames(f0, n0, f1, n1);
-        rotateWorld(a, arm.wrist, qslerp(Quat{}, r, w));
+        Quat r = qslerp(Quat{}, alignFrames(f0, n0, f1, n1), w);
+        // turning the palm (pronation / supination) is the forearm's: 60 % of the twist about the forearm axis turns
+        // the whole forearm from the elbow, the wrist bends and takes the rest (no candy-wrapper collapse at the wrist)
+        V3 fa = normalize(Wn - P(a, arm.elbow));
+        float tw = 2.f * std::atan2(r.x * fa.x + r.y * fa.y + r.z * fa.z, r.w);
+        if (tw > 3.14159265f) tw -= 6.2831853f;
+        if (tw < -3.14159265f) tw += 6.2831853f;
+        Quat te = qaxis(fa, g.world ? tw * 0.6f : 0.f);   // (zone goals keep their tuned wrist-only turn)
+        rotateWorld(a, arm.elbow, te);
+        rotateWorld(a, arm.wrist, qmul(r, qconj(te)));
         // fingers conform: curl toward the palm, more for a grab
         V3 fw = normalize(P(a, arm.middle0) - P(a, arm.wrist));
         V3 lw = normalize(P(a, arm.pinky1) - P(a, arm.index1));

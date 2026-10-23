@@ -11,8 +11,10 @@ namespace ag {
 class Animator;
 class Character;
 
-// L / R are the character's own sides (MMD .L / .R); Chest* / Waist* are where a partner's hands rest in an embrace
-enum class Zone { Vulva = 0, BreastL, BreastR, ChestL, ChestR, WaistL, WaistR, Count };
+// L / R are the character's own sides (MMD .L / .R); Chest* / Waist* are where a partner's hands rest in an embrace,
+// Sternum the upper chest at the midline (one's own hand: "me"); Mouth is the front of the lips at the midline, Nose
+// its tip (both ride on the head)
+enum class Zone { Vulva = 0, BreastL, BreastR, ChestL, ChestR, WaistL, WaistR, Sternum, Mouth, Nose, Count };
 
 struct BodyZone {
     int bone = -1;              // node the zone rides on
@@ -34,6 +36,11 @@ struct HandGoal {
     bool world = false;
     V3 pos{0, 0, 0}, normal{0, 0, 1}, along{0, 1, 0};
     bool dent = true;           // finger pads dent the skin they rest on
+    // world goals: a flat palm centred on `pos` (the wrist `palmLift` off the surface) instead of fingertips resting
+    // beyond it, and where the elbow should point (zero: keep the clip's bend)
+    bool flat = false;
+    float palmLift = 0.02f;
+    V3 elbowHint{0, 0, 0};
 };
 
 struct TouchGoals { HandGoal left, right; };
@@ -43,6 +50,10 @@ public:
     // zones from the bind mesh (needs the model's CPU vertex data: call before releaseCpuData)
     void init(Character& c);
     bool zoneWorld(const Animator& a, Zone z, V3& pos, V3& normal) const;
+    // the lip front with the kiss pucker at `kissMorph` (lips pushed forward)
+    bool mouthWorld(const Animator& a, float kissMorph, V3& pos) const;
+    // signed distance (m, + outside) from a world point to this character's face around the mouth and nose
+    float faceDistance(const Animator& a, const V3& p) const;
     // IK + fingers onto the zones (runs after the procedural layers); fills `contacts`
     void apply(Animator& a, const TouchGoals& goals);
 
@@ -61,6 +72,8 @@ private:
     void solveArm(Animator& a, const Arm& arm, const HandGoal& g);
     BodyZone zones_[(int)Zone::Count];
     Arm arms_[2];
+    V3 kissDelta_{0, 0, 0};              // the lip front's move under the kiss morph (head frame)
+    std::vector<V3> faceP_, faceN_;      // face surface samples around mouth and nose (head frame)
     bool ready_ = false;
 };
 
