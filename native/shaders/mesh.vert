@@ -65,7 +65,9 @@ void main() {
             }
         }
     }
-    if (u_fitMode == 2) wp.xyz += nrm * u_fitInflate;
+    v_fit = u_fitMode != 0 ? texelFetch(u_fit, ivec2(gl_VertexID & 1023, gl_VertexID >> 10), 0).xy : vec2(0.0, 1.0);
+    // a garment stands off the skin (the fabric's thickness), but its hems lie on it: no hollow at a cuff
+    if (u_fitMode == 2) wp.xyz += nrm * u_fitInflate * smoothstep(0.004, 0.03, v_fit.x);
     v_wpos = wp.xyz;
     v_nrm = nrm;
     vec3 t = N * a_tan.xyz;
@@ -74,6 +76,5 @@ void main() {
     v_uv1 = a_uv1;
     v_opos = a_pos;
     v_onrm = a_nrm;
-    v_fit = u_fitMode != 0 ? texelFetch(u_fit, ivec2(gl_VertexID & 1023, gl_VertexID >> 10), 0).xy : vec2(0.0, 1.0);
     gl_Position = u_viewProj * wp;
 }

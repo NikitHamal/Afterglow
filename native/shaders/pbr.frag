@@ -135,6 +135,10 @@ vec3 bumpNormal(vec3 N, float h, float amount) {
 }
 // fabric weave / pattern in bind-space metres, projected on the three planes (garments are skin-tight)
 vec3 g_tri = vec3(0.0);
+// cloth (mode 6), set per fabric in main(): sheen colour + roughness (the fibres' fuzz), weight of the specular lobe,
+// satin anisotropy (roughness along / across the floats, 0 = isotropic), wrapped diffuse
+vec3 g_sheen = vec3(0.0);
+float g_sheenR = 0.5, g_specW = 1.0, g_aT = 0.0, g_aB = 0.0, g_wrap = 0.0;
 float triPattern(int kind, float f) {
     vec3 p = v_opos * f;
     vec2 q[3] = vec2[](p.zy, p.xz, p.xy);
@@ -232,6 +236,35 @@ vec3 shade(Surf s, vec3 L, vec3 radiance) {
     }
     float a = max(s.rough * s.rough, 0.002);
     vec3 F = F_Schlick(VoH, s.f0);
+    if (s.mode == 6) {
+        // cloth: diffuse wrapped a little (light scatters through the fibres), a Charlie sheen (Estevez-Kulla) for the
+        // fuzz with Neubelt-Pettineo visibility, and a weaker specular lobe: GGX for woven fabrics, anisotropic along
+        // the floats for satin (a soft streak, not a plastic hotspot)
+        float NoLw = sat((NoLraw + g_wrap) / (1.0 + g_wrap));
+        float ir = 1.0 / max(g_sheenR, 0.07);
+        float Dc = (2.0 + ir) * pow(max(1.0 - NoH * NoH, 0.0078125), ir * 0.5) / (2.0 * PI);
+        vec3 sheen = g_sheen * Dc / (4.0 * (NoL + NoV - NoL * NoV) + 1e-4);
+        vec3 specC = vec3(0.0);
+        if (g_specW > 0.0) {
+            if (g_aT > 0.0) {
+                vec3 Tf = vec3(0.0, 1.0, 0.0) - s.N * s.N.y;   // floats run with the hang of the cloth (world up)
+                Tf = dot(Tf, Tf) > 1e-6 ? normalize(Tf) : normalize(cross(s.N, vec3(1.0, 0.0, 0.0)));
+                vec3 Bf = cross(s.N, Tf);
+                float ToH = dot(Tf, H), BoH = dot(Bf, H);
+                float d = ToH * ToH / (g_aT * g_aT) + BoH * BoH / (g_aB * g_aB) + NoH * NoH;
+                float Da = 1.0 / (PI * g_aT * g_aB * d * d + 1e-7);
+                float lv = NoL * length(vec3(g_aT * dot(Tf, s.V), g_aB * dot(Bf, s.V), NoV));
+                float ll = NoV * length(vec3(g_aT * dot(Tf, L), g_aB * dot(Bf, L), NoL));
+                specC = Da * (0.5 / max(lv + ll, 1e-5)) * F;
+            } else {
+                specC = D_GGX(NoH, a) * V_Smith(NoV, NoL, a) * F;
+            }
+            specC *= g_specW;
+        }
+        float sheenMax = max(g_sheen.r, max(g_sheen.g, g_sheen.b));
+        vec3 diffC = s.albedo / PI * NoLw * (1.0 - F * g_specW) * (1.0 - 0.25 * sheenMax);
+        return (diffC + (specC + sheen) * NoL) * radiance;
+    }
     vec3 spec = D_GGX(NoH, a) * V_Smith(NoV, NoL, a) * F;
     if (s.mode == 1) {
         // skin: second broader lobe + per-channel wrapped diffuse (pre-integrated scattering look)
@@ -268,7 +301,7 @@ void main() {
     vec3 Bg = cross(Ng, Tg) * v_tan.w;
     vec3 N = Ng;
     if (u_mode == 1 && u_hasSkinMask == 1) g_mask = texture(u_skinMask, v_uv0);
-    float clothSheen = 0.0, undressRim = 0.0;
+    float undressRim = 0.0;
     if (u_mode == 6) {
         float m = undressMargin(v_opos);
         if (m < 0.0) discard;
@@ -296,12 +329,19 @@ void main() {
     }
 
     float fabricRough = -1.0;
+    float insideK = 1.0;   // the inside of a garment: in its own shadow
     if (u_mode == 6) {
         // weave and pattern; the micro bump fades out before it would shimmer (period under ~2 px)
         float fpx = length(fwidth(v_opos));
         float k = 0.0, amt = 0.0, freq = 1.0;
-        if (u_fabric == 0) { freq = 170.0; k = triPattern(0, freq); amt = 0.0012; fabricRough = 0.82; clothSheen = 0.18; }
-        else if (u_fabric == 1) { fabricRough = 0.3; clothSheen = 0.32; }
+        float sheenAmt = 0.35, hemW = 0.015, foldAmt = 0.003;
+        g_sheenR = 0.5; g_specW = 0.25; g_wrap = 0.2;
+        if (u_fabric == 0) { freq = 170.0; k = triPattern(0, freq); amt = 0.0012; fabricRough = 0.85; }
+        else if (u_fabric == 1) {
+            // satin: long floats, a soft anisotropic streak along the hang of the dress
+            fabricRough = 0.4; sheenAmt = 0.15; g_sheenR = 0.3; g_specW = 0.9; g_aT = 0.1; g_aB = 0.42; g_wrap = 0.1;
+            hemW = 0.006; foldAmt = 0.005;
+        }
         else if (u_fabric == 2) {
             // lace: a floral-ish net over the skin; holes only while the cells are a few pixels wide
             freq = 140.0;
@@ -316,23 +356,53 @@ void main() {
             float cellPx = (1.0 / freq) / max(fpx, 1e-6);
             if (hole > 0.5 && cellPx > 5.0) discard;
             base.rgb = mix(base.rgb, u_fabric2, 0.5 * (1.0 - hole));
-            fabricRough = 0.55; clothSheen = 0.25;
+            fabricRough = 0.55; sheenAmt = 0.25; g_sheenR = 0.4; g_specW = 0.35; hemW = 0.0; foldAmt = 0.0015;
         }
-        else if (u_fabric == 3) { freq = 260.0; k = triPattern(1, freq) * (0.75 + 0.25 * sin(v_opos.y * 1900.0)); amt = 0.0022; fabricRough = 0.92; clothSheen = 0.45; }
+        else if (u_fabric == 3) {
+            freq = 260.0; k = triPattern(1, freq) * (0.75 + 0.25 * sin(v_opos.y * 1900.0)); amt = 0.0022; fabricRough = 0.92;
+            sheenAmt = 0.7; g_sheenR = 0.65; g_specW = 0.0; g_wrap = 0.35; hemW = 0.03;   // knit: fuzzy, ribbed cuffs
+        }
         else if (u_fabric == 4) {
-            freq = 300.0; k = triPattern(2, freq); amt = 0.0012; fabricRough = 0.8; clothSheen = 0.12;
+            freq = 300.0; k = triPattern(2, freq); amt = 0.0012; fabricRough = 0.8;
+            sheenAmt = 0.3; g_sheenR = 0.55; g_specW = 0.2; g_wrap = 0.15; hemW = 0.016; foldAmt = 0.002;
             base.rgb *= 0.86 + 0.28 * vnoise3(v_opos * 45.0) * vnoise3(v_opos * 9.0 + 3.1);   // worn indigo
         }
         else if (u_fabric == 5) {
             base.rgb = mix(base.rgb, u_fabric2, clamp(triPlaid(16.0), 0.0, 1.0));
-            freq = 170.0; k = triPattern(0, freq); amt = 0.001; fabricRough = 0.86; clothSheen = 0.4;
+            freq = 170.0; k = triPattern(0, freq); amt = 0.001; fabricRough = 0.86;
+            sheenAmt = 0.6; g_sheenR = 0.7; g_specW = 0.05; g_wrap = 0.3; foldAmt = 0.0035;   // brushed flannel
         }
-        else if (u_fabric == 6) { freq = 120.0; k = triPattern(3, freq); amt = 0.0016; fabricRough = 0.8; clothSheen = 0.2;
-                                  base.rgb *= 0.93 + 0.1 * vnoise3(v_opos * 60.0); }
-        else if (u_fabric == 7) { fabricRough = 0.36; clothSheen = 0.15; }
-        else { freq = 420.0; k = triPattern(2, freq); amt = 0.0007; fabricRough = 0.74; clothSheen = 0.14; }
+        else if (u_fabric == 6) {
+            freq = 120.0; k = triPattern(3, freq); amt = 0.0016; fabricRough = 0.8;
+            sheenAmt = 0.35; g_sheenR = 0.45; foldAmt = 0.004;
+            base.rgb *= 0.93 + 0.1 * vnoise3(v_opos * 60.0);
+        }
+        else if (u_fabric == 7) { fabricRough = 0.38; sheenAmt = 0.15; g_sheenR = 0.35; g_specW = 0.6; g_wrap = 0.15; hemW = 0.008; foldAmt = 0.001; }
+        else { freq = 420.0; k = triPattern(2, freq); amt = 0.0007; fabricRough = 0.74; sheenAmt = 0.45; g_sheenR = 0.55; g_specW = 0.15; hemW = 0.02; foldAmt = 0.0025; }
+        // no woven fabric is whiter than ~0.72 albedo (fresh white cotton): keeps white shirts from glowing
+        base.rgb *= min(1.0, 0.72 / max(max(base.r, base.g), max(base.b, 1e-4)));
+        g_sheen = sheenAmt * mix(sqrt(max(base.rgb, vec3(1e-4))), vec3(1.0), 0.15);
+        // soft folds: cloth never lies perfectly smooth (long folds where it hangs, finer ones where it is tight)
+        if (foldAmt > 0.0) {
+            float folds = vnoise3(v_opos * vec3(11.0, 3.0, 11.0)) * 0.7 + vnoise3(v_opos * vec3(26.0, 8.0, 26.0) + 4.1) * 0.3;
+            N = bumpNormal(N, folds, foldAmt);
+        }
         float fade = 1.0 - smoothstep(0.25, 0.6, fpx * freq);
         if (amt > 0.0 && fade > 0.0) N = bumpNormal(N, k * fade, amt * 0.35);   // amt: weave height (m)
+        // the hem, outside: a rolled edge with the fabric's thickness, the doubled band ending in a small step and its
+        // stitch line (only where a stitch is wider than a pixel); inside: shadowed, a little lighter near the opening
+        if (u_fitMode == 2) {
+            float hemD = v_fit.x - u_fitHide.x;   // metres from the trimmed edge
+            if (!gl_FrontFacing) insideK = mix(0.8, 0.22, smoothstep(0.0, 0.06, hemD));
+            else if (hemW > 0.0 && hemD < hemW + 0.004) {
+                float px = length(fwidth(v_wpos)), st = (hemD - (hemW - 0.0035)) / 0.0006;
+                float hh = 0.0012 * smoothstep(0.0, 0.003, hemD)
+                         + 0.0004 * (1.0 - smoothstep(hemW - 0.001, hemW + 0.0008, hemD))
+                         - 0.00035 * exp(-st * st) * (1.0 - smoothstep(0.0006, 0.0015, px));
+                N = bumpNormal(N, hh, 1.0);
+                base.rgb *= 1.0 - 0.16 * (1.0 - smoothstep(0.0, 0.0015, hemD));
+            }
+        }
         base.rgb *= 1.0 - 0.45 * undressRim;   // the edge where it lifts off reads as a shadowed fold
     }
 
@@ -416,9 +486,9 @@ void main() {
     if (u_mode == 1) diffAmb *= vec3(1.0, 0.94, 0.92);
     vec3 specAmb = env * Fa * specOcc * (1.0 - s.rough * 0.7) * (u_mode == 3 ? 3.0 : 1.0);
     if (u_mode == 2) specAmb *= 0.12;
+    if (u_mode == 6) specAmb = specAmb * g_specW * (g_aT > 0.0 ? 0.6 : 1.0) + g_sheen * irr * ao * (0.12 + 0.35 * pow(1.0 - NoV, 4.0));
     col += diffAmb + specAmb + emis;
-    // fabric sheen: fibres catch light at grazing angles (velvety knit / flannel, the glow along satin folds)
-    if (u_mode == 6) col += s.albedo * (irr + u_keyColor * u_keyIntensity * keyAtt * sh * 0.3) * clothSheen * pow(1.0 - NoV, 3.0) * 1.6;
+    col *= insideK;
     if (bakedRoom) col = mix(col, bakedCol, u_bakeMix);
 
     if (u_mode == 3) {
