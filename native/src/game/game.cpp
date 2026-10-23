@@ -133,6 +133,7 @@ void Game::enterScreen(Screen s) {
     Screen prev = screen_;
     screen_ = s;
     if (s != Screen::Play && !harness && IsCursorHidden()) ShowCursor();
+    blurFresh_ = 0;
     screenTime_ = 0.f;
     ui.resetFocus();
     confirmQuit_ = confirmNew_ = false;
@@ -338,9 +339,14 @@ void Game::render(int w, int h) {
     rs.grain = settings.filmGrain ? 0.024f : 0.f;
     // paused: once the frosted backdrop fully covers the frozen scene, keep the last blur and skip the 3D
     bool pausedBackdrop = screen_ == Screen::Pause || (screen_ == Screen::Settings && settingsReturn_ == Screen::Pause);
-    bool frozen = pausedBackdrop && screenTime_ > 0.6f && renderer.blurTexture() != 0 && w == lastRenderW_ && h == lastRenderH_ && !debug_;
+    bool frozen = pausedBackdrop && blurFresh_ >= 2 && screenTime_ > 0.6f && renderer.blurTexture() != 0 &&
+                  w == lastRenderW_ && h == lastRenderH_ && !debug_;
     if (frozen) ClearBackground(Color{6, 3, 5, 255});
-    else { renderer.render(scene, cam_, w, h, time_); lastRenderW_ = w; lastRenderH_ = h; }
+    else {
+        renderer.render(scene, cam_, w, h, time_);
+        lastRenderW_ = w; lastRenderH_ = h;
+        if (renderer.uiBlur) ++blurFresh_;   // blur of this screen's own scene exists now
+    }
     ui.blurTex = renderer.blurTexture();
     ui.blurW = renderer.blurWidth(); ui.blurH = renderer.blurHeight();
 
