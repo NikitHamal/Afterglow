@@ -236,6 +236,7 @@ private:
     // touch reactions: how much she is being touched (zone-weighted), the flinch when it starts, her arch
     float touchAct_ = 0.f, flinch_ = 0.f, arch_ = 0.f;
     void archBody(Animator& a) const;
+    void applyContactTracks();          // clips.json contacts -> soft-tissue dents on the touched body
 
     // ---- core objects ----
     Scene scene;
@@ -246,7 +247,7 @@ private:
     Audio audio;
     ui::Ui ui;
     CameraState cam_;
-    Json clipsMeta_;
+    Json clipsMeta_, clipsPresets_;   // clips.json, presets.json (body types)
     float time_ = 0.f, frameDt_ = 1.f / 60.f;
     int fbW_ = 1280, fbH_ = 720;
     int lastRenderW_ = 0, lastRenderH_ = 0;

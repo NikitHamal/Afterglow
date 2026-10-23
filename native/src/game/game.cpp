@@ -53,6 +53,8 @@ bool Game::init() {
     Model::loadPump = nullptr;
     std::string meta = paths::findAsset({"characters/clips.json"});
     if (!meta.empty()) clipsMeta_ = Json::parse(paths::readText(meta));
+    std::string presets = paths::findAsset({"characters/presets.json"});
+    if (!presets.empty()) clipsPresets_ = Json::parse(paths::readText(presets));
     platform::trimHeap();   // loading spikes (file images, decode buffers) go back to the OS
 
     // acts come from the content: every clip family with a base clip (<id>.in = depth-driven, or a loop) is an
@@ -236,7 +238,11 @@ void Game::stage(Stage st) {
         c->proc.lookAt = true;
         c->proc.lookWeight = 0.6f;
         c->proc.eyeRollUp = 0.f;
-        c->flush = 0.f; c->sweat = 0.f;
+        c->flush = 0.f; c->sweat = 0.f; c->wet = 0.f;
+        // faces and arousal shapes go back to the clips (the night / the story set them by hand)
+        for (const char* mn : {"bite_lip", "gasp", "orgasm", "bliss", "vag_aroused", "lids_down", "lids_up", "pout", "shy", "smirk", "wink",
+                               "kiss", "oral", "moan", "pleasure", "effort", "blink"})
+            c->setMorph(mn, -1.f);
         c->resetSimulation();
     }
     postBloomAdd_ = postSatAdd_ = postVigAdd_ = postWarmAdd_ = 0.f; postExpMul_ = 1.f;
@@ -309,22 +315,27 @@ void Game::applyLooks() {
     }
 }
 
-// seven skin tones from the three painted albedos: Fair/Olive/Bronze/Ebony are tints of their nearest one
+// eight skin tones: the painted albedo when the character ships it (Vivian has all eight), else a tint of the
+// nearest painted one (Marcus: honey, caramel, deep)
 void Game::applySkin(Character& c, int tone) {
     struct T { const char* tex; V3 tint; };
-    static const T kT[kSkinToneCount] = {
-        {"honey", {1.15f, 1.11f, 1.09f}}, {"honey", {1.f, 1.f, 1.f}}, {"honey", {0.93f, 0.95f, 0.83f}},
-        {"caramel", {1.06f, 0.98f, 0.88f}}, {"caramel", {1.f, 1.f, 1.f}}, {"deep", {1.f, 1.f, 1.f}}, {"deep", {0.72f, 0.70f, 0.70f}},
+    static const T kFallback[kSkinToneCount] = {
+        {"honey", {1.2f, 1.15f, 1.12f}}, {"honey", {1.12f, 1.08f, 1.06f}}, {"honey", {1.f, 1.f, 1.f}}, {"honey", {0.93f, 0.95f, 0.83f}},
+        {"caramel", {1.f, 1.f, 1.f}}, {"caramel", {1.f, 0.92f, 0.82f}}, {"deep", {1.f, 1.f, 1.f}}, {"deep", {0.72f, 0.70f, 0.70f}},
     };
-    const T& t = kT[std::max(0, std::min(kSkinToneCount - 1, tone))];
-    c.setTone(t.tex);
-    c.skinTint = t.tint;
+    tone = std::max(0, std::min(kSkinToneCount - 1, tone));
+    if (c.setTone(skinToneName(tone))) { c.skinTint = {1.f, 1.f, 1.f}; return; }
+    if (std::string(skinToneName(tone)) == "caramel") { c.skinTint = {1.f, 1.f, 1.f}; return; }   // the embedded albedo
+    c.setTone(kFallback[tone].tex);
+    c.skinTint = kFallback[tone].tint;
 }
 
 // years -> the content's age morph (age_up / age_dn, when shipped): the base model is the base age
+// the content's age morph: -1 = 25 years, 0 = the character's own age, +1 = 60 (adult shapes only; 21..25 read as 25)
 float Game::ageToMorph(float years, float base) {
     years = std::max(kMinAge, std::min(kMaxAge, years));
-    return years < base ? (years - base) / (base - kMinAge) : (years - base) / (kMaxAge - base);
+    const float young = 25.f;
+    return years < base ? std::max(-1.f, (years - base) / (base - young)) : (years - base) / (kMaxAge - base);
 }
 
 void Game::updateMenuCamera(float dt) {

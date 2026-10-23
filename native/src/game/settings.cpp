@@ -7,7 +7,7 @@ namespace ag {
 
 const int Settings::kFpsCaps[5] = {30, 60, 120, 144, 0};
 
-namespace { const char* kTones[kSkinToneCount] = {"fair", "honey", "olive", "bronze", "caramel", "deep", "ebony"}; }
+namespace { const char* kTones[kSkinToneCount] = {"porcelain", "fair", "honey", "olive", "caramel", "bronze", "deep", "ebony"}; }
 const char* skinToneName(int i) { return kTones[std::max(0, std::min(kSkinToneCount - 1, i))]; }
 int skinToneIndex(const std::string& n) {
     for (int i = 0; i < kSkinToneCount; ++i) if (n == kTones[i]) return i;
@@ -111,7 +111,7 @@ bool Profile::load(const std::string& path) {
     auto tone = [&](const Json& o) {
         int byName = skinToneIndex(o["skin"].str());
         if (byName >= 0) return byName;
-        const int old3[3] = {1, 4, 5};
+        const int old3[3] = {2, 4, 6};
         return old3[ri(o, "tone", 1, 0, 2)];
     };
     her.tone = tone(h);
