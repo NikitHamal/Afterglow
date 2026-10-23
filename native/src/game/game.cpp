@@ -3,8 +3,11 @@
 #include "app/updater.h"
 #include "core/log.h"
 #include "core/paths.h"
+#include "gfx/gl.h"
+#include "gfx/texture.h"
 #include "raylib.h"
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
 
@@ -18,7 +21,19 @@ const char* kToneNames[3] = {"honey", "caramel", "deep"};
 bool Game::init() {
     settingsPath_ = paths::join(paths::userDir(), "settings.json");
     profilePath_ = paths::join(paths::userDir(), "profile.json");
+    bool firstRun = !paths::exists(settingsPath_);
     if (!harness) { settings.load(settingsPath_); profile.load(profilePath_); }
+    const char* gpu = (const char*)glGetString(GL_RENDERER);
+    std::string g = gpu ? gpu : "";
+    AG_INFO("AG: GPU: %s", g.c_str());
+    if (firstRun && !harness) {
+        // first start: pick a quality that runs smoothly on this GPU (the player can change it any time)
+        for (auto& c : g) c = (char)std::tolower((unsigned char)c);
+        auto has = [&](const char* k) { return g.find(k) != std::string::npos; };
+        if (has("llvmpipe") || has("softpipe") || has("swiftshader") || has("software")) settings.quality = 0;
+        else if (has("intel") || has("uhd") || has("iris") || has("radeon(tm) graphics") || has("vega") || has("mali") || has("adreno")) settings.quality = 1;
+        AG_INFO("AG: first run: quality %d for this GPU", settings.quality);
+    }
     ui.init();
     if (!loadingProgress) loadingProgress = [this](float f, const char* what) { drawLoading(f, what); };
     loadingProgress(0.f, "Opening the door");
@@ -203,7 +218,9 @@ void Game::standPose(Character& c) {
 }
 
 void Game::applyLooks() {
-    static const V3 kHair[6] = {{1.f, 1.f, 1.f}, {2.6f, 1.9f, 1.55f}, {3.4f, 2.0f, 1.2f}, {4.6f, 1.9f, 1.25f}, {0.55f, 0.52f, 0.55f}, {7.5f, 5.2f, 3.2f}};
+    // multipliers on the authored espresso hair (linear ~0.042, 0.015, 0.009): espresso, chestnut, copper,
+    // auburn, raven, honey
+    static const V3 kHair[6] = {{1.f, 1.f, 1.f}, {2.4f, 2.8f, 2.3f}, {5.2f, 4.0f, 2.3f}, {3.3f, 2.0f, 1.75f}, {0.32f, 0.62f, 1.05f}, {9.f, 16.f, 11.6f}};
     Character& v = scene.vivian;
     Character& m = scene.marcus;
     if (v.loaded()) {
@@ -215,7 +232,8 @@ void Game::applyLooks() {
         for (const Material& mat : v.model.materials)
             if (mat.shading == Shading::Hair && mat.baseColor.x > 0.9f) legacyHair = true;
         V3 tint = kHair[std::max(0, std::min(5, h.hair))];
-        v.hairTint = legacyHair ? V3{0.42f * tint.x, 0.21f * tint.y, 0.11f * tint.z} : tint;
+        if (legacyHair) tint = V3{std::min(1.f, 0.25f * tint.x), std::min(1.f, 0.09f * tint.y), std::min(1.f, 0.052f * tint.z)};
+        v.hairTint = tint;
     }
     if (m.loaded()) {
         const HisLook& h = profile.him;
@@ -376,6 +394,7 @@ void Game::reset() {
     rhythm_ = rhythmToggle_ = false;
     camUser_ = false;
     holdDepth_ = false;
+    autoplay_ = false;
 }
 
 void Game::applySpec(const Spec& s) {
@@ -428,6 +447,8 @@ void Game::applySpec(const Spec& s) {
         night_.elapsed = s.num("elapsed", 140.f);
         night_.score = s.num("score", 1840.f);
         introCard_ = s.has("intro") ? 8.f : 0.f;
+        autoplay_ = s.has("autoplay");
+        if (autoplay_) { night_.her = 0.f; night_.him = 0.f; night_.elapsed = 0.f; night_.score = 0.f; night_.connection = 0.5f; autoLog_ = 0.f; }
         depth_ = depthTarget_ = dragDepth_ = s.num("depth", 0.6f);
         holdDepth_ = true;
         if (s.has("rhythm")) { rhythm_ = true; rhythmToggle_ = true; rhythmTempo_ = s.num("tempo", 1.1f); }

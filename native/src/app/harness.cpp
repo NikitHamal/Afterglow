@@ -3,6 +3,7 @@
 #include "core/log.h"
 #include "raylib.h"
 #include "rlgl.h"
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <sstream>
@@ -58,10 +59,12 @@ int runHarness(const HarnessArgs& a, const std::function<std::unique_ptr<App>()>
         Spec spec = Spec::parse(s.spec);
         app->applySpec(spec);
         int frames = (int)spec.num("frames", (float)a.frames);
+        int renderFrom = std::max(0, std::min(frames - 1, (int)spec.num("render_from", 0.f)));   // long sims: draw the end only
         std::string out = a.shotlist.empty() ? s.name : paths::join(a.outdir, s.name + ".png");
         if (!a.shotlist.empty()) paths::writeText(paths::join(a.outdir, ".keep"), "");
         for (int f = 0; f < frames; ++f) {
             app->update(1.f / 60.f);
+            if (f < renderFrom) { PollInputEvents(); continue; }
             BeginDrawing();
             app->render(GetRenderWidth(), GetRenderHeight());
             if (f == frames - 1) {

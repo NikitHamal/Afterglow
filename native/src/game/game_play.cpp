@@ -165,6 +165,8 @@ void Game::updatePlay(float dt) {
         if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) rhythmAmp_ = std::max(0.12f, rhythmAmp_ - dt * 0.5f);
     }
 
+    if (autoplay_) autoplayStep(dt);
+
     // ---- depth: mouse drag (direct), wheel notches (strokes that spring back), or the auto rhythm ----
     float sens = settings.mouseSens * (settings.invertY ? -1.f : 1.f);
     bool dragging = IsMouseButtonDown(MOUSE_BUTTON_LEFT) && !overUi && !ui.anyActive();
@@ -226,6 +228,33 @@ void Game::updatePlay(float dt) {
         posFade_ += dt / 0.2f;
         if (posFade_ >= 1.f) { setPosition(pendingPos_, true); pendingPos_ = -1; posFade_ = 1.f; }
     } else if (posFade_ > 0.f) posFade_ = std::max(0.f, posFade_ - dt / 0.35f);
+}
+
+// A player who listens: rhythm on, tempo/depth eased toward her wishes, touch/kiss/change on request,
+// easing off when he is close. Drives the real input path (rhythm, targets, setPosition).
+void Game::autoplayStep(float dt) {
+    rhythm_ = rhythmToggle_ = true;
+    holdDepth_ = false;
+    const PositionInfo& p = positions_[(size_t)posIndex_];
+    float wantT = night_.wantTempo, wantA = night_.wantAmp;
+    if (night_.him > 0.84f && night_.her < 0.85f) wantT = 0.35f;          // edge
+    rhythmTempo_ += (wantT - rhythmTempo_) * std::min(1.f, dt * 0.9f);
+    rhythmAmp_ += (std::max(0.15f, wantA) - rhythmAmp_) * std::min(1.f, dt * 0.9f);
+    if (night_.desire == Desire::Touch && p.canTouch) rubTarget_ = 1.f;
+    if (night_.desire == Desire::Kiss && p.canKiss) embraceTarget_ = 1.f;
+    if (night_.desire == Desire::Change && pendingPos_ < 0) {
+        int next = (posIndex_ + 1) % (int)positions_.size();
+        if (positions_[(size_t)next].solo || positions_[(size_t)next].id == "lick" || positions_[(size_t)next].id == "oral") next = 0;
+        setPosition(next);
+    }
+    autoLog_ += dt;
+    if (autoLog_ >= 10.f) {
+        autoLog_ = 0.f;
+        AG_INFO("AG: autoplay t=%.0fs pos=%s tempo=%.2f/%.2f amp=%.2f/%.2f sync=%.2f her=%.2f him=%.2f conn=%.2f desires %d/%d climaxes %d score %.0f",
+                (double)night_.elapsed, night_.pos.c_str(), (double)night_.tempo, (double)night_.wantTempo, (double)night_.amplitude,
+                (double)night_.wantAmp, (double)night_.sync, (double)night_.her, (double)night_.him, (double)night_.connection,
+                night_.desiresMet, night_.desiresMet + night_.desiresMissed, night_.herClimaxes, (double)night_.score);
+    }
 }
 
 // ------------------------------------------------------------------ presentation
