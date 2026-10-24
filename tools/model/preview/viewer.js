@@ -6,7 +6,12 @@ const root = new URL('../../../', import.meta.url);
 const manifestUrl = new URL('native/assets/characters/models.json', root);
 const assetUrl = (slot) => new URL(`native/assets/characters/${slot}`, root).href;
 const variantSelect = document.querySelector('#variant');
-const poseSelect = document.querySelector('#pose');
+const shotSelect = document.querySelector('#shot');
+const resetButton = document.querySelector('#reset');
+const auditButton = document.createElement('button');
+auditButton.id = 'audit';
+auditButton.textContent = 'Run pose audit';
+resetButton.after(auditButton);
 const readout = document.querySelector('#readout');
 const host = document.querySelector('main');
 
@@ -23,18 +28,27 @@ host.append(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0.9, 0);
 controls.enableDamping = true;
-controls.minDistance = 1.4;
+controls.minDistance = 1.25;
 controls.maxDistance = 6;
 scene.add(new THREE.HemisphereLight(0xb8c8ff, 0x241922, 1.5));
-const key = new THREE.DirectionalLight(0xffd6bd, 2.7); key.position.set(-2.5, 3.5, 3); scene.add(key);
-const rim = new THREE.DirectionalLight(0x91a9ff, 1.1); rim.position.set(2, 2.2, -3); scene.add(rim);
-const floor = new THREE.Mesh(new THREE.CircleGeometry(2.2, 64), new THREE.MeshStandardMaterial({ color: 0x24242a, roughness: 0.78 }));
-floor.rotation.x = -Math.PI / 2; floor.position.y = 0; scene.add(floor);
+const key = new THREE.DirectionalLight(0xffd6bd, 2.7);
+key.position.set(-2.5, 3.5, 3);
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x91a9ff, 1.1);
+rim.position.set(2, 2.2, -3);
+scene.add(rim);
+const floor = new THREE.Mesh(
+  new THREE.CircleGeometry(2.2, 64),
+  new THREE.MeshStandardMaterial({ color: 0x24242a, roughness: 0.78 }),
+);
+floor.rotation.x = -Math.PI / 2;
+scene.add(floor);
 
 let manifest;
 let current;
 let mixer;
 let activeAction;
+let activeShot;
 let clock = new THREE.Clock();
 
 function resize() {
@@ -46,44 +60,128 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-function setMorphs(rootObject, variant) {
+function selectedVariant() {
+  return manifest?.variants?.[variantSelect.value];
+}
+
+function selectedShot() {
+  const id = shotSelect.value;
+  return manifest?.shots?.[id] || Object.values(manifest?.shots || {})[0];
+}
+
+function setMorphs(rootObject, variant, shotId) {
   const sliders = variant.sliders || {};
-  const expression = variant.expression || '';
+  const expression = (variant.expressions && variant.expressions[shotId]) || variant.expression || '';
   rootObject.traverse((o) => {
     if (!o.isMesh || !o.morphTargetDictionary || !o.morphTargetInfluences) return;
     for (const [name, index] of Object.entries(o.morphTargetDictionary)) {
-      let v = 0;
-      if (name === expression) v = 0.72;
+      let value = name === expression ? 0.72 : 0;
       for (const [param, raw] of Object.entries(sliders)) {
-        const value = Math.max(-1, Math.min(1, Number(raw) || 0));
-        if (name === `${param}_up`) v = Math.max(v, Math.max(value, 0));
-        if (name === `${param}_dn`) v = Math.max(v, Math.max(-value, 0));
+        const slider = Math.max(-1, Math.min(1, Number(raw) || 0));
+        if (name === `${param}_up`) value = Math.max(value, Math.max(slider, 0));
+        if (name === `${param}_dn`) value = Math.max(value, Math.max(-slider, 0));
       }
-      o.morphTargetInfluences[index] = v;
+      o.morphTargetInfluences[index] = value;
     }
   });
 }
 
-function resetCamera() {
-  camera.position.set(2.4, 1.45, 3.4);
-  controls.target.set(0, 0.9, 0);
+function setShotCamera(shot) {
+  if (!shot) return;
+  const target = shot.target || [0, 0.9, 0];
+  controls.target.set(target[0], target[1], target[2]);
+  const distance = Number(shot.distance) || 3.2;
+  camera.position.set(distance * 0.71, target[1] + distance * 0.16, distance * 0.71);
   controls.update();
 }
 
-function playPose(name) {
+function resetCamera() {
+  setShotCamera(selectedShot());
+}
+
+function findClip(name) {
+  return current?.animations.find((clip) => clip.name === name)
+    || current?.animations.find((clip) => clip.name === 'stand.idle')
+    || current?.animations[0];
+}
+
+function playShot(id = shotSelect.value) {
   if (!mixer || !current) return;
-  const clip = current.animations.find((a) => a.name === name) || current.animations.find((a) => a.name === 'stand.idle') || current.animations[0];
+  const shot = manifest.shots[id] || selectedShot();
+  const clip = findClip(shot?.clip);
   if (!clip) return;
+  activeShot = shot;
+  setMorphs(current.scene, selectedVariant(), id);
   if (activeAction) activeAction.fadeOut(0.18);
   activeAction = mixer.clipAction(clip);
   activeAction.reset().fadeIn(0.18).play();
-  readout.textContent = `${variantSelect.selectedOptions[0]?.textContent || ''}\n${clip.name}\n${current.scene.userData.modelStats || ''}`;
+  setShotCamera(shot);
+  readout.textContent = `${selectedVariant().label}\n${shot.label} · ${clip.name}\npose guard rail · runtime mesh checks armed`;
+}
+
+function finiteBox(box) {
+  return [box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z].every(Number.isFinite);
+}
+
+function inspectPose() {
+  if (!current?.scene) return { ok: false, reason: 'scene missing' };
+  current.scene.updateMatrixWorld(true);
+  let meshes = 0;
+  let maxExtent = 0;
+  let reason = '';
+  current.scene.traverse((o) => {
+    if (!o.isMesh || reason) return;
+    meshes += 1;
+    if (o.matrixWorld.elements.some((v) => !Number.isFinite(v))) {
+      reason = `${o.name || 'mesh'} has a non-finite transform`;
+      return;
+    }
+    const box = new THREE.Box3().setFromObject(o);
+    if (!finiteBox(box)) {
+      reason = `${o.name || 'mesh'} has a non-finite bound`;
+      return;
+    }
+    const size = box.getSize(new THREE.Vector3());
+    maxExtent = Math.max(maxExtent, size.x, size.y, size.z);
+    if (maxExtent > 12) reason = `${o.name || 'mesh'} escaped the 12 m guard envelope`;
+  });
+  return reason ? { ok: false, reason } : { ok: meshes > 0, meshes, maxExtent };
+}
+
+function runPoseAudit() {
+  if (!mixer || !current) return;
+  const shotEntries = Object.entries(manifest.shots || {});
+  const failures = [];
+  for (const [id, shot] of shotEntries) {
+    const clip = current.animations.find((candidate) => candidate.name === shot.clip);
+    if (!clip) {
+      failures.push(`${id}: clip missing`);
+      continue;
+    }
+    setMorphs(current.scene, selectedVariant(), id);
+    if (activeAction) activeAction.stop();
+    activeAction = mixer.clipAction(clip).reset().play();
+    activeAction.paused = true;
+    for (const t of [0, 0.25, 0.5, 0.75, 1]) {
+      mixer.setTime(clip.duration * t);
+      const check = inspectPose();
+      if (!check.ok) failures.push(`${id}@${t}: ${check.reason || 'empty scene'}`);
+    }
+    activeAction.paused = false;
+  }
+  const label = selectedVariant().label;
+  const result = failures.length
+    ? `${label}\npose audit FAILED\n${failures.join('\n')}`
+    : `${label}\npose audit passed · ${shotEntries.length} shots × 5 samples\nfinite transforms · bounded meshes`;
+  playShot(shotSelect.value);
+  readout.textContent = result;
 }
 
 async function loadVariant(keyName) {
   const variant = manifest.variants[keyName];
+  if (!variant) return;
   const slot = manifest.slots[variant.slot];
-  if (!variant || !slot) return;
+  if (!slot) return;
   if (current?.scene) scene.remove(current.scene);
   if (mixer) mixer.stopAllAction();
   const loader = new GLTFLoader();
@@ -91,30 +189,46 @@ async function loadVariant(keyName) {
   current = await loader.loadAsync(assetUrl(slot.asset));
   current.scene.traverse((o) => {
     if (!o.isMesh) return;
-    o.castShadow = true; o.receiveShadow = true;
+    o.castShadow = true;
+    o.receiveShadow = true;
     if (o.material) o.material.envMapIntensity = 0.75;
   });
-  setMorphs(current.scene, variant);
   scene.add(current.scene);
   mixer = new THREE.AnimationMixer(current.scene);
-  playPose(poseSelect.value);
+  playShot(shotSelect.value);
+}
+
+function populateShots() {
+  shotSelect.replaceChildren();
+  for (const [id, shot] of Object.entries(manifest.shots || {})) {
+    const option = document.createElement('option');
+    option.value = id;
+    option.textContent = shot.label;
+    shotSelect.append(option);
+  }
 }
 
 async function boot() {
   manifest = await fetch(manifestUrl).then((r) => r.json());
+  populateShots();
   for (const [keyName, variant] of Object.entries(manifest.variants || {})) {
-    const option = document.createElement('option'); option.value = keyName; option.textContent = variant.label;
+    const option = document.createElement('option');
+    option.value = keyName;
+    option.textContent = variant.label;
     variantSelect.append(option);
   }
   const query = new URLSearchParams(location.search);
-  const initial = query.get('variant') || Object.keys(manifest.variants)[0];
-  variantSelect.value = manifest.variants[initial] ? initial : Object.keys(manifest.variants)[0];
+  const initialVariant = query.get('variant') || Object.keys(manifest.variants)[0];
+  const initialShot = query.get('shot') || Object.keys(manifest.shots)[0];
+  variantSelect.value = manifest.variants[initialVariant] ? initialVariant : Object.keys(manifest.variants)[0];
+  shotSelect.value = manifest.shots[initialShot] ? initialShot : Object.keys(manifest.shots)[0];
   await loadVariant(variantSelect.value);
 }
 
 variantSelect.addEventListener('change', () => loadVariant(variantSelect.value));
-poseSelect.addEventListener('change', () => playPose(poseSelect.value));
-document.querySelector('#reset').addEventListener('click', resetCamera);
+shotSelect.addEventListener('change', () => playShot(shotSelect.value));
+resetButton.addEventListener('click', resetCamera);
+auditButton.addEventListener('click', runPoseAudit);
 
 function frame() {
   requestAnimationFrame(frame);

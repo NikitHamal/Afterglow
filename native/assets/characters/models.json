@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "about": "Modular adult character slots. Each slot keeps the proven MMD frame, contact landmarks, and pose-safe limits while allowing a different authored GLB to be dropped in.",
+  "version": 2,
+  "about": "Modular fictional-adult character slots. Each slot keeps the proven MMD frame, contact landmarks, and pose-safe limits while allowing a different authored GLB to be dropped in.",
   "slots": {
     "vivian": {
       "asset": "vivian.glb",
@@ -21,12 +21,23 @@
       "poseEnvelope": {"maxScale": 1.35, "maxTranslation": 0.45, "maxMorph": 1.0}
     }
   },
+  "shots": {
+    "stand": {"label": "Standing turntable", "clip": "stand.idle", "target": [0.0, 0.92, 0.0], "distance": 3.4},
+    "sit": {"label": "Seated profile", "clip": "sit.bed", "target": [0.0, 0.78, 0.0], "distance": 2.8},
+    "embrace": {"label": "Embrace check", "clip": "missionary.embrace", "target": [0.0, 0.9, 0.0], "distance": 3.1},
+    "spoon": {"label": "Side pose check", "clip": "spoon.in", "target": [0.0, 0.78, 0.0], "distance": 3.0},
+    "idle": {"label": "Idle loop", "clip": "solo.idle", "target": [0.0, 0.9, 0.0], "distance": 3.2}
+  },
   "variants": {
-    "mira": {"label": "Mira", "slot": "vivian", "tone": "honey", "sliders": {"bust": 0.25, "hips": 0.35, "waist": -0.3, "butt": 0.35, "weight": -0.1, "age": -0.15}, "expression": "smirk"},
-    "dahlia": {"label": "Dahlia", "slot": "vivian", "tone": "bronze", "sliders": {"bust": 0.55, "hips": 0.75, "waist": -0.45, "butt": 0.7, "weight": 0.25, "muscle": 0.2, "age": 0.2}, "expression": "bliss"},
-    "sage": {"label": "Sage", "slot": "vivian", "tone": "deep", "sliders": {"bust": -0.15, "hips": 0.1, "waist": -0.25, "butt": 0.1, "weight": -0.25, "muscle": 0.7, "age": 0.0}, "expression": "bite_lip"},
-    "atlas": {"label": "Atlas", "slot": "marcus", "tone": "honey", "sliders": {"muscle": 0.75, "weight": -0.15, "belly": -0.1, "age": 0.0}, "expression": "effort"},
-    "riven": {"label": "Riven", "slot": "marcus", "tone": "deep", "sliders": {"muscle": 0.2, "weight": 0.45, "belly": 0.5, "age": 0.35}, "expression": "smile"}
+    "mira": {"label": "Mira", "slot": "vivian", "tone": "honey", "adult": true, "fictional": true, "sliders": {"bust": 0.25, "hips": 0.35, "waist": -0.3, "butt": 0.35, "weight": -0.1, "age": -0.15}, "expressions": {"stand": "smirk", "sit": "smile", "embrace": "bliss"}},
+    "dahlia": {"label": "Dahlia", "slot": "vivian", "tone": "bronze", "adult": true, "fictional": true, "sliders": {"bust": 0.55, "hips": 0.75, "waist": -0.45, "butt": 0.7, "weight": 0.25, "muscle": 0.2, "age": 0.2}, "expressions": {"stand": "bliss", "sit": "smirk", "embrace": "pleasure"}},
+    "sage": {"label": "Sage", "slot": "vivian", "tone": "deep", "adult": true, "fictional": true, "sliders": {"bust": -0.15, "hips": 0.1, "waist": -0.25, "butt": 0.1, "weight": -0.25, "muscle": 0.7, "age": 0.0}, "expressions": {"stand": "bite_lip", "sit": "smirk", "embrace": "bliss"}},
+    "cassia": {"label": "Cassia", "slot": "vivian", "tone": "olive", "adult": true, "fictional": true, "sliders": {"bust": 0.38, "hips": 0.58, "waist": -0.34, "butt": 0.52, "weight": 0.08, "muscle": 0.18, "age": 0.06}, "expressions": {"stand": "smirk", "sit": "gasp", "embrace": "pleasure"}},
+    "noelle": {"label": "Noelle", "slot": "vivian", "tone": "porcelain", "adult": true, "fictional": true, "sliders": {"bust": -0.05, "hips": 0.24, "waist": -0.18, "butt": 0.16, "weight": -0.18, "muscle": 0.54, "age": -0.08}, "expressions": {"stand": "shy", "sit": "smile", "embrace": "bliss"}},
+    "atlas": {"label": "Atlas", "slot": "marcus", "tone": "honey", "adult": true, "fictional": true, "sliders": {"muscle": 0.75, "weight": -0.15, "belly": -0.1, "age": 0.0}, "expressions": {"stand": "effort", "sit": "pleasure", "embrace": "pleasure"}},
+    "riven": {"label": "Riven", "slot": "marcus", "tone": "deep", "adult": true, "fictional": true, "sliders": {"muscle": 0.2, "weight": 0.45, "belly": 0.5, "age": 0.35}, "expressions": {"stand": "pleasure", "sit": "effort", "embrace": "pleasure"}},
+    "kellan": {"label": "Kellan", "slot": "marcus", "tone": "caramel", "adult": true, "fictional": true, "sliders": {"muscle": 0.42, "weight": -0.28, "belly": 0.0, "age": -0.08}, "expressions": {"stand": "pleasure", "sit": "effort", "embrace": "pleasure"}},
+    "soren": {"label": "Soren", "slot": "marcus", "tone": "deep", "adult": true, "fictional": true, "sliders": {"muscle": 0.12, "weight": 0.68, "belly": 0.72, "age": 0.56}, "expressions": {"stand": "effort", "sit": "pleasure", "embrace": "pleasure"}}
   },
   "validation": {
     "weightsSum": [0.98, 1.02],
