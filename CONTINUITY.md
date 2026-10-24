@@ -1,117 +1,76 @@
 # CONTINUITY — read this first
 
 Short, current, honest. Newest state at the top. Deeper history: `docs/STATUS.md`; contracts: `AGENTS.md`,
-`docs/NATIVE_ENGINE.md`, `docs/NATIVE_CONTENT.md`, `docs/STORY_ASSETS.md`.
+`docs/NATIVE_ENGINE.md`, `docs/NATIVE_CONTENT.md`, `docs/STORY_ASSETS.md`. Track notes: `docs/HUD_NOTES.md`,
+`docs/LOOK_NOTES.md`, `docs/DEFORM_NOTES.md`, `docs/MODELS_NOTES.md`, `docs/ANIM_NOTES.md`, `docs/ENGINE_NOTES.md`.
 
 The product is the native game in `native/` (C++17 / raylib, built only on GitHub CI). The web game in the repo
 root is legacy. Adults only (see `AGENTS.md`).
 
-## Branch `agent-models-hud` (2026-10-24, Agent B) — models + HUD pass (main is owned by another agent)
+## Where work happens (2026-10-24 evening)
 
-User asks (2026-10-24): eyes read whitish; hair very poor; Marcus red around the lips; more expressive faces;
-no deformation in any pose (Blender or game); HUD buttons/panels/window break on every push → fix globally, modular;
-2-3 new best models (adults only); show every model/shot on the molab board.
+**`main` is the only working branch.** The places agent that owned `main` stopped; Agent B took `main` over and merged
+into it `agent-models-hud` (HUD/window, look, deformation, models — rounds 1-3 below) and `agent-modular-models` (another
+seat's rig contract: `characters/models.json`, load-time contract check, animator/skin data guards, offline validators
+`tools/model/validate_{model,manifest}.py`, browser preview rail `tools/model/preview/`). Those two branches are done;
+do not push to them. Pull + rebase on `origin/main` before every push; commit small verified units.
 
-Diagnosed on molab (main @5a1905a, harness 1280x720 / 1080p): pale grey irises; Vivian's chignon reads as a flat cap with
-a grey card streak; Marcus' hair shell shows a bright whorl at the crown and his lower face is orange-red; story
-close-ups have a white halo around the actors (naive DOF mixes the blurred foreground into the background); QA shots
-never run with FLAG_WINDOW_HIGHDPI (harness uses flags 0), so Windows display scaling bugs never show in QA.
+Merge decisions (agent-modular-models): its crude total-angle clamp in `Animator::sanitizePose` was dropped (it fought
+the anatomical `JointLimits` from round 2, e.g. the kiss head roll); the data gate (non-finite / degenerate channel →
+rest, quaternion renormalise, scale and translation sanity) runs after `JointLimits` (`Character::update`). A rig
+contract break is logged, never fatal (it used to unload the character → invisible). `models.json` = rig contract per
+role body (+ the preview rail's slider presets); `roster.json` = the selectable faces (Mei, Amara, Daniel, ...).
 
-**Round 1 done (2026-10-24, pushed, CI dispatch on 86dbaf6 green; 26b726d dispatched):**
-- HUD/window (A): cause = raylib 5.5 FLAG_WINDOW_HIGHDPI only holds until the first resize (laptop-fit at start,
-  maximise, borderless, F11) → UI 1.25-2x too big, clicks beside buttons; QA never set the flag. `app/window.*` = one
-  coordinate space (no HiDPI flag on Windows/Linux, Retina on macOS), linear UI scale, `ui/layout.*`, scale scopes,
-  text fit/ellipsis, `game_hud.cpp`, story UI fit, QA overflow guard (0 findings at 10 sizes + 125/150/200 % after a
-  resize). Notes `docs/HUD_NOTES.md`; matrix runner `task/tools/uimatrix.sh`; UI shots `tools/qa/ui_shots.txt` (actors=0).
-- Look (B): depth-aware DOF (no halo), eyes (no 3x milky env veil; lid/lash shade, catchlight, limbal-ring iris
-  textures `tools/model/native/eye_tex.py`), Marcus lower face rebuilt from the cheek tone (`tools/model/male/face_tone.py`),
-  strand hair shading, Marcus scalp-hugging shell with soft hairline (`hair_shell.py`), faces alive (blinks, lid follow,
-  listening warmth, emphasis — `scene/facelife.h`). Notes `docs/LOOK_NOTES.md`.
-- Still weak: Vivian's chignon (cap look, thin hairline, ribbon tendrils), Marcus' neck colour seam.
+## Done (2026-10-24, all rendered on molab; board tabs show before/after)
 
-**Round 2 done (pushed; CI d119cd2 green on Windows/Linux/macOS; main merged at 17ac2f6):**
-- (C) `4234bfa` stress-pose QA (`tools/qa/deform_shots.txt`), `b5da2c5` dual-quaternion skinning for every skinned
-  mesh, `35c9ffb` joint ranges every frame after every layer, `3eb17d1` Preserve Volume in Blender + weights check,
-  `5f430f4` Marcus under-chin, `7a9db4e` 11 Marcus expression morphs. Notes `docs/DEFORM_NOTES.md`.
-- (D) `b3919d3` model roster (Customize "Model" row) + identity packs; `856566a` hair kit `tools/model/hair/` + Vivian
-  chignon v2; new models Mei `0a34c59`, Amara `7bccf50`, Daniel `17ece15` on the proven bodies. Notes `docs/MODELS_NOTES.md`.
+- **HUD / window** (round 1): cause = raylib 5.5's FLAG_WINDOW_HIGHDPI only holds until the first resize (laptop fit at
+  start, maximise, borderless, F11) → UI 1.25-2x too big, clicks beside buttons; QA never set the flag.
+  `app/window.*` = one coordinate space (no HiDPI flag on Windows/Linux, Retina on macOS); linear UI scale; `ui/layout.*`;
+  scale scopes; text fit/ellipsis; `game_hud.cpp`; story UI fits; QA overflow guard: 0 findings at 10 sizes and at
+  125/150/200 % after a resize (`tools/qa/ui_shots.txt`, `actors=0`; matrix runner `task/tools/uimatrix.sh`).
+- **Look** (round 1): depth-aware DOF (no halo round the actors), eyes (no milky env veil, lid/lash shade, catchlight,
+  limbal-ring irises `tools/model/native/eye_tex.py`), Marcus' lower face rebuilt from the cheek tone (`face_tone.py`),
+  strand hair shading, Marcus' scalp-hugging hair shell (`hair_shell.py`), faces alive (`scene/facelife.h`).
+- **Deformation** (round 2): dual-quaternion skinning for every skinned mesh (`b5da2c5`), anatomical joint ranges on
+  every frame after every layer (`35c9ffb`, `anim/rom.*`), stress-pose QA (`tools/qa/deform_shots.txt`), Preserve Volume
+  in Blender + weights check, Marcus' under-chin, 11 new Marcus expressions (`7a9db4e`).
+- **Models** (round 2): roster + identity packs + Customize "Model" row; hair kit `tools/model/hair/`; Vivian chignon v2;
+  new adult models Mei (31), Amara (34), Daniel (34) on the proven bodies (every clip/outfit/contact works for them).
+- **Round 3 pushed so far:** `92a0468` soft hair (strand cores opaque, the rest blended order-independently, card sides
+  feathered); `9175e74` clip authoring with anatomical arm/leg IK + strict limb metrics (rigkit; clips NOT re-baked yet);
+  `b4a868e` QA orbit camera round the couple (`orbit=yaw:,pitch:,dist:`) + skin debug views (`skindbg=1..11`);
+  `ae4c43c` Marcus: no red band down the neck in any tone.
+- **Story places** (the places agent, before it stopped): spa_suite, apartment_hall / living / balcony / bedroom,
+  villa_terrace, cabin_living (see `docs/STORY_ASSETS.md` ✅ list).
 
-**Honest review of round 2 (my own pass, board images):** DQS fixed elbows/knees. NOT good enough yet: the story
-kiss (no authored kiss clip — `kiss` falls back to `stand.idle` + engine IK; faces press into each other, the joint
-clamp now keeps arms from reaching); card hair from the side/back is a patchwork of scraps on every style (alpha-tested
-cards, no soft edge pass); Mei's bob has a jagged cut-out hairline; Mei's identity is weak; a red flush band on
-Marcus' neck/jaw in warm close-ups. User (2026-10-24 afternoon): "the kiss is still deformed and not as good, neither
-the animations, nor anything; the side pose of the model is deformed too — very strict passes and polishes".
+## In flight — round 3 strict pass (user: "the kiss is still deformed ... the side pose of the model is deformed too ...
+very strict passes and polishes")
 
-**Round 3 (in flight):** (G) animation strict pass in Blender — rigkit arm-twist fix, authored `stand.embrace`,
-`kiss.stand`, `kiss.sit`, re-bake every clip (`--norender`), zero-residual verify, splice into all five GLBs;
-(H) engine strict pass — kiss/embrace runtime on the new clips, two-pass hair (opaque core + soft blended edges),
-flush band, side/profile checks of every model. Next: (I) model identity + hair geometry polish.
+Two helpers stopped mid-unit (one API outage, one turn limit). Their uncommitted work is saved in the AgentSky task
+folder: `task/wip/anim_r3_uncommitted.patch` (+ `anim_untracked/`, base `9175e74`) and
+`task/wip/engine_r3_uncommitted.patch` (+ `engine_untracked/`, base `ae4c43c`); molab state under `/root/agb/anim3`.
+- (G) animation: re-bake EVERY clip with the fixed rigkit, author `stand.embrace`, `kiss.stand`, `kiss.sit`, re-author
+  `stand.idle` / `sit.bed` (0 furniture hits), splice the animations into the CURRENT GLBs (`splice_anims.mjs`, meshes,
+  morphs, hair untouched — skeletons match at 0.000 mm), regenerate clips.json, map story kiss/embrace to the new clips.
+- (H) engine: kiss/embrace runtime only fine-tunes the authored clips (lips 0-2 mm, noses pass, no face interpenetration,
+  hands on the partner inside the joint ranges; QA keys `kissik=`), side/profile checks of every model.
 
-Tracks: (A) HUD/window: harness `--hidpi`, UI layout layer, overflow-proof widgets, UI shot list;
-(B) look: depth-aware DOF, eyes, hair shading, Marcus face; then (C) expressions + deformation-proof skinning,
-(D) new models built on the proven rigs. Notes per track: `docs/HUD_NOTES.md`, `docs/LOOK_NOTES.md`.
+## Open after round 3
 
-molab (this session): https://sb-11332fbca0c30924.sb.molab.run/ — board notebook = status + tabs of shots from
-`/root/board/{status,shots/<section>}`; toolchain in `/root/agb` (Blender 4.2.3 + MPFB + MH CC0), repo `/root/Afterglow`,
-build `/root/build`. Helpers (AgentSky task folder `task/tools/`, need `~/.molab_token`): `mo.py` (run code),
-`mjob.py NAME CMD` (detached job + poll), `msync.py REPO REMOTE_DIR` (overlay native/src, shaders, tools/qa),
-`mbuild.py SRC BUILD`, `mshots.py BUILD LIST OUTDIR RES`, `fetch.py GLOB DIR`.
+Model identity polish (Mei's face reads weak, Mei's bob hairline jagged), hair from the side/back on every style,
+Marcus' age shapes; story places ⏳ in `docs/STORY_ASSETS.md` (hotel_ballroom, hotel_terrace, cabin_door, villa_beach,
+spa_lobby / steam / lounge); smoother garment borders; spa robes / slip / open shirt; talk gestures; `massage.back`.
+Not taken by any session so far, by choice: sexually explicit authoring (sex-act clips, genital polish, undress clips,
+explicit text, renders of the acts).
 
-## State (2026-10-23, evening)
+## molab render box (this session)
 
-**Green:** CI builds Windows / Linux / macOS + nightly on every push (the QA-shots job was removed in `b425acd`;
-render shot lists on the molab box instead, see Commands).
-
-**Done (latest first)**
-- Kiss + hands (agent pass, branch `agent-kiss`): the kiss lands (neck + head IK onto the meeting point, heads roll
-  ~22° so noses pass; lips 2 mm apart standing and seated, were 64 / 110 mm); embrace palms flat on the partner's
-  real chest / waist (anchors from trunk-weighted skin; the old ray hit surfaces inside the body); forearms take 60 %
-  of a palm turn (no flat-ribbon wrists); seated couples turn to each other; harness key `near=` (embrace, no kiss).
-- Garments (agent pass, branch `agent-garments`): outfits follow the skeleton again — the outfit GLBs store the
-  Japanese joint names JSON-escaped (`\uXXXX`), cgltf left them undecoded, every garment joint fell back to the
-  root and the clothes stayed in bind pose (the real cause of "clothes not on the body"); clean cuts along hems /
-  cuffs / necklines with corners kept; underwear never drawn under a worn outer layer; cloth shading (sheen BRDF,
-  satin anisotropy, finished hems, garment insides in shadow, albedo capped for whites).
-- `9d0d7c9` garment fit system (`native/src/scene/fit.*`): covered skin not drawn, smooth borders, drape.
-- `ccef91b` embrace hands on the facing side; `c51dbb3` director side fix; `ad90f38` places kit + `cabin_living`.
-- `b425acd` CI without the QA job; `a97d631` customise fixes; `cc4137c` this file.
-
-**Half done**
-- Marcus: 3 painted tones (others tinted), no `age_up` / `age_dn` (his Age slider shows COMING SOON by design).
-
-**Open (content + engine)** — the ⏳ list in `docs/STORY_ASSETS.md`: spa_suite (4 scenes), villa_terrace (3),
-apartment_hall (3), hotel_ballroom, hotel_terrace, villa_beach, apartment_living, the singles; robes / slip / open
-shirt; story clips (`stand.embrace`, `kiss.stand`, `dance.slow`, ...); more hairstyles; Marcus v3; petite height.
-
-**Not taken by the 2026-10-23 evening session (by choice, not blocked):** authoring sexually explicit material —
-new sex-act clips, genital texture / geometry polish, his hands in the positions, undress clips, arousal mechanics,
-explicit story text, renders/videos of the acts. They stay open for whoever owns that track.
-
-## In flight (blocked: the molab render box died, HTTP 410, 2026-10-23 ~23:30 UTC)
-
-Round-2 polish was written but could NOT be rendered, so it is not on `main` (patches kept in the AgentSky task
-folder, branches in local worktrees):
-- `task/agentC/0001..0002*.patch` (branch `agent-staging2`): embrace hands rest on the measured cloth surface (his far
-  hand sank ~15 mm into her dress), hands come in between 0.5 and 1 of the embrace; seated kiss: her hand on his
-  chest, his on her waist (elbow hints untuned). Verify: old_flames c4_kiss line 1 `near=1` (two, wide), line 2
-  `near=0.35`, the_storm c4_close line 1 `kiss=1` (two, wide), salt_and_sun c3_siesta line 3 `kiss=1` (two, kiss).
-- `task/agentD/0001*.patch` (branch `agent-garments2`): small holes cut around the body in a garment layer (his
-  trouser crotch, her briefs) are closed at load (a border under 30 cm around that no long bone passes through);
-  unit-tested, never rendered. `task/agentD/look_tuning_UNTESTED.patch`: bloom from HDR 1.05 (whites stop glowing),
-  daylight mood toned down (villa overexposed). `task/agentD/skirt_spec.md`: the evening dress wraps each thigh (reads
-  as shorts) — what the outfit builder must change.
-- `task/places/0001*.patch` (branch `places-wip`): the `spa_suite` recipe for `build_place.py` (treatment bed on the
-  authoring bed's footprint, shoji wall, lantern key, candles) + `tiles` / `paper_screen` textures — written, never
-  baked. Bake with `AG_PLACE=spa_suite ... AG_PREVIEW=1`, look at the previews, then post + stage like cabin_living.
-- Still open from the passes: gestures point / reach / wave unchecked; strapless tops' 1–2 px dark slivers;
-  salt_and_sun siesta: cyan bikini cups show through her back in the two-shot (not the fit weights; cause open).
-
-## Exact next step
-
-Get a render box back (restart the molab notebook; `uvx marimo@latest pair prompt --url <new url> --with-token`),
-Blender 4.2.3 + cmake/xvfb/mesa as at the top of `tools/model/native/setup_toolchain.sh`; fresh CMake configure; apply
-and render the two round-2 patches above; merge what looks right; then `spa_suite` with `build_place.py`.
+https://sb-11332fbca0c30924.sb.molab.run/ — the board notebook shows status cards + tabs of shots from
+`/root/board/{status,shots/<section>}` (sections kiss, anim, models, faces, eyes, hair, deform, hud, before_after).
+Toolchain `/root/agb` (Blender 4.2.3 + MPFB + MakeHuman CC0), repo `/root/Afterglow`, builds `/root/build*`. Helpers in
+the AgentSky task folder `task/tools/` (need `~/.molab_token`): `mo.py` (run code), `mjob.py NAME CMD` (detached job +
+poll), `msync.py REPO REMOTE_DIR`, `mbuild.py SRC BUILD`, `mshots.py BUILD LIST OUTDIR RES`, `fetch.py GLOB DIR`.
+If the box dies: new notebook URL → `bash task/tools/molab_setup.sh` there (apt, Blender, MPFB, repo), then rebuild.
 
 ## Commands
 

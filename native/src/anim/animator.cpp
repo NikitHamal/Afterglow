@@ -58,10 +58,12 @@ void Animator::destroy() {
     if (boneTex_) glDeleteTextures(1, &boneTex_);
     boneTex_ = 0;
     model_ = nullptr;
+    guardWarned_ = false;
 }
 
 void Animator::begin() {
     pose_ = rest_;
+    guardWarned_ = false;
     for (size_t i = 0; i < morphAnim_.size(); ++i) {
         auto& w = morphAnim_[i];
         std::fill(w.begin(), w.end(), 0.f);
@@ -114,14 +116,36 @@ void Animator::applyClip(int ci, float time, float weight, const BoneMask* mask)
         const float* v = scratch_.data();
         size_t n = (size_t)ch.node;
         switch (ch.path) {
-            case 0: pose_.t[n] = w >= 1.f ? V3{v[0], v[1], v[2]} : lerp(pose_.t[n], V3{v[0], v[1], v[2]}, w); break;
-            case 1: pose_.r[n] = w >= 1.f ? qnormalize({v[0], v[1], v[2], v[3]}) : qslerp(pose_.r[n], qnormalize({v[0], v[1], v[2], v[3]}), w); break;
-            case 2: pose_.s[n] = w >= 1.f ? V3{v[0], v[1], v[2]} : lerp(pose_.s[n], V3{v[0], v[1], v[2]}, w); break;
+            case 0: {
+                V3 x{v[0], v[1], v[2]};
+                if (!std::isfinite(x.x) || !std::isfinite(x.y) || !std::isfinite(x.z)) break;
+                // A corrupt translation can fling a limb across the scene and
+                // poison contacts.  The envelope is intentionally broad: it
+                // catches bad exports without limiting real authored travel.
+                x.x = clampf(x.x, -4.f, 4.f); x.y = clampf(x.y, -4.f, 4.f); x.z = clampf(x.z, -4.f, 4.f);
+                pose_.t[n] = w >= 1.f ? x : lerp(pose_.t[n], x, w); break;
+            }
+            case 1: {
+                Quat x{v[0], v[1], v[2], v[3]};
+                float ql = std::sqrt(qdot(x, x));
+                if (!std::isfinite(ql) || ql < 1e-6f) break;
+                x = qnormalize(x);
+                pose_.r[n] = w >= 1.f ? x : qslerp(pose_.r[n], x, w); break;
+            }
+            case 2: {
+                V3 x{v[0], v[1], v[2]};
+                if (!std::isfinite(x.x) || !std::isfinite(x.y) || !std::isfinite(x.z)) break;
+                x.x = clampf(x.x, 0.05f, 8.f); x.y = clampf(x.y, 0.05f, 8.f); x.z = clampf(x.z, 0.05f, 8.f);
+                pose_.s[n] = w >= 1.f ? x : lerp(pose_.s[n], x, w); break;
+            }
             case 3: {
                 int mesh = model_->nodes[n].mesh;
                 if (mesh < 0) break;
                 auto& mw = morphAnim_[(size_t)mesh];
-                for (int k = 0; k < ch.comps && k < (int)mw.size(); ++k) mw[(size_t)k] = lerpf(mw[(size_t)k], v[k], std::min(w, 1.f));
+                for (int k = 0; k < ch.comps && k < (int)mw.size(); ++k) {
+                    if (!std::isfinite(v[k])) continue;
+                    mw[(size_t)k] = lerpf(mw[(size_t)k], clampf(v[k], 0.f, 1.f), std::min(w, 1.f));
+                }
                 break;
             }
         }
@@ -135,6 +159,7 @@ void Animator::globalOf(int n) {
 }
 
 void Animator::computeGlobals(const M4& root) {
+    sanitizePose();
     root_ = root;
     for (int n : order_) globalOf(n);
 }
@@ -170,7 +195,7 @@ void Animator::setMorphOverride(int mesh, int target, float w) {
     if (mesh < 0 || mesh >= (int)morphUser_.size()) return;
     auto& u = morphUser_[(size_t)mesh];
     if (target < 0 || target >= (int)u.size()) return;
-    u[(size_t)target] = w;
+    u[(size_t)target] = w < 0.f ? -1.f : clampf(w, 0.f, 1.f);
 }
 
 float Animator::morphWeight(int mesh, int target) const {
@@ -233,13 +258,40 @@ void Animator::finish() {
         bool changed = false;
         for (size_t k = 0; k < tc; ++k) {
             float u = morphUser_[mi][k];
-            w[k] = u >= 0.f ? u : morphAnim_[mi][k];
+            float a = morphAnim_[mi][k];
+            w[k] = clampf(std::isfinite(u) && u >= 0.f ? u : a, 0.f, 1.f);
             if (std::fabs(w[k] - morphLast_[mi][k]) > 1e-3f) changed = true;
         }
         if (!changed) continue;
         morphLast_[mi] = w;
         for (auto& p : model_->meshes[mi].prims) Model::updateMorph(p, w.data(), (int)tc);
     }
+}
+
+// Data gate (joint ranges are JointLimits' job, scene/character.cpp): a non-finite or degenerate channel falls back
+// to the rest pose instead of flinging a limb across the scene; quaternions are renormalised, scale stays sane.
+bool Animator::sanitizePose() {
+    if (!model_) return false;
+    bool repaired = false;
+    auto finite = [](const V3& v) { return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z); };
+    for (size_t i = 0; i < pose_.t.size(); ++i) {
+        V3& t = pose_.t[i];
+        if (!finite(t)) { t = rest_.t[i]; repaired = true; }
+        t = V3{clampf(t.x, -4.f, 4.f), clampf(t.y, -4.f, 4.f), clampf(t.z, -4.f, 4.f)};
+        Quat& r = pose_.r[i];
+        float ql = std::sqrt(qdot(r, r));
+        if (!std::isfinite(ql) || ql < 1e-6f) { r = rest_.r[i]; repaired = true; }
+        else if (std::fabs(ql - 1.f) > 1e-4f) r = qnormalize(r);
+        V3& sc = pose_.s[i];
+        if (!finite(sc)) { sc = rest_.s[i]; repaired = true; }
+        sc = V3{clampf(sc.x, 0.05f, 8.f), clampf(sc.y, 0.05f, 8.f), clampf(sc.z, 0.05f, 8.f)};
+    }
+    if (repaired && !guardWarned_) { AG_WARN("AG: pose guard reset a non-finite channel on %s", model_->path.c_str()); guardWarned_ = true; }
+    return repaired;
+}
+
+void Animator::guardPose() {
+    if (sanitizePose()) for (int n : order_) globalOf(n);
 }
 
 BoneMask Animator::makeMask(const std::vector<std::string>& roots) const {

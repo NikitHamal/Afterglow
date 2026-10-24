@@ -301,6 +301,7 @@ void Character::update(float dt) {
     if (touch.ready() && (touchGoals.left.active || touchGoals.right.active)) touch.apply(anim, touchGoals);
     else touch.contacts.clear();
     rom.apply(anim);           // no layer may bend a joint past its range (clips are inside it by construction)
+    anim.guardPose();          // last gate: no NaN, zero scale or broken quaternion reaches the skin
     anim.finish();
     if (Outfit* o = outfit()) {
         o->update(dt);

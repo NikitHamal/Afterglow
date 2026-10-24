@@ -1,0 +1,48 @@
+{
+  "version": 2,
+  "about": "Rig contract of each role body (slots): the proven MMD frame, contact bones, driven morphs and bind-scale envelope; checked at load (scene.cpp, warn-only) and offline (tools/model/validate_model.py). Selectable faces live in roster.json. variants/shots feed the browser preview rail (tools/model/preview).",
+  "slots": {
+    "vivian": {
+      "asset": "vivian.glb",
+      "height": 1.68,
+      "baseAge": 42,
+      "requiredBones": ["全ての親", "センター", "腰", "下半身", "上半身", "上半身2", "首", "頭", "肩.L", "肩.R", "腕.L", "腕.R", "ひじ.L", "ひじ.R", "手首.L", "手首.R", "足.L", "足.R", "ひざ.L", "ひざ.R", "足首.L", "足首.R"],
+      "expressionSets": ["blink", "moan", "pleasure", "oral", "kiss", "smile", "bite_lip", "bliss", "gasp", "smirk", "pout", "orgasm", "wink", "shy", "lids_down", "lids_up"],
+      "shapeSets": ["bust", "hips", "waist", "butt", "weight", "muscle", "belly", "age"],
+      "poseEnvelope": {"maxScale": 1.35, "maxTranslation": 0.45, "maxMorph": 1.0}
+    },
+    "marcus": {
+      "asset": "marcus.glb",
+      "height": 1.83,
+      "baseAge": 40,
+      "requiredBones": ["全ての親", "センター", "腰", "下半身", "上半身", "上半身2", "首", "頭", "肩.L", "肩.R", "腕.L", "腕.R", "ひじ.L", "ひじ.R", "手首.L", "手首.R", "足.L", "足.R", "ひざ.L", "ひざ.R", "足首.L", "足首.R", "竿根", "竿中", "竿先", "竿端", "玉袋"],
+      "expressionSets": ["blink", "effort", "pleasure", "moan", "kiss", "smile", "laugh", "smirk", "brow_up", "frown", "gasp", "bite_lip", "wink", "tender", "lids_down", "lids_up"],
+      "shapeSets": ["muscle", "weight", "belly", "length", "girth"],
+      "poseEnvelope": {"maxScale": 1.35, "maxTranslation": 0.45, "maxMorph": 1.0}
+    }
+  },
+  "shots": {
+    "stand": {"label": "Standing turntable", "clip": "stand.idle", "target": [0.0, 0.92, 0.0], "distance": 3.4},
+    "sit": {"label": "Seated profile", "clip": "sit.bed", "target": [0.0, 0.78, 0.0], "distance": 2.8},
+    "embrace": {"label": "Embrace check", "clip": "missionary.embrace", "target": [0.0, 0.9, 0.0], "distance": 3.1},
+    "spoon": {"label": "Side pose check", "clip": "spoon.in", "target": [0.0, 0.78, 0.0], "distance": 3.0},
+    "idle": {"label": "Idle loop", "clip": "solo.idle", "target": [0.0, 0.9, 0.0], "distance": 3.2}
+  },
+  "variants": {
+    "mira": {"label": "Mira", "slot": "vivian", "tone": "honey", "adult": true, "fictional": true, "sliders": {"bust": 0.25, "hips": 0.35, "waist": -0.3, "butt": 0.35, "weight": -0.1, "age": -0.15}, "expressions": {"stand": "smirk", "sit": "smile", "embrace": "bliss"}},
+    "dahlia": {"label": "Dahlia", "slot": "vivian", "tone": "bronze", "adult": true, "fictional": true, "sliders": {"bust": 0.55, "hips": 0.75, "waist": -0.45, "butt": 0.7, "weight": 0.25, "muscle": 0.2, "age": 0.2}, "expressions": {"stand": "bliss", "sit": "smirk", "embrace": "pleasure"}},
+    "sage": {"label": "Sage", "slot": "vivian", "tone": "deep", "adult": true, "fictional": true, "sliders": {"bust": -0.15, "hips": 0.1, "waist": -0.25, "butt": 0.1, "weight": -0.25, "muscle": 0.7, "age": 0.0}, "expressions": {"stand": "bite_lip", "sit": "smirk", "embrace": "bliss"}},
+    "cassia": {"label": "Cassia", "slot": "vivian", "tone": "olive", "adult": true, "fictional": true, "sliders": {"bust": 0.38, "hips": 0.58, "waist": -0.34, "butt": 0.52, "weight": 0.08, "muscle": 0.18, "age": 0.06}, "expressions": {"stand": "smirk", "sit": "gasp", "embrace": "pleasure"}},
+    "noelle": {"label": "Noelle", "slot": "vivian", "tone": "porcelain", "adult": true, "fictional": true, "sliders": {"bust": -0.05, "hips": 0.24, "waist": -0.18, "butt": 0.16, "weight": -0.18, "muscle": 0.54, "age": -0.08}, "expressions": {"stand": "shy", "sit": "smile", "embrace": "bliss"}},
+    "atlas": {"label": "Atlas", "slot": "marcus", "tone": "honey", "adult": true, "fictional": true, "sliders": {"muscle": 0.75, "weight": -0.15, "belly": -0.1}, "expressions": {"stand": "effort", "sit": "pleasure", "embrace": "pleasure"}},
+    "riven": {"label": "Riven", "slot": "marcus", "tone": "deep", "adult": true, "fictional": true, "sliders": {"muscle": 0.2, "weight": 0.45, "belly": 0.5}, "expressions": {"stand": "pleasure", "sit": "effort", "embrace": "pleasure"}},
+    "kellan": {"label": "Kellan", "slot": "marcus", "tone": "caramel", "adult": true, "fictional": true, "sliders": {"muscle": 0.42, "weight": -0.28, "belly": 0.0}, "expressions": {"stand": "pleasure", "sit": "effort", "embrace": "pleasure"}},
+    "soren": {"label": "Soren", "slot": "marcus", "tone": "deep", "adult": true, "fictional": true, "sliders": {"muscle": 0.12, "weight": 0.68, "belly": 0.72}, "expressions": {"stand": "effort", "sit": "pleasure", "embrace": "pleasure"}}
+  },
+  "validation": {
+    "weightsSum": [0.98, 1.02],
+    "requiredMorphNormals": "expression-and-anatomy",
+    "bodyMorphNormals": "position-only",
+    "quaternionEpsilon": 0.00001
+  }
+}
