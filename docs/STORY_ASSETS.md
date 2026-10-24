@@ -81,12 +81,28 @@ built sibling of its family first, e.g. `spa_*` → `spa_suite`, then the family
 - ⏳ `hotel_ballroom` (warm chandeliers, a bar, a dance floor), `hotel_terrace` (stone balustrade over the sea at night,
   paper lanterns), `hotel_corridor` (carpet, numbered doors, wall sconces)
 - ⏳ `cabin_door` (the porch and door from inside)
-- ⏳ `villa_terrace` (white walls, blue shutters, table for two, the bay below), `villa_beach` (a sand crescent,
-  rocks, moonlight variant)
-- ⏳ `spa_lobby`, `spa_steam` (tiled steam room, benches), `spa_suite` (candles, a wide padded treatment bed —
-  ideally the authoring bed's footprint), `spa_lounge` (loungers, tea)
-- ⏳ `apartment_hall` (stairwell landing, two doors), `apartment_living` (sofa, piano, city window),
-  `apartment_balcony`, `apartment_bedroom` (city view)
+- ✅ `villa_terrace` (`places_villa.py`): whitewashed house wall with blue shutters folded back, terracotta tiles, a
+  low parapet over the bay (the standing scenes' backdrop), bougainvillea, a lemon tree, a table for two under a vine
+  pergola; the bay all around on a 360-degree panorama (elements `panorama`). Anchors `parapet`, `parapet_l`,
+  `parapet_r`, `parapet_top`, `table`, `chair_a`, `chair_b`, `door`. Baked by day only: c4_terrace (sunset) plays in
+  daylight until a sunset variant exists.
+- ⏳ `villa_beach` (a sand crescent, rocks, moonlight variant)
+- ✅ `spa_suite` (`build_place.py`): a padded treatment bed exactly on the authoring bed's footprint (sheet top 0.604 m:
+  every bed clip and sit.bed work on it), limestone and teak, a glowing shoji wall, a paper lantern key light,
+  candles on a bench; `spa_lobby` / `spa_steam` / `spa_lounge` fall back to it until they exist.
+- ⏳ `spa_lobby`, `spa_steam` (tiled steam room, benches), `spa_lounge` (loungers, tea)
+- ✅ `apartment_hall` (`places_apartment.py`): the fourth-floor landing — her door 4A and his 4B facing each other,
+  both really open (nodes `door_4a` / `door_4b`, see "Doors and anchors" below), a lit entry behind each, her moving
+  boxes by 4A, bells, doormats, sconces, mailboxes, the stairs down under a window on the night city.
+- ✅ `apartment_living` (four-B): an architect's flat — drawings pinned up, books, an upright piano and a drafting table
+  under two windows on the night city (city pack), a deep sofa on a low platform (sit.bed seat 0.604 m), a dining
+  table for two and a galley counter (anchors `table`, `table_l`, `table_r`, `counter`, `side_table`, `piano`,
+  `window`, `sofa_l`, `sofa_r`, `drafting`). Note: neighbours c5_wall (her flat, four-A) also plays here.
+- ✅ `apartment_balcony` (four-B's): barely wide enough for two over the city at night — iron railings, string lights,
+  a lantern by the French doors (the key), a bistro table; the doors stand open on the lit flat behind, so the reverse
+  shots look in. Anchors `rail`, `rail_l`, `rail_r`, `railing_top`, `doorway`, `bistro_table`.
+- ✅ `apartment_bedroom` (four-A's, `build_room.py` with `AG_ROOM_STYLE=apartment`): the authoring bed (every bed
+  clip and sit.bed work as in the bedroom), white plaster, slate-blue linen, lamps and candles, the city at the window.
 
 **Outfits** (`characters/outfits/<who>_<style>.glb`):
 
@@ -108,3 +124,14 @@ built sibling of its family first, e.g. `spa_*` → `spa_suite`, then the family
 
 **Voices**: ✅ Kokoro takes for every line (`docs/VOICE.md`). ⏳ extra vocal samples for play: `gasp_touch`,
 `laugh_soft`, `sigh_content` (48 kHz WAV like `audio/vox/*`).
+
+
+## Doors and anchors (places built by `build_place.py` publish them in `<id>.json`)
+
+- `"anchors": {"<name>": {"pos": [x, y, z], "yaw": deg}}` — engine coordinates (metres, y up), yaw about +Y with
+  0 = facing +Z. Standing / seating marks: pos on the floor or seat, yaw = the way the person faces. Prop spots: pos on
+  the surface (`table`, `counter`, `boxes`, `side_table` ...). Door marks: `door_<id>_out` (on the hall side, facing
+  the door), `door_<id>_in` (inside, facing out), `bell_<id>` (the bell button).
+- `"doors": [{"id": "4b", "node": "door_4b", "openDeg": 100, "hinge": [...], "width": 0.9}]` — the GLB node has an
+  identity rest rotation and its origin on the hinge line (floor level): rotating it about engine +Y by up to
+  `openDeg` (signed) swings it open into the apartment. The leaf is baked closed.
