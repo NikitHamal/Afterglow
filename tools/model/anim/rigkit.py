@@ -246,13 +246,31 @@ class Rig:
                 a = math.radians(10.0 * k)
                 c = (e1 * math.cos(a) + e2 * math.sin(a)).normalized()
                 if lp is not None and c.dot(lp) < math.cos(math.radians(45.0)): continue
-                cands.append((abs(a), c) + probe(c))
+                cands.append((abs(a), c) + probe(c) + (a,))
             base = probe(pv0)
-            ok = [x for x in cands if abs(x[2]) <= self.ARM_TWIST_MAX and x[3] <= base[1] + 0.002 and x[4] <= base[2] + 0.003]
-            if lp is None and abs(base[0]) <= self.ARM_TWIST_MAX: pv = pv0
+            # feasible = anatomical twist and no deeper in the mattress / bodies than 2-3 mm (or than the authored elbow,
+            # when nothing can do better)
+            # lenient (default): never deeper than the authored elbow; strict (a rubbing hand: the forearm passes between
+            # the two bodies): never deep in a capsule either (they carry a 1-2 cm margin: an elbow in the margin is fine)
+            strict = getattr(self, "strict_elbow", False)
+            fl_ok = (max(0.002, base[1]) if strict else base[1] + 0.002)
+            ob_ok = (min(base[2], 0.015) + 0.003 if strict else base[2] + 0.003)
+            def feasible(pr): return abs(pr[0]) <= self.ARM_TWIST_MAX and pr[1] <= fl_ok and pr[2] <= ob_ok
+            ok = [x for x in cands if feasible(x[2:5])]
+            in_cone = lp is None or pv0.dot(lp) >= math.cos(math.radians(45.0))
+            if in_cone and (feasible(base) if strict else abs(base[0]) <= self.ARM_TWIST_MAX): pv = pv0
             elif ok:
                 ref = pv0 if lp is None else (pv0 * 0.5 + lp * 0.5).normalized()
-                pv = max(ok, key=lambda x: x[1].dot(ref))[1]   # nearest to the authored pole (and last frame)
+                best = max(ok, key=lambda x: x[1].dot(ref))   # nearest to the authored pole (and last frame)
+                # then the feasible point closest to the authored pole along that arc (bisection): the choice glides
+                # with the pose instead of snapping between 10 deg grid points
+                lo, hi = 0.0, best[5]
+                for _ in range(5):
+                    mid = 0.5 * (lo + hi)
+                    c = (e1 * math.cos(mid) + e2 * math.sin(mid)).normalized()
+                    if (lp is None or c.dot(lp) >= math.cos(math.radians(45.0))) and feasible(probe(c)): hi = mid
+                    else: lo = mid
+                pv = (e1 * math.cos(hi) + e2 * math.sin(hi)).normalized()
             elif cands:
                 def cost(x):
                     return (max(0.0, abs(x[2]) - self.ARM_TWIST_MAX) / 15.0) ** 2 * 5.0 + x[0] * 0.5 + 4000.0 * x[3] + 2500.0 * x[4]

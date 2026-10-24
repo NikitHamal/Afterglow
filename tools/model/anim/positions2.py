@@ -41,17 +41,30 @@ def kneel(body, knee_w, forward_of_hip, shin_dir, knee_z=0.05, foot_toes=None, f
         else: body.foot(s, foot_toes(sx) if callable(foot_toes) else foot_toes, foot_up)
     return gap
 
-def hands_to(body, s, target, palm, fingers, pole, curl=0.4):
-    """wrist to target, hand oriented, fingers curled; a hand resting on the sheet keeps every finger pad above it
-    (the wrist range can tip the fingers down: the wrist is lifted until they clear)"""
+_HANDV = {}
+def _hand_low(body, s):
+    """lowest point (z) of the posed, skinned hand (palm + fingers) of side s"""
+    import numpy as np
+    key = (body.obj.name, s)
+    if key not in _HANDV:
+        _HANDV[key] = np.where(np.array([b.startswith(("手首", "親指", "人指", "中指", "薬指", "小指")) and b.endswith(s)
+                                         for b in SC.dominant_bone(body.obj)]))[0]
+    SC.apply_rigs(body)
+    Pv, _ = SC.evaluated(body.obj)
+    return float(Pv[_HANDV[key], 2].min())
+
+def hands_to(body, s, target, palm, fingers, pole, curl=0.4, plant=False):
+    """wrist to target, hand oriented, fingers curled. A hand near the sheet never sinks into it (the wrist range
+    can tip the fingers down: the wrist is lifted until the skin clears); plant=True (a hand bearing weight): the
+    palm presses ~4 mm into the soft mattress, never hovers"""
     W = V3(*target)
     for _ in range(3):
         body.arm_ik(s, W, pole); body.hand(s, palm=palm, fingers=fingers); body.rig.limit("手首" + s); body.fingers(s, curl)
         if W.z > BED_TOP + 0.15: break
-        r = body.rig
-        low = min([r.tail(f"{f}３{s}").z for f in ("人指", "中指", "薬指", "小指")] + [r.tail("親指２" + s).z]) - 0.008
-        if low >= BED_TOP - 0.003: break
-        W = W + V3(0, 0, BED_TOP - 0.002 - low)
+        low = _hand_low(body, s)
+        want = BED_TOP - 0.004
+        if (plant and abs(low - want) < 0.002) or (not plant and low >= BED_TOP - 0.006): break
+        W = W + V3(0, 0, want - low)
 
 def supine_him(M, pelvis_y, feet_w=0.22, knees=0.12):
     r = M.rig; r.reset()
@@ -86,7 +99,8 @@ def doggy(ctx, t, rub=None):
         sh = r.head("腕" + s)
         if rub is not None and s == ".R":
             her_rub_hand(V, s, rub, V.lm("clit")); continue
-        hands_to(V, s, V3(sx * 0.15, sh.y + 0.24, BED_TOP + 0.085), V3(0, 0, -1), nrm(V3(sx * 0.1, 1, -0.1)), sh + V3(sx * 0.2, -0.1, -0.6), 0.45 + 0.25 * k)
+        hands_to(V, s, V3(sx * 0.15, sh.y + 0.24, BED_TOP + 0.085), V3(0, 0, -1), nrm(V3(sx * 0.1, 1, -0.1)), sh + V3(sx * 0.2, -0.1, -0.6),
+                 0.45 + 0.25 * k, plant=True)                       # her weight is on her hands
     V.look(V3(0.06 * k, r.head("頭").y + 0.55 + 0.15 * k, BED_TOP + 0.02 + 0.10 * k))   # the sheet ahead of her hands
     E, D = ctx.entrance()
     m = M.rig; m.reset()
@@ -318,6 +332,44 @@ def solve_tilt(ctx, build_her, cond, tilts):
         if best is None or score < best[0]: best = (score, tl)
     build_her(best[1]); return best[1]
 
+_TRUNK = {}
+def trunk_region(body, legs=True):
+    """settling region for lying on the side: pelvis, trunk, head (+ thighs) — never the arms, which get placed later"""
+    import numpy as np
+    k = (body.obj.name, legs)
+    if k not in _TRUNK:
+        keep = ("下半身", "上半身", "上半身2", "首", "頭", "乳親", "腰") + (("足.L", "足.R") if legs else ())
+        _TRUNK[k] = np.array([b.startswith(keep) for b in SC.dominant_bone(body.obj)])
+    return _TRUNK[k]
+
+def side_legs(body, lo, hi, spec, pole_off, settle_first=False):
+    """legs drawn up lying on the side: spec = ((kx, ky, kz, ay, az) bottom leg, (...) top leg) offsets from the hips.
+    settle_first: the body settles on hip + side + shoulder (never the arms) after the legs moved; the bottom knee and
+    the bottom foot (lying on its outer edge) are raised / lowered until each rests lightly on the sheet (6 / 4 mm)"""
+    import numpy as np
+    r = body.rig; lk = la = 0.0
+    regions = {}
+    for nm, bones in (("knee", ("ひざ" + lo,)), ("foot", ("足首" + lo, "つま先" + lo))):
+        key = (body.obj.name, nm + lo)
+        if key not in _TRUNK:
+            _TRUNK[key] = np.array([b in bones for b in SC.dominant_bone(body.obj)])
+        regions[nm] = _TRUNK[key]
+    def pose():
+        for s, (kx, ky, kz, ay, az) in ((lo, spec[0]), (hi, spec[1])):
+            H = r.head("足" + s); dk, da = (lk, la) if s == lo else (0.0, 0.0)
+            K = V3(H.x + kx, H.y + ky, BED_TOP + kz + dk)
+            body.leg_ik(s, V3(K.x - 0.08, K.y + ay, BED_TOP + az + da), K + pole_off)
+            body.foot(s, nrm(V3(0.45, -0.9, 0.0)), nrm(V3(1.0, 0.45, 0.0)))
+    for rnd in range(4):
+        pose()
+        if settle_first and rnd < 3: SC.settle(body, sink=0.012, region=trunk_region(body, legs=True))
+        SC.apply_rigs(body); Pv, _ = SC.evaluated(body.obj)
+        ek = (BED_TOP - 0.006) - float(Pv[regions["knee"], 2].min())
+        ef = (BED_TOP - 0.004) - float(Pv[regions["foot"], 2].min())
+        lk += ek; la += ef - 0.5 * ek                                  # the ankle target moves with the knee's change
+        if abs(ek) < 0.002 and abs(ef) < 0.002: break
+    pose()
+
 def spoon(ctx, t, rub=None):
     """both on their left sides, he behind her. She arches (pelvis tipped forward ~`arch`) so her canal opens
     toward him; his pelvis follows her canal; legs stacked and drawn up, bottom arms under the pillows."""
@@ -327,7 +379,7 @@ def spoon(ctx, t, rub=None):
         a = math.radians(arch)
         V.place(V3(0.0, 1.0 + 0.01 * t, BED_TOP + 0.24), nrm(V3(math.cos(a), -math.sin(a), 0)), nrm(V3(math.sin(a), math.cos(a), 0)))
         V.spine(forward=V3(1, 0.12, 0), up=nrm(V3(-0.12, 1, 0.03)), chest_forward=V3(1, 0, 0), chest_up=nrm(V3(0, 1, 0.06)))
-        SC.settle(V, sink=0.012)
+        SC.settle(V, sink=0.012, region=trunk_region(V))
     if "spoon_arch" not in _TUCK:                       # the arch whose canal is closest to his natural angle (lying behind her)
         nat = V3(math.cos(math.radians(20)), math.sin(math.radians(20)), 0)
         def miss(a):
@@ -336,11 +388,8 @@ def spoon(ctx, t, rub=None):
         print("[anim]   spoon arch", _TUCK["spoon_arch"], flush=True)
     her_body(_TUCK["spoon_arch"])
     lo = ".L" if r.head("足.L").z < r.head("足.R").z else ".R"; hi = ".R" if lo == ".L" else ".L"
-    for s, kx, ky, kz, ay, az in ((lo, 0.38, -0.10, 0.065, -0.36, 0.055), (hi, 0.46, 0.0, 0.17, -0.38, 0.13)):
-        H = r.head("足" + s)
-        K = V3(H.x + kx, H.y + ky, BED_TOP + kz)
-        V.leg_ik(s, V3(K.x - 0.08, K.y + ay, BED_TOP + az), K + V3(0.3, 0, 0.05))
-        V.foot(s, nrm(V3(0.45, -0.9, 0.0)), nrm(V3(1.0, 0.45, 0.0)))
+    top = (0.46, 0.04, 0.24, -0.36, 0.16) if rub is not None else (0.46, 0.0, 0.17, -0.38, 0.13)   # rub: room for her hand
+    side_legs(V, lo, hi, ((0.38, -0.10, 0.065, -0.36, 0.055), top), V3(0.3, 0, 0.05), settle_first=True)
     sh = r.head("腕" + lo)                              # bottom arm forward under the pillow
     hands_to(V, lo, V3(sh.x + 0.12, sh.y + 0.26, BED_TOP + 0.05), V3(0, 0, -1), nrm(V3(0.3, 1, 0)), sh + V3(0.35, 0.05, 0.12), 0.08)
     if rub is not None:
@@ -353,23 +402,20 @@ def spoon(ctx, t, rub=None):
     m.reset()
     M.place(E - D * 0.25 + V3(-0.10, 0, 0), V3(1, 0, 0), V3(0, 1, 0))
     align_pelvis_to(M, D, up_hint=V3(0, 1, 0))
-    def his_chest(roll):
+    def his_body(roll):                                 # scored on his finished body: chest roll, legs, bottom arm
         M.spine(forward=V3(1, 0.05, 0), up=nrm(V3(-0.1, 1, roll * 0.5)), chest_forward=V3(1, 0, 0), chest_up=nrm(V3(0, 1, roll)))
         ctx.penetrate(t)
-    best_of("chest", [0.0, 0.08, 0.16, 0.24], his_chest, (M,))
+        mlo = ".L" if m.head("足.L").z < m.head("足.R").z else ".R"; mhi = ".R" if mlo == ".L" else ".L"
+        side_legs(M, mlo, mhi, ((0.30, -0.30, 0.065, -0.38, 0.06), (0.36, -0.22, 0.18, -0.40, 0.15)), V3(0.4, 0, 0.05))
+        sh = m.head("腕" + mlo)                         # his bottom arm up under the pillow, above her head
+        hands_to(M, mlo, V3(sh.x + 0.06, sh.y + 0.34, BED_TOP + 0.095), V3(0, 0, -1), nrm(V3(0.2, 1, 0)), sh + V3(0.3, 0.0, 0.15), 0.02)
+    best_of("chest", [0.16, 0.24, 0.32, 0.40], his_body, (M,))
     mlo = ".L" if m.head("足.L").z < m.head("足.R").z else ".R"; mhi = ".R" if mlo == ".L" else ".L"
-    for s, kx, ky, kz, ay, az in ((mlo, 0.30, -0.30, 0.065, -0.38, 0.06), (mhi, 0.36, -0.22, 0.18, -0.40, 0.15)):
-        H = m.head("足" + s)
-        K = V3(H.x + kx, H.y + ky, BED_TOP + kz)
-        M.leg_ik(s, V3(K.x - 0.10, K.y + ay, BED_TOP + az), K + V3(0.4, 0, 0.05))
-        M.foot(s, nrm(V3(0.45, -0.9, 0.0)), nrm(V3(1.0, 0.45, 0.0)))
-    sh = m.head("腕" + mlo)                             # his bottom arm up under the pillow, above her head
-    hands_to(M, mlo, V3(sh.x + 0.06, sh.y + 0.34, BED_TOP + 0.095), V3(0, 0, -1), nrm(V3(0.2, 1, 0)), sh + V3(0.3, 0.0, 0.15), 0.02)
     her_hi = hi
     def his_top_hand(where):
         sh_ = m.head("腕" + mhi)
-        if where == "breast":
-            hands_to(M, mhi, V.lm("nipple" + her_hi) + V3(0.035, -0.05, 0.03), V3(-1, 0, 0), nrm(V3(0.2, 1, 0)), sh_ + V3(0, -0.3, 0.3), 0.45)
+        if where == "breast":                          # cupped on her breast's real surface, from below-outside
+            cup(M, mhi, surface(V), V.lm("nipple" + her_hi) + V3(0.02, -0.035, 0.02), nrm(V3(0.2, 1, 0.3)), sh_ + V3(0, -0.3, 0.3))
         else:
             T = V.lm("hip" + her_hi) + V3(0.0, 0.0, 0.04)
             cup(M, mhi, surface(V), T, nrm(V3(1, 0.3, 0)), sh_ + V3(-0.1, -0.2, 0.4))
@@ -405,7 +451,8 @@ def prone(ctx, t):
                      (0.52, 0.10), (0.56, 0.13), (0.60, 0.15)], legs, (V, M))
     for s, sx in sides(M, "腕"):
         sh = m.head("腕" + s)
-        hands_to(M, s, V3(sx * 0.32, sh.y + 0.10, BED_TOP + 0.085), V3(0, 0, -1), nrm(V3(sx * 0.2, 1, 0)), sh + V3(sx * 0.5, -0.2, 0.3), 0.05)
+        hands_to(M, s, V3(sx * 0.32, sh.y + 0.10, BED_TOP + 0.085), V3(0, 0, -1), nrm(V3(sx * 0.2, 1, 0)), sh + V3(sx * 0.5, -0.2, 0.3), 0.05,
+                 plant=True)                                         # he holds himself up on his hands
     M.look(r.head("頭"))
 
 P.CLIPS.update({

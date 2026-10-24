@@ -555,8 +555,15 @@ void Game::presentPlay(float dt) {
         V3 zp, zn;
         if (v.touch.zoneWorld(v.anim, Zone::Vulva, zp, zn)) camera.follow(zp);
     }
+    if (!qaFocus_.empty() && camera.mode() == CameraRig::Mode::Orbit) {
+        // QA: the camera held on one joint of either character (focus=v:<bone> | m:<bone>, view=yaw:,pitch:,dist:)
+        bool onHim = qaFocus_.size() > 2 && qaFocus_[0] == 'm' && qaFocus_[1] == ':';
+        Character& c = onHim ? m : v;
+        std::string bone = qaFocus_.size() > 2 && qaFocus_[1] == ':' ? qaFocus_.substr(2) : qaFocus_;
+        if (c.loaded() && c.bone(bone) >= 0) camera.setOrbit(c.bonePos(bone), qaYaw_, qaPitch_, qaDist_, 0.f);
+    }
     // ---- camera: drift, climax push-in, afterglow pull-back ----
-    camera.sway = settings.cinematicCamera ? 0.6f + 0.6f * him : 0.f;
+    camera.sway = settings.cinematicCamera && qaFocus_.empty() ? 0.6f + 0.6f * him : 0.f;
     if (night_.finished && camera.mode() == CameraRig::Mode::Orbit && afterT_ > 2.f && afterT_ < 2.2f && !camUser_) {
         camera.setOrbit(scene.info.bedCenter + V3{0.f, 0.2f, 0.f}, camera.yaw + 0.5f, 0.42f, 2.9f, 3.2f);
     }

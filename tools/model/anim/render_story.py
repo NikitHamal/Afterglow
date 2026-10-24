@@ -37,9 +37,16 @@ for it in items:
         sc.frame_set(int(round(f0 + (f1 - f0) * t))); bpy.context.view_layer.update()
         hv = V.matrix_world @ V.pose.bones["頭"].head; hm = M.matrix_world @ M.pose.bones["頭"].head
         cv = V.matrix_world @ V.pose.bones["上半身2"].head; cm = M.matrix_world @ M.pose.bones["上半身2"].head
-        tgt = (hv + hm) / 2 if framing == "heads" else (hv + hm + cv + cm) / 4
+        pv_ = V.matrix_world @ V.pose.bones["下半身"].head; pm_ = M.matrix_world @ M.pose.bones["下半身"].head
+        tgt = (hv + hm) / 2 if framing == "heads" else ((hv + hm + cv + cm) / 4 if framing == "upper" else (pv_ + pm_) / 2)
         ax = (hm - hv); ax.z = 0; ax.normalize(); side = Vector((0, 0, 1)).cross(ax).normalized()
-        dist = 0.75 if framing == "heads" else 1.6
+        fwd_v = (V.matrix_world.to_3x3() @ V.pose.bones["上半身2"].matrix.to_3x3() @ Vector((0, -1, 0))) if False else None
+        facing = (V.matrix_world @ V.pose.bones["頭"].tail) - hv + (M.matrix_world @ M.pose.bones["頭"].tail) - hm
+        bodies_fwd = ((V.matrix_world @ V.pose.bones["上半身2"].head) - (V.matrix_world @ V.pose.bones["下半身"].head))
+        nose = sum(((V.matrix_world @ V.pose.bones[n].head) for n in ("目.L", "目.R") if n in V.pose.bones), Vector()) / 2 - hv
+        if nose.length > 1e-6 and nose.dot(side) + (sum(((M.matrix_world @ M.pose.bones[n].head) for n in ("目.L", "目.R") if n in M.pose.bones), Vector()) / 2 - hm).dot(side) < 0:
+            side = -side                                   # look from the side the faces are on
+        dist = 0.75 if framing == "heads" else (1.6 if framing == "upper" else 1.9)
         eyes = {"side": tgt + side * dist + Vector((0, 0, 0.05)), "back": tgt - side * dist + Vector((0, 0, 0.05)),
                 "front": tgt - ax * dist * 0.7 + side * dist * 0.7 + Vector((0, 0, 0.12)), "top": tgt + Vector((0, 0, dist)) + side * 0.15}
         for vname in views:
