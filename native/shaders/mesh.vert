@@ -7,6 +7,7 @@ layout(location = 3) in vec2 a_uv1;
 layout(location = 4) in vec4 a_tan;
 layout(location = 5) in vec4 a_joints;
 layout(location = 6) in vec4 a_weights;
+layout(location = 7) in vec4 a_color;    // COLOR_0 (hair shell: hairline fringe in A); unbound = (0, 0, 0, 1)
 
 uniform mat4 u_model;
 uniform mat4 u_viewProj;
@@ -28,6 +29,7 @@ out vec2 v_uv1;
 out vec3 v_opos;                  // bind-space position / normal (garment patterns, undress wipe)
 out vec3 v_onrm;
 out vec2 v_fit;
+out float v_colA;
 
 mat4 boneMat(float j) {
     int x = int(j + 0.5) * 4;
@@ -75,6 +77,7 @@ void main() {
     v_uv0 = a_uv0;
     v_uv1 = a_uv1;
     v_opos = a_pos;
+    v_colA = a_color.a;
     v_onrm = a_nrm;
     gl_Position = u_viewProj * wp;
 }

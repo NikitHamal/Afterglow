@@ -8,6 +8,7 @@ in vec2 v_uv0;
 in vec2 v_uv1;
 in vec3 v_opos;                   // bind-space position / normal: garment patterns + the undress wipe
 in vec3 v_onrm;
+in float v_colA;                  // vertex colour alpha (COLOR_0): a hair shell's soft hairline
 out vec4 o_color;
 
 uniform int u_mode;
@@ -39,6 +40,7 @@ uniform int u_doubleSided;
 uniform vec3 u_tint;
 uniform int u_hairShape;          // hair: bend card normals around the skull centre
 uniform vec3 u_hairCenter;
+uniform int u_hairCards;          // hair: 1 cards (uv in [0,1], V root -> tip, 8 atlas columns), 0 a tiled shell / cap
 uniform float u_flush;
 uniform float u_sweat;
 uniform int u_baked;              // room: emissive(uv1) / unlit carries baked light
@@ -140,6 +142,7 @@ vec3 g_tri = vec3(0.0);
 // cloth (mode 6), set per fabric in main(): sheen colour + roughness (the fibres' fuzz), weight of the specular lobe,
 // satin anisotropy (roughness along / across the floats, 0 = isotropic), wrapped diffuse
 vec3 g_sheen = vec3(0.0);
+float g_strandId = 0.5;           // hair: per-strand random (highlight shift / strength)
 float g_sheenR = 0.5, g_specW = 1.0, g_aT = 0.0, g_aB = 0.0, g_wrap = 0.0;
 float triPattern(int kind, float f) {
     vec3 p = v_opos * f;
@@ -224,14 +227,17 @@ vec3 shade(Surf s, vec3 L, vec3 radiance) {
     if (s.mode == 2) {
         // Kajiya-Kay with shifted lobes (Scheuermann) along the strand (s.T): R = narrow, uncoloured;
         // TRT = broader, tinted by the fibre colour (sqrt keeps dark hair from going flat black)
-        float shiftN = (hash12(vec2(floor(v_uv0.x * 512.0), 7.0)) - 0.5) * 0.16;
-        vec3 T1 = normalize(s.T + s.N * (-0.05 + shiftN));
-        vec3 T2 = normalize(s.T + s.N * (0.09 + shiftN));
+        // every strand its own shift and strength, so highlights break into strands instead of one painted sheen;
+        // a shell's flow radiates from the crown, so its narrow R lobe would draw a bright ring there: kept weak
+        float shiftN = (g_strandId - 0.5) * 0.2;
+        vec3 T1 = normalize(s.T + s.N * (-0.07 + shiftN));
+        vec3 T2 = normalize(s.T + s.N * (0.1 + shiftN));
         float th1 = dot(T1, H), th2 = dot(T2, H);
         float sin1 = sqrt(max(0.0, 1.0 - th1 * th1)), sin2 = sqrt(max(0.0, 1.0 - th2 * th2));
         float dirAtten = smoothstep(-1.0, 0.0, th1);
         vec3 trt = sqrt(max(s.albedo, vec3(1e-4)));
-        vec3 spec = vec3(0.05) * pow(sin1, 160.0) * dirAtten + trt * 0.11 * pow(sin2, 44.0) * s.strand;
+        float rK = (u_hairCards == 1 ? 0.055 : 0.025) * (0.35 + 1.3 * g_strandId) * s.strand;
+        vec3 spec = vec3(rK) * pow(sin1, 220.0) * dirAtten + trt * 0.12 * pow(sin2, 34.0) * s.strand * (0.55 + 0.9 * g_strandId);
         float wrap = sat((NoLraw + 0.4) / 1.4);
         vec3 diff = s.albedo / PI * wrap;
         return (diff + spec * sat(NoLraw * 0.7 + 0.3)) * radiance;
@@ -291,6 +297,7 @@ void main() {
     vec4 texS = u_hasBase == 1 ? texture(u_texBase, uvSel(u_uvBase)) : vec4(1.0);
     vec4 base = u_baseColor * texS;
     base.rgb *= u_tint;
+    if (u_mode == 2) base.a *= v_colA;
     float alpha = base.a;
     if (u_alphaMode == 1) {
         if (u_pass == 0 && alpha < u_cutoff) discard;
@@ -435,9 +442,23 @@ void main() {
     if (u_mode == 2) {
         // hair cards: shade with normals bent toward the skull-centred sphere so the mass reads as one
         // volume with a coherent highlight band instead of per-card noise; strands run along +V (Bg)
-        if (u_hairShape == 1) N = normalize(normalize(v_wpos - u_hairCenter) * 0.7 + N * 0.3);
+        if (u_hairShape == 1) N = normalize(normalize(v_wpos - u_hairCenter) * 0.5 + N * 0.5);
         Tg = normalize(Bg - N * dot(N, Bg));
-        s.strand = mix(0.7, 1.2, smoothstep(0.04, 0.55, dot(texS.rgb, vec3(0.3333))));
+        g_strandId = hash12(vec2(floor(v_uv0.x * (u_hairCards == 1 ? 640.0 : 96.0)), 3.7));
+        if (u_hairCards == 1) {
+            // a card is a flat ribbon of hair: rounded across its width (U) so its highlight is a band, not a sheet,
+            // and its root sits in the shade of the hair above it
+            float x = fract(v_uv0.x * 8.0) * 2.0 - 1.0;
+            vec3 across = normalize(cross(Tg, N));
+            N = normalize(N * sqrt(max(0.05, 1.0 - 0.5 * x * x)) + across * x * 0.7);
+            // no lock is ruler-straight: a little wave along each strand breaks one long sheen into glints
+            float wave = sin(v_uv0.y * 46.0 + g_strandId * 6.2831) * 0.22 + sin(v_uv0.y * 17.0 + g_strandId * 12.57) * 0.12;
+            Tg = normalize(Tg + across * wave);
+            Tg = normalize(Tg - N * dot(N, Tg));
+            base.rgb *= mix(0.5, 1.0, smoothstep(0.0, 0.22, v_uv0.y));
+        }
+        // highlights live on the strands, not in the gaps between them (coverage = the atlas alpha)
+        s.strand = mix(0.7, 1.2, smoothstep(0.04, 0.55, dot(texS.rgb, vec3(0.3333)))) * mix(0.35, 1.0, smoothstep(0.2, 0.8, texS.a));
     }
     s.N = N; s.V = V; s.T = Tg; s.B = Bg;
     s.albedo = base.rgb; s.metal = metal; s.rough = clamp(rough, 0.03, 1.0); s.ao = ao; s.alpha = alpha; s.mode = u_mode;

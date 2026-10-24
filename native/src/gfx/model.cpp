@@ -128,6 +128,8 @@ void Model::uploadPrimitive(Primitive& p, const std::vector<float>& uv0, const s
     buf(2, uv0, 2, false);
     buf(3, uv1, 2, false);
     buf(4, p.tan, 4, false);
+    buf(7, p.col, 4, false);                       // absent: the shader's generic value, alpha 1
+    std::vector<float>().swap(p.col);
     if (!p.joints.empty()) {
         std::vector<float> jf(p.joints.begin(), p.joints.end());
         buf(5, jf, 4, false);
@@ -390,6 +392,9 @@ bool Model::load(const std::string& p) {
                     case cgltf_attribute_type_weights:
                         if (at.index == 0) prim.weights = readFloats(at.data, 4);
                         break;
+                    case cgltf_attribute_type_color:
+                        if (at.index == 0) prim.col = readFloats(at.data, 4);   // VEC3 colours get alpha 1
+                        break;
                     default: break;
                 }
             }
@@ -433,12 +438,16 @@ bool Model::load(const std::string& p) {
             }
             prim.dynamic = anyMorph;
             prim.material = cp.material ? (int)cgltf_material_index(d, cp.material) : 0;
+            // vertex colours are only read for hair (a shell's hairline fringe); elsewhere they are authoring leftovers
+            if (prim.material < 0 || prim.material >= (int)materials.size() || materials[(size_t)prim.material].shading != Shading::Hair)
+                std::vector<float>().swap(prim.col);
             prim.bmin = {1e9f, 1e9f, 1e9f}; prim.bmax = {-1e9f, -1e9f, -1e9f};
             for (size_t v = 0; v < nv; ++v) {
                 prim.bmin.x = std::min(prim.bmin.x, prim.pos[v * 3]); prim.bmax.x = std::max(prim.bmax.x, prim.pos[v * 3]);
                 prim.bmin.y = std::min(prim.bmin.y, prim.pos[v * 3 + 1]); prim.bmax.y = std::max(prim.bmax.y, prim.pos[v * 3 + 1]);
                 prim.bmin.z = std::min(prim.bmin.z, prim.pos[v * 3 + 2]); prim.bmax.z = std::max(prim.bmax.z, prim.pos[v * 3 + 2]);
             }
+            for (float t : uv0) if (t < -0.01f || t > 1.01f) { prim.uvTiled = true; break; }
             uploadPrimitive(prim, uv0, uv1);
             packTargets(prim);
             mesh.prims.push_back(std::move(prim));
