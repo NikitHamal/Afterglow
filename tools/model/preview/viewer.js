@@ -165,9 +165,9 @@ function playShot(id = shotSelect.value) {
   if (!clip) return;
   activeShot = shot;
   setMorphs(current.scene, selectedVariant(), id);
-  if (activeAction) activeAction.fadeOut(0.18);
+  if (activeAction) activeAction.stop();
   activeAction = mixer.clipAction(clip);
-  activeAction.reset().fadeIn(0.18).play();
+  activeAction.reset().play();
   fitShotCamera(shot, clip);
   readout.textContent = `${selectedVariant().label}\n${shot.label} · ${clip.name}\npose guard rail · runtime mesh checks armed`;
 }
