@@ -287,8 +287,8 @@ def apartment_balcony(common_meta):
     EL.wall_span("facade", "-Y", BY0, -BX - 0.6, BX + 0.6, -0.2, H + 0.4, M["render"], holes=[(DOOR[0], DOOR[1], 0.0, DOOR[2])])
     F = EL.WallFrame("-Y", BY0)
     for k, (a0, a1) in enumerate(((DOOR[0] - 0.06, DOOR[0]), (DOOR[1], DOOR[1] + 0.06))):
-        F.box(f"doorframe_{k}", a0, a1, -0.14, 0.02, 0.0, DOOR[2] + 0.06, M["trim"])
-    F.box("doorframe_head", DOOR[0] - 0.06, DOOR[1] + 0.06, -0.14, 0.02, DOOR[2], DOOR[2] + 0.06, M["trim"])
+        F.box(f"doorframe_{k}", a0, a1, -0.155, 0.02, 0.0, DOOR[2] + 0.06, M["trim"])    # proud of both wall faces
+    F.box("doorframe_head", DOOR[0] - 0.06, DOOR[1] + 0.06, -0.155, 0.02, DOOR[2], DOOR[2] + 0.06, M["trim"])
     for k, (hx, sgn) in enumerate(((DOOR[0], 1), (DOOR[1], -1))):          # the two leaves swung open onto the balcony
         x = hx - sgn * 0.03
         for nm, y0, y1, z0, z1 in (("stile_a", 0.0, 0.07, 0.0, DOOR[2] - 0.02), ("stile_b", 0.89, 0.96, 0.0, DOOR[2] - 0.02),

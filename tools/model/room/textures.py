@@ -399,3 +399,57 @@ def sketch(path, seed=3, S=512):
             d.arc([cx - rr, cy - rr, cx + rr, cy + rr], 180, 270, fill=ink, width=2)
     d.rectangle([int(S * 0.62), int(S * 0.84), int(S * 0.92), int(S * 0.94)], outline=ink, width=2)
     im.save(path, quality=88)
+
+
+def bay_panorama(path, W=4096, H=1024, seed=12):
+    """the villa's 360-degree backdrop (elements.panorama), horizon at mid height; u = 0.5 looks out to sea, u turns
+    to the right (the seam, u = 0 / 1, lies inland behind the house). Sky with soft cloud; the sea ahead and to the
+    sides, sun glitter a little left of centre; a headland of olive hills and white houses on the right, a low point
+    on the left, the hillside the villa stands on behind it"""
+    r = np.random.default_rng(seed)
+    y, x = np.mgrid[0:H, 0:W].astype(np.float32); u, v = x / W, y / H                 # v: 0 top .. 1 bottom
+    th = u - 0.5                                                                     # turns from the sea, -0.5 .. 0.5
+    def sstep(a, b, t): t = np.clip((t - a) / (b - a), 0, 1); return t * t * (3 - 2 * t)
+    sky_t = np.clip(v / 0.5, 0, 1)
+    img = np.dstack([0.30 + 0.45 * sky_t ** 1.6, 0.52 + 0.36 * sky_t ** 1.6, 0.86 + 0.10 * sky_t])
+    cl = fbm(H, W, 6, 5, seed); cl2 = np.asarray(Image.fromarray((cl * 255).astype(np.uint8)).resize((W, H // 3)).resize((W, H)), np.float32) / 255
+    cloud = np.clip((cl2 - 0.58) * 3.0, 0, 1) * (v < 0.44) * sstep(0.02, 0.14, v)    # none at the top (the sky cap's colour)
+    img = img * (1 - cloud[..., None] * 0.7) + cloud[..., None] * np.array([0.97, 0.97, 0.98]) * 0.7
+    st = np.clip((v - 0.5) / 0.5, 0, 1)
+    w = fbm(H, W, 40, 4, seed + 1); ws = np.asarray(Image.fromarray((w * 255).astype(np.uint8)).resize((W, H // 10)).resize((W, H)), np.float32) / 255
+    sea_c = np.dstack([0.10 + 0.10 * (1 - st) + 0.04 * ws, 0.34 + 0.16 * (1 - st) + 0.05 * ws, 0.52 + 0.10 * (1 - st) + 0.05 * ws])
+    sp = (r.random((H, W)) > 0.994).astype(np.float32)                                # glitter: short horizontal glints
+    sp = np.maximum.reduce([sp, np.roll(sp, 1, 1), np.roll(sp, 2, 1)]) * np.exp(-((th + 0.055) / 0.025) ** 2)
+    glint = (sp * np.clip(1.0 - st * 1.6, 0, 1) * 0.55).astype(np.float32)             # fades toward the shore below
+    sea_c = sea_c + glint[..., None] * np.array([1.0, 0.97, 0.9])
+    img[v >= 0.5] = sea_c[v >= 0.5]
+    # land: the hill line above the horizon per column; inland (behind the house) it runs down to the bottom
+    t1 = np.arange(W, dtype=np.float32) / W - 0.5
+    n1 = fbm(2, W, 24, 4, seed + 2)[0]
+    inland = sstep(0.22, 0.40, np.abs(t1))
+    shore = 0.5 + 0.5 * sstep(0.25, 0.44, np.abs(t1))                                # the coast runs down toward the villa
+    hill = np.maximum.reduce([0.075 * np.clip(1 - ((t1 - 0.19) / 0.11) ** 2, 0, None) * (0.8 + 0.4 * n1),
+                              0.035 * np.clip(1 - ((t1 + 0.23) / 0.08) ** 2, 0, None) * (0.8 + 0.4 * n1),
+                              (0.14 + 0.06 * n1) * inland])
+    top = 0.5 - hill
+    land = (v > top[None, :]) & (v < shore[None, :]) & (hill[None, :] > 0.002)
+    shade = fbm(H, W, 18, 4, seed + 3)
+    haze = np.clip(1.0 - inland, 0, 1)[None, :].repeat(H, 0)                         # the headlands are far: hazier
+    olive = np.array([0.40, 0.44, 0.28]) * (0.72 + 0.4 * shade[..., None])
+    olive = olive * (1 - 0.35 * haze[..., None]) + np.array([0.62, 0.72, 0.82]) * 0.35 * haze[..., None]
+    olive = olive * (1 - 0.25 * np.clip((v - top[None, :]) / 0.3, 0, 1))[..., None]  # darker lower down the slope
+    img[land] = olive[land]
+    for _ in range(260):                                                              # white houses with tiled / blue roofs
+        hx = r.uniform(0, 1); c = int(hx * W) % W
+        if hill[c] < 0.012: continue
+        hv = top[c] + r.uniform(0.008, 0.6 if inland[c] > 0.5 else 0.9) * (0.5 - top[c] if inland[c] <= 0.5 else 0.25)
+        x0, y0, ww = c, int(hv * H), int(r.integers(4, 8))
+        if x0 + ww >= W: continue
+        img[y0 - 5:y0, x0:x0 + ww] = np.array([0.95, 0.94, 0.9]) * (0.9 + 0.1 * haze[0, c])
+        img[y0 - 7:y0 - 5, x0:x0 + ww] = np.array([0.72, 0.38, 0.25]) if r.random() < 0.6 else np.array([0.2, 0.4, 0.65])
+    # a sailboat to the left of the glitter
+    bx, by = int(0.38 * W), int(0.535 * H)
+    for k in range(24):
+        img[by - k, bx - k // 6:bx + 1] = np.array([0.98, 0.98, 0.97])
+    img[by:by + 3, bx - 6:bx + 7] = np.array([0.95, 0.95, 0.95])
+    save_rgb(np.clip(img, 0, 1), path, 90)
