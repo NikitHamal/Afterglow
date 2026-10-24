@@ -1,6 +1,7 @@
 #include "scene/scene.h"
 #include "core/paths.h"
 #include "core/log.h"
+#include <algorithm>
 #include <cctype>
 
 namespace ag {
@@ -32,10 +33,31 @@ bool Scene::load(const std::function<void(float, const char*)>& progress) {
     auto vSlot = slot("vivian", "assets/vivian/vivian.glb", 1.68f);
     auto mSlot = slot("marcus", "assets/marcus/marcus.glb", 1.83f);
     auto checkRig = [&](Character& c, const char* id) {
-        const Json& req = modelManifest["slots"][id]["requiredBones"];
+        const Json& cfg = modelManifest["slots"][id];
+        const Json& req = cfg["requiredBones"];
         bool ok = true;
         for (size_t i = 0; i < req.size(); ++i) {
             if (c.bone(req[i].str()) < 0) { AG_ERROR("AG: %s model missing required bone %s", id, req[i].str().c_str()); ok = false; }
+        }
+        const Json& expr = cfg["expressionSets"];
+        for (size_t i = 0; i < expr.size(); ++i) {
+            if (!c.hasMorph(expr[i].str())) { AG_ERROR("AG: %s model missing expression morph %s", id, expr[i].str().c_str()); ok = false; }
+        }
+        const Json& shapes = cfg["shapeSets"];
+        for (size_t i = 0; i < shapes.size(); ++i) {
+            const std::string name = shapes[i].str();
+            if (!c.hasMorph(name + "_up") && !c.hasMorph(name + "_dn") && !c.hasMorph(name)) {
+                AG_ERROR("AG: %s model missing shape morph pair %s", id, name.c_str()); ok = false;
+            }
+        }
+        const Json& env = cfg["poseEnvelope"];
+        if (env["maxScale"].isNumber()) {
+            const float maxScale = std::max(1.f, env["maxScale"].f(1.35f));
+            const float minScale = 1.f / maxScale;
+            if (c.autoScale() < minScale || c.autoScale() > maxScale) {
+                AG_ERROR("AG: %s bind scale %.3f outside pose envelope [%.3f, %.3f]", id, c.autoScale(), minScale, maxScale);
+                ok = false;
+            }
         }
         if (!ok) c.destroy();
         return ok;
