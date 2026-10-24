@@ -1,4 +1,5 @@
 #include "game/game.h"
+#include "anim/stress.h"
 #include "app/platform.h"
 #include "app/updater.h"
 #include "core/log.h"
@@ -349,6 +350,13 @@ void Game::updateMenuCamera(float dt) {
         camera.setOrbit(tgt, yaw, pitch, dist, 0.f);
     } else if (stage_ == Stage::Showcase) {
         Character& c = showcaseWho_ == 0 ? scene.vivian : scene.marcus;
+        if (!qaFocus_.empty()) {   // QA: a fixed body, the camera on one joint (or the whole figure)
+            c.placement = M4::identity();
+            bool whole = qaFocus_ == "full" || c.bone(qaFocus_) < 0;
+            V3 tgt = whole ? V3{0.f, (showcaseWho_ == 0 ? 1.68f : 1.83f) * 0.5f, 0.f} : c.bonePos(qaFocus_);
+            camera.setOrbit(tgt, qaYaw_, qaPitch_, whole ? std::max(qaDist_, 2.6f) : qaDist_, 0.f);
+            return;
+        }
         // turntable: drag to spin with inertia, wheel to zoom toward the torso
         bool overPanel = ui.in.mouse.x > ui.W * 0.56f;
         if (!overPanel && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && !ui.anyActive()) turnVel_ = GetMouseDelta().x * 0.45f * settings.mouseSens;
@@ -491,7 +499,7 @@ void Game::render(int w, int h) {
     ui.blurW = renderer.blurWidth(); ui.blurH = renderer.blurHeight();
 
     ui.alpha = 1.f;
-    switch (screen_) {
+    if (!qaNoUi_) switch (screen_) {
         case Screen::Title: drawTitle(); break;
         case Screen::Menu: drawMenu(); break;
         case Screen::Customize: drawCustomize(); break;
@@ -592,6 +600,7 @@ void Game::reset() {
     holdDepth_ = false;
     autoplay_ = false;
     qaNoActors_ = false;
+    qaStress_.clear(); qaFocus_.clear(); qaNoUi_ = false;
 }
 
 void Game::applySpec(const Spec& s) {
@@ -623,6 +632,18 @@ void Game::applySpec(const Spec& s) {
     applyQuality(renderer.settings, (Quality)settings.quality);
     if (s.has("debug")) debug_ = s.num("debug", 1.f) > 0.5f;
     qaNoActors_ = s.has("actors") && s.num("actors", 1.f) < 0.5f;
+    qaStress_ = s.get("stress");
+    qaFocus_ = s.get("focus");
+    qaNoUi_ = s.has("ui") && s.num("ui", 1.f) < 0.5f;
+    {
+        auto v = Spec::pairs(s.get("view"));   // yaw:deg,pitch:deg,dist:m
+        qaYaw_ = 0.f; qaPitch_ = 0.1f; qaDist_ = 0.9f;
+        for (auto& kv : v) {
+            if (kv.first == "yaw") qaYaw_ = kv.second * kPi / 180.f;
+            else if (kv.first == "pitch") qaPitch_ = kv.second * kPi / 180.f;
+            else if (kv.first == "dist") qaDist_ = kv.second;
+        }
+    }
     if (s.has("hints")) settings.hints = (int)s.num("hints", 2.f);
     std::string mood = s.get("mood");
     settings.lightMood = mood == "candle" ? 1 : (mood == "day" ? 2 : 0);
@@ -738,9 +759,26 @@ void Game::applySpec(const Spec& s) {
         if (s.has("zoom")) showcaseZoom_ = std::max(0.f, std::min(1.f, s.num("zoom", 0.f)));
         qaPortrait_ = s.num("portrait", 0.f);
         Character& c = showcaseWho_ == 0 ? scene.vivian : scene.marcus;
+        // a story outfit (layer=under: the outer layer off), none unless asked for
         std::string of = s.get("outfit");
-        if (!of.empty() && c.setOutfit(of)) if (Outfit* o = c.outfit()) o->setDress(Dress::Dressed, 0.f);
+        if (c.loaded()) c.setOutfit(of);
+        if (!of.empty()) if (Outfit* o = c.outfit()) {
+            o->setDress(Dress::Dressed, 0.f);
+            if (s.get("layer") == "under") o->hold(0, 0.f);
+        }
         for (auto& kv : Spec::pairs(s.get("face"))) c.setMorph(kv.first, kv.second);
+        if (s.has("clip") && c.loaded() && c.hasClip(s.get("clip"))) {   // QA: an authored pose, held
+            c.poseHook = nullptr;
+            c.setLayer(0, s.get("clip"), s.num("clipT", 0.5f), 1.f);
+            c.proc.lookAt = false;
+            c.proc.breathAmp = 0.f;
+        }
+        if (!qaStress_.empty() && c.loaded()) {   // QA: a stress pose (anim/stress.cpp)
+            std::string pose = qaStress_;
+            c.poseHook = [pose](Animator& a) { stressPose(a, pose); };
+            c.proc.lookAt = false;
+            c.proc.breathAmp = 0.f;
+        }
     }
     fade_ = 0.f; fadeDir_ = 0.f; switching_ = false;
     screenTime_ = s.num("t", 3.f);   // past the entrance animations
