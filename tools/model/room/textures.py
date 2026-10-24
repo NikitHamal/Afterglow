@@ -26,8 +26,8 @@ def normal_from_height(h, k=2.0):
     n = np.dstack([-dx * k, dy * k, np.ones_like(h)]); n /= np.linalg.norm(n, axis=2, keepdims=True)
     return n * 0.5 + 0.5
 
-def wood_planks(path, npath, S=1024):
-    """warm walnut floor planks, 6 planks across, staggered ends"""
+def wood_planks(path, npath, S=1024, base=(0.30, 0.17, 0.10)):
+    """warm walnut floor planks (or any wood by `base`), 6 planks across, staggered ends"""
     y, x = np.mgrid[0:S, 0:S].astype(np.float32) / S
     planks = 6; pw = 1.0 / planks
     idx = np.floor(x / pw).astype(int)
@@ -38,8 +38,7 @@ def wood_planks(path, npath, S=1024):
     grain = fbm(S, S, 3, 5, 11)
     stretch = np.asarray(Image.fromarray((grain * 255).astype(np.uint8)).resize((S // 16, S)).resize((S, S), Image.BICUBIC), np.float32) / 255
     rings = 0.5 + 0.5 * np.sin((x * 90 + stretch * 7 + idx * 1.3) * 2.2)
-    base = np.array([0.30, 0.17, 0.10])
-    col = base[None, None] * (0.75 + 0.35 * stretch[..., None]) * (0.9 + 0.12 * rings[..., None]) * tone[..., None]
+    col = np.array(base)[None, None] * (0.75 + 0.35 * stretch[..., None]) * (0.9 + 0.12 * rings[..., None]) * tone[..., None]
     gap = (np.abs((x % pw) - 0.0) < 0.0025) | (np.abs((x % pw) - pw) < 0.0025) | (np.abs((yy * 2) % 1.0) < 0.003)
     col[gap] *= 0.35
     save_rgb(col, path)
@@ -219,3 +218,46 @@ def flame(path, W=256, H=256):
     core = out ** 2.2
     col = np.dstack([np.clip(out * 1.15, 0, 1), np.clip(out ** 1.6 * 0.7 + core * 0.25, 0, 1), np.clip(core * 0.4, 0, 1)])
     save_rgb(col, path, 92)
+
+
+def tiles(path, npath, color=(0.78, 0.74, 0.66), grout=(0.52, 0.49, 0.44), n=2, S=1024, seed=21):
+    """honed stone tiles (spa floors / walls): n x n per tile repeat, thin grout, soft veining, per-tile tone"""
+    r = np.random.default_rng(seed)
+    y, x = np.mgrid[0:S, 0:S].astype(np.float32) / S
+    ix, iy = np.floor(x * n).astype(int), np.floor(y * n).astype(int)
+    fx, fy = (x * n) % 1.0, (y * n) % 1.0
+    g = 0.006 * n
+    joint = (fx < g) | (fx > 1 - g) | (fy < g) | (fy > 1 - g)
+    tone = r.uniform(0.94, 1.05, (n, n))[iy % n, ix % n]
+    vein = fbm(S, S, 4, 5, seed + 1); fine = fbm(S, S, 40, 3, seed + 2)
+    col = np.array(color)[None, None] * tone[..., None] * (0.92 + 0.1 * vein[..., None] + 0.04 * fine[..., None])
+    col[joint] = np.array(grout)
+    save_rgb(np.clip(col, 0, 1), path)
+    save_rgb(normal_from_height(fine * 0.15 - joint * 0.5, 2.0), npath)
+
+
+def paper_screen(path, W=512, H=1024, cols=4, rows=8):
+    """a shoji screen lit from behind: warm paper glow through a dark wooden lattice (emissive, not tiled)"""
+    y, x = np.mgrid[0:H, 0:W].astype(np.float32); u, v = x / W, y / H
+    glow = 0.82 + 0.18 * np.exp(-((u - 0.5) ** 2 + (v - 0.45) ** 2) / 0.18)
+    fib = fbm(H, W, 30, 3, 91)
+    paper = np.dstack([1.0 * glow, 0.82 * glow, 0.58 * glow]) * (0.94 + 0.08 * fib[..., None])
+    bar = (np.abs(((u * cols) % 1.0) - 0.5) > 0.47) | (np.abs(((v * rows) % 1.0) - 0.5) > 0.475) | (u < 0.03) | (u > 0.97) | (v < 0.02) | (v > 0.98)
+    paper[bar] = np.array([0.05, 0.03, 0.02])
+    save_rgb(np.clip(paper, 0, 1), path, 92)
+
+
+def woven(path, npath, color=(0.72, 0.62, 0.42), S=512, strands=16, seed=41):
+    """a woven straw / seagrass mat: over-under strands with fibre streaks (spa floors)"""
+    y, x = np.mgrid[0:S, 0:S].astype(np.float32) / S
+    cx, cy = np.floor(x * strands).astype(int), np.floor(y * strands).astype(int)
+    over = (cx + cy) % 2 == 0
+    fu, fv = (x * strands) % 1.0, (y * strands) % 1.0
+    along = np.where(over, fv, fu)                         # position across the visible strand
+    bump = np.sin(np.pi * along) ** 0.6
+    fib = fbm(S, S, 64, 3, seed)
+    streak = np.where(over, np.asarray(Image.fromarray((fib * 255).astype(np.uint8)).resize((S, S // 8)).resize((S, S)), np.float32),
+                      np.asarray(Image.fromarray((fib * 255).astype(np.uint8)).resize((S // 8, S)).resize((S, S)), np.float32)) / 255
+    col = np.array(color)[None, None] * (0.62 + 0.38 * bump[..., None]) * (0.85 + 0.25 * streak[..., None])
+    save_rgb(np.clip(col, 0, 1), path)
+    save_rgb(normal_from_height(bump * 0.8 + streak * 0.2, 3.0), npath)
