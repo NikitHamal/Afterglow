@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Afterglow modular model rail</title>
+  <style>
+    :root { color-scheme: dark; font: 14px system-ui, sans-serif; }
+    html, body { height: 100%; margin: 0; background: #101114; overflow: hidden; }
+    body { display: grid; grid-template-columns: 260px 1fr; }
+    aside { padding: 18px; background: #181a20; border-right: 1px solid #2b2e38; overflow: auto; }
+    h1 { margin: 0 0 4px; font-size: 18px; letter-spacing: .03em; }
+    p { color: #aeb3c2; line-height: 1.4; }
+    label { display: block; margin: 16px 0 6px; color: #dce0ea; }
+    select, button { width: 100%; border: 1px solid #3a3e4b; border-radius: 7px; background: #22252d; color: #f4f5f8; padding: 9px; }
+    button { margin-top: 8px; cursor: pointer; }
+    button:hover { background: #303541; }
+    #readout { white-space: pre-wrap; color: #aeb3c2; font-size: 12px; margin-top: 16px; }
+    main { position: relative; min-width: 0; }
+    canvas { width: 100%; height: 100%; display: block; }
+    #badge { position: absolute; left: 16px; bottom: 14px; padding: 7px 10px; border: 1px solid #3a3e4b; border-radius: 999px; background: #171920cc; color: #c8ccd8; }
+  </style>
+  <script type="importmap">
+    {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
+  </script>
+</head>
+<body>
+  <aside>
+    <h1>Modular model rail</h1>
+    <p>Fictional adult presets on the shared rig. Turntable shots keep the same pose contract used by the game.</p>
+    <label for="variant">Model</label><select id="variant"></select>
+    <label for="pose">Shot</label><select id="pose"><option value="stand.idle">Stand</option><option value="sit.bed">Sit</option><option value="solo.idle">Idle</option></select>
+    <button id="reset">Reset camera</button>
+    <div id="readout">Loading manifest…</div>
+  </aside>
+  <main><div id="badge">pose guard rail · neutral turntable</div></main>
+  <script type="module" src="./viewer.js"></script>
+</body>
+</html>

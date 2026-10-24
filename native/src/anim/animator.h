@@ -19,6 +19,9 @@ public:
     void begin();
     void applyClip(int clipIndex, float timeSeconds, float weight, const BoneMask* mask = nullptr);
     void computeGlobals(const M4& root);
+    // Final pose gate: normalises malformed channels and keeps authored joints
+    // inside a generous anatomical envelope before skin matrices are uploaded.
+    void guardPose() { computeGlobals(root_); }
     void finish();
 
     // morph weights: animated value unless a user override (>=0) exists
@@ -47,6 +50,8 @@ public:
 private:
     void sampleChannel(const Channel& ch, float time, float* out) const;
     void globalOf(int n);
+    void sanitizePose();
+    static float jointLimit(const std::string& name);
 
     Model* model_ = nullptr;
     struct Pose { std::vector<V3> t; std::vector<Quat> r; std::vector<V3> s; } rest_, pose_;
@@ -58,6 +63,7 @@ private:
     GLuint boneTex_ = 0;
     int texW_ = 0, texH_ = 0;
     std::vector<float> scratch_;
+    bool guardWarned_ = false;
 };
 
 }  // namespace ag

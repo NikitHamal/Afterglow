@@ -12,13 +12,38 @@ bool Scene::load(const std::function<void(float, const char*)>& progress) {
     step(0.02f, "Lighting the candles");
     setLocation("room");
 
-    // characters (real-scale assets preferred; legacy web GLBs are fitted to real height)
-    std::string vPath = paths::findAsset({"characters/vivian.glb", "legacy/vivian/vivian.glb", "assets/vivian/vivian.glb"});
-    std::string mPath = paths::findAsset({"characters/marcus.glb", "legacy/marcus/marcus.glb", "assets/marcus/marcus.glb"});
+    // Character slots are data-driven.  A new authored GLB can replace a slot
+    // without changing the scene or animation code, as long as it keeps the
+    // proven MMD frame and required contact bones from models.json.
+    Json modelManifest;
+    std::string manifestPath = paths::findAsset({"characters/models.json"});
+    if (!manifestPath.empty()) modelManifest = Json::parse(paths::readText(manifestPath));
+    auto slot = [&](const char* id, const char* legacy, float defaultHeight) {
+        std::string asset = std::string("characters/") + id + ".glb";
+        float height = defaultHeight;
+        const Json& cfg = modelManifest["slots"][id];
+        if (cfg.isObject()) {
+            if (!cfg["asset"].str().empty()) asset = std::string("characters/") + cfg["asset"].str();
+            if (cfg["height"].isNumber()) height = cfg["height"].f(defaultHeight);
+        }
+        std::string path = paths::findAsset({asset, std::string("legacy/") + id + "/" + id + ".glb", legacy});
+        return std::pair<std::string, float>{path, height};
+    };
+    auto vSlot = slot("vivian", "assets/vivian/vivian.glb", 1.68f);
+    auto mSlot = slot("marcus", "assets/marcus/marcus.glb", 1.83f);
+    auto checkRig = [&](Character& c, const char* id) {
+        const Json& req = modelManifest["slots"][id]["requiredBones"];
+        bool ok = true;
+        for (size_t i = 0; i < req.size(); ++i) {
+            if (c.bone(req[i].str()) < 0) { AG_ERROR("AG: %s model missing required bone %s", id, req[i].str().c_str()); ok = false; }
+        }
+        if (!ok) c.destroy();
+        return ok;
+    };
     step(0.12f, "Vivian");
-    if (vPath.empty() || !vivian.load("vivian", vPath, 1.68f)) AG_ERROR("AG: Vivian not found");
+    if (vSlot.first.empty() || !vivian.load("vivian", vSlot.first, vSlot.second) || !checkRig(vivian, "vivian")) AG_ERROR("AG: Vivian not found or failed rig contract");
     step(0.62f, "Marcus");
-    if (mPath.empty() || !marcus.load("marcus", mPath, 1.83f)) AG_ERROR("AG: Marcus not found");
+    if (mSlot.first.empty() || !marcus.load("marcus", mSlot.first, mSlot.second) || !checkRig(marcus, "marcus")) AG_ERROR("AG: Marcus not found or failed rig contract");
     step(0.9f, "Warming up");
     hasClips = (vivian.loaded() && !vivian.model.clips.empty()) || (marcus.loaded() && !marcus.model.clips.empty());
     for (Character* c : {&vivian, &marcus}) {

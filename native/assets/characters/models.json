@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "about": "Modular adult character slots. Each slot keeps the proven MMD frame, contact landmarks, and pose-safe limits while allowing a different authored GLB to be dropped in.",
+  "slots": {
+    "vivian": {
+      "asset": "vivian.glb",
+      "height": 1.68,
+      "baseAge": 42,
+      "requiredBones": ["全ての親", "センター", "腰", "下半身", "上半身", "上半身2", "首", "頭", "肩.L", "肩.R", "腕.L", "腕.R", "ひじ.L", "ひじ.R", "手首.L", "手首.R", "足.L", "足.R", "ひざ.L", "ひざ.R", "足首.L", "足首.R"],
+      "expressionSets": ["blink", "moan", "pleasure", "oral", "kiss", "smile", "bite_lip", "bliss", "gasp", "smirk", "pout", "orgasm", "wink", "shy", "lids_down", "lids_up"],
+      "shapeSets": ["bust", "hips", "waist", "butt", "weight", "muscle", "belly", "age"],
+      "poseEnvelope": {"maxScale": 1.35, "maxTranslation": 0.45, "maxMorph": 1.0}
+    },
+    "marcus": {
+      "asset": "marcus.glb",
+      "height": 1.83,
+      "baseAge": 40,
+      "requiredBones": ["全ての親", "センター", "腰", "下半身", "上半身", "上半身2", "首", "頭", "肩.L", "肩.R", "腕.L", "腕.R", "ひじ.L", "ひじ.R", "手首.L", "手首.R", "足.L", "足.R", "ひざ.L", "ひざ.R", "足首.L", "足首.R", "竿根", "竿中", "竿先", "竿端", "玉袋"],
+      "expressionSets": ["blink", "effort", "pleasure", "moan", "kiss"],
+      "shapeSets": ["muscle", "weight", "belly", "age", "length", "girth"],
+      "poseEnvelope": {"maxScale": 1.35, "maxTranslation": 0.45, "maxMorph": 1.0}
+    }
+  },
+  "variants": {
+    "mira": {"label": "Mira", "slot": "vivian", "tone": "honey", "sliders": {"bust": 0.25, "hips": 0.35, "waist": -0.3, "butt": 0.35, "weight": -0.1, "age": -0.15}, "expression": "smirk"},
+    "dahlia": {"label": "Dahlia", "slot": "vivian", "tone": "bronze", "sliders": {"bust": 0.55, "hips": 0.75, "waist": -0.45, "butt": 0.7, "weight": 0.25, "muscle": 0.2, "age": 0.2}, "expression": "bliss"},
+    "sage": {"label": "Sage", "slot": "vivian", "tone": "deep", "sliders": {"bust": -0.15, "hips": 0.1, "waist": -0.25, "butt": 0.1, "weight": -0.25, "muscle": 0.7, "age": 0.0}, "expression": "bite_lip"},
+    "atlas": {"label": "Atlas", "slot": "marcus", "tone": "honey", "sliders": {"muscle": 0.75, "weight": -0.15, "belly": -0.1, "age": 0.0}, "expression": "effort"},
+    "riven": {"label": "Riven", "slot": "marcus", "tone": "deep", "sliders": {"muscle": 0.2, "weight": 0.45, "belly": 0.5, "age": 0.35}, "expression": "smile"}
+  },
+  "validation": {
+    "weightsSum": [0.98, 1.02],
+    "requiredMorphNormals": "expression-and-anatomy",
+    "bodyMorphNormals": "position-only",
+    "quaternionEpsilon": 0.00001
+  }
+}
