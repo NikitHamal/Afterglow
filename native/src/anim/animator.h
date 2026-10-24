@@ -39,12 +39,18 @@ public:
     void setWorldRot(int n, const Quat& w);
     void recomputeSubtree(int n);
 
+    // bone texture: per joint 7 RGBA32F texels — the skin matrix (4 columns), the rigid part as a dual quaternion
+    // (real, dual) and (uniform scale, linear-blend flag, 0, 0). mesh.vert blends the dual quaternions (no collapse
+    // at twisting / bending joints) and falls back to the matrices where a joint scales non-uniformly.
+    static constexpr int kTexelsPerJoint = 7;
+    static int skinMode;   // 1 dual quaternion (default), 0 linear blend everywhere (QA comparison)
     GLuint boneTexture() const { return boneTex_; }
     int boneTexWidth() const { return texW_; }
     const Model* model() const { return model_; }
     BoneMask makeMask(const std::vector<std::string>& subtreeRoots) const;
 
 private:
+    static void writeDualQuat(const M4& m, float* out12);
     void sampleChannel(const Channel& ch, float time, float* out) const;
     void globalOf(int n);
 

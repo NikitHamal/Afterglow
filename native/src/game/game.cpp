@@ -601,6 +601,7 @@ void Game::reset() {
     autoplay_ = false;
     qaNoActors_ = false;
     qaStress_.clear(); qaFocus_.clear(); qaNoUi_ = false;
+    Animator::skinMode = 1;
 }
 
 void Game::applySpec(const Spec& s) {
@@ -633,6 +634,7 @@ void Game::applySpec(const Spec& s) {
     if (s.has("debug")) debug_ = s.num("debug", 1.f) > 0.5f;
     qaNoActors_ = s.has("actors") && s.num("actors", 1.f) < 0.5f;
     qaStress_ = s.get("stress");
+    Animator::skinMode = s.get("skin") == "lbs" ? 0 : 1;   // QA: linear blend skinning for comparisons
     qaFocus_ = s.get("focus");
     qaNoUi_ = s.has("ui") && s.num("ui", 1.f) < 0.5f;
     {
