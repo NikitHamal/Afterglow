@@ -29,9 +29,24 @@ never run with FLAG_WINDOW_HIGHDPI (harness uses flags 0), so Windows display sc
   listening warmth, emphasis — `scene/facelife.h`). Notes `docs/LOOK_NOTES.md`.
 - Still weak: Vivian's chignon (cap look, thin hairline, ribbon tendrils), Marcus' neck colour seam.
 
-**Round 2 (in flight):** (C) deformation-proof skinning (DQS, runtime joint ranges after every layer, stress-pose
-harness) + more expression morphs; (D) Vivian hair rebuild + 2-3 new models on the proven rigs (MH face targets on
-the s4 basemesh, proxies refit, same skeleton/clips/outfits) + a model roster in Customize.
+**Round 2 done (pushed; CI d119cd2 green on Windows/Linux/macOS; main merged at 17ac2f6):**
+- (C) `4234bfa` stress-pose QA (`tools/qa/deform_shots.txt`), `b5da2c5` dual-quaternion skinning for every skinned
+  mesh, `35c9ffb` joint ranges every frame after every layer, `3eb17d1` Preserve Volume in Blender + weights check,
+  `5f430f4` Marcus under-chin, `7a9db4e` 11 Marcus expression morphs. Notes `docs/DEFORM_NOTES.md`.
+- (D) `b3919d3` model roster (Customize "Model" row) + identity packs; `856566a` hair kit `tools/model/hair/` + Vivian
+  chignon v2; new models Mei `0a34c59`, Amara `7bccf50`, Daniel `17ece15` on the proven bodies. Notes `docs/MODELS_NOTES.md`.
+
+**Honest review of round 2 (my own pass, board images):** DQS fixed elbows/knees. NOT good enough yet: the story
+kiss (no authored kiss clip — `kiss` falls back to `stand.idle` + engine IK; faces press into each other, the joint
+clamp now keeps arms from reaching); card hair from the side/back is a patchwork of scraps on every style (alpha-tested
+cards, no soft edge pass); Mei's bob has a jagged cut-out hairline; Mei's identity is weak; a red flush band on
+Marcus' neck/jaw in warm close-ups. User (2026-10-24 afternoon): "the kiss is still deformed and not as good, neither
+the animations, nor anything; the side pose of the model is deformed too — very strict passes and polishes".
+
+**Round 3 (in flight):** (G) animation strict pass in Blender — rigkit arm-twist fix, authored `stand.embrace`,
+`kiss.stand`, `kiss.sit`, re-bake every clip (`--norender`), zero-residual verify, splice into all five GLBs;
+(H) engine strict pass — kiss/embrace runtime on the new clips, two-pass hair (opaque core + soft blended edges),
+flush band, side/profile checks of every model. Next: (I) model identity + hair geometry polish.
 
 Tracks: (A) HUD/window: harness `--hidpi`, UI layout layer, overflow-proof widgets, UI shot list;
 (B) look: depth-aware DOF, eyes, hair shading, Marcus face; then (C) expressions + deformation-proof skinning,
