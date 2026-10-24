@@ -284,7 +284,7 @@ function populateShots() {
 }
 
 async function boot() {
-  manifest = await fetch(manifestUrl).then((r) => r.json());
+  manifest = await fetch(manifestUrl, { cache: 'no-store' }).then((r) => r.json());
   populateShots();
   for (const [keyName, variant] of Object.entries(manifest.variants || {})) {
     const option = document.createElement('option');
