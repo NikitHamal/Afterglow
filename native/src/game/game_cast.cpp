@@ -54,4 +54,20 @@ bool Game::ensureCast(bool story) {
     return reloaded;
 }
 
+void Game::pickModel(int role, const std::string& id, bool withTone, bool withHair) {
+    if (roster_.isNull()) ensureCast(storyCast_);
+    const Json& e = rosterEntry(role, id);
+    if (e.isNull()) return;
+    int tone = skinToneIndex(e["tone"].str());
+    if (role == 0) {
+        profile.her.model = id;
+        if (withTone && tone >= 0) profile.her.tone = tone;
+        if (withHair && e["hairColour"].isNumber()) profile.her.hair = (int)e["hairColour"].num();
+    } else {
+        profile.him.model = id;
+        if (withTone && tone >= 0) profile.him.tone = tone;
+    }
+    if (!ensureCast(false)) applyLooks();
+}
+
 }  // namespace ag

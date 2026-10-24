@@ -1,10 +1,37 @@
 {
-  "_doc": "The models per role (docs/MODELS_NOTES.md). Every model of a role shares that role's body, skeleton, clips, contacts and outfits (characters/<role>.glb); a model adds its own face (<id>_identity.bin, tools/model/identity), skin albedos (<id>_skin_<tone>.jpg), eyes (<id>_eye.png) and hair style (hair/<style>.glb). fixedAge: the face was built at that age, the base's age shapes are not applied. Adults only.",
-  "her": [
-    {"id": "vivian", "name": "Vivian", "tagline": "forty-two, warm, unhurried", "age": 42, "hair": "", "hairName": "Low chignon"},
-    {"id": "mei", "name": "Mei", "tagline": "thirty-one, quick to laugh, slow to look away", "age": 31, "fixedAge": true, "hair": "", "hairName": "Low chignon"}
-  ],
-  "him": [
-    {"id": "marcus", "name": "Marcus", "tagline": "forty, steady, attentive", "age": 40, "hair": "", "hairName": "Short"}
-  ]
+ "_doc": "The models per role (docs/MODELS_NOTES.md). Every model of a role shares that role's body, skeleton, clips, contacts and outfits (characters/<role>.glb); a model adds its own face (<id>_identity.bin, tools/model/identity), skin albedos (<id>_skin_<tone>.jpg), eyes (<id>_eye.png) and hair style (hair/<style>.glb). fixedAge: the face was built at that age, the base's age shapes are not applied. tone: the skin tone a model starts with when picked. Adults only. hairColour: her hair colour preset (index into the Customize swatches) a model starts with.",
+ "her": [
+  {
+   "id": "vivian",
+   "name": "Vivian",
+   "tagline": "forty-two, warm, unhurried",
+   "age": 42,
+   "hair": "",
+   "hairName": "Low chignon",
+   "tone": "caramel",
+   "hairColour": 0
+  },
+  {
+   "id": "mei",
+   "name": "Mei",
+   "tagline": "thirty-one, quick to laugh, slow to look away",
+   "age": 31,
+   "fixedAge": true,
+   "hair": "bob_mei",
+   "hairName": "Sleek bob",
+   "tone": "fair",
+   "hairColour": 4
+  }
+ ],
+ "him": [
+  {
+   "id": "marcus",
+   "name": "Marcus",
+   "tagline": "forty, steady, attentive",
+   "age": 40,
+   "hair": "",
+   "hairName": "Short",
+   "tone": "caramel"
+  }
+ ]
 }

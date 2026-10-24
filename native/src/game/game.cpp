@@ -627,8 +627,8 @@ void Game::applySpec(const Spec& s) {
     if (s.has("mage")) profile.him.age = std::max(kMinAge, s.num("mage", 40.f));
     if (s.has("hair")) profile.her.hair = (int)s.num("hair", 0.f);
     // models (characters/roster.json): hermodel=<id>, himmodel=<id>; story shots keep the stories' own cast
-    if (s.has("hermodel")) profile.her.model = s.get("hermodel");
-    if (s.has("himmodel")) profile.him.model = s.get("himmodel");
+    if (s.has("hermodel")) pickModel(0, s.get("hermodel"), !s.has("tone"), !s.has("hair"));
+    if (s.has("himmodel")) pickModel(1, s.get("himmodel"), !s.has("mtone"), false);
     ensureCast(s.get("screen") == "story");
     std::string q = s.get("quality");
     if (q == "low") settings.quality = 0; else if (q == "medium") settings.quality = 1; else if (q == "high") settings.quality = 2;
