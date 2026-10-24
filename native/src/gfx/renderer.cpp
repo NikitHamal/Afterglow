@@ -405,9 +405,9 @@ void Renderer::render(Scene& s, const CameraState& cam, int fbW, int fbH, float 
     composite_.set("u_resolution", V2{(float)ldr_.w, (float)ldr_.h});
     fullscreen(composite_);
 
-    // ---- blurred copy for frosted UI panels (menus) and depth of field (story close-ups) ----
+    // ---- blurred copy for frosted UI panels (menus) ----
     bool dofOn = settings.dofAmount > 0.01f;
-    if (uiBlur || dofOn) {
+    if (uiBlur) {
         int bw = std::max(2, ldr_.w / 2), bh = std::max(2, ldr_.h / 2);
         if (blur_[0].w != bw || blur_[0].h != bh || !blur_[0].fbo) {
             for (int i = 0; i < 3; ++i) { blur_[i].create(bw, bh, GL_RGBA8, false, false, GL_LINEAR); bw = std::max(1, bw / 2); bh = std::max(1, bh / 2); }
@@ -437,8 +437,9 @@ void Renderer::render(Scene& s, const CameraState& cam, int fbW, int fbH, float 
         dofOut_.bind();
         dof_.use();
         dof_.sampler("u_sharp", 0, ldr_.color);
-        dof_.sampler("u_blur", 1, blur_[3].color);
         dof_.sampler("u_depth", 2, hdr_.depth);
+        dof_.set("u_texel", V2{1.f / (float)ldr_.w, 1.f / (float)ldr_.h});
+        dof_.set("u_maxPx", 0.016f * (float)ldr_.h);   // ~17 px at 1080p, the same look at any size
         dof_.set("u_near", cam.znear);
         dof_.set("u_far", cam.zfar);
         dof_.set("u_focus", settings.dofFocus);
