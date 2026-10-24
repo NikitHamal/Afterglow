@@ -83,8 +83,10 @@ built sibling of its family first, e.g. `spa_*` → `spa_suite`, then the family
 - ⏳ `cabin_door` (the porch and door from inside)
 - ⏳ `villa_terrace` (white walls, blue shutters, table for two, the bay below), `villa_beach` (a sand crescent,
   rocks, moonlight variant)
-- ⏳ `spa_lobby`, `spa_steam` (tiled steam room, benches), `spa_suite` (candles, a wide padded treatment bed —
-  ideally the authoring bed's footprint), `spa_lounge` (loungers, tea)
+- ✅ `spa_suite` (`build_place.py`): a padded treatment bed exactly on the authoring bed's footprint (sheet top 0.604 m:
+  every bed clip and sit.bed work on it), limestone and teak, a glowing shoji wall, a paper lantern key light,
+  candles on a bench; `spa_lobby` / `spa_steam` / `spa_lounge` fall back to it until they exist.
+- ⏳ `spa_lobby`, `spa_steam` (tiled steam room, benches), `spa_lounge` (loungers, tea)
 - ⏳ `apartment_hall` (stairwell landing, two doors), `apartment_living` (sofa, piano, city window),
   `apartment_balcony`, `apartment_bedroom` (city view)
 
