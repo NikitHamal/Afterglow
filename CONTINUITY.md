@@ -19,8 +19,7 @@ variant rail uses original adult designs.
 **Half done:** the new Molab rail was edited and executed in session `sess-8ksxj39rjmy208aw`, but both supplied
 notebook servers return HTTP 410 and list no active sessions. No Blender render or Molab browser audit is claimed.
 The native scene contract and hardened preview are pushed as `5bbb233` and `cbe92d8`; this continuity update is
-`aaea5bd`. The CI workflow file remains local as commit `62864da` because the connector returns 404 for
-`.github/workflows` tree writes,
+`b9d04bf`. The CI workflow file remains local because the connector returns 404 for `.github/workflows` tree writes,
 and the supplied Git credential is rejected by GitHub.
 
 **Missing:** a live Molab URL/session, actual regenerated GLBs for any new topology, rendered Blender shot evidence,
