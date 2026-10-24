@@ -17,7 +17,7 @@
       "baseAge": 40,
       "requiredBones": ["全ての親", "センター", "腰", "下半身", "上半身", "上半身2", "首", "頭", "肩.L", "肩.R", "腕.L", "腕.R", "ひじ.L", "ひじ.R", "手首.L", "手首.R", "足.L", "足.R", "ひざ.L", "ひざ.R", "足首.L", "足首.R", "竿根", "竿中", "竿先", "竿端", "玉袋"],
       "expressionSets": ["blink", "effort", "pleasure", "moan", "kiss"],
-      "shapeSets": ["muscle", "weight", "belly", "age", "length", "girth"],
+      "shapeSets": ["muscle", "weight", "belly", "length", "girth"],
       "poseEnvelope": {"maxScale": 1.35, "maxTranslation": 0.45, "maxMorph": 1.0}
     }
   },
@@ -34,10 +34,10 @@
     "sage": {"label": "Sage", "slot": "vivian", "tone": "deep", "adult": true, "fictional": true, "sliders": {"bust": -0.15, "hips": 0.1, "waist": -0.25, "butt": 0.1, "weight": -0.25, "muscle": 0.7, "age": 0.0}, "expressions": {"stand": "bite_lip", "sit": "smirk", "embrace": "bliss"}},
     "cassia": {"label": "Cassia", "slot": "vivian", "tone": "olive", "adult": true, "fictional": true, "sliders": {"bust": 0.38, "hips": 0.58, "waist": -0.34, "butt": 0.52, "weight": 0.08, "muscle": 0.18, "age": 0.06}, "expressions": {"stand": "smirk", "sit": "gasp", "embrace": "pleasure"}},
     "noelle": {"label": "Noelle", "slot": "vivian", "tone": "porcelain", "adult": true, "fictional": true, "sliders": {"bust": -0.05, "hips": 0.24, "waist": -0.18, "butt": 0.16, "weight": -0.18, "muscle": 0.54, "age": -0.08}, "expressions": {"stand": "shy", "sit": "smile", "embrace": "bliss"}},
-    "atlas": {"label": "Atlas", "slot": "marcus", "tone": "honey", "adult": true, "fictional": true, "sliders": {"muscle": 0.75, "weight": -0.15, "belly": -0.1, "age": 0.0}, "expressions": {"stand": "effort", "sit": "pleasure", "embrace": "pleasure"}},
-    "riven": {"label": "Riven", "slot": "marcus", "tone": "deep", "adult": true, "fictional": true, "sliders": {"muscle": 0.2, "weight": 0.45, "belly": 0.5, "age": 0.35}, "expressions": {"stand": "pleasure", "sit": "effort", "embrace": "pleasure"}},
-    "kellan": {"label": "Kellan", "slot": "marcus", "tone": "caramel", "adult": true, "fictional": true, "sliders": {"muscle": 0.42, "weight": -0.28, "belly": 0.0, "age": -0.08}, "expressions": {"stand": "pleasure", "sit": "effort", "embrace": "pleasure"}},
-    "soren": {"label": "Soren", "slot": "marcus", "tone": "deep", "adult": true, "fictional": true, "sliders": {"muscle": 0.12, "weight": 0.68, "belly": 0.72, "age": 0.56}, "expressions": {"stand": "effort", "sit": "pleasure", "embrace": "pleasure"}}
+    "atlas": {"label": "Atlas", "slot": "marcus", "tone": "honey", "adult": true, "fictional": true, "sliders": {"muscle": 0.75, "weight": -0.15, "belly": -0.1}, "expressions": {"stand": "effort", "sit": "pleasure", "embrace": "pleasure"}},
+    "riven": {"label": "Riven", "slot": "marcus", "tone": "deep", "adult": true, "fictional": true, "sliders": {"muscle": 0.2, "weight": 0.45, "belly": 0.5}, "expressions": {"stand": "pleasure", "sit": "effort", "embrace": "pleasure"}},
+    "kellan": {"label": "Kellan", "slot": "marcus", "tone": "caramel", "adult": true, "fictional": true, "sliders": {"muscle": 0.42, "weight": -0.28, "belly": 0.0}, "expressions": {"stand": "pleasure", "sit": "effort", "embrace": "pleasure"}},
+    "soren": {"label": "Soren", "slot": "marcus", "tone": "deep", "adult": true, "fictional": true, "sliders": {"muscle": 0.12, "weight": 0.68, "belly": 0.72}, "expressions": {"stand": "effort", "sit": "pleasure", "embrace": "pleasure"}}
   },
   "validation": {
     "weightsSum": [0.98, 1.02],
