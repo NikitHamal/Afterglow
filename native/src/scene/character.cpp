@@ -271,6 +271,9 @@ void Character::update(float dt) {
     if (postHook) postHook(anim);
     if (touch.ready() && (touchGoals.left.active || touchGoals.right.active)) touch.apply(anim, touchGoals);
     else touch.contacts.clear();
+    // Last gate after every pose hook, look solve, spring, and contact IK.
+    // Skin matrices never receive a NaN, zero scale, or folded joint.
+    anim.guardPose();
     anim.finish();
     if (Outfit* o = outfit()) {
         o->update(dt);
