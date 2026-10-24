@@ -117,7 +117,10 @@ else()
 endif()
 
 # ---- assets next to the executable (legacy web assets fill in until native/assets has them) ----
-add_custom_command(TARGET afterglow POST_BUILD
+# Its own target that runs on every build (file(COPY) skips files whose timestamp already matches): as a POST_BUILD
+# step it only ran when the executable relinked, so an asset-only change never reached an incremental build.
+add_custom_target(afterglow_assets ALL
   COMMAND ${CMAKE_COMMAND} -DSRC=${CMAKE_CURRENT_SOURCE_DIR} -DREPO=${CMAKE_CURRENT_SOURCE_DIR}/.. -DDST=$<TARGET_FILE_DIR:afterglow>
           -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/copy_assets.cmake
   VERBATIM)
+add_dependencies(afterglow_assets afterglow)
