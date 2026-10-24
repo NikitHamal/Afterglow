@@ -127,7 +127,7 @@ void armsDown(Ctx& c) {
 
 const std::vector<std::string>& stressPoseNames() {
     static const std::vector<std::string> names = {"arms_up", "arms_cross", "elbows", "wrists", "squat", "knee",
-                                                   "split", "twist", "neck", "behind"};
+                                                   "split", "twist", "neck", "behind", "overreach"};
     return names;
 }
 
@@ -208,6 +208,18 @@ bool stressPose(Animator& a, const std::string& name, float amount) {
             twist(c, kArm + sd, 55.f * (float)s);       // humerus turned in: forearms behind the back
             flex(c, kArm + sd, kElbow + sd, 96.f, true);
         }
+    } else if (name == "overreach") {   // QA only: past anatomy on purpose — what the joint ranges must catch
+        aim(c, R(kArm), V3{-0.25f, -0.2f, 1.f});
+        flex(c, R(kArm), R(kElbow), 60.f, false);                  // elbow bent backwards
+        twist(c, R(kWrist), 150.f);
+        turn(c, R(kWrist), V3{1.f, 0.f, 0.f}, -110.f);             // hand folded back onto the forearm
+        aim(c, kArm + ".L", V3{0.22f, -1.f, 0.04f});
+        aim(c, kLeg + ".L", V3{0.08f, -1.f, 0.3f});
+        flex(c, kLeg + ".L", kKnee + ".L", 45.f, true);            // knee bent forwards
+        turn(c, kNeck, V3{0.f, 1.f, 0.f}, 95.f);                  // an owl's turn
+        turn(c, kHead, V3{0.f, 1.f, 0.f}, 70.f);
+        turn(c, kHead, V3{0.f, 0.f, 1.f}, 55.f);
+        turn(c, kSpine, V3{0.f, 1.f, 0.f}, 80.f);
     } else {
         return false;
     }
