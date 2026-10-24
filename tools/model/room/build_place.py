@@ -223,7 +223,135 @@ def cabin_living():
     return meta, engine, previews
 
 
-PLACES = {"cabin_living": cabin_living}
+# ------------------------------------------------------------------ spa_suite: a private treatment suite (The Massage)
+def spa_suite():
+    """a padded treatment bed exactly on the authoring bed's footprint (every bed clip and sit.bed work on it), teak
+    and limestone, a glowing shoji wall behind the bed, a pendant lantern over it, candles; the standing marks stay
+    open floor in front of the bed's foot"""
+    R = (-3.0, 3.0, -3.6, 3.2); H = 2.7
+    BX, BY, BW, BL = 0.0, 1.22, 1.80, 2.00            # bed centre (Blender) and size: the bedroom's bed
+    TX.tiles(K.tex("floor.jpg"), K.tex("floor_n.jpg"), color=(0.80, 0.75, 0.66), n=2)
+    TX.plaster(K.tex("wall.jpg"), K.tex("wall_n.jpg"), color=(0.80, 0.72, 0.62))
+    TX.wood_planks(K.tex("teak.jpg"), K.tex("teak_n.jpg"), base=(0.36, 0.21, 0.11))
+    TX.fabric(K.tex("towel.jpg"), K.tex("towel_n.jpg"), (0.90, 0.88, 0.84), weave=60, sheen=0.02, seed=31)
+    TX.fabric(K.tex("pad.jpg"), K.tex("pad_n.jpg"), (0.80, 0.76, 0.70), weave=200, sheen=0.25, seed=32)
+    TX.fabric(K.tex("sheet.jpg"), K.tex("sheet_n.jpg"), (0.93, 0.91, 0.88), weave=200, sheen=0.1, seed=33)
+    TX.woven(K.tex("mat.jpg"), K.tex("mat_n.jpg"))
+    TX.paper_screen(K.tex("shoji.jpg"))
+    TX.fabric(K.tex("shade.jpg"), K.tex("shade_n.jpg"), (0.90, 0.80, 0.62), weave=90, sheen=0.05, seed=34)
+    M = dict(
+        floor=K.mat("place_floor", K.tex("floor.jpg"), K.tex("floor_n.jpg"), rough=0.35),
+        wall=K.mat("place_wall", K.tex("wall.jpg"), K.tex("wall_n.jpg"), rough=0.9),
+        ceiling=K.mat("place_ceiling", color=(0.62, 0.55, 0.47), rough=0.9),
+        teak=K.mat("place_teak", K.tex("teak.jpg"), K.tex("teak_n.jpg"), rough=0.45),
+        dark=K.mat("place_dark_wood", color=(0.09, 0.055, 0.035), rough=0.5),
+        towel=K.mat("place_towel", K.tex("towel.jpg"), K.tex("towel_n.jpg"), rough=0.95, normal_strength=0.9),
+        pad=K.mat("place_pad", K.tex("pad.jpg"), K.tex("pad_n.jpg"), rough=0.6),
+        sheet=K.mat("place_sheet", K.tex("sheet.jpg"), K.tex("sheet_n.jpg"), rough=0.7),
+        mat=K.mat("place_mat", K.tex("mat.jpg"), K.tex("mat_n.jpg"), rough=0.9, normal_strength=0.8),
+        pot=K.mat("place_pot", color=(0.16, 0.14, 0.12), rough=0.7),
+        stone=K.mat("place_stone", color=(0.30, 0.29, 0.27), rough=0.6),
+        basalt=K.mat("place_basalt", color=(0.06, 0.06, 0.06), rough=0.25),
+        glass=K.mat("place_glass", color=(0.30, 0.20, 0.08), rough=0.08),
+        leaf=K.mat("place_leaf", color=(0.10, 0.22, 0.08), rough=0.6),
+        wax=K.mat("place_candle", color=(0.93, 0.88, 0.80), rough=0.5),
+        brass=K.mat("place_brass", color=(0.75, 0.55, 0.28), rough=0.3, metal=1.0),
+        shoji=K.mat("place_shoji", color=(0, 0, 0), emit_tex=K.tex("shoji.jpg"), emit_strength=1.6, baked=False),
+        shade=K.mat("place_lampshade", K.tex("shade.jpg"), None, rough=0.9, emit=(1.0, 0.66, 0.36), emit_strength=1.2, baked=False),
+        candleflame=K.mat("place_candleflame", color=(1.0, 0.7, 0.3), emit=(1.0, 0.62, 0.25), emit_strength=12.0, baked=False),
+    )
+    K.floor_and_ceiling(R, H, M["floor"], M["ceiling"], floor_uv=0.5)
+    for nm, side in (("wall_back", "+Y"), ("wall_front", "-Y"), ("wall_left", "-X"), ("wall_right", "+X")):
+        K.wall(nm, side, R, H, M["wall"])
+    # behind the bed: a glowing shoji wall framed by vertical teak slats
+    SW = 2.6
+    sh = K.grid("shoji", SW, 2.0, 1, 1, M["shoji"], smooth=False, uv_fit=True)
+    sh.rotation_euler = (math.pi / 2, 0, 0); sh.location = (0, R[3] - 0.04, 1.25)   # faces the room (-y)
+    for k in range(-9, 10):
+        x = k * 0.16
+        if abs(x) < SW / 2 - 0.05: continue
+        K.box(f"slat_{k + 9}", (0.06, 0.05, H), (x, R[3] - 0.03, H / 2), M["teak"], bevel=0.004, uv_scale=1.4)
+    K.box("shoji_head", (SW + 0.3, 0.08, 0.1), (0, R[3] - 0.05, 2.3), M["teak"], bevel=0.006)
+    K.box("shoji_sill", (SW + 0.3, 0.12, 0.08), (0, R[3] - 0.07, 0.21), M["teak"], bevel=0.006)
+    # the treatment bed: teak plinth, deep pad, a fitted sheet whose top is the authoring bed's 0.604 m
+    K.box("bed_plinth", (BW - 0.12, BL - 0.12, 0.30), (BX, BY, 0.15), M["teak"], bevel=0.02, uv_scale=1.4)
+    K.box("bed_toe", (BW - 0.22, BL - 0.22, 0.06), (BX, BY, 0.03), M["dark"], bevel=0.01)
+    K.box("bed_pad", (BW, BL, 0.296), (BX, BY, 0.30 + 0.148), M["pad"], bevel=0.05, segs=4, uv_scale=1.2)
+    K.box("bed_sheet", (BW + 0.02, BL + 0.02, 0.008), (BX, BY, SEAT_TOP - 0.004), M["sheet"], bevel=0.003, uv_scale=1.6)
+    K.box("bed_sheet_skirt", (BW + 0.03, 0.01, 0.12), (BX, BY - BL / 2 - 0.012, SEAT_TOP - 0.06), M["sheet"], bevel=0.003, uv_scale=1.6)
+    # beyond the head end (outside the play area, below the sheet): a low teak shelf with towels, oil, candles
+    SY = BY + BL / 2 + 0.24
+    K.box("shelf", (BW + 0.3, 0.3, 0.05), (BX, SY, 0.52), M["teak"], bevel=0.006)
+    for sx in (-1, 1):
+        K.box(f"shelf_leg_{sx}", (0.05, 0.26, 0.5), (BX + sx * (BW / 2 + 0.08), SY, 0.25), M["teak"], bevel=0.004)
+    for k in range(3):
+        K.cylinder(f"towel_roll_{k}", 0.055, 0.055, 0.34, (BX - 0.55 + k * 0.12, SY, 0.6), M["towel"], seg=24, axis="Y")
+    K.cylinder("oil_bottle", 0.035, 0.035, 0.17, (BX + 0.2, SY - 0.04, 0.545), M["glass"], seg=20)
+    K.cylinder("oil_neck", 0.012, 0.012, 0.05, (BX + 0.2, SY - 0.04, 0.715), M["glass"], seg=12)
+    K.cylinder("stone_bowl", 0.12, 0.08, 0.06, (BX + 0.55, SY, 0.545), M["stone"], seg=32)
+    for k in range(5):
+        K.cylinder(f"hot_stone_{k}", 0.03, 0.03, 0.018, (BX + 0.5 + 0.03 * (k % 3), SY - 0.02 + 0.03 * (k // 3), 0.6), M["basalt"], seg=16)
+    candles = []
+    for k, (cx, cy, cz, h) in enumerate(((BX - 0.95, SY + 0.02, 0.545, 0.12), (BX + 0.9, SY, 0.545, 0.09),
+                                         (R[0] + 0.3, -0.35, 0.42, 0.16), (R[0] + 0.3, -1.15, 0.42, 0.11))):
+        K.cylinder(f"candle_{k}", 0.035, 0.035, h, (cx, cy, cz), M["wax"], seg=24)
+        fl = K.grid(f"candleflame_{k}", 0.014, 0.034, 1, 1, M["candleflame"], smooth=False)
+        fl.rotation_euler = (math.pi / 2, 0, 0.5); fl.location = (cx, cy, cz + h + 0.02)
+        candles.append(Vector((cx, cy, cz + h + 0.025)))
+    # a folded towel stack on a stool by the bed's right side (clear of sit.bed's feet at x ~1.1-1.4)
+    K.box("stool", (0.42, 0.42, 0.46), (BX + BW / 2 + 0.85, BY + 0.55, 0.23), M["teak"], bevel=0.01)
+    for k in range(3):
+        K.box(f"towel_fold_{k}", (0.34, 0.26, 0.05), (BX + BW / 2 + 0.85, BY + 0.55, 0.485 + k * 0.052), M["towel"], bevel=0.02, segs=3)
+    # a woven mat where they stand, a stone basin with a plant in the corner
+    mat = K.box("mat", (2.2, 1.5, 0.01), (0.0, -0.6, 0.005), M["mat"], bevel=0.003)
+    uv = mat.data.uv_layers[0]
+    for li, l in enumerate(mat.data.loops):
+        c = mat.data.vertices[l.vertex_index].co; uv.data[li].uv = ((c.x + 1.1) / 2.2, (c.y + 1.35) / 1.5)
+    K.cylinder("basin", 0.28, 0.22, 0.8, (R[1] - 0.55, R[3] - 0.65, 0.0), M["stone"], seg=40)
+    # a low teak bench along the left wall: candles, rolled towels
+    K.box("bench", (0.42, 1.9, 0.05), (R[0] + 0.3, -0.75, 0.4), M["teak"], bevel=0.008)
+    for k, yy in enumerate((-1.6, 0.1)):
+        K.box(f"bench_leg_{k}", (0.38, 0.06, 0.38), (R[0] + 0.3, yy, 0.19), M["teak"], bevel=0.006)
+    for k in range(2):
+        K.cylinder(f"bench_towel_{k}", 0.05, 0.05, 0.3, (R[0] + 0.3, -0.75 + 0.11 * k, 0.475), M["towel"], seg=20, axis="X").location.x -= 0.15
+    # plants: a bamboo pot in the far left corner, a broad-leaf one beside the basin (blades fan out from the pot)
+    for pi, (px, py, tall) in enumerate(((R[0] + 0.45, R[3] - 0.5, 1.6), (R[1] - 1.15, R[3] - 0.45, 0.9))):
+        K.cylinder(f"pot_{pi}", 0.2, 0.16, 0.42, (px, py, 0.0), M["pot"], seg=32)
+        for k in range(9 if pi == 0 else 11):
+            a = k * 2.4
+            lean = 0.12 + 0.05 * (k % 3) if pi == 0 else 0.5 + 0.08 * (k % 3)
+            K.cylinder(f"plant_{pi}_{k}", 0.012 if pi == 0 else 0.045, 0.0, tall * (0.75 + 0.1 * (k % 3)), (px, py, 0.4), M["leaf"], seg=6).rotation_euler = (lean * math.cos(a), lean * math.sin(a), a)
+    # light: a paper lantern over the bed (the key), a wall washer over the standing area, the shoji, candles
+    LAMP = Vector((BX, BY - 0.1, 2.05))
+    K.cylinder("lantern_cord", 0.004, 0.004, H - LAMP.z - 0.15, (LAMP.x, LAMP.y, LAMP.z + 0.15), M["dark"], seg=8)
+    K.cylinder("lantern", 0.2, 0.2, 0.3, (LAMP.x, LAMP.y, LAMP.z - 0.15), M["shade"], seg=40, cap=False)
+    key = K.light("SPOT", "lamp_key", tuple(LAMP + Vector((0, 0, -0.2))), (1.0, 0.68, 0.42), 90.0, 0.25, spot=math.radians(115))
+    K.aim(key, (BX, BY - 0.3, SEAT_TOP))
+    WASH = Vector((R[0] + 0.08, -0.7, 2.2))
+    K.box("wash_fixture", (0.06, 0.5, 0.08), tuple(WASH + Vector((0.02, 0, 0.05))), M["brass"], bevel=0.01)
+    K.light("POINT", "lamp_0", tuple(WASH + Vector((0.25, 0, -0.1))), (1.0, 0.7, 0.45), 45.0, 0.2)
+    K.light("POINT", "lamp_1", (0.0, R[3] - 0.6, 1.2), (1.0, 0.75, 0.5), 30.0, 0.6)       # the shoji's glow into the room
+    for k, c in enumerate(candles): K.light("POINT", f"candle_{k}", tuple(c), (1.0, 0.56, 0.24), 2.4, 0.02)
+    K.light("SUN", "moon", (0, 2, 4), (0.95, 0.85, 0.75), 0.05, rot=(math.radians(60), 0, math.radians(180)))
+    meta = common_meta("spa", "candle", LAMP, Vector((0.0, R[3], 1.25)), (-2.75, -3.35, 0.15), (2.75, 2.95, 2.45), (-1.0, 1.0, -1.2, 2.25))
+    meta["bed"] = dict(center=E((BX, BY, SEAT_TOP)), width=BW, length=BL, size=[BW, BL], headboard="-Z",
+                       headZ=-(BY + BL / 2), footZ=-(BY - BL / 2), note="a padded treatment bed on the authoring bed's footprint")
+    meta["bedCenter"] = E((BX, BY, SEAT_TOP))
+    meta["playArea"] = dict(zMin=-(BY + BL / 2 - 0.24), note="characters stay on the foot side of zMin")
+    engine = {"lamp_key": 120.0, "lamp_0": 0.5, "lamp_1": 0.35, "candle_": 0.12, "moon": 0.08}
+    previews = [("stand", (0.3, -3.2, 1.55), (0.0, 0.8, 0.95)), ("sit", (2.6, 1.0, 1.45), (0.5, 1.2, 0.9)),
+                ("room", (-2.6, -3.2, 2.2), (0.5, 1.0, 0.6))]
+    return meta, engine, previews
+
+
+import places_apartment as PA
+import places_villa as PV
+
+PLACES = {"cabin_living": cabin_living, "spa_suite": spa_suite,
+          "apartment_hall": lambda: PA.apartment_hall(common_meta),
+          "apartment_living": lambda: PA.apartment_living(common_meta, sofa, bookshelf),
+          "apartment_balcony": lambda: PA.apartment_balcony(common_meta),
+          "villa_terrace": lambda: PV.villa_terrace(common_meta)}
 
 if __name__ == "__main__":
     K.init(OUT)

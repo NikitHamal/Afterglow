@@ -1,0 +1,292 @@
+{
+ "version": 1,
+ "units": "m",
+ "up": "+Y",
+ "style": "apartment",
+ "mood": "evening",
+ "place": "apartment_living",
+ "bedTop": 0.604,
+ "bed": {
+  "center": [
+   0.3,
+   0.604,
+   -0.5
+  ],
+  "width": 2.6,
+  "length": 3.5999999999999996,
+  "size": [
+   2.6,
+   3.5999999999999996
+  ],
+  "note": "no bed: the staged action's footprint (standing marks + the seat)"
+ },
+ "bedCenter": [
+  0.3,
+  0.604,
+  -0.5
+ ],
+ "lamp": [
+  0.3,
+  2.65,
+  -0.2
+ ],
+ "window": {
+  "center": [
+   -0.35,
+   1.7,
+   -3
+  ]
+ },
+ "cameraBounds": {
+  "min": [
+   -2.75,
+   0.15,
+   -2.75
+  ],
+  "max": [
+   2.95,
+   2.5,
+   3.15
+  ]
+ },
+ "anchors": {
+  "table": {
+   "pos": [
+    1.95,
+    0.75,
+    2.15
+   ],
+   "yaw": 180
+  },
+  "table_l": {
+   "pos": [
+    1.95,
+    0.75,
+    2.37
+   ],
+   "yaw": 180
+  },
+  "table_r": {
+   "pos": [
+    1.95,
+    0.75,
+    1.93
+   ],
+   "yaw": 0
+  },
+  "counter": {
+   "pos": [
+    -1.85,
+    0.9,
+    3.09
+   ],
+   "yaw": 0
+  },
+  "side_table": {
+   "pos": [
+    0.55,
+    0.52,
+    -2.52
+   ],
+   "yaw": 90
+  },
+  "piano": {
+   "pos": [
+    -1.45,
+    0,
+    -1.78
+   ],
+   "yaw": 180
+  },
+  "window": {
+   "pos": [
+    0.75,
+    0,
+    -2.4
+   ],
+   "yaw": 180
+  },
+  "sofa_l": {
+   "pos": [
+    0.7,
+    0.604,
+    -0.95
+   ],
+   "yaw": 90
+  },
+  "sofa_r": {
+   "pos": [
+    0.7,
+    0.604,
+    -1.45
+   ],
+   "yaw": 90
+  },
+  "drafting": {
+   "pos": [
+    1.95,
+    0,
+    -2
+   ],
+   "yaw": 180
+  }
+ },
+ "lights": [
+  {
+   "name": "lamp_key",
+   "type": "spot",
+   "position": [
+    0.3,
+    2.6500000000000004,
+    -0.2
+   ],
+   "color": [
+    1,
+    0.78,
+    0.55
+   ],
+   "power_w": 0,
+   "radius": 0.2,
+   "direction": [
+    0,
+    -1,
+    0
+   ],
+   "outer_rad": 1.0471975803375244
+  },
+  {
+   "name": "ceiling_wash",
+   "type": "area",
+   "position": [
+    0.2,
+    2.6500000000000004,
+    0
+   ],
+   "color": [
+    1,
+    0.82,
+    0.62
+   ],
+   "power_w": 60,
+   "radius": 0.05,
+   "direction": [
+    0,
+    -1,
+    0
+   ]
+  },
+  {
+   "name": "lamp_0",
+   "type": "point",
+   "position": [
+    -0.44999998807907104,
+    1.5,
+    -2.549999952316284
+   ],
+   "color": [
+    1,
+    0.68,
+    0.4
+   ],
+   "power_w": 40,
+   "radius": 0.1
+  },
+  {
+   "name": "lamp_1",
+   "type": "point",
+   "position": [
+    1.9500000476837158,
+    1.5499999523162842,
+    2.1500000953674316
+   ],
+   "color": [
+    1,
+    0.72,
+    0.46
+   ],
+   "power_w": 30,
+   "radius": 0.1
+  },
+  {
+   "name": "lamp_2",
+   "type": "point",
+   "position": [
+    2.4000000953674316,
+    1.290000081062317,
+    -2.75
+   ],
+   "color": [
+    1,
+    0.78,
+    0.55
+   ],
+   "power_w": 14,
+   "radius": 0.05
+  },
+  {
+   "name": "window_glow_0",
+   "type": "area",
+   "position": [
+    -1.45,
+    1.675,
+    -2.85
+   ],
+   "color": [
+    0.5,
+    0.58,
+    0.9
+   ],
+   "power_w": 22,
+   "radius": 0.05,
+   "direction": [
+    0,
+    4.371138828673793e-8,
+    -1
+   ]
+  },
+  {
+   "name": "window_glow_1",
+   "type": "area",
+   "position": [
+    0.75,
+    1.675,
+    -2.85
+   ],
+   "color": [
+    0.5,
+    0.58,
+    0.9
+   ],
+   "power_w": 22,
+   "radius": 0.05,
+   "direction": [
+    0,
+    4.371138828673793e-8,
+    -1
+   ]
+  },
+  {
+   "name": "moon",
+   "type": "sun",
+   "color": [
+    0.5,
+    0.58,
+    0.9
+   ],
+   "power_w": 0.2,
+   "radius": 0.05,
+   "direction": [
+    7.718973193959755e-8,
+    -0.46947160363197327,
+    0.882947564125061
+   ]
+  }
+ ],
+ "lightmap": {
+  "slot": "emissiveTexture",
+  "texCoord": 1,
+  "encoding": "sRGB",
+  "scale": 2.3244843363761913,
+  "mode": "full diffuse irradiance (direct+indirect) from all static lights; room colour = base x lightmap"
+ }
+}

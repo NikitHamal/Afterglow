@@ -27,6 +27,8 @@ def image(path, colorspace="sRGB"):
 def mat(name, albedo=None, normal=None, color=(0.5, 0.5, 0.5), rough=0.6, metal=0.0, emit=None, emit_tex=None,
         emit_strength=1.0, normal_strength=0.6, baked=True):
     """principled material; baked=False keeps it out of the lightmap (emissive things: flames, shades, skies)"""
+    # the lightmap is a diffuse bake and the engine draws rooms non-metallic: a metallic surface would bake black
+    if baked: metal = 0.0
     m = bpy.data.materials.new(name); m.use_nodes = True; nt = m.node_tree; nt.nodes.clear()
     out = nt.nodes.new("ShaderNodeOutputMaterial"); bs = nt.nodes.new("ShaderNodeBsdfPrincipled"); nt.links.new(bs.outputs[0], out.inputs[0])
     bs.inputs["Roughness"].default_value = rough; bs.inputs["Metallic"].default_value = metal
@@ -95,12 +97,15 @@ def grid(name, sx, sy, nx, ny, material, fn=None, loc=(0, 0, 0), smooth=True, uv
 
 
 def cylinder(name, r0, r1, h, loc, material, seg=32, cap=True, axis="Z"):
+    """a cylinder / cone standing on `loc` (its origin: a rotation set afterwards turns it about its base)"""
     bm = bmesh.new()
     bmesh.ops.create_cone(bm, cap_ends=cap, cap_tris=False, segments=seg, radius1=r0, radius2=r1, depth=h)
     for v in bm.verts:
         x, y, z = v.co.x, v.co.y, v.co.z + h / 2
-        v.co = Vector({"Z": (x, y, z), "X": (z, x, y), "Y": (x, z, y)}[axis]) + Vector(loc)
-    ob = from_bm(name, bm, material, True); box_uv(ob, 1.0); return ob
+        v.co = Vector({"Z": (x, y, z), "X": (z, x, y), "Y": (x, z, y)}[axis])
+    ob = from_bm(name, bm, material, True)
+    ob.location = loc; bpy.context.view_layer.update()
+    box_uv(ob, 1.0); return ob
 
 
 def quad(name, corners, material, inward, uv_scale=1.0):
@@ -183,6 +188,7 @@ def window(name, side, fixed, c, zc, w, h, sky_mat, frame_mat, cols=2, rows=2, s
     for k in range(1, rows): frame_box(f"{name}_mh{k}", c, zc - h / 2 + k * h / rows, w, 0.035, 0.05, 0.02)
     if sill_mat is not None:
         frame_box(f"{name}_sill", c, zc - h / 2 - 0.045, w + 0.3, 0.04, 0.26, -0.08)
+    if sky_mat is None: return None                        # a real (3D) view outside: no card
     sw, sh = w * sky_scale[0], h * sky_scale[1]
     corners = [P(c - sw / 2, zc - sh / 2, sky_dist), P(c + sw / 2, zc - sh / 2, sky_dist), P(c + sw / 2, zc + sh / 2, sky_dist), P(c - sw / 2, zc + sh / 2, sky_dist)]
     bm = bmesh.new(); f = bm.faces.new([bm.verts.new(v) for v in corners]); bm.normal_update()
