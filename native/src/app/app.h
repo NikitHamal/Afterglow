@@ -2,6 +2,8 @@
 // screenshot harness. The gameplay track implements its own App (title, customisation, play...).
 #pragma once
 #include "core/spec.h"
+#include <string>
+#include <vector>
 
 namespace ag {
 
@@ -15,6 +17,8 @@ public:
     virtual void update(float dt) = 0;               // simulation + input
     virtual void render(int fbWidth, int fbHeight) = 0;   // 3D + UI into the backbuffer
     virtual bool wantsQuit() const { return false; }
+    // harness: what the UI guard found in the last frame (UI-OVERFLOW / UI-OVERLAP lines)
+    virtual std::vector<std::string> qaFindings() const { return {}; }
 };
 
 }  // namespace ag
