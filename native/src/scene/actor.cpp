@@ -50,7 +50,8 @@ void Actor::reset() {
 
 void Actor::releaseFace() {
     if (!c_) return;
-    for (const char* m : {"blink", "moan", "gasp", "smile", "pout", "kiss", "bite_lip", "shy", "lids_down", "lids_up", "bliss", "pleasure", "smirk", "wink", "effort"})
+    for (const char* m : {"blink", "moan", "gasp", "smile", "pout", "kiss", "bite_lip", "shy", "lids_down", "lids_up", "bliss", "pleasure", "smirk", "wink", "effort",
+                          "laugh", "brow_up", "frown", "tender"})
         c_->setMorph(m, -1.f);
     for (auto& kv : cur_) c_->setMorph(kv.first, -1.f);
     cur_.clear();
@@ -118,13 +119,20 @@ void Actor::face(float dt) {
     std::map<std::string, float> tgt = expr;
     auto atLeast = [&](const char* k, float v) { float& t = tgt[k]; t = std::max(t, v); };
     float rk = reactT_ < 2.8f ? smoothstep(0.f, 0.25f, reactT_) * (1.f - smoothstep(2.f, 2.8f, reactT_)) : 0.f;
+    // reactions use the face's own shapes where it has them (Vivian v3, Marcus' expression set), else the nearest one
+    auto has = [&](const char* m) { return c_->hasMorph(m); };
     if (rk > 0.f) {
         if (react_ == "smile") atLeast("smile", 0.65f * rk);
-        else if (react_ == "laugh") { atLeast("smile", 0.9f * rk); atLeast("moan", 0.12f * rk); }
+        else if (react_ == "laugh") {
+            if (has("laugh")) { atLeast("laugh", 0.8f * rk); atLeast("smile", 0.3f * rk); }
+            else { atLeast("smile", 0.9f * rk); atLeast("moan", 0.12f * rk); }
+        }
         else if (react_ == "gasp") atLeast("gasp", 0.55f * rk);
-        else if (react_ == "shy") { atLeast("shy", 0.7f * rk); atLeast("smile", 0.3f * rk); atLeast("lids_down", 0.35f * rk); }
-        else if (react_ == "sigh") atLeast("bliss", 0.35f * rk);
-        else if (react_ == "frown") atLeast("pout", 0.3f * rk);
+        else if (react_ == "shy") {
+            atLeast(has("shy") ? "shy" : "tender", 0.7f * rk); atLeast("smile", 0.3f * rk); atLeast("lids_down", 0.35f * rk);
+        }
+        else if (react_ == "sigh") atLeast(has("bliss") ? "bliss" : "tender", 0.35f * rk);
+        else if (react_ == "frown") { if (has("frown")) atLeast("frown", 0.55f * rk); else atLeast("pout", 0.3f * rk); }
     }
     for (auto& kv : tgt) cur_.emplace(kv.first, 0.f);
     float k = damp(5.f, dt);
@@ -148,6 +156,8 @@ void Actor::face(float dt) {
         out["pout"] += visS_.round * 0.5f; out["kiss"] += visS_.round * 0.22f; out["bite_lip"] += visS_.bite * 0.7f;
     } else {
         out["moan"] += open * 0.6f; out["kiss"] += visS_.round * 0.45f;
+        if (has("bite_lip")) out["bite_lip"] += visS_.bite * 0.5f;     // f / v: the lower lip meets the teeth
+        if (has("smile")) out["smile"] += visS_.wide * 0.25f;
     }
     // listening is not a still life: a slow, slightly lopsided warmth comes and goes (more when the scene is warm)
     float lw = (1.f - speakW_) * (0.6f + 0.8f * energy_) * (1.f - closed_);
@@ -157,12 +167,17 @@ void Actor::face(float dt) {
         out["smile"] += lw * (0.04f + 0.09f * n1);
         out["smirk"] += lw * 0.08f * n2 * n2;                         // one corner of the mouth, now and then
         out["lids_up"] += 0.22f * bump(beatT_, 0.4f) * speakW_;        // eyes widen a touch on a stressed word
+    } else if (has("tender")) {
+        out["smile"] += lw * (0.03f + 0.07f * n1);
+        out["tender"] += lw * 0.12f * n2 * n2;                       // a softer look across the eyes, now and then
+        out["brow_up"] += 0.3f * bump(beatT_, 0.45f) * speakW_;        // his brows lift on a stressed word
+        out["effort"] += 0.06f * bump(beatT_, 0.45f) * speakW_ * energy_;
     } else {
         out["pleasure"] += lw * (0.03f + 0.05f * n1);
         out["effort"] += 0.12f * bump(beatT_, 0.45f) * speakW_ * energy_;   // his brow works on emphasis
     }
-    // the lids follow the gaze (her v3 face)
-    if (female_) {
+    // the lids follow the gaze (every face that has gaze lids)
+    if (has("lids_down")) {
         float ld, lu;
         lidsFollow(pitch_, ld, lu);
         out["lids_down"] = std::max(out["lids_down"], ld);

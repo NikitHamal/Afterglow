@@ -498,6 +498,22 @@ void Game::presentPlay(float dt) {
         m.setMorph("effort", clamp01(0.6f * std::min(1.f, night_.energy) + 0.5f * him * him));
         m.setMorph("pleasure", clamp01(0.7f * std::pow(him, 0.9f) + 0.5f * climaxM));
         m.setMorph("moan", clamp01(0.9f * climaxM));
+        if (m.hasMorph("tender")) {   // his expression set: warmth, holding back, the moment, the afterglow, gaze lids
+            float afterM = night_.finished ? std::exp(-afterT_ * 0.2f) : 0.f;
+            m.setMorph("smile", clamp01(0.06f + 0.3f * night_.connection * (1.f - him) + 0.55f * afterM));
+            m.setMorph("tender", clamp01(0.55f * embrace_ + 0.45f * afterM + 0.15f * night_.connection));
+            m.setMorph("frown", clamp01((night_.edging ? 0.45f : 0.f) * smoothstepF(0.75f, 0.9f, him) * (1.f - climaxM)));
+            m.setMorph("bite_lip", clamp01(smoothstepF(0.5f, 0.85f, him) * (0.25f + 0.2f * std::sin(time_ * 0.6f + 1.7f)) * (1.f - climaxM)));
+            m.setMorph("gasp", clamp01(0.45f * climaxM));
+            V3 hc, hf, hu;
+            m.headAxes(hc, hf, hu);
+            V3 to = m.proc.lookTarget - hc;
+            float pitch = length(to) > 1e-3f ? std::asin(clampf(dot(normalize(to), hu), -1.f, 1.f)) : 0.f;
+            float ld, lu;
+            lidsFollow(pitch, ld, lu);
+            m.setMorph("lids_down", ld);
+            m.setMorph("lids_up", lu);
+        }
         // clip morph rules (aroused, vag_open with depth)
         const Json& rules = meta["morphs"];
         for (auto& who : rules.obj) {

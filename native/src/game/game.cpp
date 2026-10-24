@@ -244,7 +244,7 @@ void Game::stage(Stage st) {
         c->flush = 0.f; c->sweat = 0.f; c->wet = 0.f;
         // faces and arousal shapes go back to the clips (the night / the story set them by hand)
         for (const char* mn : {"bite_lip", "gasp", "orgasm", "bliss", "vag_aroused", "lids_down", "lids_up", "pout", "shy", "smirk", "wink",
-                               "kiss", "oral", "moan", "pleasure", "effort", "blink"})
+                               "kiss", "oral", "moan", "pleasure", "effort", "blink", "smile", "laugh", "brow_up", "frown", "tender"})
             c->setMorph(mn, -1.f);
         c->resetSimulation();
     }
