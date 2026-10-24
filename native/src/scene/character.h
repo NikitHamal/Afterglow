@@ -4,6 +4,7 @@
 #include "gfx/model.h"
 #include "anim/animator.h"
 #include "anim/procedural.h"
+#include "anim/rom.h"
 #include "scene/touch.h"
 #include "scene/outfit.h"
 #include "scene/hairstyle.h"
@@ -108,6 +109,7 @@ public:
     Model model;
     Animator anim;
     Procedural procedural;
+    JointLimits rom;                                       // anatomical ranges, applied after every layer
 
 private:
     const BoneMask* mask(const std::string& name);

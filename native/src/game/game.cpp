@@ -602,6 +602,8 @@ void Game::reset() {
     qaNoActors_ = false;
     qaStress_.clear(); qaFocus_.clear(); qaNoUi_ = false;
     Animator::skinMode = 1;
+    JointLimits::enabled = true;
+    JointLimits::log = false;
 }
 
 void Game::applySpec(const Spec& s) {
@@ -635,6 +637,8 @@ void Game::applySpec(const Spec& s) {
     qaNoActors_ = s.has("actors") && s.num("actors", 1.f) < 0.5f;
     qaStress_ = s.get("stress");
     Animator::skinMode = s.get("skin") == "lbs" ? 0 : 1;   // QA: linear blend skinning for comparisons
+    JointLimits::enabled = !(s.has("rom") && s.num("rom", 1.f) < 0.5f);   // QA: rom=0, no joint ranges
+    JointLimits::log = s.has("romlog");
     qaFocus_ = s.get("focus");
     qaNoUi_ = s.has("ui") && s.num("ui", 1.f) < 0.5f;
     {

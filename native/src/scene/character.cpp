@@ -54,6 +54,7 @@ bool Character::load(const std::string& charId, const std::string& path, float t
     footY_ = mn;
     AG_INFO("AG: character %s: bind height %.3f m -> scale %.3f (target %.2f m)", id.c_str(), h, autoScale_, targetHeight);
     procedural.init(anim, autoScale_);
+    rom.build(model);          // anatomical ranges widened to the clips' own envelope
     touch.init(*this);         // body zones from the bind mesh
     model.releaseCpuData();   // bind height measured, zones found: the GPU has the rest
     loaded_ = true;
@@ -299,6 +300,7 @@ void Character::update(float dt) {
     if (postHook) postHook(anim);
     if (touch.ready() && (touchGoals.left.active || touchGoals.right.active)) touch.apply(anim, touchGoals);
     else touch.contacts.clear();
+    rom.apply(anim);           // no layer may bend a joint past its range (clips are inside it by construction)
     anim.finish();
     if (Outfit* o = outfit()) {
         o->update(dt);
