@@ -16,7 +16,7 @@ struct RenderSettings {
     bool shadows = true;
     float shadowSoft = 2.4f;          // PCF radius in texels
     bool bloom = true;
-    float bloomStrength = 0.07f, bloomThreshold = 1.0f, bloomKnee = 0.7f, bloomRadius = 1.0f;
+    float bloomStrength = 0.07f, bloomThreshold = 1.4f, bloomKnee = 0.35f, bloomRadius = 1.0f;
     int bloomLevels = 6;
     bool ssao = true;
     int ssaoSamples = 16;
