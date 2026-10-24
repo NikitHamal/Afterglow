@@ -4,6 +4,7 @@
 // and facial expressions blended with the speech visemes into the character's face morphs.
 #pragma once
 #include "core/mathx.h"
+#include "scene/facelife.h"
 #include <map>
 #include <string>
 
@@ -77,7 +78,9 @@ private:
     bool hasPartner_ = false;
     // face
     std::map<std::string, float> cur_;
-    float blinkT_ = 1.5f, blink_ = 0.f, closed_ = 0.f;
+    Blinker blinker_;
+    float closed_ = 0.f, pitch_ = 0.f;              // pitch_: gaze elevation in the head's frame (lids follow it)
+    V3 lastLook_{0, 0, 0};
     int head = -1, neck = -1, upper = -1, chest = -1, sh[2] = {-1, -1}, arm[2] = {-1, -1}, elbow[2] = {-1, -1}, wrist[2] = {-1, -1};
 };
 

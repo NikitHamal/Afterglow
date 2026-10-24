@@ -444,11 +444,10 @@ void Game::presentPlay(float dt) {
     float climaxH = std::exp(-herClimaxT_ * 0.9f) * (herClimaxT_ < 6.f ? 1.f : 0.f);
     float climaxM = std::exp(-hisClimaxT_ * 0.9f) * (hisClimaxT_ < 6.f ? 1.f : 0.f);
     if (v.loaded()) {
-        blinkT_ -= dt;
-        if (blinkT_ <= 0.f) { blinkV_ = 1.f; blinkT_ = 1.8f + 3.5f * hash1(time_ * 3.1f) * (1.f - 0.5f * her); }
-        blinkV_ = approach(blinkV_, 0.f, 14.f, dt);
+        if (flinch_ > 0.9f) herBlink_.trigger(0.7f);                      // a touch lands: the eyes flutter
+        float blinkV = herBlink_.update(dt, 1.f + 0.6f * her);             // she blinks more as it builds
         float eyesClosed = clamp01(0.25f * her * her + 0.8f * climaxH);
-        v.setMorph("blink", clamp01(std::max(blinkV_, eyesClosed)));
+        v.setMorph("blink", clamp01(std::max(blinkV, eyesClosed)));
         v.setMorph("pleasure", clamp01(0.15f + 0.75f * std::pow(her, 0.8f) + 0.4f * climaxH + 0.25f * touchAct_ + 0.3f * flinch_));
         mouthT_ = std::max(0.f, mouthT_ - dt);
         float u = mouthDur_ > 0.f ? 1.f - mouthT_ / mouthDur_ : 1.f;   // 0 -> 1 over the line
@@ -487,15 +486,15 @@ void Game::presentPlay(float dt) {
         v.proc.eyeWeight = (1.f - 0.7f * climaxH) * (0.35f + 0.65f * front);
         v.proc.lookTarget = front > 0.01f ? tgt : hc + hf;
         // the upper lids follow where the eyes look (v3 gaze lids)
-        float pitch = std::asin(clampf(normalize(v.proc.lookTarget - hc).y, -1.f, 1.f));
-        v.setMorph("lids_down", clamp01(-pitch * 1.6f) * 0.6f);
-        v.setMorph("lids_up", clamp01(pitch * 1.4f) * 0.5f);
+        float pitch = std::asin(clampf(dot(normalize(v.proc.lookTarget - hc), hu), -1.f, 1.f));   // in her head's frame
+        float ld, lu;
+        lidsFollow(pitch, ld, lu);
+        v.setMorph("lids_down", ld);
+        v.setMorph("lids_up", lu);
     }
     if (m.loaded()) {
-        mBlinkT_ -= dt;
-        if (mBlinkT_ <= 0.f) { mBlinkV_ = 1.f; mBlinkT_ = 2.5f + 4.f * hash1(time_ * 5.7f); }
-        mBlinkV_ = approach(mBlinkV_, 0.f, 14.f, dt);
-        m.setMorph("blink", clamp01(std::max(mBlinkV_, 0.7f * climaxM)));
+        float mBlink = hisBlink_.update(dt, 0.8f + 0.4f * him);
+        m.setMorph("blink", clamp01(std::max(mBlink, 0.7f * climaxM)));
         m.setMorph("effort", clamp01(0.6f * std::min(1.f, night_.energy) + 0.5f * him * him));
         m.setMorph("pleasure", clamp01(0.7f * std::pow(him, 0.9f) + 0.5f * climaxM));
         m.setMorph("moan", clamp01(0.9f * climaxM));
