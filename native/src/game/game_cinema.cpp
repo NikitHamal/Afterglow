@@ -8,9 +8,11 @@
 #include "core/log.h"
 #include "core/paths.h"
 #include "raylib.h"
+#include "ui/layout.h"
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 
 namespace ag {
@@ -855,11 +857,11 @@ void Game::drawStory() {
             const char* g = n->playGoal == "her" ? "Bring her to her peak" : (n->playGoal == "him" ? "Let him have his moment" :
                             (n->playGoal.rfind("time:", 0) == 0 ? "Take your time together" : "Find each other - together"));
             U.alpha = 1.f;
-            float w = U.measure(ui::Face::SansMedium, U.u(15.f), g).x + U.u(120.f);
+            float w = std::min(U.measure(ui::Face::SansMedium, U.u(15.f), g).x + U.u(120.f), U.W - U.u(80.f));
             ui::Box b; b.radius = U.u(16.f); b.fill = Color{24, 14, 18, 170}; b.border = std::max(1.f, U.u(1.f)); b.borderCol = ui::withA(U.th.accent, 0.5f);
             U.box(Rectangle{U.W * 0.5f - w * 0.5f, U.u(74.f), w, U.u(34.f)}, b);
             U.text(ui::Face::SansBold, U.u(12.f), "STORY", U.W * 0.5f - w * 0.5f + U.u(18.f), U.u(84.f), U.th.accent, ui::Left, 0.22f);
-            U.text(ui::Face::SansMedium, U.u(15.f), g, U.W * 0.5f - w * 0.5f + U.u(80.f), U.u(82.f), U.th.ink);
+            U.textIn(ui::Face::SansMedium, U.u(15.f), g, Rectangle{U.W * 0.5f - w * 0.5f + U.u(80.f), U.u(74.f), w - U.u(100.f), U.u(32.f)}, U.th.ink);
         }
         // her (or his) voice over the play, as subtitles above the action bar
         if (!beatNode_.empty() && beatLine_ >= 0) {
@@ -880,8 +882,8 @@ void Game::drawStory() {
         U.fillRect(Rectangle{0, 0, U.W, barH}, Color{0, 0, 0, 255});
         U.fillRect(Rectangle{0, U.H - barH, U.W, barH}, Color{0, 0, 0, 255});
     }
-    // chapter / location card
-    if (storyCardT_ < 4.f && n) {
+    // chapter / location card (not under an ending or an overlay: it would show through their backdrop)
+    if (storyCardT_ < 4.f && n && !story_.atEnding() && storyOverlay_ == 0) {
         float a = clamp01(storyCardT_ * 1.6f) * clamp01((4.f - storyCardT_) * 1.2f) * (1.f - clamp01(black_ * 2.f));
         U.alpha = a;
         int ci = storyCardKind_ == 0 ? s->chapterIndex(n->chapter) : -1;
@@ -890,25 +892,31 @@ void Game::drawStory() {
             ui::Box sc; sc.radius = U.u(40.f); sc.shadow = U.u(200.f); sc.shadowCol = Color{8, 4, 6, 170};
             U.box(Rectangle{U.W * 0.5f - U.u(330.f), top, U.u(660.f), hgt}, sc);
         }
+        float cardW = std::min(U.u(640.f), U.W - U.u(80.f));
         if (ci >= 0) {
             char b[32]; std::snprintf(b, sizeof b, "CHAPTER %d", ci + 1);
             U.text(ui::Face::SansBold, U.u(15.f), b, U.W * 0.5f, U.H * 0.24f, U.th.accent, ui::Center, 0.3f);
-            U.text(ui::Face::Serif, U.u(68.f), s->chapters[(size_t)ci].title, U.W * 0.5f, U.H * 0.24f + U.u(30.f), U.th.ink, ui::Center);
+            U.textIn(ui::Face::Serif, U.u(68.f), s->chapters[(size_t)ci].title, Rectangle{U.W * 0.5f - cardW * 0.5f, U.H * 0.24f + U.u(30.f), cardW, U.u(68.f)},
+                     U.th.ink, ui::Center, 0.f, 0.6f);
         }
         if (!storyLocation_.empty()) {
             std::string loc = storyLocation_;
             if (!loc.empty()) loc[0] = (char)std::toupper((unsigned char)loc[0]);
-            U.text(ui::Face::SerifItalic, U.u(24.f), loc, U.W * 0.5f, U.H * 0.24f + (storyCardKind_ == 0 ? U.u(118.f) : U.u(40.f)), U.th.inkDim, ui::Center);
+            U.textIn(ui::Face::SerifItalic, U.u(24.f), loc, Rectangle{U.W * 0.5f - cardW * 0.5f, U.H * 0.24f + (storyCardKind_ == 0 ? U.u(118.f) : U.u(40.f)), cardW, U.u(24.f)},
+                     U.th.inkDim, ui::Center);
         }
         U.alpha = 1.f;
     }
-    // the top bar: where we are
+    // the top bar: where we are (gives way to the controls on the right)
     if (barH > U.u(40.f) && n) {
         int ci = s->chapterIndex(n->chapter);
         std::string where = s->title;
         if (ci >= 0) where += "  \xc2\xb7  " + s->chapters[(size_t)ci].title;
+        float ctrlW = 0.f;
+        for (const char* l : {"Auto", "Skip", "Log", "Save", "Load", "Menu"}) ctrlW += U.measure(ui::Face::SansBold, U.u(13.f), l, 0.18f).x + U.u(30.f);
         U.alpha = 0.7f * letterbox_;
-        U.text(ui::Face::SansBold, U.u(12.f), where, U.u(44.f), barH * 0.5f - U.u(7.f), U.th.inkFaint, ui::Left, 0.2f);
+        U.textIn(ui::Face::SansBold, U.u(12.f), where, Rectangle{U.u(44.f), barH * 0.5f - U.u(7.f), std::max(U.u(40.f), U.W - U.u(44.f) - ctrlW - U.u(70.f)), U.u(12.f)},
+                 U.th.inkFaint, ui::Left, 0.2f);
         U.alpha = 1.f;
     }
     // ending
@@ -916,9 +924,10 @@ void Game::drawStory() {
         float a = clamp01(screenTime_);
         U.backdrop(0.8f);
         U.alpha = a;
+        float ew = std::min(U.u(840.f), U.W - U.u(120.f));
         U.text(ui::Face::SansBold, U.u(15.f), "AN ENDING", U.W * 0.5f, U.H * 0.3f, U.th.accent, ui::Center, 0.3f);
-        U.text(ui::Face::Serif, U.u(76.f), n->endTitle, U.W * 0.5f, U.H * 0.3f + U.u(34.f), U.th.ink, ui::Center);
-        U.paragraph(ui::Face::SerifItalic, U.u(26.f), n->endText, U.W * 0.5f - U.u(420.f), U.H * 0.3f + U.u(150.f), U.u(840.f), U.th.inkDim, 1.35f, ui::Center);
+        U.textIn(ui::Face::Serif, U.u(76.f), n->endTitle, Rectangle{U.W * 0.5f - ew * 0.5f, U.H * 0.3f + U.u(34.f), ew, U.u(76.f)}, U.th.ink, ui::Center, 0.f, 0.6f);
+        U.paragraph(ui::Face::SerifItalic, U.u(26.f), n->endText, U.W * 0.5f - ew * 0.5f, U.H * 0.3f + U.u(150.f), ew, U.th.inkDim, 1.35f, ui::Center);
         char b[64];
         std::snprintf(b, sizeof b, "%d of %d endings found", (int)storyProgress_.endings[s->id].size(), (int)s->endings.size());
         U.text(ui::Face::Sans, U.u(16.f), b, U.W * 0.5f, U.H * 0.3f + U.u(300.f), U.th.inkFaint, ui::Center);
@@ -928,15 +937,28 @@ void Game::drawStory() {
         U.alpha = 1.f;
         return;
     }
-    // choices
+    // choices: long ones wrap onto a second line (the card grows); the list fits between the letterbox bars
     if (story_.atChoices() && black_ < 0.5f) {
         std::vector<int> vis = story_.visibleChoices();
-        float cw = U.u(820.f), chh = U.u(64.f), gap = U.u(16.f);
-        float total = (float)vis.size() * (chh + gap) - gap;
-        float y = U.H * 0.5f - total * 0.5f - U.u(30.f);
+        float cw = std::min(U.u(820.f), U.W - U.u(120.f)), gap = U.u(16.f), tpx = U.u(25.f);
+        float textW = cw - U.u(58.f) - U.u(26.f);
+        std::vector<float> hs;
+        float total = -gap;
+        for (int vi : vis) {
+            int lines = 1;
+            U.measureParagraph(ui::Face::Serif, tpx, n->choices[(size_t)vi].text, textW, 1.15f, &lines);
+            float hgt = lines <= 1 ? U.u(64.f) : U.u(36.f) + tpx * 1.15f * (float)std::min(lines, 3);
+            hs.push_back(hgt);
+            total += hgt + gap;
+        }
+        float avail = U.H - 2.f * std::max(barH, U.u(60.f)) - U.u(140.f);
+        ui::ScaleScope fit(U, std::min(1.f, avail / std::max(1.f, total)));
+        float k = std::min(1.f, avail / std::max(1.f, total));
+        float y = U.H * 0.5f - total * k * 0.5f - U.u(30.f);
         for (size_t i = 0; i < vis.size(); ++i) {
             const StoryChoice& c = n->choices[(size_t)vis[i]];
-            Rectangle r{U.W * 0.5f - cw * 0.5f, y + (float)i * (chh + gap), cw, chh};
+            float chh = hs[i] * k;
+            Rectangle r{U.W * 0.5f - cw * 0.5f, y, cw, chh};
             bool over = CheckCollisionPointRec(U.in.mouse, r);
             float h = U.anim("ch#" + std::to_string(i), over ? 1.f : 0.f, 14.f);
             float pr = U.anim("chp#" + std::to_string(i), over && U.in.mouseDown ? 1.f : 0.f, 20.f);
@@ -945,10 +967,13 @@ void Game::drawStory() {
             b.border = std::max(1.f, U.u(1.2f)); b.borderCol = ui::mixc(U.th.hairline, ui::withA(U.th.accent, 0.9f), h);
             b.shadow = U.u(18.f + 14.f * h); b.shadowCol = ui::withA(U.th.accent, 0.12f + 0.15f * h);
             U.box(Rectangle{r.x - h * U.u(4.f) + pr * U.u(2.f), r.y + pr * U.u(1.5f), r.width + h * U.u(8.f) - pr * U.u(4.f), r.height - pr * U.u(3.f)}, b);
-            char k[4]; std::snprintf(k, sizeof k, "%d", (int)i + 1);
-            U.text(ui::Face::SansBold, U.u(14.f), k, r.x + U.u(26.f), r.y + (chh - U.u(14.f)) * 0.5f, U.th.accent);
-            U.text(ui::Face::Serif, U.u(25.f), c.text, r.x + U.u(58.f), r.y + (chh - U.u(25.f)) * 0.5f - U.u(3.f), ui::mixc(U.th.inkDim, U.th.ink, h));
+            char kb[8]; std::snprintf(kb, sizeof kb, "%d", (int)i + 1);
+            U.text(ui::Face::SansBold, U.u(14.f), kb, r.x + U.u(26.f), r.y + (chh - U.u(14.f)) * 0.5f, U.th.accent);
+            float px2 = U.u(25.f), tw2 = r.width - U.u(58.f) - U.u(26.f);
+            float th2 = U.measureParagraph(ui::Face::Serif, px2, c.text, tw2, 1.15f);
+            U.paragraph(ui::Face::Serif, px2, c.text, r.x + U.u(58.f), r.y + (chh - th2) * 0.5f, tw2, ui::mixc(U.th.inkDim, U.th.ink, h), 1.15f);
             if (over && U.in.released && storyOverlay_ == 0) { story_.choose(vis[i]); if (ui.onSound) ui.onSound(1); }
+            y += chh + gap * k;
         }
     }
     // subtitles: the line as it is spoken (word by word with the voice), the last line under the choices
