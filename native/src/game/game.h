@@ -118,6 +118,8 @@ private:
     // harness: deformation QA on the showcased character (stress=<pose>, focus=<bone>, view=yaw,pitch,dist, ui=0)
     std::string qaStress_, qaFocus_;
     float qaYaw_ = 0.f, qaPitch_ = 0.1f, qaDist_ = 0.9f;
+    bool qaKiss_ = false;             // story QA: log the kiss / embrace geometry every frame (kissqa=1)
+    void kissQa();
     bool qaOrbit_ = false;            // story QA: orbit=yaw:,pitch:,dist: round the couple's heads (yaw 0 = the kiss in profile)
     float qaOYaw_ = 0.f, qaOPitch_ = 0.f, qaODist_ = 1.2f;
     bool qaNoUi_ = false;
