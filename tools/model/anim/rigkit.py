@@ -154,42 +154,136 @@ class Rig:
         R_new = Matrix((wh, y, wz)).transposed() @ Matrix((lh, ly, lz)).transposed().inverted()
         self.set_pose(n, Matrix.Translation(self.head(n)) @ R_new.to_4x4())
 
-    def ik2(self, upper, lower, end, target, pole, reach=0.999):
-        """analytic two-bone IK. upper/lower: bone names; end: the bone whose head is the end effector
-        (wrist/ankle). The hinge (both bones' X axes) is kept perpendicular to the bend plane on the
-        side nearest the current hinge, so knees/elbows never twist. Returns the residual distance."""
-        S = self.head(upper); E0 = self.head(lower); W0 = self.head(end)
-        L1 = (E0 - S).length; L2 = (W0 - E0).length
-        T = Vector(target); d = T - S; dist = d.length
-        dist_c = max(abs(L1 - L2) + 1e-4, min(dist, (L1 + L2) * reach))
-        dn = d.normalized()
-        pv = Vector(pole) - S; pv = pv - dn * pv.dot(dn)
-        if pv.length < 1e-6: pv = (E0 - S) - dn * (E0 - S).dot(dn)
-        pv.normalize()
+    # anatomical hinge sense: an elbow flexes one way (+ about the rest hinge), a knee the other (-); the old
+    # continuity rule could pick the mirror solution = the same world bend with the humerus wrung ~180 deg
+    FLEX_SIGN = {"ひじ": 1.0, "ひざ": -1.0}
+    MAX_FLEX = {"ひじ": 150.0, "ひざ": 160.0}            # deg; past this the forearm/shin would pass through the upper limb
+    ARM_TWIST_MAX = 80.0                                # humerus rotation vs rest (internal/external) a shoulder really has (deg)
+    floor_z = None                                      # authoring: elbows stay above this (the mattress top + pad)
+    obstacles = ()                                      # authoring: [(rig, bone_a, bone_b, radius, margin)] capsules the arm keeps out of
+
+    def _capsule_pen(self, P):
+        """deepest penetration of point P into the obstacle capsules (m)"""
+        worst = 0.0
+        for rig_, a_, b_, rad, mg in self.obstacles:
+            A_ = rig_.head(a_) if a_ in rig_.bones else None
+            if A_ is None: continue
+            B_ = rig_.tail(a_) if b_ is None else rig_.head(b_)
+            ab = B_ - A_; L2 = ab.dot(ab)
+            u_ = 0.0 if L2 < 1e-12 else max(0.0, min(1.0, (P - A_).dot(ab) / L2))
+            worst = max(worst, rad + mg - (P - (A_ + ab * u_)).length)
+        return worst
+
+    def _aim2_R(self, ydir, hint_world, hint_local):
+        y = _norm(ydir); ly = Vector((0, 1, 0))
+        lh = _norm(Vector(hint_local) - ly * ly.dot(hint_local)); lz = lh.cross(ly)
+        wh = _norm(Vector(hint_world) - y * y.dot(hint_world)); wz = wh.cross(y)
+        return Matrix((wh, y, wz)).transposed() @ Matrix((lh, ly, lz)).transposed().inverted()
+
+    def _twist_of(self, n, R_world):
+        """twist (deg) about bone n's own axis, vs rest, if bone n had world rotation R_world"""
+        p = self.parent[n]
+        parentR = (self.P[p] @ self.rest_rel[n]).to_3x3().normalized() if p else self.rest_rel[n].to_3x3().normalized()
+        q = (parentR.inverted() @ R_world).to_quaternion(); q.normalize()
+        if q.w < 0: q = -q
+        return math.degrees(2.0 * math.atan2(q.y, q.w)) if abs(q.w) + abs(q.y) > 1e-9 else 0.0
+
+    def _bend(self, S, L1, L2, T, pv, flex_max):
+        """elbow/knee point for a bend toward pv (unit, perpendicular to S->T), reach clamped to the anatomical range"""
+        d = T - S; dist = d.length; dn = d.normalized()
+        dmin = math.sqrt(max(1e-8, L1 * L1 + L2 * L2 - 2 * L1 * L2 * math.cos(math.radians(180.0 - flex_max))))
+        dist_c = max(dmin, abs(L1 - L2) + 1e-4, min(dist, (L1 + L2) * 0.999))
         a = (L1 * L1 + dist_c * dist_c - L2 * L2) / (2 * L1 * dist_c); a = max(-1.0, min(1.0, a))
         ang = math.acos(a)
-        E = S + (dn * math.cos(ang) + pv * math.sin(ang)) * L1
-        W = S + dn * dist_c
-        hinge = (E - S).cross(W - E)
-        if hinge.length < 1e-8: hinge = dn.cross(pv)
-        hinge.normalize()
-        last = getattr(self, "_last_hinge", None)
-        if last is None: last = self._last_hinge = {}
-        for b, seg in ((upper, E - S), (lower, None)):
-            if seg is None: seg = W - self.head(lower)
-            hl = self.hinge.get(b, Vector((1, 0, 0)))
-            if b in last:
-                # continuous with the previous solve of this limb (frame to frame): a sign chosen against the
-                # rest frame alone can flip when the bend plane is ~90 deg from rest (arms overhead) = 180 deg twist pops
-                h = hinge if hinge.dot(last[b]) >= 0 else -hinge
-            else:
-                # first solve: keep the anatomical sense of the hinge continuous with the bone's current frame
-                R_cur = self.P[b].to_3x3().normalized()
-                R_min = self.axes(b)[1].rotation_difference(seg.normalized()).to_matrix() @ R_cur
-                h = hinge if hinge.dot(R_min @ hl) >= 0 else -hinge
-            last[b] = h.copy()
-            self.aim2(b, seg, h, hl)
+        return S + (dn * math.cos(ang) + pv * math.sin(ang)) * L1, S + dn * dist_c
+
+    def ik2(self, upper, lower, end, target, pole, reach=0.999, natural=None):
+        """analytic two-bone IK with an anatomical hinge: both bones' hinge axes lie on the bend-plane normal with the
+        limb's own flexion sense (FLEX_SIGN), so an elbow/knee never bends backwards and the upper bone is never
+        wrung round to fake it. Arms (natural): the elbow is placed on its circle near `pole` where the humerus
+        twist stays relaxed (pole intent kept when it is already natural). Returns the residual distance."""
+        S = self.head(upper); E0 = self.head(lower); W0 = self.head(end)
+        L1 = (E0 - S).length; L2 = (W0 - E0).length
+        T = Vector(target); d = T - S
+        dn = d.normalized() if d.length > 1e-9 else Vector((0, 0, -1))
+        key = lower[:2]
+        sign = self.FLEX_SIGN.get(key, 1.0); fmax = self.MAX_FLEX.get(key, 160.0)
+        if natural is None: natural = key == "ひじ"
+        hl_up = self.hinge.get(upper, Vector((1, 0, 0))); hl_lo = self.hinge.get(lower, Vector((1, 0, 0)))
+
+        def hinge_for(E, W, pv):
+            g = (E - S).cross(W - E)
+            if g.length < 1e-7: g = pv.cross(dn)          # straight limb: bend plane from the pole
+            if g.length < 1e-9: g = dn.orthogonal()
+            return g.normalized() * sign
+
+        pv0 = Vector(pole) - S; pv0 = pv0 - dn * pv0.dot(dn)
+        if pv0.length < 1e-6: pv0 = (E0 - S) - dn * (E0 - S).dot(dn)
+        if pv0.length < 1e-6: pv0 = dn.orthogonal()
+        pv0.normalize()
+        pv = pv0
+        if natural:
+            # keep the authored elbow when it is anatomical; otherwise the nearest elbow on the circle that is: humerus
+            # twist within ARM_TWIST_MAX, no deeper in the mattress / either body than the authored one, never a jump
+            # from the last keyed frame (continuity window)
+            e1 = pv0; e2 = dn.cross(e1).normalized()
+            last = getattr(self, "_frame_bend", {}).get(upper)          # last KEYED frame's elbow side (not the last call)
+            lp = None
+            if last is not None:
+                lp = last - dn * last.dot(dn)
+                lp = lp.normalized() if lp.length > 1e-6 else None
+            def probe(c):
+                E, W = self._bend(S, L1, L2, T, c, fmax)
+                tw = self._twist_of(upper, self._aim2_R(E - S, hinge_for(E, W, c), hl_up))
+                fl = max(0.0, self.floor_z + 0.035 - E.z) if self.floor_z is not None else 0.0
+                ob = 0.0
+                if self.obstacles:
+                    for P_ in (S + (E - S) * 0.55, E, E + (W - E) * 0.2, E + (W - E) * 0.4, E + (W - E) * 0.6, E + (W - E) * 0.8):
+                        ob = max(ob, self._capsule_pen(P_))
+                return tw, fl, ob
+            cands = []
+            for k in range(-18, 18):                        # 10 deg steps round the elbow circle
+                a = math.radians(10.0 * k)
+                c = (e1 * math.cos(a) + e2 * math.sin(a)).normalized()
+                if lp is not None and c.dot(lp) < math.cos(math.radians(45.0)): continue
+                cands.append((abs(a), c) + probe(c))
+            base = probe(pv0)
+            ok = [x for x in cands if abs(x[2]) <= self.ARM_TWIST_MAX and x[3] <= base[1] + 0.002 and x[4] <= base[2] + 0.003]
+            if lp is None and abs(base[0]) <= self.ARM_TWIST_MAX: pv = pv0
+            elif ok:
+                ref = pv0 if lp is None else (pv0 * 0.5 + lp * 0.5).normalized()
+                pv = max(ok, key=lambda x: x[1].dot(ref))[1]   # nearest to the authored pole (and last frame)
+            elif cands:
+                def cost(x):
+                    return (max(0.0, abs(x[2]) - self.ARM_TWIST_MAX) / 15.0) ** 2 * 5.0 + x[0] * 0.5 + 4000.0 * x[3] + 2500.0 * x[4]
+                pv = min(cands, key=cost)[1]
+            elif lp is not None: pv = lp
+            self.__dict__.setdefault("_last_bend", {})[upper] = pv.copy()
+        E, W = self._bend(S, L1, L2, T, pv, fmax)
+        h = hinge_for(E, W, pv)
+        self.aim2(upper, E - S, h, hl_up)
+        self.aim2(lower, W - self.head(lower), h, hl_lo)
         return (self.head(end) - T).length
+
+    def end_frame(self):
+        """a frame was keyed: its elbow sides become the continuity reference of the next frame"""
+        self._frame_bend = {k: v.copy() for k, v in getattr(self, "_last_bend", {}).items()}
+
+    def share_twist(self, forearm, wrist, k=0.5):
+        """pronation/supination lives along the forearm: hand k of the wrist's twist (about its own axis) to the
+        forearm bone; the hand keeps its world orientation (the wrist sits on the forearm's axis)"""
+        if forearm not in self.basis or wrist not in self.basis: return
+        q = self.basis[wrist].to_quaternion(); q.normalize()
+        if q.w < 0: q = -q
+        tw = math.degrees(2.0 * math.atan2(q.y, q.w))
+        mem = self.__dict__.setdefault("_last_share", {})
+        if wrist in mem and abs(tw - mem[wrist]) > 180.0: tw += math.copysign(360.0, mem[wrist] - tw)   # no wrap: no flip
+        mem[wrist] = tw
+        if abs(tw) < 1.0: return
+        Pw = self.P[wrist].copy()
+        self.basis[forearm] = self.basis[forearm] @ Matrix.Rotation(math.radians(k * tw), 4, "Y")
+        self.fk(forearm)
+        self.set_pose(wrist, Pw)
 
     def set_hinges(self, limbs):
         """limbs: [(upper, lower), ...]; the rest hinge (perpendicular to the limb and the body's forward
@@ -312,6 +406,7 @@ class Rig:
     def limit_all(self):
         for n in ("首", "頭"): self.limit(n)
         for s in (".L", ".R"):
+            self.share_twist("ひじ" + s, "手首" + s, 0.5)
             self.limit("手首" + s)
             self.limit("足首" + s)
 

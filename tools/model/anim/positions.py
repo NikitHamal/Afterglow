@@ -22,6 +22,18 @@ CURRENT = None          # clip being baked: best_of caches its choice per clip
 _BEST = {}
 _TRY = {}            # variant under test (used when SCORE re-poses at another t)
 SCORE_T = None          # set while SCORE re-poses the clip at another t: best_of must not recurse, just apply
+_MEMS = ("_last_hinge", "_last_bend", "_frame_bend", "_last_share", "_last_twist", "_last_pole", "_last_curl")
+def _mem(rig):
+    """solver continuity memory (elbow side, hinge, twist unwrap, ...): trials must not steer each other"""
+    out = {}
+    for n in _MEMS:
+        d = getattr(rig, n, None)
+        if d is not None: out[n] = {k: (v.copy() if hasattr(v, "copy") else v) for k, v in d.items()}
+    return out
+def _mem_set(rig, mem):
+    for n in _MEMS:
+        if n in mem: setattr(rig, n, {k: (v.copy() if hasattr(v, "copy") else v) for k, v in mem[n].items()})
+        elif hasattr(rig, n): setattr(rig, n, {})
 def best_of(key, variants, apply, bodies):
     """pose with each variant (apply(v)), keep the one with the lowest SCORE. Decided once per clip (author.py
     runs every clip near full depth first) so the choice never changes between frames."""
@@ -32,12 +44,13 @@ def best_of(key, variants, apply, bodies):
         if SCORE is None: _BEST[k] = 0
         else:
             snaps = [b.rig.snapshot() for b in bodies]; best = None; scores = []
+            mems = [_mem(b.rig) for b in bodies]
             for i, v in enumerate(variants):
-                for b, sn in zip(bodies, snaps): b.rig.restore(sn)
+                for b, sn, me in zip(bodies, snaps, mems): b.rig.restore(sn); _mem_set(b.rig, me)
                 _TRY[k] = i
                 apply(v); sc = SCORE(); scores.append(round(sc, 1))
                 if best is None or sc < best[0]: best = (sc, i)
-            for b, sn in zip(bodies, snaps): b.rig.restore(sn)
+            for b, sn, me in zip(bodies, snaps, mems): b.rig.restore(sn); _mem_set(b.rig, me)
             _BEST[k] = best[1]; _TRY.pop(k, None)
             print("[anim]   best_of", CURRENT, key, variants[best[1]], round(best[0], 1), "| all", scores, flush=True)
     apply(variants[_BEST[k]]); return variants[_BEST[k]]
@@ -152,6 +165,8 @@ def natural_pole(body, s, W, palm, fingers, hint):
     b2 = ax.cross(h)
     last = r.__dict__.setdefault("_last_pole", {}).get(s)
     hinge_mem = {k_: v_.copy() for k_, v_ in getattr(r, "_last_hinge", {}).items()}   # trials must not steer the hinge memory
+    bend_mem = {k_: v_.copy() for k_, v_ in getattr(r, "_last_bend", {}).items()}
+    share_mem = dict(getattr(r, "_last_share", {}))
     best = None
     for k in range(-5, 6):
         a = math.radians(20.0 * k)
@@ -163,7 +178,7 @@ def natural_pole(body, s, W, palm, fingers, hint):
         if last is not None: cost += 150.0 * (p - last).length
         if best is None or cost < best[0]: best = (cost, p)
     r._last_pole[s] = best[1].copy()
-    r._last_hinge = hinge_mem
+    r._last_hinge = hinge_mem; r._last_bend = bend_mem; r._last_share = share_mem
     return best[1]
 def tip(body, s, f): return body.rig.tail(f + "３" + s)
 def palm_centre(body, s):

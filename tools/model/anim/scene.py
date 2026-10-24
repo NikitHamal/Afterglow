@@ -4,7 +4,7 @@ import numpy as np
 from mathutils import Vector, Matrix
 from mathutils.bvhtree import BVHTree
 
-NAT = "/root/agb/native"
+NAT = os.environ.get("AG_NAT", "/root/agb/native")      # authoring work dir (prepare.py output, room, anim.blend)
 BED_C = Vector((0.0, 1.22, 0.0)); MAT_W, MAT_L, MAT_TOP = 1.80, 2.00, 0.60
 BED_TOP = MAT_TOP + 0.004
 HEAD_Y, FOOT_Y = BED_C.y + MAT_L / 2, BED_C.y - MAT_L / 2

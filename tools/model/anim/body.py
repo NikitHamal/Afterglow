@@ -52,12 +52,17 @@ class Body:
         return self.rig.ik2("足" + s, "ひざ" + s, "足首" + s, ankle, knee_pole)
 
     def leg_aim(self, s, knee, ankle_dir):
-        """thigh straight to the knee point (scaled to the thigh length), shin along ankle_dir"""
+        """thigh straight to the knee point (scaled to the thigh length), shin along ankle_dir. The knee only bends
+        about its hinge: thigh and shin share one hinge axis (normal of the thigh/shin plane, knee flexion sense),
+        so the thigh takes the turn (hip rotation) instead of the knee bending sideways."""
         r = self.rig; H = r.head("足" + s)
-        hint = r.world_dir("足" + s, r.hinge.get("足" + s, Vector((1, 0, 0))))
-        r.aim2("足" + s, Vector(knee) - H, hint, r.hinge.get("足" + s, Vector((1, 0, 0))))
-        hint = r.world_dir("ひざ" + s, r.hinge.get("ひざ" + s, Vector((1, 0, 0))))
-        r.aim2("ひざ" + s, Vector(ankle_dir), hint, r.hinge.get("ひざ" + s, Vector((1, 0, 0))))
+        a = (Vector(knee) - H).normalized(); d = Vector(ankle_dir).normalized()
+        g = a.cross(d)
+        if g.length < 1e-4:                                    # straight leg: keep the current hinge
+            g = r.world_dir("足" + s, r.hinge.get("足" + s, Vector((1, 0, 0)))) * r.FLEX_SIGN["ひざ"]
+        h = g.normalized() * r.FLEX_SIGN["ひざ"]
+        r.aim2("足" + s, a, h, r.hinge.get("足" + s, Vector((1, 0, 0))))
+        r.aim2("ひざ" + s, d, h, r.hinge.get("ひざ" + s, Vector((1, 0, 0))))
 
     def foot(self, s, toes, up):
         """sole frame: `toes` = heel->toe line of the sole, `up` = dorsum side (world dirs). (The ankle bone itself

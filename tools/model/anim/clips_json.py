@@ -8,7 +8,7 @@ import positions2  # noqa: F401  (registers clips)
 import positions3  # noqa: F401
 import positions4  # noqa: F401
 out = sys.argv[sys.argv.index("--") + 1]
-NAT = "/root/agb/native"
+NAT = os.environ.get("AG_NAT", "/root/agb/native")
 ver = json.load(open(NAT + "/verify.json")) if os.path.exists(NAT + "/verify.json") else {}
 V = bpy.data.objects["VivianRig"]; M = bpy.data.objects["MarcusRig"]
 def gl(v): return [round(v.x, 4), round(v.z, 4), round(-v.y, 4)]          # Blender Z-up -> glTF Y-up

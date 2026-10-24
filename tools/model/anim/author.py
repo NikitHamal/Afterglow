@@ -3,19 +3,23 @@
 # -> /root/agb/native/anim.blend (actions VIV|<clip>, MAR|<clip>), verify.json, previews in /root/agb/native/previews/
 import bpy, sys, os, json, math, time
 import numpy as np
-from mathutils import Vector
+from mathutils import Vector, Quaternion
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 import scene as SC
 from body import Body
 import positions as PO
 import positions2                                      # registers the remaining positions into PO.CLIPS
 import positions3                                      # more acts: handjob, titjob, face-riding, cuddle, make-out
-import positions4                                      # story clips: stand.idle, sit.bed
+import positions4                                      # story clips: stand.idle, stand.embrace, kiss.stand, sit.bed, kiss.sit
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+FROM_GLB = None                                        # --from-glb <dir>: verify the clips shipped in <dir>/{vivian,marcus}.glb
+if "--from-glb" in argv:
+    i_ = argv.index("--from-glb"); FROM_GLB = argv[i_ + 1]; argv = argv[:i_] + argv[i_ + 2:]
 only = [a for a in argv if not a.startswith("--")]
 only = only[0].split(",") if only else list(PO.CLIPS)
 RENDER = "--norender" not in argv
+if FROM_GLB: RENDER = False
 NAT = SC.NAT; PRE = NAT + "/previews"; os.makedirs(PRE, exist_ok=True)
 def log(*a): print("[anim]", *a, flush=True)
 t0 = time.time()
@@ -26,6 +30,21 @@ if set(only) != set(PO.CLIPS) and os.path.exists(NAT + "/anim.blend"):     # par
         dst.actions = [a for a in src.actions if "|" in a and a.split("|", 1)[1] not in only and a.split("|", 1)[1] in PO.CLIPS]
     for a in dst.actions:
         if a is not None: a.use_fake_user = True
+SHIPPED = {}
+if FROM_GLB:
+    # import the shipped GLBs' animations; their armatures share bone names + rest frames with the native rigs
+    for who_, fn_ in (("VIV", "vivian.glb"), ("MAR", "marcus.glb")):
+        before = set(bpy.data.objects); acts0 = set(bpy.data.actions)
+        bpy.ops.import_scene.gltf(filepath=os.path.join(FROM_GLB, fn_), bone_heuristic="BLENDER")
+        for a_ in set(bpy.data.actions) - acts0:
+            nm_ = a_.name.split("|")[-1] if "|" in a_.name else a_.name
+            for suf in ("_" + "VivianRig", "_" + "MarcusRig", "_Armature"):
+                nm_ = nm_.replace(suf, "")
+            import re as _re
+            nm_ = _re.sub(r"\.\d{3}$", "", nm_)                   # the second import's names collide: <clip>.001
+            a_.use_fake_user = True; SHIPPED[(who_, nm_)] = a_
+        for o_ in set(bpy.data.objects) - before: bpy.data.objects.remove(o_, do_unlink=True)
+    print("[anim] shipped actions:", sorted({k[1] for k in SHIPPED}), flush=True)
 V = Body(objs["VivianRig"], objs["vivian_body"], "vivian")
 M = Body(objs["MarcusRig"], objs["marcus_body"], "marcus")
 viv_meas = json.load(open(NAT + "/vivian_measure.json")); mar_meas = json.load(open(NAT + "/marcus_measure.json"))
@@ -66,6 +85,22 @@ c2 = M.rig.rest["上半身2"].translation
 for s, sx in ((".L", 1), (".R", -1)):                  # his upper back (for her embracing hands)
     sel = (np.abs(MBb[:, 0] - sx * 0.11) < 0.03) & (np.abs(MBb[:, 2] - (c2.z + 0.22)) < 0.03)
     M.add_landmark("back" + s, "上半身2", Vector(MBb[sel][np.argmax(MBb[sel][:, 1])]))
+# her back (his embracing hands) + his nape (her arms round his neck): points on the rest skin, riding their bones
+c1 = V.rig.rest["上半身"].translation; c2v = V.rig.rest["上半身2"].translation
+for s, sx in ((".L", 1), (".R", -1)):
+    for nm_, z_, bone_ in (("back_low", c1.z + 0.05, "上半身"), ("back_mid", c2v.z + 0.10, "上半身2")):
+        sel = (np.abs(B[:, 0] - sx * 0.075) < 0.025) & (np.abs(B[:, 2] - z_) < 0.025)
+        V.add_landmark(nm_ + s, bone_, Vector(B[sel][np.argmax(B[sel][:, 1])]))
+hv0 = V.rig.rest["頭"].translation; mz = V.lm("mouth").z if "mouth" in V.landmarks else hv0.z - 0.05
+for s, sx in ((".L", 1), (".R", -1)):                  # her cheekbones (resting her head on his chest)
+    sel = (np.abs(B[:, 0] - sx * 0.052) < 0.008) & (np.abs(B[:, 2] - (mz + 0.035)) < 0.01) & (B[:, 1] < hv0.y)
+    V.add_landmark("cheek" + s, "頭", Vector(B[sel][np.argmin(B[sel][:, 1])]))
+nk = M.rig.rest["首"].translation
+sel = (np.abs(MBr[:, 0]) < 0.02) & (np.abs(MBr[:, 2] - (nk.z + 0.04)) < 0.02)
+M.add_landmark("nape", "首", Vector(MBr[sel][np.argmax(MBr[sel][:, 1])]))
+nk = V.rig.rest["首"].translation
+sel = (np.abs(B[:, 0]) < 0.02) & (np.abs(B[:, 2] - (nk.z + 0.04)) < 0.02)
+V.add_landmark("nape", "首", Vector(B[sel][np.argmax(B[sel][:, 1])]))
 ctx = PO.Ctx(V, M, viv_meas, mar_meas)
 log(f"scene ready ({time.time()-t0:.0f}s): clit {np.round(clit,3)}, canal {np.round(viv_meas['vagina']['entrance'],3)} axis {np.round(viv_meas['vagina']['axis'],2)}")
 
@@ -83,6 +118,19 @@ def side_mask(bones, base, side): return np.array([b.startswith(LIMB[2:]) and b.
 EFFECTORS = {"vivian": {"hand.L": side_mask(her_bones, her_hand, ".L"), "hand.R": side_mask(her_bones, her_hand, ".R")},
              "marcus": {"hand.L": side_mask(his_bones, his_hand, ".L"), "hand.R": side_mask(his_bones, his_hand, ".R")}}
 V.core = np.array([b in SC.CORE_BONES for b in her_bones]); M.core = np.array([b in SC.CORE_BONES for b in his_bones])
+# the arm IK's elbow search keeps out of the mattress, its own trunk/head/legs and the partner's whole body (capsules)
+def _caps(rig_, trunk, limb, arms):
+    out = [(rig_, "下半身", "首", trunk, 0.02), (rig_, "頭", None, 0.095, 0.02), (rig_, "足.L", "足.R", trunk * 0.85, 0.02)]
+    for s_ in (".L", ".R"):
+        out += [(rig_, "肩" + s_, "腕" + s_, 0.055, 0.015),                         # shoulder girdle
+                (rig_, "腕" + s_, "上半身", trunk * 0.8, 0.015)]                     # side of the rib cage
+        if "乳親" + s_ in rig_.bones: out += [(rig_, "乳親" + s_, None, 0.07, 0.015)]   # her breasts
+        out += [(rig_, "足" + s_, "ひざ" + s_, limb, 0.015), (rig_, "ひざ" + s_, "足首" + s_, limb * 0.68, 0.01)]
+        if arms: out += [(rig_, "腕" + s_, "ひじ" + s_, 0.045, 0.008), (rig_, "ひじ" + s_, "手首" + s_, 0.04, 0.008)]
+    return out
+V.rig.floor_z = M.rig.floor_z = SC.BED_TOP
+V.rig.obstacles = _caps(V.rig, 0.11, 0.075, False) + _caps(M.rig, 0.13, 0.08, True)
+M.rig.obstacles = _caps(M.rig, 0.13, 0.08, False) + _caps(V.rig, 0.11, 0.075, True)
 his_head = np.array([b in ("頭", "首") for b in his_bones])
 HM = np.array([tuple(v.co) for v in mb.data.vertices], np.float32)
 hh0 = M.rig.rest["頭"].translation
@@ -100,6 +148,9 @@ her_vulva_zone = np.linalg.norm(B - E0, axis=1) < 0.06                    # inne
 # every penetrative position, so touching there is intended contact
 her_seat = (np.linalg.norm(B - E0, axis=1) < 0.26) & np.array([b.startswith(("足", "下半身")) for b in SC.dominant_bone(body)])
 his_seat = (np.linalg.norm(MB - np.array(root0), axis=1) < 0.28) & np.array([b.startswith(("足", "下半身", "上半身")) for b in SC.dominant_bone(mb)])
+# straddling (cowgirl / reverse): her inner thighs lie along his flanks / over his thighs the whole way to her knees
+her_seat_wide = (np.linalg.norm(B - E0, axis=1) < 0.36) & np.array([b.startswith(("足", "下半身")) for b in SC.dominant_bone(body)])
+his_seat_wide = (np.linalg.norm(MB - np.array(root0), axis=1) < 0.36) & np.array([b.startswith(("足", "下半身", "上半身")) for b in SC.dominant_bone(mb)])
 
 # room furniture the bodies must never enter (the sheet/mattress are the support: checked by the floors instead)
 ROOM_HIT = ("headboard", "pillow", "duvet", "nightstand", "lamp", "bed_base", "candle", "book", "wine", "drawer", "knob")
@@ -138,6 +189,7 @@ def keys_for(clip, t):
     else: vo = PO.ss(0.0, 0.12, t)
     viv = {"vag_open": vo}
     mar = {"aroused": AROUSED.get(clip.split(".")[0], 1.0) if sex else 0.0}   # lick: he lies on it, flaccid + tucked
+    if clip in ("kiss.stand", "kiss.sit"): mar["aroused"] = 0.0             # story kisses: dressed, nothing showing
     return viv, mar
 
 def evaluate(clip, t):
@@ -157,6 +209,8 @@ def verify(clip, t):
     extra = [(her_vulva_zone, his_shaft), (her_seat, his_seat | his_shaft)] if pen else []
     if clip.startswith("titjob"): extra = [(her_breast, his_shaft), (her_breast, his_seat)]
     if clip.startswith("facesit"): extra = [(her_seat, his_head)]
+    if clip.startswith(("cowgirl", "revcowgirl")):            # straddling: her thighs along his flanks / over his thighs
+        extra = [(her_vulva_zone, his_shaft), (her_seat_wide, his_seat_wide | his_shaft)]
     if clip.startswith(("cuddle", "kiss", "sit", "stand")): extra = [(her_trunk, his_trunk), (her_seat, his_seat)]
     pairs, bad, depth, worst = SC.interpenetration(A, Pa, allowA, Bm, Pb, allowB, boneA=her_bones, boneB=his_bones,
                                                    handA=her_hand, handB=his_hand, extra=extra)
@@ -213,7 +267,44 @@ def verify(clip, t):
                 extent_x=[round(float(min(A[:, 0].min(), Bm[:, 0].min())), 3), round(float(max(A[:, 0].max(), Bm[:, 0].max())), 3)],
                 room_pairs=room_pairs, room_hit=room_hit, hair_floor_mm=hair_floor, hair_vs_him=hair_his,
                 pelvic_depth_mm=round(SC.LAST_ZONE_DEPTH * 1000, 1), contacts=contacts, rom_excess_deg=round(rom, 1),
-                beyond_play_mm=round(max(0.0, float(max(A[:, 1].max(), Bm[:, 1].max())) - PLAY_Y1) * 1000, 1))
+                beyond_play_mm=round(max(0.0, float(max(A[:, 1].max(), Bm[:, 1].max())) - PLAY_Y1) * 1000, 1),
+                limbs=dict(vivian=limb_metrics(V), marcus=limb_metrics(M)),
+                lip_gap_mm=round((V.lm("mouth") - M.lm("mouth")).length * 1000, 1))
+
+# ---------------------------------------------------------------- limb anatomy metrics (strict pass)
+LIMBS = (("腕", "ひじ", "手首"), ("足", "ひざ", "足首"))
+def _swing_twist_q(q):
+    q = q.normalized()
+    if q.w < 0: q = -q
+    tw = Quaternion((q.w, 0.0, q.y, 0.0))
+    if tw.magnitude < 1e-8: tw = Quaternion()
+    tw.normalize()
+    sw = q @ tw.inverted()
+    ta = math.degrees(2 * math.atan2(tw.y, tw.w))
+    if ta > 180: ta -= 360
+    if ta < -180: ta += 360
+    sa = math.degrees(2 * math.acos(max(-1.0, min(1.0, abs(sw.w)))))
+    ax = Vector((sw.x, sw.y, sw.z)); ax = ax.normalized() if ax.length > 1e-9 else Vector((1, 0, 0))
+    if sw.w < 0: ax = -ax
+    return sa, ta, ax
+def limb_metrics(body):
+    """per side: humerus/femur twist vs rest, elbow/knee signed flexion about the rest hinge + off-hinge bend,
+    forearm twist, wrist/ankle swing + twist (degrees, from each bone's local basis = rotation vs rest in the parent)"""
+    r = body.rig; out = {}
+    for s in (".L", ".R"):
+        for up, lo, end in LIMBS:
+            k = ("arm" if up == "腕" else "leg") + s
+            su, tu, _ = _swing_twist_q(r.basis[up + s].to_quaternion())
+            sl, tl, axl = _swing_twist_q(r.basis[lo + s].to_quaternion())
+            hl = r.hinge.get(lo + s, Vector((1, 0, 0)))
+            hl = (hl - Vector((0, 1, 0)) * hl.y).normalized()
+            cosang = max(-1.0, min(1.0, axl.dot(hl)))
+            flex = sl * (1 if cosang >= 0 else -1)
+            off = sl * math.sqrt(max(0.0, 1 - cosang * cosang))
+            se, te, _ = _swing_twist_q(r.basis[end + s].to_quaternion())
+            out[k] = dict(twist_up=round(tu, 1), swing_up=round(su, 1), flex=round(flex, 1), off_hinge=round(off, 1),
+                          twist_lo=round(tl, 1), end_swing=round(se, 1), end_twist=round(te, 1))
+    return out
 
 PRE_T = 0.85                                                       # layout choices are made near full depth...
 def _score():
@@ -284,6 +375,56 @@ def render(path, target, eye):
 
 # ---------------------------------------------------------------- bake loop
 report = json.load(open(NAT + "/verify.json")) if os.path.exists(NAT + "/verify.json") else {}
+def pose_from_action(body_, act, t):
+    """the rig's basis from a (shipped) action at normalized time t"""
+    arm_ = body_.arm; arm_.animation_data_create(); arm_.animation_data.action = act
+    f0, f1 = act.frame_range
+    bpy.context.scene.frame_set(int(round(f0 + (f1 - f0) * t)))
+    bpy.context.view_layer.update()
+    for pb in arm_.pose.bones:
+        if pb.name in body_.rig.basis: body_.rig.basis[pb.name] = pb.matrix_basis.copy()
+    arm_.animation_data.action = None
+    body_.rig.fk()
+
+if FROM_GLB:
+    report = {}
+    for clip in only:
+        if clip not in PO.CLIPS: continue
+        fn, frames, kind = PO.CLIPS[clip]
+        av, am = SHIPPED.get(("VIV", clip)), SHIPPED.get(("MAR", clip))
+        if av is None or am is None: log(f"{clip}: not shipped"); continue
+        PO.CURRENT = clip
+        res = []; prev = {"VIV": None, "MAR": None}; worst_flip = (0.0, None)
+        for f in range(frames):
+            t = f / (frames - 1)
+            pose_from_action(V, av, t); pose_from_action(M, am, t)
+            for who, body_ in (("VIV", V), ("MAR", M)):
+                snap = body_.rig.snapshot()
+                if prev[who] is not None:
+                    w = SC.flips(prev[who], snap)
+                    if w[0] > worst_flip[0]: worst_flip = (w[0], f"{who}:{w[1]}")
+                prev[who] = snap
+        for t in ([0.0, 0.25, 0.5, 0.75, 1.0] if kind != "pose" else [0.0]):
+            pose_from_action(V, av, t); pose_from_action(M, am, t)
+            res.append(verify(clip, t))
+        rep = dict(frames=frames, kind=kind, samples=res, worst_flip_deg=round(worst_flip[0], 1), flip_bone=worst_flip[1],
+                   max_bad_pairs=max(r["bad"] for r in res), max_depth_mm=max(r["depth_mm"] for r in res),
+                   max_rom_excess_deg=max(r_["rom_excess_deg"] for r_ in res))
+        lim = {}
+        for r_ in res:
+            for who_, d_ in r_["limbs"].items():
+                for k_, m_ in d_.items():
+                    z = lim.setdefault(f"{who_}.{k_}", dict(twist_up=0.0, flex_min=999.0, flex_max=-999.0, off_hinge=0.0, twist_lo=0.0, end_twist=0.0, end_swing=0.0))
+                    z["twist_up"] = max(z["twist_up"], abs(m_["twist_up"])); z["off_hinge"] = max(z["off_hinge"], m_["off_hinge"])
+                    z["flex_min"] = min(z["flex_min"], m_["flex"]); z["flex_max"] = max(z["flex_max"], m_["flex"])
+                    z["twist_lo"] = max(z["twist_lo"], abs(m_["twist_lo"])); z["end_twist"] = max(z["end_twist"], abs(m_["end_twist"]))
+                    z["end_swing"] = max(z["end_swing"], m_["end_swing"])
+        rep["limbs"] = lim; report[clip] = rep
+        log(f"{clip} (shipped): bad pairs max {rep['max_bad_pairs']} depth {rep['max_depth_mm']} mm | room {max(r['room_pairs'] for r in res)} | "
+            f"rom {rep['max_rom_excess_deg']} | flip {rep['worst_flip_deg']} {rep['flip_bone']}")
+    json.dump(report, open(NAT + "/verify_shipped.json", "w"), indent=1)
+    log(f"done ({time.time()-t0:.0f}s), verify_shipped.json"); sys.exit(0)
+
 for clip in only:
     fn, frames, kind = PO.CLIPS[clip]
     tc = time.time()
@@ -295,14 +436,16 @@ for clip in only:
         act = bpy.data.actions.new(nm); act.use_fake_user = True
         body_.arm.animation_data_create(); body_.arm.animation_data.action = act; acts[who] = act
     PO.CURRENT = clip
-    for b_ in (V, M): b_.rig._last_hinge = {}; b_.rig._last_twist = {}; b_.rig._last_curl = {}; b_.rig._last_pole = {}   # continuity within a clip
+    for b_ in (V, M): b_.rig._last_hinge = {}; b_.rig._last_twist = {}; b_.rig._last_curl = {}; b_.rig._last_pole = {}; b_.rig._last_bend = {}; b_.rig._last_share = {}; b_.rig._frame_bend = {}   # continuity within a clip
+    positions4._HEADS.clear(); positions4._LAYOUT.clear()
     fn(ctx, PRE_T if kind == "depth" else 0.5)       # best_of choices are made once (near full depth)
     fn(ctx, 0.0)                                       # ...then the hinge memory starts from the first frame
+    for b_ in (V, M): b_.rig.end_frame()
     prev = {"VIV": None, "MAR": None}; worst_flip = (0.0, None)
     for f in range(frames):
         t = f / (frames - 1) if kind != "loop" else f / (frames - 1)
         fn(ctx, t)
-        for b_ in (V, M): b_.rig.limit_all()                  # anatomical range of motion, always
+        for b_ in (V, M): b_.rig.limit_all(); b_.rig.end_frame()   # anatomical range of motion, always; continuity ref
         for who, body_ in (("VIV", V), ("MAR", M)):
             snap = body_.rig.snapshot()
             if prev[who] is not None:
@@ -337,7 +480,18 @@ for clip in only:
                                target=tr["target"], gap_mm=[min(tr["gaps"]), max(tr["gaps"])], t=[min(tr["ts"]), max(tr["ts"])]))
     rep["contacts"] = out_tracks
     rep["max_rom_excess_deg"] = max(r_["rom_excess_deg"] for r_ in res)
+    lim = {}
+    for r_ in res:
+        for who_, d_ in r_["limbs"].items():
+            for k_, m_ in d_.items():
+                z = lim.setdefault(f"{who_}.{k_}", dict(twist_up=0.0, flex_min=999.0, flex_max=-999.0, off_hinge=0.0, twist_lo=0.0, end_twist=0.0, end_swing=0.0))
+                z["twist_up"] = max(z["twist_up"], abs(m_["twist_up"])); z["off_hinge"] = max(z["off_hinge"], m_["off_hinge"])
+                z["flex_min"] = min(z["flex_min"], m_["flex"]); z["flex_max"] = max(z["flex_max"], m_["flex"])
+                z["twist_lo"] = max(z["twist_lo"], abs(m_["twist_lo"])); z["end_twist"] = max(z["end_twist"], abs(m_["end_twist"]))
+                z["end_swing"] = max(z["end_swing"], m_["end_swing"])
+    rep["limbs"] = lim
     report[clip] = rep
+    if clip.startswith("kiss"): log(f"   lips: {[r_['lip_gap_mm'] for r_ in res]} mm | trunk zone depth {[r_['pelvic_depth_mm'] for r_ in res]} mm")
     log(f"{clip}: {frames}f in {time.time()-tc:.0f}s | bad pairs max {rep['max_bad_pairs']} depth {rep['max_depth_mm']} mm | "
         f"floors her {[r['her_floor_mm'] for r in res]} his {[r['his_floor_mm'] for r in res]} | flip {rep['worst_flip_deg']} {rep['flip_bone']}")
     for r_ in res:
