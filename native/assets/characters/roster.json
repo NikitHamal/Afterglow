@@ -43,6 +43,16 @@
    "hair": "",
    "hairName": "Short",
    "tone": "caramel"
+  },
+  {
+   "id": "daniel",
+   "name": "Daniel",
+   "tagline": "thirty-four, easy smile, steady hands",
+   "age": 34,
+   "fixedAge": true,
+   "hair": "crop_daniel",
+   "hairName": "Textured crop",
+   "tone": "olive"
   }
  ]
 }
