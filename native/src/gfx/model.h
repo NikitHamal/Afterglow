@@ -34,11 +34,13 @@ struct Material {
 
 struct Primitive {
     GLuint vao = 0, ebo = 0;
-    GLuint vbo[7] = {0, 0, 0, 0, 0, 0, 0};   // 0 pos,1 nrm,2 uv0,3 uv1,4 tan,5 joints,6 weights
+    GLuint vbo[8] = {0, 0, 0, 0, 0, 0, 0, 0};   // 0 pos,1 nrm,2 uv0,3 uv1,4 tan,5 joints,6 weights,7 colour (COLOR_0)
     int indexCount = 0, vertexCount = 0;
     int material = -1;
     bool skinned = false, hasUv1 = false, dynamic = false;
+    bool uvTiled = false;                             // uv0 leaves [0, 1] (tiling texture: hair shells / caps, not cards)
     std::vector<float> pos, nrm, tan;                 // base data (pos/nrm kept for morphing + bounds)
+    std::vector<float> col;                           // COLOR_0 (RGBA) while loading: hair shells carry a hairline fringe in A
     std::vector<std::vector<float>> dPos, dNrm;       // per morph target while loading (dense, then packed)
     // packed morph targets: only the vertices a target moves (face shapes touch a few hundred of ~40k)
     struct Sparse { std::vector<uint32_t> idx; std::vector<float> dp, dn; };

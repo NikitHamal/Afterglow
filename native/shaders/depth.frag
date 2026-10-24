@@ -3,6 +3,7 @@
 // follow the same undress wipe as the colour pass.
 in vec2 v_uv0;
 in vec3 v_opos;
+in float v_colA;                 // vertex colour alpha (a hair shell's hairline fringe)
 uniform sampler2D u_texBase;
 uniform int u_hasBase;
 uniform int u_alphaMode;
@@ -41,7 +42,7 @@ float undressMargin(vec3 op) {
 void main() {
     if (fitHidden() || undressMargin(v_opos) < 0.0) discard;
     if (u_alphaMode == 1) {
-        float a = u_baseColor.a * (u_hasBase == 1 ? texture(u_texBase, v_uv0).a : 1.0);
+        float a = u_baseColor.a * (u_hasBase == 1 ? texture(u_texBase, v_uv0).a : 1.0) * v_colA;
         if (a < u_cutoff) discard;
     }
 }
