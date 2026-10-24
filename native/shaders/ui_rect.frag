@@ -39,6 +39,9 @@ void main() {
     else if (u_grad == 2) body = mix(u_fill, u_fill2, clamp((p.y - u_rect.y) / max(u_rect.w, 1.0), 0.0, 1.0));
     if (u_glass == 1) {
         vec3 scene = texture(texture0, fragTexCoord).rgb;
+        // frosted glass diffuses: highlights roll off so a lamp behind a panel is a warm glow, not a white smudge
+        float l = dot(scene, vec3(0.2126, 0.7152, 0.0722));
+        scene *= (1.0 / (1.0 + 1.6 * l));
         vec3 g = mix(scene, u_glassTint.rgb, u_glassTint.a);
         g += (hash12(p + fract(u_time) * 17.0) - 0.5) * 0.012;   // fine grain keeps the glass from banding
         body = vec4(mix(g, body.rgb, body.a), 1.0);

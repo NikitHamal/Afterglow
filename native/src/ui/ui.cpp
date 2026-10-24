@@ -64,8 +64,11 @@ void Ui::begin(float dt, bool readInput) {
     W = (float)GetScreenWidth(); H = (float)GetScreenHeight();
     fbW = std::max(1, GetRenderWidth()); fbH = std::max(1, GetRenderHeight());
     dpi = W > 0.f ? (float)fbW / W : 1.f;
-    // sub-linear: small windows keep readable type, large ones do not balloon
-    s = std::max(0.5f, std::pow(std::min(W / 1920.f, H / 1080.f), 0.8f));
+    // linear: a 16:9 window is exactly the 1920x1080 design and other shapes only add room, so a layout that fits
+    // the design fits every window (the floor only guards degenerate sizes below the 960x540 minimum)
+    s = std::max(0.45f, std::min(W / 1920.f, H / 1080.f));
+    k_ = 1.f;
+    scaleStack_.clear();
     focusCount_ = 0;
     in = Input{};
     if (!readInput) return;
@@ -95,6 +98,9 @@ void Ui::begin(float dt, bool readInput) {
 }
 
 void Ui::end() {
+    guardFrame();
+    k_ = 1.f;
+    scaleStack_.clear();
     lastFocusCount_ = focusCount_;
     if (lastFocusCount_ > 0) focus_ = std::max(0, std::min(focus_, lastFocusCount_ - 1));
     if (!in.mouseDown && !active_.empty()) active_.clear();
@@ -142,10 +148,10 @@ Vector2 Ui::measure(Face f, float px, const std::string& t, float spacing) {
 void Ui::text(Face f, float px, const std::string& t, float x, float y, Color c, int align, float spacing) {
     if (t.empty() || c.a == 0 || alpha <= 0.002f) return;
     Font& fnt = font(f, px);
-    if (align != Left) {
-        Vector2 m = MeasureTextEx(fnt, t.c_str(), px, spacing * px);
-        x -= align == Center ? m.x * 0.5f : m.x;
-    }
+    Vector2 m{0.f, 0.f};
+    if (align != Left || guard) m = MeasureTextEx(fnt, t.c_str(), px, spacing * px);
+    if (align != Left) x -= align == Center ? m.x * 0.5f : m.x;
+    if (guard && fade(c).a > 12) guardText(t, Rectangle{x, y, m.x, px});
     DrawTextEx(fnt, t.c_str(), Vector2{std::round(x * dpi) / dpi, std::round(y * dpi) / dpi}, px, spacing * px, fade(c));
 }
 
@@ -261,6 +267,7 @@ void Ui::diamond(float x, float y, float size, Color c) { DrawPoly(Vector2{x, y}
 
 // ---------------------------------------------------------------- widgets
 bool Ui::interact(const std::string& id, Rectangle r, int fidx, bool enabled, WState& w) {
+    guardRect("widget", id, r);
     bool over = enabled && hit(r) && (active_.empty() || active_ == id);
     if (over && in.mouseMoved && focus_ != fidx) focus_ = fidx;
     bool hot = enabled && (over || (keyboardNav && focused(fidx)));
@@ -286,7 +293,7 @@ bool Ui::menuItem(const std::string& id, const std::string& label, float x, floa
     WState& ws = st(id);
     bool fire = interact(id, r, fidx, enabled, ws);
     float h = ws.hover;
-    float px = u(46.f);
+    float px = fitPx(Face::Serif, u(46.f), label, w - u(50.f), 0.6f);
     Color c = enabled ? mixc(th.inkDim, th.ink, h) : th.inkFaint;
     if (h > 0.01f) {
         glow(x + u(40.f) + measure(Face::Serif, px, label).x * 0.5f, y + hgt * 0.5f, u(70.f) * h, withA(th.accent, 0.10f * h));
@@ -317,9 +324,9 @@ bool Ui::button(const std::string& id, const std::string& label, Rectangle r, bo
     }
     if (!enabled) { b.fill = withA(b.fill, 0.25f); b.fill2 = withA(b.fill2, 0.25f); }
     box(q, b);
-    float px = u(19.f);
     Color tc = primary ? Color{40, 18, 24, 255} : (enabled ? mixc(th.inkDim, th.ink, h) : th.inkFaint);
-    text(Face::SansBold, px, label, q.x + q.width * 0.5f, q.y + (q.height - px) * 0.5f - u(1.f), tc, Center, 0.12f);
+    float pad = q.height * 0.42f;
+    textIn(Face::SansBold, u(19.f), label, Rectangle{q.x + pad, q.y - u(1.f), q.width - 2.f * pad, q.height}, tc, Center, 0.12f);
     return fire;
 }
 
@@ -352,7 +359,7 @@ bool Ui::slider(const std::string& id, const std::string& label, float* v, float
     if (b0 != b1) sound(3);
     float h = ws.hover;
     float px = u(19.f);
-    text(Face::SansMedium, px, label, r.x, r.y, mixc(th.inkDim, th.ink, h));
+    guardRect("slider", id, Rectangle{trackX, r.y, trackW, r.height});
     char buf[32];
     std::string vt = valueText;
     if (vt.empty()) {
@@ -360,7 +367,9 @@ bool Ui::slider(const std::string& id, const std::string& label, float* v, float
         else std::snprintf(buf, sizeof buf, "%d%%", (int)std::lround((*v - lo) / (hi - lo) * 100.f));
         vt = buf;
     }
+    float vw = measure(Face::Sans, px, vt).x;
     text(Face::Sans, px, vt, r.x + r.width, r.y, mixc(th.inkFaint, th.ink, h), Right);
+    textIn(Face::SansMedium, px, label, Rectangle{r.x, r.y, std::max(u(20.f), r.width - vw - u(14.f)), px}, mixc(th.inkDim, th.ink, h));
     float t = clamp01((*v - lo) / (hi - lo));
     float th2 = u(4.f);
     fillRect(Rectangle{trackX, trackY - th2 * 0.5f, trackW, th2}, Color{255, 236, 224, 40}, th2 * 0.5f);
@@ -383,8 +392,8 @@ bool Ui::toggle(const std::string& id, const std::string& label, bool* v, Rectan
     if (fire) *v = !*v;
     float h = ws.hover;
     float px = u(19.f);
-    text(Face::SansMedium, px, label, r.x, r.y + (r.height - px) * 0.5f, mixc(th.inkDim, th.ink, h));
     float sw = u(50.f), sh = u(26.f);
+    textIn(Face::SansMedium, px, label, Rectangle{r.x, r.y, std::max(u(20.f), r.width - sw - u(16.f)), r.height}, mixc(th.inkDim, th.ink, h));
     Rectangle tr{r.x + r.width - sw, r.y + (r.height - sh) * 0.5f, sw, sh};
     float on = anim(id + "#on", *v ? 1.f : 0.f, 16.f);
     Box b; b.radius = sh * 0.5f;
@@ -405,14 +414,27 @@ bool Ui::choice(const std::string& id, const std::string& label, int* idx, const
     int n = (int)opts.size();
     if (n == 0) return false;
     int before = *idx;
-    float px = u(18.f);
     bool hasLabel = !label.empty();
-    float segH = u(36.f);
+    float lpx = u(19.f);
+    // the segments take what the label leaves; their type and padding shrink before anything can spill out
+    float labelW = hasLabel ? std::min(measure(Face::SansMedium, lpx, label).x, r.width * 0.45f) + u(24.f) : 0.f;
+    float availW = r.width - labelW;
+    float px = u(18.f), pad = u(30.f);
     float segW = 0.f;
-    for (auto& o : opts) segW = std::max(segW, measure(Face::SansMedium, px, o).x + u(30.f));
+    for (auto& o : opts) segW = std::max(segW, measure(Face::SansMedium, px, o).x + pad);
+    if (segW * (float)n > availW) {
+        float k = availW / (segW * (float)n);
+        px = std::max(px * 0.78f, px * k);
+        pad = std::max(u(12.f), pad * k);
+        segW = 0.f;
+        for (auto& o : opts) segW = std::max(segW, measure(Face::SansMedium, px, o).x + pad);
+        segW = std::min(segW, availW / (float)n);
+    }
+    float segH = u(36.f);
     float totalW = segW * (float)n;
     Rectangle cr{r.x + r.width - totalW, r.y + (r.height - segH) * 0.5f, totalW, segH};
     if (!hasLabel) cr.x = r.x;
+    guardRect("choice", id, cr);
     bool over = hit(cr) && (active_.empty() || active_ == id);
     if (over && in.mouseMoved && focus_ != fidx) focus_ = fidx;
     bool hot = over || (keyboardNav && focused(fidx));
@@ -429,7 +451,8 @@ bool Ui::choice(const std::string& id, const std::string& label, int* idx, const
     }
     if (*idx != before) sound(1);
     float h = ws.hover;
-    if (hasLabel) text(Face::SansMedium, u(19.f), label, r.x, r.y + (r.height - u(19.f)) * 0.5f, mixc(th.inkDim, th.ink, h));
+    if (hasLabel)
+        textIn(Face::SansMedium, lpx, label, Rectangle{r.x, r.y, std::max(u(20.f), cr.x - r.x - u(16.f)), r.height}, mixc(th.inkDim, th.ink, h));
     Box bg; bg.radius = segH * 0.5f; bg.fill = Color{255, 236, 224, 16};
     bg.border = std::max(1.f, u(1.f)); bg.borderCol = mixc(th.hairline, withA(th.accent, 0.7f), std::max(h * 0.5f, keyboardNav && focused(fidx) ? 1.f : 0.f));
     box(cr, bg);
@@ -440,7 +463,8 @@ bool Ui::choice(const std::string& id, const std::string& label, int* idx, const
     for (int i = 0; i < n; ++i) {
         float sel = 1.f - std::min(1.f, std::fabs(pos - (float)i));
         Color tc = mixc(th.inkDim, Color{40, 18, 24, 255}, sel);
-        text(Face::SansMedium, px, opts[(size_t)i], cr.x + segW * ((float)i + 0.5f), cr.y + (segH - px) * 0.5f - u(1.f), tc, Center);
+        Rectangle sr{cr.x + segW * (float)i + u(6.f), cr.y - u(1.f), segW - u(12.f), segH};
+        textIn(Face::SansMedium, px, opts[(size_t)i], sr, tc, Center, 0.f, 0.9f);
     }
     return *idx != before;
 }
@@ -453,6 +477,10 @@ bool Ui::swatches(const std::string& id, const std::string& label, int* idx, con
     int before = *idx;
     float px = u(19.f);
     float rad = u(17.f), gap = u(12.f);
+    if (n > 0 && (float)n * 2.f * rad + (float)(n - 1) * gap > r.width - u(10.f)) {
+        float k = (r.width - u(10.f)) / ((float)n * 2.f * rad + (float)(n - 1) * gap);
+        rad *= k; gap *= k;
+    }
     float rowW = (float)n * (2.f * rad) + (float)(n - 1) * gap;
     float cy = r.y + r.height - rad - u(2.f);
     float x0 = r.x;
@@ -475,9 +503,14 @@ bool Ui::swatches(const std::string& id, const std::string& label, int* idx, con
         if (in.right || in.accept) *idx = (*idx + 1) % n;
     }
     if (*idx != before) sound(1);
-    text(Face::SansMedium, px, label, r.x, r.y, mixc(th.inkDim, th.ink, ws.hover));
+    guardRect("swatches", id, hr);
     int shown = hoverI >= 0 ? hoverI : *idx;
-    if (shown >= 0 && shown < (int)names.size()) text(Face::Sans, px, names[(size_t)shown], r.x + r.width, r.y, th.inkFaint, Right);
+    float nameW = 0.f;
+    if (shown >= 0 && shown < (int)names.size()) {
+        nameW = measure(Face::Sans, px, names[(size_t)shown]).x;
+        text(Face::Sans, px, names[(size_t)shown], r.x + r.width, r.y, th.inkFaint, Right);
+    }
+    textIn(Face::SansMedium, px, label, Rectangle{r.x, r.y, std::max(u(20.f), r.width - nameW - u(14.f)), px}, mixc(th.inkDim, th.ink, ws.hover));
     for (int i = 0; i < n; ++i) {
         float cx = x0 + rad + (float)i * (2.f * rad + gap);
         float sel = anim(id + "#s" + std::to_string(i), i == *idx ? 1.f : 0.f, 14.f);
@@ -509,8 +542,8 @@ bool Ui::tabs(const std::string& id, int* idx, const std::vector<std::string>& l
         ws.hover += ((over ? 1.f : 0.f) - ws.hover) * std::min(1.f, dt_ * 14.f);
         if (over && in.clicked) *idx = i;
         float sel = i == *idx ? 1.f : 0.f;
-        text(Face::SansBold, px, labels[(size_t)i], c.x + cw * 0.5f, c.y + (c.height - px) * 0.5f - u(3.f),
-             mixc(mixc(th.inkFaint, th.inkDim, ws.hover), th.ink, sel), Center, 0.16f);
+        textIn(Face::SansBold, px, labels[(size_t)i], Rectangle{c.x + u(4.f), c.y - u(3.f), cw - u(8.f), c.height},
+               mixc(mixc(th.inkFaint, th.inkDim, ws.hover), th.ink, sel), Center, 0.16f, 0.7f);
     }
     if (in.tabNext) *idx = (*idx + 1) % n;
     if (in.tabPrev) *idx = (*idx + n - 1) % n;
@@ -535,8 +568,9 @@ bool Ui::chip(const std::string& id, const std::string& label, Rectangle r, bool
     b.fill = mixc(Color{255, 236, 224, (unsigned char)(12 + 18 * h)}, withA(th.accent, 0.22f), on);
     b.border = std::max(1.f, u(1.f)); b.borderCol = mixc(th.hairline, withA(th.accent, 0.85f), std::max(on, std::max(h * 0.5f, ws.focusT)));
     box(r, b);
-    float px = u(16.f);
-    text(Face::SansMedium, px, label, r.x + r.width * 0.5f, r.y + (r.height - px) * 0.5f - u(1.f), mixc(mixc(th.inkDim, th.ink, h), th.ink, on), Center, 0.04f);
+    float pad = std::min(r.height * 0.36f, r.width * 0.12f);
+    textIn(Face::SansMedium, u(16.f), label, Rectangle{r.x + pad, r.y - u(1.f), r.width - 2.f * pad, r.height},
+           mixc(mixc(th.inkDim, th.ink, h), th.ink, on), Center, 0.04f);
     return fire;
 }
 
@@ -550,11 +584,11 @@ float Ui::keyHint(float x, float y, const std::string& key, const std::string& l
     box(Rectangle{x, y, kw, kh}, b);
     text(Face::SansBold, kp, key, x + kw * 0.5f, y + (kh - kp) * 0.5f - u(1.f), th.ink, Center);
     text(Face::SansMedium, lp, label, x + kw + u(9.f), y + (kh - lp) * 0.5f - u(1.f), th.ink);
-    return kw + u(9.f) + measure(Face::Sans, lp, label).x;
+    return kw + u(9.f) + measure(Face::SansMedium, lp, label).x;
 }
 
 void Ui::sectionLabel(const std::string& t, float x, float y, float w) {
-    float px = u(14.f);
+    float px = fitPx(Face::SansBold, u(14.f), t, w, 0.7f, 0.22f);
     text(Face::SansBold, px, t, x, y, th.accent, Left, 0.22f);
     float tw = measure(Face::SansBold, px, t, 0.22f).x;
     fillRect(Rectangle{x + tw + u(14.f), y + px * 0.55f, std::max(0.f, w - tw - u(14.f)), std::max(1.f, u(1.f))}, th.hairline);

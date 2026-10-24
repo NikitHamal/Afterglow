@@ -1,6 +1,13 @@
 // Afterglow UI kit — custom-drawn immediate-mode interface: embedded fonts at exact pixel sizes, frosted
 // glass panels (blurred scene), SDF rounded shapes with soft shadows, animated widgets with hover/press
 // feedback, and keyboard focus navigation (arrows / Enter / Esc) alongside the mouse.
+//
+// Nothing may overflow, at any window size: layouts are written in 1920x1080 design units and u() maps them
+// linearly onto the window (a 16:9 window is exactly the design; other shapes only add room). Panels that would
+// not fit a small window shrink as a whole inside a scale scope (fitScale / fitGet); text that would not fit its
+// box shrinks a little, then ends in an ellipsis (textIn / fitPx / ellipsize); widgets measure their labels.
+// In harness runs a guard checks every text and widget against the screen and its container (UI-OVERFLOW) and
+// texts against each other (UI-OVERLAP); see ui_fit.cpp.
 #pragma once
 #include "raylib.h"
 #include <cstdint>
@@ -56,7 +63,33 @@ public:
 
     // ---- metrics: layouts are written in 1920x1080 design units, u() converts to screen units ----
     float W = 1280.f, H = 720.f, s = 1.f, dpi = 1.f;
-    float u(float v) const { return v * s; }
+    float u(float v) const { return v * s * k_; }
+    float scale() const { return s * k_; }   // screen units per design unit right now (inside scale scopes too)
+
+    // ---- fitting (ui_fit.cpp) ----
+    // scale scope: u() inside is multiplied by k (k <= 1 shrinks a panel and everything in it together)
+    void pushScale(float k);
+    void popScale();
+    // the k that fits a natW x natH design-unit panel on screen with `margin` design units around it
+    float fitScale(float natW, float natH, float margin = 40.f) const;
+    // measured fit for panels whose content height varies: the k to use this frame (push it), then report the
+    // content's top / bottom and the bottom it may use (screen units, measured inside the scope)
+    float fitGet(const std::string& id);
+    void fitReport(const std::string& id, float top, float contentBottom, float availBottom);
+    // text that fits a width: the px to draw at (down to minFrac of px), an ellipsised string
+    float fitPx(Face f, float px, const std::string& t, float maxW, float minFrac = 0.78f, float spacing = 0.f);
+    std::string ellipsize(Face f, float px, const std::string& t, float maxW, float spacing = 0.f);
+    // `t` inside `box`: shrinks (down to minFrac), then ellipsises; vertically centred; returns the px used
+    float textIn(Face f, float px, const std::string& t, Rectangle box, Color c, int align = Left, float spacing = 0.f,
+                 float minFrac = 0.78f);
+
+    // ---- QA guard (harness): containers + the frame's findings ----
+    bool guard = false;
+    void pushClip(Rectangle r, const std::string& id);   // a container: what is drawn inside must stay inside
+    void popClip();
+    void guardRect(const char* kind, const std::string& id, Rectangle r);   // a widget's box (text is checked itself)
+    int guardIssues() const { return (int)guardLog_.size(); }
+    const std::vector<std::string>& guardLog() const { return guardLog_; }
     Theme th;
     float alpha = 1.f;       // global fade (screen transitions)
     float time = 0.f;
@@ -65,8 +98,9 @@ public:
     Font& font(Face f, float px);
     Vector2 measure(Face f, float px, const std::string& t, float spacing = 0.f);
     void text(Face f, float px, const std::string& t, float x, float y, Color c, int align = Left, float spacing = 0.f);
-    // word-wrapped paragraph, returns the height used
+    // word-wrapped paragraph, returns the height used; measureParagraph = the same without drawing (lines in *lines)
     float paragraph(Face f, float px, const std::string& t, float x, float y, float width, Color c, float lineGap = 1.35f, int align = Left);
+    float measureParagraph(Face f, float px, const std::string& t, float width, float lineGap = 1.35f, int* lines = nullptr);
 
     // ---- shapes ----
     void box(Rectangle r, const Box& b);
@@ -96,8 +130,9 @@ public:
                   const std::vector<std::string>& names, Rectangle r);
     bool tabs(const std::string& id, int* idx, const std::vector<std::string>& labels, Rectangle r);
     bool chip(const std::string& id, const std::string& label, Rectangle r, bool active);
-    // "[Space] Rhythm" key hint; returns its width
+    // "[Space] Rhythm" key hint; returns its width (keyHintWidth: the same, measured only)
     float keyHint(float x, float y, const std::string& key, const std::string& label, float px = 17.f);
+    float keyHintWidth(const std::string& key, const std::string& label, float px = 17.f);
     void sectionLabel(const std::string& t, float x, float y, float w);
 
     // focus / animation helpers
@@ -116,6 +151,16 @@ private:
     // common interaction: hover/focus/press bookkeeping, returns true when activated
     bool interact(const std::string& id, Rectangle r, int fidx, bool enabled, WState& w);
     void sound(int k) { if (onSound) onSound(k); }
+
+    struct GuardText { std::string t; Rectangle r; };
+    void guardText(const std::string& t, Rectangle r);
+    void guardFrame();   // end(): overlaps between texts, the frame's log
+    std::vector<float> scaleStack_;
+    float k_ = 1.f;
+    std::unordered_map<std::string, float> fits_;
+    std::vector<std::pair<Rectangle, std::string>> clips_;
+    std::vector<GuardText> guardTexts_;
+    std::vector<std::string> guardPending_, guardLog_;
 
     std::unordered_map<std::string, WState> states_;
     std::unordered_map<uint64_t, Font> fonts_;
