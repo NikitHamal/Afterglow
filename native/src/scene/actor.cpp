@@ -25,6 +25,7 @@ void rotq(Animator& a, int n, const Quat& q) {
 void Actor::bind(Character* c) {
     c_ = c;
     female_ = c && c->id == "vivian";
+    blinker_ = Blinker(female_ ? 3u : 7u);
     reset();
     if (!c) return;
     head = c->bone("頭"); neck = c->bone("首"); upper = c->bone("上半身"); chest = c->bone("上半身2");
@@ -40,6 +41,7 @@ void Actor::bind(Character* c) {
 void Actor::reset() {
     gesture_.clear(); head_.clear(); look_.clear(); react_.clear();
     lineT_ = 0.f; reactT_ = headT_ = beatT_ = 99.f;
+    lastLook_ = V3{0, 0, 0}; pitch_ = 0.f;
     speaking_ = false; speakW_ = gestW_ = loud_ = 0.f;
     vis_ = visS_ = Viseme{};
     expr.clear(); cur_.clear();
@@ -48,7 +50,7 @@ void Actor::reset() {
 
 void Actor::releaseFace() {
     if (!c_) return;
-    for (const char* m : {"blink", "moan", "gasp", "smile", "pout", "kiss", "bite_lip", "shy", "lids_down", "bliss", "pleasure", "smirk", "wink", "effort"})
+    for (const char* m : {"blink", "moan", "gasp", "smile", "pout", "kiss", "bite_lip", "shy", "lids_down", "lids_up", "bliss", "pleasure", "smirk", "wink", "effort"})
         c_->setMorph(m, -1.f);
     for (auto& kv : cur_) c_->setMorph(kv.first, -1.f);
     cur_.clear();
@@ -100,6 +102,11 @@ void Actor::update(float dt, const V3& partnerHead, bool hasPartner, const V3& c
     if (react_ == "shy" && reactT_ < 3.f) tgt = lerp(tgt, hc + flat * 0.8f + side * (0.5f * tiltSide_) + V3{0.f, -0.6f, 0.f}, smoothstep(0.f, 0.4f, reactT_) * (1.f - smoothstep(2.4f, 3.f, reactT_)));
     c_->proc.lookAt = true;
     c_->proc.lookTarget = tgt;
+    // the lids follow the gaze; a gaze that jumps often takes a blink with it
+    V3 dir = normalize(tgt - hc);
+    pitch_ = std::asin(clampf(dot(dir, hu), -1.f, 1.f));
+    if (length(lastLook_) > 0.5f && dot(dir, lastLook_) < 0.966f) blinker_.trigger(0.55f);   // > ~15 degrees
+    lastLook_ = dir;
     // (close in for a kiss the neck does less of the work: the lean and the step bring the faces together)
     c_->proc.lookWeight = ((look_ == "camera" ? 0.5f : 0.62f) * acting + 0.25f) * (1.f - 0.45f * lean);
     c_->proc.eyeWeight = 1.f;
@@ -142,13 +149,30 @@ void Actor::face(float dt) {
     } else {
         out["moan"] += open * 0.6f; out["kiss"] += visS_.round * 0.45f;
     }
-    // blinks (more right after a line starts), lids closed for a kiss
-    blinkT_ -= dt;
-    if (blinkT_ <= 0.f) { blink_ = 1.f; blinkT_ = 1.6f + 3.4f * hash1(time_ * 1.37f + (female_ ? 0.f : 5.f)); }
-    if (lineT_ < dt * 1.5f && hash1(time_) > 0.55f) blink_ = 1.f;
-    blink_ += (0.f - blink_) * damp(15.f, dt);
+    // listening is not a still life: a slow, slightly lopsided warmth comes and goes (more when the scene is warm)
+    float lw = (1.f - speakW_) * (0.6f + 0.8f * energy_) * (1.f - closed_);
+    float n1 = 0.5f + 0.5f * std::sin(time_ * 0.41f + (female_ ? 0.f : 2.1f)) * std::sin(time_ * 0.23f + 1.3f);
+    float n2 = std::max(0.f, std::sin(time_ * 0.17f + (female_ ? 4.f : 1.f)));
+    if (female_) {
+        out["smile"] += lw * (0.04f + 0.09f * n1);
+        out["smirk"] += lw * 0.08f * n2 * n2;                         // one corner of the mouth, now and then
+        out["lids_up"] += 0.22f * bump(beatT_, 0.4f) * speakW_;        // eyes widen a touch on a stressed word
+    } else {
+        out["pleasure"] += lw * (0.03f + 0.05f * n1);
+        out["effort"] += 0.12f * bump(beatT_, 0.45f) * speakW_ * energy_;   // his brow works on emphasis
+    }
+    // the lids follow the gaze (her v3 face)
+    if (female_) {
+        float ld, lu;
+        lidsFollow(pitch_, ld, lu);
+        out["lids_down"] = std::max(out["lids_down"], ld);
+        out["lids_up"] += lu;
+    }
+    // blinks: natural timing, more often while talking, one likely when a line starts; lids closed for a kiss
+    if (lineT_ < dt * 1.5f) blinker_.trigger(0.45f);
+    float blink = blinker_.update(dt, speaking_ ? 1.25f : 1.f);
     closed_ += ((eyesClosed ? 1.f : 0.f) - closed_) * damp(6.f, dt);
-    out["blink"] = std::max(out["blink"], std::max(blink_, closed_));
+    out["blink"] = std::max(out["blink"], std::max(blink, closed_));
     for (auto& o : out) c_->setMorph(o.first, clampf(o.second, 0.f, 1.f));
 }
 

@@ -113,7 +113,7 @@ private:
     bool hudHidden_ = false, barOpen_ = false;
     float barT_ = 0.f, hintsT_ = 0.f, hudT_ = 0.f;
     // presentation state
-    float blinkT_ = 2.f, blinkV_ = 0.f, mBlinkT_ = 3.f, mBlinkV_ = 0.f;
+    Blinker herBlink_{11u}, hisBlink_{23u};
     float moanPulse_ = 0.f, smilePulse_ = 0.f, climaxGlow_ = 0.f, flash_ = 0.f, sweat_ = 0.f, slowmo_ = 1.f;
     float herClimaxT_ = 99.f, hisClimaxT_ = 99.f, afterT_ = 0.f;
     // the night's effect on the grade, applied on top of the lighting mood
