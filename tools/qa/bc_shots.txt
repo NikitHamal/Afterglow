@@ -1,0 +1,2 @@
+# build check: one story kiss frame with the kiss log
+bc_of_c4|screen=story;story=old_flames;node=c4_kiss;line=0;kiss=1;orbit=yaw:45,pitch:4,dist:1;ui=0;frames=60;render_from=58;kissqa=1
