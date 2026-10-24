@@ -40,7 +40,8 @@ uniform int u_doubleSided;
 uniform vec3 u_tint;
 uniform int u_hairShape;          // hair: bend card normals around the skull centre
 uniform vec3 u_hairCenter;
-uniform int u_hairCards;          // hair: 1 cards (uv in [0,1], V root -> tip, 8 atlas columns), 0 a tiled shell / cap
+uniform int u_hairCards;          // hair: 1 cards (uv in [0,1], 8 atlas columns, glTF V tip 0 -> root 1), 0 a tiled shell / cap
+uniform int u_hairUnder;          // hair: the scalp cap under the cards (lies in the hair's own shadow)
 uniform float u_flush;
 uniform float u_sweat;
 uniform int u_baked;              // room: emissive(uv1) / unlit carries baked light
@@ -236,7 +237,7 @@ vec3 shade(Surf s, vec3 L, vec3 radiance) {
         float sin1 = sqrt(max(0.0, 1.0 - th1 * th1)), sin2 = sqrt(max(0.0, 1.0 - th2 * th2));
         float dirAtten = smoothstep(-1.0, 0.0, th1);
         vec3 trt = sqrt(max(s.albedo, vec3(1e-4)));
-        float rK = (u_hairCards == 1 ? 0.055 : 0.025) * (0.35 + 1.3 * g_strandId) * s.strand;
+        float rK = (u_hairCards == 1 ? 0.03 : 0.025) * (0.35 + 1.3 * g_strandId) * s.strand;
         vec3 spec = vec3(rK) * pow(sin1, 220.0) * dirAtten + trt * 0.12 * pow(sin2, 34.0) * s.strand * (0.55 + 0.9 * g_strandId);
         float wrap = sat((NoLraw + 0.4) / 1.4);
         vec3 diff = s.albedo / PI * wrap;
@@ -455,10 +456,12 @@ void main() {
             float wave = sin(v_uv0.y * 46.0 + g_strandId * 6.2831) * 0.22 + sin(v_uv0.y * 17.0 + g_strandId * 12.57) * 0.12;
             Tg = normalize(Tg + across * wave);
             Tg = normalize(Tg - N * dot(N, Tg));
-            base.rgb *= mix(0.5, 1.0, smoothstep(0.0, 0.22, v_uv0.y));
+            base.rgb *= mix(0.5, 1.0, smoothstep(1.0, 0.78, v_uv0.y));   // glTF V: the root is at 1 (the atlas is stored flipped)
         }
+        // the cap under the cards is the hair's bottom layer: in its shade, with little sheen of its own
+        if (u_hairUnder == 1) { base.rgb *= 0.5; s.strand = 0.35; }
         // highlights live on the strands, not in the gaps between them (coverage = the atlas alpha)
-        s.strand = mix(0.7, 1.2, smoothstep(0.04, 0.55, dot(texS.rgb, vec3(0.3333)))) * mix(0.35, 1.0, smoothstep(0.2, 0.8, texS.a));
+        if (u_hairUnder == 0) s.strand = mix(0.7, 1.2, smoothstep(0.04, 0.55, dot(texS.rgb, vec3(0.3333)))) * mix(0.35, 1.0, smoothstep(0.2, 0.8, texS.a));
     }
     s.N = N; s.V = V; s.T = Tg; s.B = Bg;
     s.albedo = base.rgb; s.metal = metal; s.rough = clamp(rough, 0.03, 1.0); s.ao = ao; s.alpha = alpha; s.mode = u_mode;

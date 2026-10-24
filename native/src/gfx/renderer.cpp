@@ -269,7 +269,10 @@ void Renderer::drawModel(Program& p, Model& m, Animator& a, const Character* ch,
                 }
             }
             p.set("u_pass", pass == 2 ? 1 : 0);
-            if (mat.shading == Shading::Hair && pass != 0 && pass != 3) p.set("u_hairCards", prim.uvTiled ? 0 : 1);
+            if (mat.shading == Shading::Hair && pass != 0 && pass != 3) {
+                p.set("u_hairCards", prim.uvTiled ? 0 : 1);
+                p.set("u_hairUnder", mat.name.find("cap") != std::string::npos ? 1 : 0);
+            }
             if (mat.doubleSided || pass == 0) glDisable(GL_CULL_FACE);
             else { glEnable(GL_CULL_FACE); glCullFace(GL_BACK); }
             glBindVertexArray(prim.vao);
