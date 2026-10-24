@@ -6,6 +6,7 @@
 #include "anim/procedural.h"
 #include "scene/touch.h"
 #include "scene/outfit.h"
+#include "scene/hairstyle.h"
 #include <functional>
 #include <memory>
 #include <string>
@@ -17,7 +18,10 @@ namespace ag {
 class Character {
 public:
     // targetHeight: real-world height in metres; legacy models of another scale are fitted to it.
-    bool load(const std::string& id, const std::string& glbPath, float targetHeight);
+    // id is the role ("vivian" / "marcus": clips, contacts, outfits and story casting key off it); asset names the model's
+    // own files when it is another face on the same body (characters/<asset>_identity.bin, <asset>_skin_<tone>.jpg,
+    // <asset>_eye.png, <asset>_skin_mask.png — each falls back to the role's file).
+    bool load(const std::string& id, const std::string& glbPath, float targetHeight, const std::string& asset = "");
     void destroy();
     bool loaded() const { return loaded_; }
 
@@ -64,6 +68,11 @@ public:
     bool hasOutfit(const std::string& style) const;
     bool hideGenitals = false;                             // his genitals stay hidden under clothes
 
+    // ---- hair style: characters/hair/<style>.glb replaces the GLB's own hair ("" = the embedded hair) ----
+    bool setHairStyle(const std::string& style);
+    HairStyle* hairStyle() { return hair_ && hair_->loaded() ? hair_.get() : nullptr; }
+    const HairStyle* hairStyle() const { return hair_ && hair_->loaded() ? hair_.get() : nullptr; }
+
     // ---- placement + procedural ----
     M4 placement = M4::identity();                         // world transform of the model root
     ProcParams proc;
@@ -95,6 +104,7 @@ public:
     GLuint baseOverride(int material) const { return material >= 0 && material < (int)baseOverride_.size() ? baseOverride_[(size_t)material] : 0; }
 
     std::string id;
+    std::string asset;                                     // model id (files); == id for the base characters
     Model model;
     Animator anim;
     Procedural procedural;
@@ -118,6 +128,8 @@ private:
     std::vector<GLuint> baseOverride_;
     std::unordered_map<std::string, GLuint> toneCache_;
     std::vector<std::unique_ptr<Outfit>> outfits_;           // loaded styles (at most two kept)
+    std::unique_ptr<HairStyle> hair_;
+    std::string own(const std::string& suffix) const;        // <dir>/<asset><suffix> if it exists, else <dir>/<id><suffix>
     int outfitCur_ = -1;
 };
 
