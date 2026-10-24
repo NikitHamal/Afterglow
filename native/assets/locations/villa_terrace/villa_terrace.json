@@ -1,0 +1,186 @@
+{
+ "version": 1,
+ "units": "m",
+ "up": "+Y",
+ "style": "villa",
+ "mood": "day",
+ "place": "villa_terrace",
+ "bedTop": 0.604,
+ "bed": {
+  "center": [
+   0,
+   0.604,
+   0.5
+  ],
+  "width": 2.4,
+  "length": 1.7999999999999998,
+  "size": [
+   2.4,
+   1.7999999999999998
+  ],
+  "note": "no bed: the staged action's footprint (standing marks + the seat)"
+ },
+ "bedCenter": [
+  0,
+  0.604,
+  0.5
+ ],
+ "lamp": [
+  2.6,
+  3.4,
+  -2.8
+ ],
+ "window": {
+  "center": [
+   0,
+   1.6,
+   -4.7
+  ]
+ },
+ "cameraBounds": {
+  "min": [
+   -3.2,
+   0.15,
+   -1.55
+  ],
+  "max": [
+   3.2,
+   3,
+   2.8
+  ]
+ },
+ "anchors": {
+  "parapet": {
+   "pos": [
+    0,
+    0,
+    -1.4
+   ],
+   "yaw": 180
+  },
+  "parapet_l": {
+   "pos": [
+    -0.4,
+    0,
+    -1.4
+   ],
+   "yaw": 180
+  },
+  "parapet_r": {
+   "pos": [
+    0.4,
+    0,
+    -1.4
+   ],
+   "yaw": 180
+  },
+  "parapet_top": {
+   "pos": [
+    0,
+    0.92,
+    -1.86
+   ],
+   "yaw": 180
+  },
+  "table": {
+   "pos": [
+    2.5,
+    0.74,
+    1.6
+   ],
+   "yaw": 180
+  },
+  "door": {
+   "pos": [
+    -1.4,
+    0,
+    2.6
+   ],
+   "yaw": 180
+  },
+  "chair_a": {
+   "pos": [
+    2.5,
+    0.46,
+    2.15
+   ],
+   "yaw": 180
+  },
+  "chair_b": {
+   "pos": [
+    2.5,
+    0.46,
+    1.05
+   ],
+   "yaw": 0
+  }
+ },
+ "lights": [
+  {
+   "name": "moon",
+   "type": "sun",
+   "color": [
+    1,
+    0.93,
+    0.82
+   ],
+   "power_w": 4,
+   "radius": 0.05,
+   "direction": [
+    0.28016650676727295,
+    -0.5735764503479004,
+    0.7697511315345764
+   ]
+  },
+  {
+   "name": "lamp_key",
+   "type": "spot",
+   "position": [
+    2.6,
+    3.4,
+    -2.8
+   ],
+   "color": [
+    1,
+    0.9,
+    0.78
+   ],
+   "power_w": 0,
+   "radius": 0.3,
+   "direction": [
+    0,
+    -1,
+    0
+   ],
+   "outer_rad": 0.7853981852531433
+  },
+  {
+   "name": "sky_fill",
+   "type": "area",
+   "position": [
+    0,
+    6,
+    0
+   ],
+   "color": [
+    0.75,
+    0.85,
+    1
+   ],
+   "power_w": 300,
+   "radius": 0.05,
+   "direction": [
+    0,
+    -1,
+    0
+   ]
+  }
+ ],
+ "lightmap": {
+  "slot": "emissiveTexture",
+  "texCoord": 1,
+  "encoding": "sRGB",
+  "scale": 1.7550856685638423,
+  "mode": "full diffuse irradiance (direct+indirect) from all static lights; room colour = base x lightmap"
+ }
+}

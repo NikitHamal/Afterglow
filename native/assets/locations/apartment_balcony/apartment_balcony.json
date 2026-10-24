@@ -249,7 +249,7 @@
   "slot": "emissiveTexture",
   "texCoord": 1,
   "encoding": "sRGB",
-  "scale": 2.684208092689497,
+  "scale": 2.6065440118312457,
   "mode": "full diffuse irradiance (direct+indirect) from all static lights; room colour = base x lightmap"
  }
 }

@@ -81,8 +81,12 @@ built sibling of its family first, e.g. `spa_*` → `spa_suite`, then the family
 - ⏳ `hotel_ballroom` (warm chandeliers, a bar, a dance floor), `hotel_terrace` (stone balustrade over the sea at night,
   paper lanterns), `hotel_corridor` (carpet, numbered doors, wall sconces)
 - ⏳ `cabin_door` (the porch and door from inside)
-- ⏳ `villa_terrace` (white walls, blue shutters, table for two, the bay below), `villa_beach` (a sand crescent,
-  rocks, moonlight variant)
+- ✅ `villa_terrace` (`places_villa.py`): whitewashed house wall with blue shutters folded back, terracotta tiles, a
+  low parapet over the bay (the standing scenes' backdrop), bougainvillea, a lemon tree, a table for two under a vine
+  pergola; the bay all around on a 360-degree panorama (elements `panorama`). Anchors `parapet`, `parapet_l`,
+  `parapet_r`, `parapet_top`, `table`, `chair_a`, `chair_b`, `door`. Baked by day only: c4_terrace (sunset) plays in
+  daylight until a sunset variant exists.
+- ⏳ `villa_beach` (a sand crescent, rocks, moonlight variant)
 - ✅ `spa_suite` (`build_place.py`): a padded treatment bed exactly on the authoring bed's footprint (sheet top 0.604 m:
   every bed clip and sit.bed work on it), limestone and teak, a glowing shoji wall, a paper lantern key light,
   candles on a bench; `spa_lobby` / `spa_steam` / `spa_lounge` fall back to it until they exist.

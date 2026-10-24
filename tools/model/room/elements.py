@@ -297,3 +297,27 @@ def frames_on_wall(name, side, fixed, a0, a1, z0, z1, M, mats, cols=4, rows=2):
                 along = v.y if F.axis == 1 else v.x
                 uv.data[li].uv = ((along - (a - w / 2)) / w * (1 if (F.nx if F.axis == 1 else -F.ny) > 0 else -1), (v.z - (z - h / 2)) / h)
             k += 1
+
+
+def panorama(name, centre, radius, height, eye, mat, seg=96):
+    """an outdoor place's backdrop: an open cylinder around it (faces inward) carrying a 360-degree picture whose
+    horizon (v = 0.5) sits at eye height, u = 0.5 straight out along +Y and u turning right (toward +X), closed by a
+    sky cap and a floor disc that sample the picture's top and bottom rows. Keep radius + the farthest camera's offset
+    from `centre` inside the engine's far clip (40 m). Seen by the camera only: it adds no light to the bake."""
+    import bmesh
+    bm = bmesh.new(); uv = bm.loops.layers.uv.new("UVMap")
+    cx, cy = centre
+    z0, z1 = eye - height / 2, eye + height / 2
+    ring = [(cx + radius * math.sin(2 * math.pi * (k / seg - 0.5)), cy + radius * math.cos(2 * math.pi * (k / seg - 0.5))) for k in range(seg + 1)]
+    lo = [bm.verts.new((x, y, z0)) for x, y in ring]
+    hi = [bm.verts.new((x, y, z1)) for x, y in ring]
+    ctop, cbot = bm.verts.new((cx, cy, z1)), bm.verts.new((cx, cy, z0))
+    for k in range(seg):                                   # the angle runs clockwise seen from above: these face inward
+        f = bm.faces.new((lo[k], lo[k + 1], hi[k + 1], hi[k]))
+        for l, t in zip(f.loops, ((k / seg, 0.0), ((k + 1) / seg, 0.0), ((k + 1) / seg, 1.0), (k / seg, 1.0))): l[uv].uv = t
+        for vs, t in (((ctop, hi[k], hi[k + 1]), (0.5, 0.999)), ((cbot, lo[k + 1], lo[k]), (0.5, 0.001))):
+            for l in bm.faces.new(vs).loops: l[uv].uv = t
+    ob = K.from_bm(name, bm, mat)
+    for vis in ("visible_diffuse", "visible_glossy", "visible_transmission", "visible_volume_scatter", "visible_shadow"):
+        setattr(ob, vis, False)
+    return ob
