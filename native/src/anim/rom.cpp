@@ -159,6 +159,61 @@ void JointLimits::build(const Model& m) {
     std::stable_sort(limits_.begin(), limits_.end(), [&](const Limit& a, const Limit& b) { return depth(a.node) < depth(b.node); });
 }
 
+JointRange JointLimits::range(int node) const {
+    JointRange r;
+    for (const Limit& L : limits_) {
+        if (L.node != node) continue;
+        r.valid = true; r.hinge = L.hinge; r.axis = L.axis;
+        r.hingeMin = L.hingeMin; r.hingeMax = L.hingeMax; r.offAxisMax = L.offAxisMax;
+        r.swingMax = L.swingMax; r.twistMin = L.twistMin; r.twistMax = L.twistMax;
+        break;
+    }
+    return r;
+}
+
+bool JointLimits::clampNode(Animator& a, int node) const {
+    if (!enabled) return false;
+    for (const Limit& L : limits_) {
+        if (L.node != node) continue;
+        Quat q = clampRot(a.restR(L.node), a.r(L.node), L);
+        if (q.w == a.r(L.node).w && q.x == a.r(L.node).x && q.y == a.r(L.node).y && q.z == a.r(L.node).z) return false;
+        a.r(L.node) = q;
+        a.recomputeSubtree(L.node);
+        return true;
+    }
+    return false;
+}
+
+bool JointLimits::inRange(int node, const Quat& rest, const Quat& r) const {
+    for (const Limit& L : limits_) {
+        if (L.node != node) continue;
+        Quat q = clampRot(rest, r, L);
+        return q.w == r.w && q.x == r.x && q.y == r.y && q.z == r.z;
+    }
+    return true;
+}
+
+// one bone's local rotation brought inside its range (returns `r` itself when it is inside)
+Quat JointLimits::clampRot(const Quat& rest, const Quat& r, const Limit& L) {
+    V3 sv; float tw;
+    split(rest, r, sv, tw);
+    V3 sv2 = sv;
+    float tw2 = L.twistMax - L.twistMin >= 356.f ? tw : soft(tw, L.twistMin, L.twistMax);
+    if (L.hinge) {
+        float along = dot(sv, L.axis);
+        V3 off = sv - L.axis * along;
+        float ol = length(off);
+        float along2 = soft(along, L.hingeMin, L.hingeMax);
+        float ol2 = ol > 1e-6f ? soft(ol, -L.offAxisMax, L.offAxisMax) : 0.f;
+        sv2 = L.axis * along2 + (ol > 1e-6f ? off * (ol2 / ol) : V3{0, 0, 0});
+    } else {
+        float sa = length(sv);
+        if (sa > 1e-6f && L.swingMax < 179.f) sv2 = sv * (soft(sa, -L.swingMax, L.swingMax) / sa);
+    }
+    if (length(sv2 - sv) < 0.05f && std::fabs(tw2 - tw) < 0.05f) return r;   // inside the range: untouched
+    return join(rest, sv2, tw2);
+}
+
 int JointLimits::apply(Animator& a) const {
     if (!enabled) return 0;
     std::vector<int> moved;
