@@ -7,6 +7,7 @@
 #include "app/platform.h"
 #include "app/sandbox.h"
 #include "app/updater.h"
+#include "app/window.h"
 #include "core/log.h"
 #include "core/paths.h"
 #include "game/game.h"
@@ -20,28 +21,8 @@
 
 namespace {
 
-void applyDisplay(const ag::Settings& s, bool modeChanged) {
-    if (s.vsync) SetWindowState(FLAG_VSYNC_HINT);
-    else ClearWindowState(FLAG_VSYNC_HINT);
-    SetTargetFPS(0);   // the main loop paces frames itself (sleeping, never spinning)
-    if (!modeChanged) return;
-    if (IsWindowFullscreen()) ToggleFullscreen();
-    if (IsWindowState(FLAG_BORDERLESS_WINDOWED_MODE)) ToggleBorderlessWindowed();
-    if (s.windowMode == 1) ToggleBorderlessWindowed();
-    else if (s.windowMode == 2) {
-        int mon = GetCurrentMonitor();
-        SetWindowSize(GetMonitorWidth(mon), GetMonitorHeight(mon));
-        ToggleFullscreen();
-    } else {
-        int mon = GetCurrentMonitor();
-        int w = std::min(s.winW, GetMonitorWidth(mon) - 80), h = std::min(s.winH, GetMonitorHeight(mon) - 120);
-        SetWindowSize(std::max(960, w), std::max(540, h));
-        SetWindowPosition((GetMonitorWidth(mon) - GetScreenWidth()) / 2, (GetMonitorHeight(mon) - GetScreenHeight()) / 2);
-    }
-}
-
 int runSandbox() {
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
+    SetConfigFlags(ag::window::flags(true));
     InitWindow(1600, 900, "Afterglow sandbox");
     SetExitKey(KEY_NULL);
     SetTargetFPS(0);
@@ -52,6 +33,7 @@ int runSandbox() {
         if (dt > 0.05f) dt = 0.05f;
         app->update(dt);
         BeginDrawing();
+        ag::window::beginFrame();
         app->render(GetRenderWidth(), GetRenderHeight());
         EndDrawing();
     }
@@ -106,10 +88,11 @@ int main(int argc, char** argv) {
     // window from the saved display settings
     ag::Settings pre;
     pre.load(ag::paths::join(ag::paths::userDir(), "settings.json"));
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI | (pre.vsync ? FLAG_VSYNC_HINT : 0));
+    // one coordinate space (screen = framebuffer = mouse pixels; Retina on macOS): see app/window.h
+    SetConfigFlags(ag::window::flags(pre.vsync));
     InitWindow(pre.winW, pre.winH, "Afterglow");
     if (!IsWindowReady()) { AG_ERROR("AG: no OpenGL 3.3 window"); ag::platform::releaseSingleInstance(); ag::platform::closeLog(); return 1; }
-    SetWindowMinSize(960, 540);
+    SetWindowMinSize(ag::window::kMinW, ag::window::kMinH);
     SetExitKey(KEY_NULL);
 #if !defined(_WIN32)
     {
@@ -117,22 +100,13 @@ int main(int argc, char** argv) {
         if (icon.data) { SetWindowIcon(icon); UnloadImage(icon); }
     }
 #endif
-    if (pre.windowMode != 0) applyDisplay(pre, true);
-    else {
-        applyDisplay(pre, false);
-        // small screens (1366x768 laptops): fit the window and centre it
-        int mon = GetCurrentMonitor(), mw = GetMonitorWidth(mon), mh = GetMonitorHeight(mon);
-        if (mw > 0 && mh > 0 && (GetScreenWidth() > mw - 60 || GetScreenHeight() > mh - 100)) {
-            int w = std::max(960, std::min(GetScreenWidth(), mw - 60)), h = std::max(540, std::min(GetScreenHeight(), mh - 100));
-            SetWindowSize(w, h);
-            SetWindowPosition((mw - w) / 2, std::max(0, (mh - h) / 2 - 20));
-        }
-    }
+    ag::window::applyDisplay(pre, false);
+    ag::window::placeInitial(pre);
 
     ag::Updater updater;
     ag::Game game;
     game.updater = &updater;
-    game.applyDisplay = applyDisplay;
+    game.applyDisplay = ag::window::applyDisplay;
     if (!game.init()) {
         AG_ERROR("AG: game init failed");
         CloseWindow();
@@ -157,13 +131,14 @@ int main(int argc, char** argv) {
         int cap = focused ? game.settings.fpsLimit() : 8;    // unfocused: paused game, a few cheap frames a second
         if (IsKeyPressed(KEY_F11) || ((IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) && IsKeyPressed(KEY_ENTER))) {
             game.settings.windowMode = game.settings.windowMode == 0 ? 1 : 0;
-            applyDisplay(game.settings, true);
+            ag::window::applyDisplay(game.settings, true);
             game.saveAll();
         }
         float dt = GetFrameTime();
         if (dt > 0.05f) dt = 0.05f;
         game.update(dt);
         BeginDrawing();
+        ag::window::beginFrame();
         game.render(GetRenderWidth(), GetRenderHeight());
         EndDrawing();
         // frame cap by sleeping (raylib's limiter busy-waits the tail of every frame): the CPU idles between frames
@@ -174,10 +149,8 @@ int main(int argc, char** argv) {
             double wait = nextFrame - now;
             if (wait > 0.0005) std::this_thread::sleep_for(std::chrono::duration<double>(wait));
         } else nextFrame = GetTime();
-        if (game.settings.windowMode == 0 && !IsWindowMaximized() && !IsWindowFullscreen()) {
-            game.settings.winW = GetScreenWidth();
-            game.settings.winH = GetScreenHeight();
-        }
+        int ww = 0, wh = 0;
+        if (game.settings.windowMode == 0 && ag::window::windowedSize(&ww, &wh)) { game.settings.winW = ww; game.settings.winH = wh; }
     }
     AG_INFO("AG: shutting down (peak RSS %.0f MB)", (double)ag::platform::peakResidentBytes() / 1048576.0);
     game.shutdown();
