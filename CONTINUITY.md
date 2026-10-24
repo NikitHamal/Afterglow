@@ -17,6 +17,22 @@ a grey card streak; Marcus' hair shell shows a bright whorl at the crown and his
 close-ups have a white halo around the actors (naive DOF mixes the blurred foreground into the background); QA shots
 never run with FLAG_WINDOW_HIGHDPI (harness uses flags 0), so Windows display scaling bugs never show in QA.
 
+**Round 1 done (2026-10-24, pushed, CI dispatch on 86dbaf6 green; 26b726d dispatched):**
+- HUD/window (A): cause = raylib 5.5 FLAG_WINDOW_HIGHDPI only holds until the first resize (laptop-fit at start,
+  maximise, borderless, F11) → UI 1.25-2x too big, clicks beside buttons; QA never set the flag. `app/window.*` = one
+  coordinate space (no HiDPI flag on Windows/Linux, Retina on macOS), linear UI scale, `ui/layout.*`, scale scopes,
+  text fit/ellipsis, `game_hud.cpp`, story UI fit, QA overflow guard (0 findings at 10 sizes + 125/150/200 % after a
+  resize). Notes `docs/HUD_NOTES.md`; matrix runner `task/tools/uimatrix.sh`; UI shots `tools/qa/ui_shots.txt` (actors=0).
+- Look (B): depth-aware DOF (no halo), eyes (no 3x milky env veil; lid/lash shade, catchlight, limbal-ring iris
+  textures `tools/model/native/eye_tex.py`), Marcus lower face rebuilt from the cheek tone (`tools/model/male/face_tone.py`),
+  strand hair shading, Marcus scalp-hugging shell with soft hairline (`hair_shell.py`), faces alive (blinks, lid follow,
+  listening warmth, emphasis — `scene/facelife.h`). Notes `docs/LOOK_NOTES.md`.
+- Still weak: Vivian's chignon (cap look, thin hairline, ribbon tendrils), Marcus' neck colour seam.
+
+**Round 2 (in flight):** (C) deformation-proof skinning (DQS, runtime joint ranges after every layer, stress-pose
+harness) + more expression morphs; (D) Vivian hair rebuild + 2-3 new models on the proven rigs (MH face targets on
+the s4 basemesh, proxies refit, same skeleton/clips/outfits) + a model roster in Customize.
+
 Tracks: (A) HUD/window: harness `--hidpi`, UI layout layer, overflow-proof widgets, UI shot list;
 (B) look: depth-aware DOF, eyes, hair shading, Marcus face; then (C) expressions + deformation-proof skinning,
 (D) new models built on the proven rigs. Notes per track: `docs/HUD_NOTES.md`, `docs/LOOK_NOTES.md`.
