@@ -16,6 +16,7 @@ uniform int u_mode;
 uniform int u_pass;               // 0 opaque / alpha-test, 1 soft hair (everything under the strand cores)
 uniform int u_oit;                // soft hair goes to the weighted blended OIT targets
 uniform int u_hairDebug;          // QA: soft hair green, strand cores red
+uniform int u_skinDebug;          // QA (skin): 1 no flush, 2 no key shadow, 3 flush weight, 4 albedo, 5 no normal map, 6 no AO map, 7 no SSAO, 8 N, 9 uv, 10 albedo mip 0, 11 raw uv
 uniform vec4 u_baseColor;
 uniform float u_metallic;
 uniform float u_roughness;
@@ -329,7 +330,7 @@ void main() {
         vec3 w = pow(abs(normalize(v_onrm)), vec3(4.0));
         g_tri = w / max(w.x + w.y + w.z, 1e-4);
     }
-    if (u_hasNormal == 1) {
+    if (u_hasNormal == 1 && !(u_skinDebug == 5 && u_mode == 1)) {
         vec3 tn = texture(u_texNormal, uvSel(u_uvNormal)).xyz * 2.0 - 1.0;
         tn.xy *= u_normalScale;
         if (u_mode == 1 && u_hasDetailN == 1) {
@@ -429,12 +430,12 @@ void main() {
     vec3 V = normalize(u_camPos - v_wpos);
     float metal = u_metallic, rough = u_roughness, ao = 1.0;
     if (u_hasMR == 1) { vec4 mr = texture(u_texMR, uvSel(u_uvMR)); rough *= mr.g; metal *= mr.b; }
-    if (u_hasOcc == 1 && u_baked == 0) ao = mix(1.0, texture(u_texOcc, uvSel(u_uvOcc)).r, u_occStrength);
+    if (u_hasOcc == 1 && u_baked == 0 && !(u_skinDebug == 6 && u_mode == 1)) ao = mix(1.0, texture(u_texOcc, uvSel(u_uvOcc)).r, u_occStrength);
     if (fabricRough > 0.0) { rough = fabricRough; metal = 0.0; }
     if (u_mode == 1) {
         rough = max(rough, 0.44);
         rough = clamp(rough * (1.0 - 0.38 * u_sweat * g_mask.b) * (1.0 - 0.6 * g_mask.a * u_wet), 0.2, 1.0);
-        base.rgb *= mix(vec3(1.0), vec3(1.0, 0.84, 0.83), sat(u_flush) * 0.6 * g_mask.r);
+        base.rgb *= mix(vec3(1.0), vec3(1.0, 0.84, 0.83), (u_skinDebug == 1 ? 0.0 : sat(u_flush)) * 0.6 * g_mask.r);
     }
     float eyeOcc = 1.0;
     if (u_mode == 3) {
@@ -487,7 +488,7 @@ void main() {
     s.albedo = base.rgb; s.metal = metal; s.rough = clamp(rough, 0.03, 1.0); s.ao = ao; s.alpha = alpha; s.mode = u_mode;
     s.f0 = mix(vec3(u_mode == 1 ? 0.028 : 0.04), base.rgb, metal);
 
-    float ssao = u_ssaoOn == 1 ? texture(u_ssao, gl_FragCoord.xy / u_screenSize).r : 1.0;
+    float ssao = u_ssaoOn == 1 && !(u_skinDebug == 7 && u_mode == 1) ? texture(u_ssao, gl_FragCoord.xy / u_screenSize).r : 1.0;
     vec3 emis = u_emissive;
     if (u_hasEmis == 1) emis *= texture(u_texEmis, uvSel(u_uvEmis)).rgb;
 
@@ -497,7 +498,7 @@ void main() {
     float spot = smoothstep(u_keyCosOuter, u_keyCosInner, dot(-Lk, normalize(u_keyDir)));
     float fall = sat(1.0 - pow(dk / max(u_keyRange, 0.01), 4.0));
     float keyAtt = spot * fall * fall / (dk * dk + 0.25);
-    float sh = keyAtt > 0.0 ? shadowFactor(v_wpos, Ng, Lk) : 1.0;
+    float sh = keyAtt > 0.0 && !(u_skinDebug == 2 && u_mode == 1) ? shadowFactor(v_wpos, Ng, Lk) : 1.0;
 
     vec3 bakedCol = vec3(0.0);
     bool bakedRoom = u_mode == 4 && u_baked == 1;
@@ -562,6 +563,12 @@ void main() {
     else if (u_alphaMode == 2) outA = alpha;
     col = max(col, vec3(0.0));
     if (u_hairDebug == 1) col = u_pass == 1 ? vec3(0.0, 0.6, 0.0) : vec3(0.6, 0.0, 0.0);
+    if (u_skinDebug == 3 && u_mode == 1) col = vec3(g_mask.r, sat(u_flush) * g_mask.r, 0.0);
+    if (u_skinDebug == 4 && u_mode == 1) col = base.rgb * 0.8;
+    if (u_skinDebug == 8 && u_mode == 1) col = vec3(N * 0.5 + 0.5) * 0.6;
+    if (u_skinDebug == 9 && u_mode == 1) col = vec3(fract(v_uv0 * 16.0), 0.0) * 0.8;
+    if (u_skinDebug == 10 && u_mode == 1) col = vec3(textureLod(u_texBase, uvSel(u_uvBase), 0.0).rgb) * 0.8;
+    if (u_skinDebug == 11 && u_mode == 1) col = vec3(v_uv0, 0.0);
     if (u_pass == 1 && u_oit == 1) {
         // weighted blended OIT: overlapping soft hair layers average (nearer ones count a little more), their
         // transparencies multiply - independent of the order the cards are drawn in
