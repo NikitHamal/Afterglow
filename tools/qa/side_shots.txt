@@ -1,0 +1,35 @@
+# engine r3: side / profile of every model (Customize at +-90 degrees, full figure and portrait), neck skin of the
+# women in both moods, the story two-shot from the side, hands on the partner (clamps logged)
+side_vivian_R|screen=customize;tab=her;hermodel=vivian;outfit=knit_sweater_jeans;turn=1.57;ui=0;t=2;frames=24;render_from=22
+prof_vivian_R|screen=customize;tab=her;hermodel=vivian;outfit=knit_sweater_jeans;turn=1.57;portrait=1;ui=0;t=2;frames=24;render_from=22
+side_vivian_L|screen=customize;tab=her;hermodel=vivian;outfit=knit_sweater_jeans;turn=-1.57;ui=0;t=2;frames=24;render_from=22
+prof_vivian_L|screen=customize;tab=her;hermodel=vivian;outfit=knit_sweater_jeans;turn=-1.57;portrait=1;ui=0;t=2;frames=24;render_from=22
+side_mei_R|screen=customize;tab=her;hermodel=mei;outfit=knit_sweater_jeans;turn=1.57;ui=0;t=2;frames=24;render_from=22
+prof_mei_R|screen=customize;tab=her;hermodel=mei;outfit=knit_sweater_jeans;turn=1.57;portrait=1;ui=0;t=2;frames=24;render_from=22
+side_mei_L|screen=customize;tab=her;hermodel=mei;outfit=knit_sweater_jeans;turn=-1.57;ui=0;t=2;frames=24;render_from=22
+prof_mei_L|screen=customize;tab=her;hermodel=mei;outfit=knit_sweater_jeans;turn=-1.57;portrait=1;ui=0;t=2;frames=24;render_from=22
+side_amara_R|screen=customize;tab=her;hermodel=amara;outfit=knit_sweater_jeans;turn=1.57;ui=0;t=2;frames=24;render_from=22
+prof_amara_R|screen=customize;tab=her;hermodel=amara;outfit=knit_sweater_jeans;turn=1.57;portrait=1;ui=0;t=2;frames=24;render_from=22
+side_amara_L|screen=customize;tab=her;hermodel=amara;outfit=knit_sweater_jeans;turn=-1.57;ui=0;t=2;frames=24;render_from=22
+prof_amara_L|screen=customize;tab=her;hermodel=amara;outfit=knit_sweater_jeans;turn=-1.57;portrait=1;ui=0;t=2;frames=24;render_from=22
+side_marcus_R|screen=customize;tab=him;himmodel=marcus;outfit=flannel_jeans;turn=1.57;ui=0;t=2;frames=24;render_from=22
+prof_marcus_R|screen=customize;tab=him;himmodel=marcus;outfit=flannel_jeans;turn=1.57;portrait=1;ui=0;t=2;frames=24;render_from=22
+side_marcus_L|screen=customize;tab=him;himmodel=marcus;outfit=flannel_jeans;turn=-1.57;ui=0;t=2;frames=24;render_from=22
+prof_marcus_L|screen=customize;tab=him;himmodel=marcus;outfit=flannel_jeans;turn=-1.57;portrait=1;ui=0;t=2;frames=24;render_from=22
+side_daniel_R|screen=customize;tab=him;himmodel=daniel;outfit=flannel_jeans;turn=1.57;ui=0;t=2;frames=24;render_from=22
+prof_daniel_R|screen=customize;tab=him;himmodel=daniel;outfit=flannel_jeans;turn=1.57;portrait=1;ui=0;t=2;frames=24;render_from=22
+side_daniel_L|screen=customize;tab=him;himmodel=daniel;outfit=flannel_jeans;turn=-1.57;ui=0;t=2;frames=24;render_from=22
+prof_daniel_L|screen=customize;tab=him;himmodel=daniel;outfit=flannel_jeans;turn=-1.57;portrait=1;ui=0;t=2;frames=24;render_from=22
+neck_vivian_evening|screen=customize;tab=her;hermodel=vivian;outfit=knit_sweater_jeans;focus=首;view=yaw:65,pitch:4,dist:0.5;ui=0;t=2;mood=evening;frames=24;render_from=22
+neck_vivian_day|screen=customize;tab=her;hermodel=vivian;outfit=knit_sweater_jeans;focus=首;view=yaw:-65,pitch:4,dist:0.5;ui=0;t=2;mood=day;frames=24;render_from=22
+neck_mei_evening|screen=customize;tab=her;hermodel=mei;outfit=knit_sweater_jeans;focus=首;view=yaw:65,pitch:4,dist:0.5;ui=0;t=2;mood=evening;frames=24;render_from=22
+neck_mei_day|screen=customize;tab=her;hermodel=mei;outfit=knit_sweater_jeans;focus=首;view=yaw:-65,pitch:4,dist:0.5;ui=0;t=2;mood=day;frames=24;render_from=22
+neck_amara_evening|screen=customize;tab=her;hermodel=amara;outfit=knit_sweater_jeans;focus=首;view=yaw:65,pitch:4,dist:0.5;ui=0;t=2;mood=evening;frames=24;render_from=22
+neck_amara_day|screen=customize;tab=her;hermodel=amara;outfit=knit_sweater_jeans;focus=首;view=yaw:-65,pitch:4,dist:0.5;ui=0;t=2;mood=day;frames=24;render_from=22
+two_side_of|screen=story;story=old_flames;node=c1_reception;line=3;orbit=yaw:0,pitch:3,dist:3.2;ui=0;frames=60;render_from=58
+two_side_storm|screen=story;story=the_storm;node=c3_dark;line=3;orbit=yaw:0,pitch:3,dist:3.2;ui=0;frames=60;render_from=58
+two_side_villa|screen=story;story=salt_and_sun;node=c4_terrace;line=3;orbit=yaw:180,pitch:3,dist:3.2;ui=0;frames=60;render_from=58
+hands_of_c3|screen=story;story=old_flames;node=c3_yes;line=0;near=1;orbit=yaw:30,pitch:0,dist:1.35;ui=0;frames=60;render_from=58;kissqa=1;romlog=1
+hands_of_c4|screen=story;story=old_flames;node=c4_kiss;line=0;kiss=1;orbit=yaw:-40,pitch:0,dist:1.35;ui=0;frames=60;render_from=58;kissqa=1;romlog=1
+hands_ss_c3|screen=story;story=salt_and_sun;node=c3_siesta;line=3;kiss=1;orbit=yaw:45,pitch:10,dist:1.35;ui=0;frames=60;render_from=58;kissqa=1;romlog=1
+hands_nb_c6|screen=story;story=neighbours;node=c6_her;line=2;near=1;orbit=yaw:30,pitch:0,dist:1.35;ui=0;frames=60;render_from=58;kissqa=1;romlog=1
