@@ -167,16 +167,19 @@ def natural_pole(body, s, W, palm, fingers, hint):
     hinge_mem = {k_: v_.copy() for k_, v_ in getattr(r, "_last_hinge", {}).items()}   # trials must not steer the hinge memory
     bend_mem = {k_: v_.copy() for k_, v_ in getattr(r, "_last_bend", {}).items()}
     share_mem = dict(getattr(r, "_last_share", {}))
-    best = None
-    for k in range(-5, 6):
-        a = math.radians(20.0 * k)
+    def trial(a):
         p = S + (h * math.cos(a) + b2 * math.sin(a)) * 0.5
         body.arm_ik(s, W, p); body.hand(s, palm=palm, fingers=fingers)
         sw_, tw, _, _ = r.swing_twist("手首" + s)
         cost = 2.0 * max(0.0, sw_ - 35.0) + 0.6 * abs(tw) + 25.0 * (1 - math.cos(a))
         cost += 1500.0 * max(0.0, BED_TOP + 0.035 - r.head("ひじ" + s).z)        # elbow never in the mattress
         if last is not None: cost += 150.0 * (p - last).length
-        if best is None or cost < best[0]: best = (cost, p)
+        return cost, p, a
+    best = min((trial(math.radians(20.0 * k)) for k in range(-5, 6)), key=lambda x: x[0])
+    for step in (10.0, 5.0, 2.5, 1.25):                                         # refined: the elbow glides frame to
+        for a in (best[2] - math.radians(step), best[2] + math.radians(step)):   # frame instead of hopping 20 deg
+            c = trial(a)
+            if c[0] < best[0]: best = c
     r._last_pole[s] = best[1].copy()
     r._last_hinge = hinge_mem; r._last_bend = bend_mem; r._last_share = share_mem
     return best[1]
@@ -219,7 +222,13 @@ def touch_tips(body, s, bvh, anchor, along, pole, curl=0.22, pad=0.007, lift=0.0
     off it (never through the belly). With frame_key the hand keeps one orientation + elbow for the whole clip
     (a rubbing hand only translates), so the wrist never flips. Returns the contact point."""
     r = body.rig
-    loc, n, _, _ = bvh.find_nearest(Vector(anchor)); P = Vector(loc); n = Vector(n).normalized()
+    r.strict_elbow = True                                    # the forearm passes between the bodies: keep it out of them
+    try: return _touch_tips(body, s, bvh, anchor, along, pole, curl, pad, lift, iters, frame_key, free_pole)
+    finally: r.strict_elbow = False
+
+def _touch_tips(body, s, bvh, anchor, along, pole, curl, pad, lift, iters, frame_key, free_pole):
+    r = body.rig
+    P, n = smooth_nearest(bvh, anchor, radius=0.02)
     f = Vector(along); f = (f - n * n.dot(f)).normalized()
     if frame_key is not None:
         if frame_key in _TIPFRAME: n, f, pole_c = _TIPFRAME[frame_key]
@@ -244,11 +253,23 @@ def touch_tips(body, s, bvh, anchor, along, pole, curl=0.22, pad=0.007, lift=0.0
     lift_out(body, s, bvh, W, n, pose_hand, pole, allow=-0.004)
     return P
 
+def smooth_nearest(bvh, anchor, radius=0.03):
+    """nearest surface point + a normal averaged over a disc round it: a BVH gives flat face normals that jump from
+    face to face, and a hand aimed along them snaps 15-25 deg between frames"""
+    loc, n, _, _ = bvh.find_nearest(Vector(anchor)); P = Vector(loc); n0 = Vector(n).normalized()
+    t1 = n0.orthogonal().normalized(); t2 = n0.cross(t1)
+    acc = n0 * 2.0
+    for k in range(12):
+        a = 2 * math.pi * k / 12; rr = radius * (1.0 if k % 2 == 0 else 0.5)
+        l2, n2, _, _ = bvh.find_nearest(P + (t1 * math.cos(a) + t2 * math.sin(a)) * rr + n0 * 0.01)
+        if l2 is not None and Vector(n2).dot(n0) > 0.3: acc += Vector(n2)
+    return P, acc.normalized()
+
 def cup(body, s, bvh, anchor, along, pole, pad=0.007, palm_lift=0.017, iters=5):
     """palm on the skin at `anchor` (fingers `along` the surface), then every finger curls until its pad meets the
     curve (wraps a breast, a thigh, a shaft); the thumb closes from the other side"""
     r = body.rig
-    loc, n, _, _ = bvh.find_nearest(Vector(anchor)); P = Vector(loc); n = Vector(n).normalized()
+    P, n = smooth_nearest(bvh, anchor)
     f = Vector(along); f = (f - n * n.dot(f)).normalized()
     goal = P + n * palm_lift
     W = goal - f * 0.05
@@ -344,13 +365,12 @@ def lean_to_reach(M, targets, pelvis_up_deg, angles=range(0, 75, 3), bend=0.9):
     return a
 
 def his_hands_on_bed(M, y, w=0.31):
+    """his weight on his hands: palms flat, pressed a few mm into the mattress"""
+    from positions2 import hands_to
     r = M.rig
     for s, sx in sides(M, "腕"):
         sh = r.head("腕" + s)
-        W = V3(sx * w, y, BED_TOP + 0.035)
-        M.arm_ik(s, W, sh + V3(sx * 0.6, -0.25, 0.35))
-        M.hand(s, palm=V3(0, 0, -1), fingers=nrm(V3(sx * 0.25, 1, 0)))
-        M.fingers(s, 0.15)
+        hands_to(M, s, V3(sx * w, y, BED_TOP + 0.035), V3(0, 0, -1), nrm(V3(sx * 0.25, 1, 0)), sh + V3(sx * 0.6, -0.25, 0.35), 0.15, plant=True)
 
 # ---------------------------------------------------------------- MISSIONARY
 def missionary(ctx, t, rub=None, embrace=0.0):

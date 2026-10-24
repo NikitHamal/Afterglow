@@ -101,6 +101,36 @@ M.add_landmark("nape", "首", Vector(MBr[sel][np.argmax(MBr[sel][:, 1])]))
 nk = V.rig.rest["首"].translation
 sel = (np.abs(B[:, 0]) < 0.02) & (np.abs(B[:, 2] - (nk.z + 0.04)) < 0.02)
 V.add_landmark("nape", "首", Vector(B[sel][np.argmax(B[sel][:, 1])]))
+# ---- skin-vs-skin checks for the story clips' head solve: per-bone surfaces in the bone's own frame (rigid parts:
+# head, neck, chest) + sample points on each head (lips left out: the kiss is meant to touch there)
+from mathutils.bvhtree import BVHTree as _BVH
+def _local_surfaces(body_, rest, bones_=("頭", "首", "上半身2", "上半身", "乳親.L", "乳親.R", "肩.L", "肩.R", "腕.L", "腕.R")):
+    """each face goes to the bone that dominates most of its corners (no gaps at the joints)"""
+    dom = SC.dominant_bone(body_.obj); polys = [tuple(p.vertices) for p in body_.obj.data.polygons]
+    owner = {}
+    for f in polys:
+        cnt = {}
+        for i in f: cnt[dom[i]] = cnt.get(dom[i], 0) + 1
+        owner.setdefault(max(cnt, key=cnt.get), []).append(f)
+    out = {}
+    for bn in bones_:
+        if bn not in owner or bn not in body_.rig.rest: continue
+        R_ = body_.rig.rest[bn].inverted()
+        out[bn] = _BVH.FromPolygons([tuple(R_ @ Vector(v)) for v in rest], owner[bn])
+    return out
+def _head_samples(body_, rest, n=70):
+    dom = SC.dominant_bone(body_.obj)
+    idx = np.where(np.array([d == "頭" for d in dom]))[0]
+    lip = np.array(body_.lm("mouth")) if "mouth" in body_.landmarks else None
+    R_ = body_.rig.rest["頭"].inverted()
+    pts = []
+    for i in idx[:: max(1, len(idx) // n)]:
+        if lip is not None and np.linalg.norm(rest[i] - lip) < 0.024: continue
+        pts.append(R_ @ Vector(rest[i]))
+    return pts
+V.local_bvh = _local_surfaces(V, B); M.local_bvh = _local_surfaces(M, MBr)
+V.head_samples = _head_samples(V, B); M.head_samples = _head_samples(M, MBr)
+log(f"head samples: her {len(V.head_samples)}, his {len(M.head_samples)}; local surfaces {sorted(V.local_bvh)}")
 ctx = PO.Ctx(V, M, viv_meas, mar_meas)
 log(f"scene ready ({time.time()-t0:.0f}s): clit {np.round(clit,3)}, canal {np.round(viv_meas['vagina']['entrance'],3)} axis {np.round(viv_meas['vagina']['axis'],2)}")
 
@@ -142,6 +172,8 @@ her_breast = SC.vgroup_mask(body, ("乳親.L", "乳親.R"), 0.3)
 TRUNK = ("上半身", "上半身2", "乳親", "腕", "肩", "首")
 her_trunk = np.array([b.startswith(TRUNK) for b in SC.dominant_bone(body)])
 his_trunk = np.array([b.startswith(TRUNK) for b in SC.dominant_bone(mb)])
+her_arm = np.array([b.startswith(("ひじ", "腕")) for b in SC.dominant_bone(body)])
+his_arm = np.array([b.startswith(("ひじ", "腕")) for b in SC.dominant_bone(mb)])
 E0 = np.array(viv_meas["vagina"]["entrance"], np.float32)
 her_vulva_zone = np.linalg.norm(B - E0, axis=1) < 0.06                    # inner thighs / buttocks squeezing the shaft
 # pelvis-to-pelvis contact (her buttocks / inner thighs on his groin, hips, upper thighs): flesh that compresses in
@@ -212,6 +244,9 @@ def verify(clip, t):
     if clip.startswith(("cowgirl", "revcowgirl")):            # straddling: her thighs along his flanks / over his thighs
         extra = [(her_vulva_zone, his_shaft), (her_seat_wide, his_seat_wide | his_shaft)]
     if clip.startswith(("cuddle", "kiss", "sit", "stand")): extra = [(her_trunk, his_trunk), (her_seat, his_seat)]
+    if clip in ("stand.embrace", "kiss.stand", "kiss.sit"):  # arms round each other: forearms rest on shoulders/backs (depth tracked)
+        extra = [(her_trunk, his_trunk), (her_arm, his_trunk | his_arm), (her_trunk | her_arm, his_arm), (her_seat, his_seat),
+                 (her_seat | her_trunk, his_shaft)]                    # dressed: his groin against her through the clothes
     pairs, bad, depth, worst = SC.interpenetration(A, Pa, allowA, Bm, Pb, allowB, boneA=her_bones, boneB=his_bones,
                                                    handA=her_hand, handB=his_hand, extra=extra)
     if os.environ.get("DIAG") and bad:
@@ -451,6 +486,9 @@ for clip in only:
             if prev[who] is not None:
                 w = SC.flips(prev[who], snap)
                 if w[0] > worst_flip[0]: worst_flip = (w[0], f"{who}:{w[1]}")
+                if os.environ.get("AG_FLIPDBG") and w[0] > 12.0:
+                    sa_, ta_, _, _ = body_.rig.swing_twist(w[1]) if w[1] else (0, 0, 0, 0)
+                    log(f"   flip f{f + 1} {who}:{w[1]} {w[0]:.1f} deg (now swing {sa_:.0f} twist {ta_:.0f})")
             prev[who] = snap
             body_.rig.key(f + 1)
     samples = [0.0, 0.25, 0.5, 0.75, 1.0] if kind != "pose" else [0.0]

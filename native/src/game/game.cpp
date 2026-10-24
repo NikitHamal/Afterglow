@@ -774,6 +774,22 @@ void Game::applySpec(const Spec& s) {
     screen_ = target;
     enterScreen(target);
     qaPortrait_ = 0.f;
+    if ((target == Screen::Play || target == Screen::Pause) && s.has("dress")) {
+        // QA: both in story outfits in act stills (dress=<her style>,<his style>; layer=under: underwear only), so
+        // every act can be checked from every side without nudity
+        std::string d = s.get("dress");
+        size_t comma = d.find(',');
+        std::string st[2] = {d.substr(0, comma), comma == std::string::npos ? std::string() : d.substr(comma + 1)};
+        for (int w = 0; w < 2; ++w) {
+            Character& c = w ? scene.marcus : scene.vivian;
+            if (!c.loaded() || st[w].empty()) continue;
+            c.setOutfit(st[w]);
+            if (Outfit* o = c.outfit()) {
+                o->setDress(Dress::Dressed, 0.f);
+                if (s.get("layer") == "under") o->hold(0, 0.f);
+            }
+        }
+    }
     if (target == Screen::Customize) {
         showcaseWho_ = custTab_; stage(Stage::Showcase);
         // QA stills of the models: turntable angle, a head-and-shoulders camera, an outfit, held expressions
