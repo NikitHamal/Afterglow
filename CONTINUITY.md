@@ -6,6 +6,27 @@ Short, current, honest. Newest state at the top. Deeper history: `docs/STATUS.md
 The product is the native game in `native/` (C++17 / raylib, built only on GitHub CI). The web game in the repo
 root is legacy. Adults only (see `AGENTS.md`).
 
+## Branch `agent-models-hud` (2026-10-24, Agent B) — models + HUD pass (main is owned by another agent)
+
+User asks (2026-10-24): eyes read whitish; hair very poor; Marcus red around the lips; more expressive faces;
+no deformation in any pose (Blender or game); HUD buttons/panels/window break on every push → fix globally, modular;
+2-3 new best models (adults only); show every model/shot on the molab board.
+
+Diagnosed on molab (main @5a1905a, harness 1280x720 / 1080p): pale grey irises; Vivian's chignon reads as a flat cap with
+a grey card streak; Marcus' hair shell shows a bright whorl at the crown and his lower face is orange-red; story
+close-ups have a white halo around the actors (naive DOF mixes the blurred foreground into the background); QA shots
+never run with FLAG_WINDOW_HIGHDPI (harness uses flags 0), so Windows display scaling bugs never show in QA.
+
+Tracks: (A) HUD/window: harness `--hidpi`, UI layout layer, overflow-proof widgets, UI shot list;
+(B) look: depth-aware DOF, eyes, hair shading, Marcus face; then (C) expressions + deformation-proof skinning,
+(D) new models built on the proven rigs. Notes per track: `docs/HUD_NOTES.md`, `docs/LOOK_NOTES.md`.
+
+molab (this session): https://sb-11332fbca0c30924.sb.molab.run/ — board notebook = status + tabs of shots from
+`/root/board/{status,shots/<section>}`; toolchain in `/root/agb` (Blender 4.2.3 + MPFB + MH CC0), repo `/root/Afterglow`,
+build `/root/build`. Helpers (AgentSky task folder `task/tools/`, need `~/.molab_token`): `mo.py` (run code),
+`mjob.py NAME CMD` (detached job + poll), `msync.py REPO REMOTE_DIR` (overlay native/src, shaders, tools/qa),
+`mbuild.py SRC BUILD`, `mshots.py BUILD LIST OUTDIR RES`, `fetch.py GLOB DIR`.
+
 ## State (2026-10-23, evening)
 
 **Green:** CI builds Windows / Linux / macOS + nightly on every push (the QA-shots job was removed in `b425acd`;
