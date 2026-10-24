@@ -1,5 +1,6 @@
 # Eye albedo for the native game: a clearer, more alive iris on the MakeHuman eye texture (no hand edits).
 #   python3 tools/model/native/eye_tex.py <character.glb> <out.png> [--sat 1.25] [--gain 1] [--limbus 0.6] [--sclera 0.9]
+#                                         [--iris R,G,B --tint 0.85]   (another eye colour: sRGB target, fibres kept)
 #   (shipped: vivian defaults; marcus --sat 0.9 --gain 0.8 — his brown is already warm, more saturation turns it red)
 # Reads the GLB's embedded `*_eye` image, finds both iris discs (dark, round, one per eyeball) and, in linear light:
 #   - deepens the limbal ring (the dark rim where the iris meets the white, the strongest "alive" cue),
@@ -65,9 +66,11 @@ def iris_discs(rgb, alpha):
 def main():
     args = sys.argv[1:]
     glb, out = args[0], args[1]
-    opt = {"--sat": 1.25, "--gain": 1.0, "--limbus": 0.6, "--sclera": 0.9}
+    opt = {"--sat": 1.25, "--gain": 1.0, "--limbus": 0.6, "--sclera": 0.9, "--tint": 0.85}
     for k in opt:
         if k in args: opt[k] = float(args[args.index(k) + 1])
+    iris_rgb = None
+    if "--iris" in args: iris_rgb = to_lin(np.array([float(x) for x in args[args.index("--iris") + 1].split(",")]))
     img = glb_image(glb, "_eye")
     a = np.asarray(img).astype(np.float32) / 255.0
     srgb, alpha = a[..., :3], a[..., 3]
@@ -86,6 +89,12 @@ def main():
         l = lum[..., None]
         sat = l + (res - l) * opt["--sat"]
         sat *= (opt["--gain"] * (1.0 - 0.28 * sstep(0.62, 1.0, r)))[..., None]
+        if iris_rgb is not None:
+            # another colour, same fibres: the target colour scaled by each texel's luminance against the iris mean
+            inside = iris > 0.5
+            lm = max(float(l[inside].mean()), 1e-4)
+            recol = iris_rgb[None, None, :] * np.clip(l / lm, 0.25, 2.2) * opt["--gain"]
+            sat = sat * (1 - opt["--tint"]) + recol * opt["--tint"]
         res = res * (1 - iris[..., None]) + np.clip(sat, 0, 1) * iris[..., None]
         # limbal ring: a soft dark band straddling the iris edge
         ring = np.exp(-((r - 0.93) / 0.055) ** 2)

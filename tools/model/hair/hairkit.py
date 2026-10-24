@@ -73,6 +73,14 @@ class Head:
         self.hl_noise = rng.normal(0, 1, 64)
         print(f"[hairkit] head k {k:.3f} centre {self.Ch.round(3)} eyes {self.EC.round(3)} top {self.TOP_Z:.3f} chin {self.CHIN_Z:.3f}", flush=True)
 
+    def face_half(self, z):
+        """half-width of the face/head at height z, front half (for hair that must hang beside the cheeks)"""
+        if not hasattr(self, "_fh"):
+            hv = self.V[(self.wh > 0.3) & (self.V[:, 1] < self.EC[1] + 0.05 * self.k)]
+            zs = np.linspace(self.CHIN_Z - 0.03, self.TOP_Z, 48)
+            hw = [np.abs(hv[np.abs(hv[:, 2] - z_) < 0.006][:, 0]).max() if (np.abs(hv[:, 2] - z_) < 0.006).any() else 0.05 for z_ in zs]
+            self._fh = (zs, np.maximum.accumulate(np.array(hw)[::-1])[::-1])   # never narrower than below (jaw -> cheek)
+        return float(np.interp(z, *self._fh))
     def near(self, p):
         loc, n, _, d = self.bvh.find_nearest(Vector(tuple(p))); return np.array(loc), np.array(n), d
     def phi(self, p):
@@ -192,13 +200,17 @@ class Builder:
             P = P[:m]; Pv = Bv0[:m]; Nn = Nv[:m]
             w = width * (1 - taper * np.linspace(0, 1, m)) * self.rng.uniform(0.75, 1.2)
             self.card(P, Pv, w, int(self.rng.choice(cols)), wfun, alpha=alpha, twist_sd=twist_sd, outv=Nn, v0=v0)
-    def cap(self, lift, above, uv_fn):
-        """the scalp faces lifted off the skin, subdivided twice, as the opaque under-layer"""
+    def cap(self, lift, above, uv_fn, fade_from=None, fade_len=0.010):
+        """the scalp faces lifted off the skin, subdivided twice, as the opaque under-layer. It reaches below where it
+        shows (`above`) and fades in from `fade_from` over `fade_len` above the hairline, so its visible edge is the
+        smooth fade contour, never the head mesh's triangle border."""
         import bmesh
         h = self.h; V = h.V
-        sv = (h.wh > 0.5) & h.on_scalp(V)
+        if fade_from is None: fade_from = above
+        sv = (h.wh > 0.5) & h.on_scalp(V, min(above, fade_from - 0.008 * h.k))
+        lo = min(above, fade_from - 0.008 * h.k)
         faces = [tuple(p.vertices) for p in h.body.data.polygons
-                 if all(sv[i] and V[i][2] > h.hairline_z(V[i], irregular=False) + above for i in p.vertices)]
+                 if all(sv[i] and V[i][2] > h.hairline_z(V[i], irregular=False) + lo for i in p.vertices)]
         ids = sorted({i for f in faces for i in f})
         bm = bmesh.new(); bv = {i: bm.verts.new(tuple(V[i])) for i in ids}
         for f in faces:
@@ -209,7 +221,9 @@ class Builder:
         base = len(self.P)
         for v in bm.verts:
             pv = np.array(v.co); loc, n, _ = h.near(pv); pv = loc + n * lift
-            self.P.append(pv); self.UV.append(uv_fn(pv)); self.W.append({HEAD: 1.0}); self.A.append(1.0)
+            # the cap fades out over its first centimetre above the hairline (no hard edge where it meets the skin)
+            fade = float(0.02 + 0.98 * ss(fade_from, fade_from + fade_len * h.k, pv[2] - h.hairline_z(pv, irregular=False)))
+            self.P.append(pv); self.UV.append(uv_fn(pv)); self.W.append({HEAD: 1.0}); self.A.append(fade)
         for f in bm.faces: self.F.append(tuple(base + v.index for v in f.verts)); self.FM.append(1)
         n = len(bm.faces); bm.free(); return n
 

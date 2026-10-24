@@ -233,9 +233,8 @@ void Game::drawCustomize() {
                 for (const Json& e : list.arr) { names.push_back(e["name"].str("?")); act.push_back(cur.asset == e["id"].str()); }
                 int pick = chipRow(U, col, custTab_ == 0 ? "hm#" : "mm#", names, act);
                 if (pick >= 0 && !act[(size_t)pick]) {
-                    std::string id = list.arr[(size_t)pick]["id"].str();
-                    if (custTab_ == 0) profile.her.model = id; else profile.him.model = id;
-                    if (ensureCast(false)) stage(Stage::Showcase);
+                    pickModel(custTab_, list.arr[(size_t)pick]["id"].str(), true, true);
+                    stage(Stage::Showcase);
                 }
                 col.gap(14.f);
             }

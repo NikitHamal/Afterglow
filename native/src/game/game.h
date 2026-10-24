@@ -71,7 +71,9 @@ private:
     const Json& rosterEntry(int role, const std::string& id) const;   // role 0 her, 1 him; null Json when unknown
     const Json& castEntry(int role) const;                             // the model the role shows right now
     std::string castName(int role) const;                              // "Vivian", "Mei", ... (story: the story's cast)
-    bool ensureCast(bool story);          // story = the stories' own cast (Vivian, Marcus); else the profile's models; true if one reloaded
+    bool ensureCast(bool story);
+    // the profile's model for a role (+ that model's own skin tone / hair colour when asked), then the cast
+    void pickModel(int role, const std::string& id, bool withTone, bool withHair);          // story = the stories' own cast (Vivian, Marcus); else the profile's models; true if one reloaded
     bool storyCast_ = false;
     float qaPortrait_ = 0.f;              // QA: Customize head-and-shoulders camera (spec portrait=)
     void fixedAgeRow(int role, Rectangle r);        // Customize: a fixed-age model's age line

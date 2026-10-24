@@ -203,10 +203,14 @@ def bob(h, rng, part_x=-0.022):
         down = np.array([0.0, 0.0, -1.0])
         top = float(ss(h.Ch[2] + 0.03 * k, h.TOP_Z - 0.005, p[2]))
         f = away * (0.25 + 0.75 * top) + down * (1.0 - 0.6 * top)
-        if p[1] < h.EC[1] + 0.03 * k and p[2] > h.hairline_z(p, False) - 0.01:   # front: back off the forehead
-            f = f + np.array([0.0, 0.7, 0.0])
+        # front: the hair slides along above the hairline to the temple, never down the forehead
+        if p[1] < h.EC[1] + 0.05 * k:
+            near_line = float(ss(h.hairline_z(p, False) + 0.03 * k, h.hairline_z(p, False) + 0.008 * k, p[2]))
+            f = f * (1 - near_line) + (away * 1.0 + np.array([0.0, 0.35, 0.0])) * near_line
+            if abs(p[0]) < h.face_half(p[2]):
+                f = f + np.array([0.0, 0.0, 0.25]) * near_line   # lift off the brow rather than over it
         return tangent(f, n)
-    NSEG = 10
+    NSEG = 8
     def strand(r, off):
         ez = float(end_z(h.phi(r)))
         P = grow_on_skull(h, r, flow, lambda s, p: off, lambda p, s: p[2] < h.Ch[2] - 0.035 * k, seg=0.005, max_len=0.25)
@@ -218,6 +222,10 @@ def bob(h, rng, part_x=-0.022):
             loc, n, dist = h.near(p)
             clear = off + 0.004 * k
             if dist < clear: p = loc + n * clear
+            # in front of the ears the hair hangs beside the cheeks, never across the face
+            if p[1] < h.EC[1] + 0.06 * k:
+                fh = h.face_half(p[2]) + 0.006 * k + off
+                if abs(p[0]) < fh: p[0] = math.copysign(fh, p[0] if abs(p[0]) > 1e-4 else (1.0 if r[0] >= PART else -1.0))
             p = p + d * 0.005
             out.append(p.copy())
         out = np.array(out)
@@ -227,7 +235,7 @@ def bob(h, rng, part_x=-0.022):
             out[m, 0] -= (rad[0] * 0.006 * k * t[m]); out[m, 1] -= (rad[1] * 0.006 * k * t[m])
         P, ln = resample(out, NSEG + 1)
         return P if ln > 0.03 else None
-    layers = [(0.0022, 1.0, 0.0110, (0, 1, 2)), (0.0046, 0.7, 0.0100, (0, 1, 2, 3)), (0.0072, 0.4, 0.0090, (0, 1, 2, 3))]
+    layers = [(0.0022, 1.0, 0.0118, (0, 1, 2)), (0.0046, 0.6, 0.0105, (0, 1, 2, 3)), (0.0072, 0.3, 0.0092, (0, 1, 2, 3))]
     for li, (off, frac, width, cols) in enumerate(layers):
         idx = np.where(rng.random(len(ROOTS)) < frac)[0]; S = []; keep = []
         for i in idx:
@@ -240,7 +248,7 @@ def bob(h, rng, part_x=-0.022):
     flyaways(b, h, ROOTS[ROOTS[:, 2] > h.EC[2] + 0.06 * k], flow, rng, n=22, length=(0.05, 0.1))
     def cap_uv(pv):
         ang = math.atan2(pv[1] - h.Ch[1], pv[0] - PART); return (3.0 * (ang / (2 * math.pi) + 0.5), (h.TOP_Z - pv[2]) / 0.05)
-    nc = b.cap(0.0015 * k, 0.004 * k, cap_uv)
+    nc = b.cap(0.0015 * k, -0.002 * k, cap_uv, fade_from=0.003 * k)
     print(f"[style] bob: {len(b.F)} faces ({nb} baby hairs, cap {nc})", flush=True)
     return b
 
@@ -287,7 +295,7 @@ def puff(h, rng):
     nb = baby_hairs(b, h, flow, rng, n=260, phi_max=1.9, length=(0.008, 0.02), swirl=0.9)
     def cap_uv(pv):
         d = pv - POLE; ang = math.atan2(d[1], d[0]); return (3.0 * (ang / (2 * math.pi) + 0.5), np.linalg.norm(d) / 0.05)
-    nc = b.cap(0.0012 * k, 0.003 * k, cap_uv)
+    nc = b.cap(0.0012 * k, -0.002 * k, cap_uv, fade_from=0.002 * k)
     print(f"[style] puff: {count} puff cards, {len(b.F)} faces ({nb} edges, cap {nc})", flush=True)
     return b
 
@@ -296,34 +304,28 @@ def crop(h, rng):
     b = Builder(h); k = h.k
     ROOTS = h.roots(0.0042 * k, 0.003 * k, 0.02 * k)
     top_c = h.Ch + np.array([0.0, -0.02, 0.10]) * k
-    def is_top(p): return p[2] > h.EC[2] + 0.055 * k and abs(h.phi(p)) < 2.2
+    def is_top(p): return p[2] > h.EC[2] + 0.055 * k and abs(h.phi(p)) < 1.9
     def flow(p, n):
-        if is_top(p): return tangent(np.array([0.0, -0.55, 0.45]) + (p - top_c) * np.array([1.2, 0, 0]) / (0.05 * k), n)
+        if is_top(p): return tangent(np.array([0.0, 0.75, 0.35]) + (p - top_c) * np.array([0.5, 0, 0]) / (0.05 * k), n)
         return tangent(np.array([0.0, 0.25, -1.0]), n)
     NSEG = 6
     S = []; keep = []
-    tops = np.where([is_top(r) for r in ROOTS])[0]
+    # top cards root well inside the hairline: the cap's fade makes the edge, no card start shows at the front
+    tops = np.where([is_top(r) and r[2] > h.hairline_z(r, False) + 0.009 * k for r in ROOTS])[0]
     for i in tops:
-        L = rng.uniform(0.028, 0.045) * k
-        P = grow_on_skull(h, ROOTS[i], flow, lambda s, p: 0.003 * k + 0.009 * k * ss(0.0, 0.02, s),
+        L = rng.uniform(0.022, 0.034) * k
+        P = grow_on_skull(h, ROOTS[i], flow, lambda s, p: 0.003 * k + 0.005 * k * ss(0.0, 0.015, s),
                           lambda p, s: False, seg=L / 8, max_len=L)
         if len(P) < 4: continue
         P, ln = resample(P, NSEG + 1); S.append(P); keep.append(i)
     S = clump(h, np.array(S), ROOTS[keep], 0.003 * k, rng, frac=0.3, k_div=6)
-    b.strand_cards(S, 0.0075 * k, (7,), taper=0.45, twist_sd=12.0)
+    keep_top = rng.random(len(S)) < 0.7
+    b.strand_cards(S[keep_top], 0.0068 * k, (7,), taper=0.5, twist_sd=4.0, v0=0.12)
     print(f"[style] crop: {len(S)} top strands", flush=True)
-    sides = np.where([not is_top(r) for r in ROOTS])[0]
-    S = []; keep = []
-    for i in sides:
-        P = grow_on_skull(h, ROOTS[i], flow, lambda s, p: 0.0018 * k, lambda p, s: p[2] < h.hairline_z(p, False) + 0.002,
-                          seg=0.004, max_len=0.018 * k)
-        if len(P) < 3: continue
-        P, ln = resample(P, NSEG + 1); S.append(P); keep.append(i)
-    b.strand_cards(np.array(S), 0.006 * k, (7,), taper=0.5)
-    nb = baby_hairs(b, h, flow, rng, n=120, phi_max=2.4, length=(0.004, 0.009), width=(0.0012, 0.002))
+    nb = 0   # a man's short hairline is crisp: the cap's own fade does it
     def cap_uv(pv):
         d = pv - top_c; ang = math.atan2(d[1], d[0]); return (6.0 * (ang / (2 * math.pi) + 0.5), np.linalg.norm(d) / 0.03)
-    nc = b.cap(0.0012 * k, 0.001 * k, cap_uv)
+    nc = b.cap(0.0022 * k, -0.004 * k, cap_uv, fade_from=0.001 * k, fade_len=0.007)
     print(f"[style] crop: {len(b.F)} faces ({nb} hairline, cap {nc})", flush=True)
     return b
 

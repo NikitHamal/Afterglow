@@ -60,8 +60,10 @@ def cap_texture(rng, size=512, coily=False):
             cl[np.arange(CT), xi] = cl[np.arange(CT), xi] * (1 - cov) + L0 * cov
     return Image.fromarray(np.clip(np.stack([cl, cl * 0.93, cl * 0.86], -1) * 255 + 0.5, 0, 255).astype(np.uint8), "RGB")
 
-def png_bytes(im):
-    b = io.BytesIO(); im.save(b, "PNG", optimize=True); return b.getvalue()
+def png_bytes(im, palette=False):
+    b = io.BytesIO()
+    if palette: im = im.quantize(256, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
+    im.save(b, "PNG", optimize=True); return b.getvalue()
 
 # ---------------------------------------------------------------------------------------------- vertex data
 def skin_arrays(prim, joint_names):
@@ -123,7 +125,7 @@ def material(name, tex, cutoff=0.42, factor=HAIR_LIN):
             "pbrMetallicRoughness": {"baseColorFactor": [*factor, 1.0], "baseColorTexture": {"index": tex},
                                      "metallicFactor": 0.0, "roughnessFactor": HAIR_ROUGH}}
 
-def write_style_glb(path, style, prims, morph_names, atlas_png, cap_png, joint_names):
+def write_style_glb(path, style, prims, morph_names, atlas_png, cap_png, joint_names, factor=HAIR_LIN):
     """a hair-style GLB: joints (names only, the engine binds them to the character's skeleton), one mesh"""
     js = {"asset": {"version": "2.0", "generator": "afterglow hairkit"}, "scene": 0, "scenes": [{"nodes": [0]}],
           "nodes": [], "meshes": [], "skins": [], "materials": [], "textures": [], "images": [], "samplers": [{}],
@@ -137,7 +139,7 @@ def write_style_glb(path, style, prims, morph_names, atlas_png, cap_png, joint_n
     js["skins"].append({"joints": list(range(2, 2 + len(joint_names))), "inverseBindMatrices": B.add(ib, F32, "MAT4")})
     ia = B.image(atlas_png, f"hair_{style}"); ic = B.image(cap_png, f"hair_{style}_cap")
     js["textures"] = [{"source": ia, "sampler": 0}, {"source": ic, "sampler": 0}]
-    js["materials"] = [material(f"hair_{style}", 0), material(f"hair_{style}_cap", 1)]
+    js["materials"] = [material(f"hair_{style}", 0, factor=factor), material(f"hair_{style}_cap", 1, factor=factor)]
     mesh = {"name": f"hair_{style}", "primitives": [], "extras": {"targetNames": list(morph_names)}}
     for mi, p in enumerate(prims):
         if p is None: continue

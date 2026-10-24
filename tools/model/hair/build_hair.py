@@ -19,7 +19,7 @@ prims = b.arrays()
 morph_names = ("weight_up", "weight_dn")
 for p in prims:
     if p is not None: p["morphs"] = h.morph_deltas(p["pos"], morph_names)
-atlas = hairio.png_bytes(hairio.strand_atlas(np.random.default_rng(seed + 1)))
+atlas = hairio.png_bytes(hairio.strand_atlas(np.random.default_rng(seed + 1)), palette=True)
 cap = hairio.png_bytes(hairio.cap_texture(np.random.default_rng(seed + 2), coily=(style == "puff")))
 os.makedirs(out, exist_ok=True)
 nv = sum(len(p["pos"]) for p in prims if p is not None); nt = sum(len(p["tris"]) for p in prims if p is not None)
@@ -31,5 +31,7 @@ else:
     joints = sorted({j for p in prims if p is not None for wd in p["w"] for j in wd})
     joints = [hairkit.HEAD] + [j for j in joints if j != hairkit.HEAD]
     path = os.path.join(out, f"{name}.glb")
-    hairio.write_style_glb(path, name, prims, morph_names, atlas, cap, joints)
+    # a man's crop is near black (his hair has no colour slider); the women's styles keep the espresso the tints expect
+    factor = (0.016, 0.009, 0.006) if style == "crop" else hairkit.HAIR_LIN
+    hairio.write_style_glb(path, name, prims, morph_names, atlas, cap, joints, factor=factor)
     print(f"[build_hair] {path}: {nv} verts, {nt} tris, {os.path.getsize(path)/1e6:.1f} MB, joints {joints} ({time.time()-t0:.0f}s)", flush=True)
