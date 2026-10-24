@@ -1,6 +1,7 @@
 // Afterglow engine — frame renderer: shadow map, forward HDR pass (PBR / skin / hair / eye / room),
-// soft hair edges, bloom, filmic composite and FXAA.
+// soft hair (weighted blended OIT), bloom, filmic composite and FXAA.
 #pragma once
+#include "gfx/hairoit.h"
 #include "gfx/shader.h"
 #include "gfx/texture.h"
 #include "scene/scene.h"
@@ -23,6 +24,7 @@ struct RenderSettings {
     float ssaoRadius = 0.22f, ssaoIntensity = 1.25f;
     bool fxaa = true;
     bool hairSoft = true;
+    bool hairDebug = false;           // QA: soft hair layers drawn flat green, strand cores flat red
     float renderScale = 1.f;          // internal resolution multiplier
     float exposure = 1.2f, warmth = 0.06f, saturation = 1.0f, contrast = 1.04f, vignette = 0.26f, grain = 0.024f;
     float flash = 0.f;                // climax flash 0..1
@@ -62,6 +64,7 @@ private:
     RenderTarget blur_[4];             // 1/2, 1/4, 1/8 downsamples + 1/4 tent upsample (UI glass)
     int bloomCount_ = 0;
     ShadowMap shadow_;
+    HairOit oit_;                      // soft hair: order-independent blending of everything under the strand cores
     GLuint emptyVao_ = 0, white_ = 0, flatNormal_ = 0, black_ = 0;
     int w_ = 0, h_ = 0;
     M4 shadowVP_ = M4::identity();

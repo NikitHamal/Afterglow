@@ -9,6 +9,7 @@ uniform int u_hasBase;
 uniform int u_alphaMode;
 uniform float u_cutoff;
 uniform vec4 u_baseColor;
+uniform int u_hairCards;          // hair cards: the long sides fade like the colour pass (no depth where no colour)
 uniform float u_dissolve;        // 1 worn .. 0 taken off
 uniform vec4 u_wipe;             // x,y bind-space height span, z 1 = comes off from the top
 
@@ -43,6 +44,10 @@ void main() {
     if (fitHidden() || undressMargin(v_opos) < 0.0) discard;
     if (u_alphaMode == 1) {
         float a = u_baseColor.a * (u_hasBase == 1 ? texture(u_texBase, v_uv0).a : 1.0) * v_colA;
+        if (u_hairCards == 1) {
+            float xc = fract(v_uv0.x * 8.0);
+            a *= smoothstep(0.0, 0.2, clamp(min(xc - 0.03, 0.97 - xc) / 0.94, 0.0, 0.5));
+        }
         if (a < u_cutoff) discard;
     }
 }
