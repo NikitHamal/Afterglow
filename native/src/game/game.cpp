@@ -301,20 +301,25 @@ void Game::applyLooks() {
         const HerLook& h = profile.her;
         v.setBody("bust", h.bust); v.setBody("hips", h.hips); v.setBody("waist", h.waist); v.setBody("butt", h.butt);
         v.setBody("weight", h.weight); v.setBody("muscle", h.muscle); v.setBody("belly", h.belly);
-        applySkin(v, h.tone);
+        // the player's tone and hair colour belong to the model they picked; a cast the story brings in (Vivian while the
+        // profile has picked Mei) shows that model's own
+        bool own = v.asset == h.model;
+        int tone = own ? h.tone : std::max(0, skinToneIndex(castEntry(0)["tone"].str("caramel")));
+        applySkin(v, tone);
         // a model with its own face has that face's age: the base's age shapes were measured on the base's face
         v.setBody("age", castEntry(0)["fixedAge"].boolean(false) ? 0.f : ageToMorph(h.age, 42.f));
         bool legacyHair = false;
         for (const Material& mat : v.model.materials)
             if (mat.shading == Shading::Hair && mat.baseColor.x > 0.9f) legacyHair = true;
-        V3 tint = kHair[std::max(0, std::min(5, h.hair))];
+        int hairIx = own ? h.hair : (int)castEntry(0)["hairColour"].num(0);
+        V3 tint = kHair[std::max(0, std::min(5, hairIx))];
         if (legacyHair) tint = V3{std::min(1.f, 0.25f * tint.x), std::min(1.f, 0.09f * tint.y), std::min(1.f, 0.052f * tint.z)};
         v.hairTint = tint;
     }
     if (m.loaded()) {
         const HisLook& h = profile.him;
         m.setBody("muscle", h.muscle); m.setBody("weight", h.weight); m.setBody("belly", h.belly);
-        applySkin(m, h.tone);
+        applySkin(m, m.asset == h.model ? h.tone : std::max(0, skinToneIndex(castEntry(1)["tone"].str("caramel"))));
         m.setBody("age", castEntry(1)["fixedAge"].boolean(false) ? 0.f : ageToMorph(h.age, 40.f));
     }
 }
