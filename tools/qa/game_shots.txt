@@ -59,3 +59,4 @@ results|screen=results;result=together
 results_soon|screen=results;result=soon
 autoplay_60s|screen=play;pos=missionary;autoplay=1;frames=3600;render_from=3594;cam=side
 autoplay_150s|screen=play;pos=missionary;autoplay=1;frames=9000;render_from=8994;cam=front
+story_spa_lesson|screen=story;story=the_massage;node=c3_lesson;line=0;shot=establish
