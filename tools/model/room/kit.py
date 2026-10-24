@@ -27,6 +27,8 @@ def image(path, colorspace="sRGB"):
 def mat(name, albedo=None, normal=None, color=(0.5, 0.5, 0.5), rough=0.6, metal=0.0, emit=None, emit_tex=None,
         emit_strength=1.0, normal_strength=0.6, baked=True):
     """principled material; baked=False keeps it out of the lightmap (emissive things: flames, shades, skies)"""
+    # the lightmap is a diffuse bake and the engine draws rooms non-metallic: a metallic surface would bake black
+    if baked: metal = 0.0
     m = bpy.data.materials.new(name); m.use_nodes = True; nt = m.node_tree; nt.nodes.clear()
     out = nt.nodes.new("ShaderNodeOutputMaterial"); bs = nt.nodes.new("ShaderNodeBsdfPrincipled"); nt.links.new(bs.outputs[0], out.inputs[0])
     bs.inputs["Roughness"].default_value = rough; bs.inputs["Metallic"].default_value = metal

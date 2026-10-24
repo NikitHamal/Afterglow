@@ -345,10 +345,13 @@ def spa_suite():
 
 
 import places_apartment as PA
+import places_villa as PV
 
 PLACES = {"cabin_living": cabin_living, "spa_suite": spa_suite,
           "apartment_hall": lambda: PA.apartment_hall(common_meta),
-          "apartment_living": lambda: PA.apartment_living(common_meta, sofa, bookshelf)}
+          "apartment_living": lambda: PA.apartment_living(common_meta, sofa, bookshelf),
+          "apartment_balcony": lambda: PA.apartment_balcony(common_meta),
+          "villa_terrace": lambda: PV.villa_terrace(common_meta)}
 
 if __name__ == "__main__":
     K.init(OUT)

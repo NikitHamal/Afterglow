@@ -90,7 +90,11 @@ built sibling of its family first, e.g. `spa_*` → `spa_suite`, then the family
 - ✅ `apartment_hall` (`places_apartment.py`): the fourth-floor landing — her door 4A and his 4B facing each other,
   both really open (nodes `door_4a` / `door_4b`, see "Doors and anchors" below), a lit entry behind each, her moving
   boxes by 4A, bells, doormats, sconces, mailboxes, the stairs down under a window on the night city.
-- ⏳ `apartment_living` (sofa, piano, city window),
+- ✅ `apartment_living` (four-B): an architect's flat — drawings pinned up, books, an upright piano and a drafting table
+  under two windows on the night city (city pack), a deep sofa on a low platform (sit.bed seat 0.604 m), a dining
+  table for two and a galley counter (anchors `table`, `table_l`, `table_r`, `counter`, `side_table`, `piano`,
+  `window`, `sofa_l`, `sofa_r`, `drafting`). Note: neighbours c5_wall (her flat, four-A) also plays here.
+- ⏳ ,
   `apartment_balcony`, `apartment_bedroom` (city view)
 
 **Outfits** (`characters/outfits/<who>_<style>.glb`):

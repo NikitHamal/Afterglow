@@ -7,7 +7,7 @@ import numpy as np
 from mathutils import Vector, Matrix
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 import textures as TX
-STYLE = os.environ.get("AG_ROOM_STYLE", "classic")           # classic | cabin | villa | hotel (story bedrooms)
+STYLE = os.environ.get("AG_ROOM_STYLE", "classic")           # classic | cabin | villa | hotel | apartment (story bedrooms)
 OUT = os.environ.get("AG_ROOM_OUT", "/root/agb/native/room"); TEX = OUT + "/tex"; os.makedirs(TEX, exist_ok=True)
 BAKE_RES = int(os.environ.get("BAKE_RES", "2048")); BAKE_SAMPLES = int(os.environ.get("BAKE_SAMPLES", "96"))
 def log(*a): print("[room]", *a, flush=True)
@@ -31,6 +31,13 @@ if STYLE == "cabin":                                          # log cabin: pine 
     TX.fabric(TEX + "/linen.jpg", TEX + "/linen_n.jpg", (0.80, 0.74, 0.64), weave=160, sheen=0.1, seed=3)
     TX.plaid(TEX + "/duvet.jpg", TEX + "/duvet_n.jpg", (0.42, 0.08, 0.06), (0.10, 0.10, 0.12), (0.80, 0.72, 0.50), seed=4)
     TX.snow_night(TEX + "/sky.jpg")
+elif STYLE == "apartment":                                    # four-A: white plaster, oak, slate-blue linen, the city at night
+    TX.plaster(TEX + "/wall.jpg", TEX + "/wall_n.jpg", color=(0.86, 0.85, 0.82))
+    TX.fabric(TEX + "/velvet.jpg", TEX + "/velvet_n.jpg", (0.20, 0.26, 0.32), weave=140, sheen=0.2, seed=1)
+    TX.fabric(TEX + "/sheet.jpg", TEX + "/sheet_n.jpg", (0.86, 0.86, 0.84), weave=200, sheen=0.12, seed=2)
+    TX.fabric(TEX + "/linen.jpg", TEX + "/linen_n.jpg", (0.80, 0.81, 0.82), weave=160, sheen=0.1, seed=3)
+    TX.fabric(TEX + "/duvet.jpg", TEX + "/duvet_n.jpg", (0.30, 0.38, 0.46), weave=120, sheen=0.12, seed=4)
+    TX.city_night(TEX + "/sky.jpg")
 elif STYLE == "villa":                                        # whitewashed villa: plaster, white linen, blue accents, sea by day
     TX.plaster(TEX + "/wall.jpg", TEX + "/wall_n.jpg")
     TX.fabric(TEX + "/velvet.jpg", TEX + "/velvet_n.jpg", (0.16, 0.30, 0.50), weave=140, sheen=0.2, seed=1)
@@ -70,8 +77,8 @@ def make_mat(name, albedo=None, normal=None, color=(0.5, 0.5, 0.5), rough=0.6, m
 M = {
     "floor": make_mat("room_floor", TEX + "/floor.jpg", TEX + "/floor_n.jpg", rough=0.42),
     "wall": make_mat("room_wall", TEX + "/wall.jpg", TEX + "/wall_n.jpg", rough=0.85),
-    "panel": make_mat("room_panel", color={"villa": (0.80, 0.78, 0.72), "cabin": (0.20, 0.11, 0.05)}.get(STYLE, (0.10, 0.045, 0.04)), rough=0.45),
-    "ceiling": make_mat("room_ceiling", color={"villa": (0.88, 0.86, 0.82), "cabin": (0.30, 0.18, 0.09)}.get(STYLE, (0.12, 0.07, 0.07)), rough=0.9),
+    "panel": make_mat("room_panel", color={"villa": (0.80, 0.78, 0.72), "cabin": (0.20, 0.11, 0.05), "apartment": (0.84, 0.83, 0.80)}.get(STYLE, (0.10, 0.045, 0.04)), rough=0.45),
+    "ceiling": make_mat("room_ceiling", color={"villa": (0.88, 0.86, 0.82), "cabin": (0.30, 0.18, 0.09), "apartment": (0.88, 0.87, 0.85)}.get(STYLE, (0.12, 0.07, 0.07)), rough=0.9),
     "walnut": make_mat("room_walnut", TEX + "/floor.jpg", TEX + "/floor_n.jpg", rough=0.35),
     "velvet": make_mat("room_velvet", TEX + "/velvet.jpg", TEX + "/velvet_n.jpg", rough=0.7),
     "sheet": make_mat("room_sheet", TEX + "/sheet.jpg", TEX + "/sheet_n.jpg", rough=0.38),

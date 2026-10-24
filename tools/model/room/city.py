@@ -15,7 +15,7 @@ _M = {}
 def _mats():
     if _M: return _M
     for k in range(3):
-        TX.facade(K.tex(f"facade{k}.jpg"), seed=11 + k, lit=(0.32, 0.45, 0.55)[k], wall=((0.03, 0.03, 0.04), (0.05, 0.04, 0.035), (0.025, 0.03, 0.045))[k])
+        TX.facade(K.tex(f"facade{k}.jpg"), seed=11 + k, lit=(0.52, 0.6, 0.68)[k], wall=((0.13, 0.10, 0.085), (0.15, 0.115, 0.09), (0.10, 0.10, 0.115))[k])
         _M[f"facade{k}"] = K.mat(f"city_facade{k}", color=(0, 0, 0), emit_tex=K.tex(f"facade{k}.jpg"), emit_strength=1.0, baked=False)
     TX.city_night(K.tex("skyline.jpg"), seed=9)
     _M["sky"] = K.mat("city_skyline", color=(0, 0, 0), emit_tex=K.tex("skyline.jpg"), emit_strength=1.0, baked=False)
@@ -32,8 +32,8 @@ def _tower(name, c, along, out, w, d, h, z0, mat, M, scale=1.0):
     """a block of footprint w (along the street) x d (away), height h, standing at street level z0"""
     p = c
     yaw = math.atan2(out.y, out.x) - math.pi / 2
-    K.box(name, (w, d, h), (p.x, p.y, z0 + h / 2), mat, uv_scale=scale / 24.8, rot_z=yaw)
-    K.box(f"{name}_roof", (w * 1.01, d * 1.01, 0.1 / scale), (p.x, p.y, z0 + h + 0.05 / scale), M["roof"], rot_z=yaw)
+    K.box(name, (w, d, h), (p.x, p.y, z0 + h / 2), mat, uv_scale=1.0 / (24.8 * scale), rot_z=yaw)     # one tile = 24.8 m at full scale
+    K.box(f"{name}_roof", (w * 1.01, d * 1.01, 0.3 * scale), (p.x, p.y, z0 + h + 0.15 * scale), M["roof"], rot_z=yaw)
 
 
 def build_city(view, facing, drop=12.0, width=70.0, seed=3):
@@ -59,25 +59,25 @@ def build_city(view, facing, drop=12.0, width=70.0, seed=3):
             back = q - along * (2.12 * dirn) + out * (0.62 * s_)
             K.box(f"city_car_{k}_head{s_}", (0.06, 0.3, 0.14), (front.x, front.y, street + 0.75), M["head"], rot_z=math.atan2(along.y, along.x))
             K.box(f"city_car_{k}_tail{s_}", (0.06, 0.3, 0.12), (back.x, back.y, street + 0.8), M["tail"], rot_z=math.atan2(along.y, along.x))
-    # the block across the street: full scale, 4-7 storeys, 14-20 m out
+    # the block across the street: full scale, 3-5 storeys (the skyline shows over it), 15-25 m out
     a = -width / 2
     k = 0
     while a < width / 2:
-        w = rnd.uniform(9.0, 16.0); d = rnd.uniform(8.0, 12.0); h = rnd.uniform(4, 7) * 3.1
-        c = o + out * (14.5 + d / 2) + along * (a + w / 2)
+        w = rnd.uniform(9.0, 16.0); d = rnd.uniform(8.0, 10.0); h = rnd.uniform(3, 5) * 3.1
+        c = o + out * (15.0 + d / 2) + along * (a + w / 2)
         _tower(f"city_block_{k}", c, along, out, w - 0.3, d, h, street, M[f"facade{k % 3}"], M)
         a += w; k += 1
     # the towers behind: 1:5 bigature, 20-36 m out (100-180 m at full scale), taller toward the middle
     s = 0.2
-    for row, dist in enumerate((22.0, 26.5, 31.0)):
+    for row, dist in enumerate((26.0, 29.5, 33.0)):
         a = -width / 2 - 10
         while a < width / 2 + 10:
             w = rnd.uniform(14, 34) * s; d = rnd.uniform(14, 30) * s
             centre = 1.0 - min(1.0, abs(a) / (width * 0.6))
-            h = rnd.uniform(20, 70 + 110 * centre) * s * (1.0 + 0.35 * row)
+            h = rnd.uniform(18, 40 + 70 * centre) * s * (1.0 + 0.25 * row)
             c = o + out * (dist + d / 2) + along * (a + w / 2)
             _tower(f"city_tower_{row}_{k}", c, along, out, w * 0.92, d, h, o.z - drop * s, M[f"facade{(k + row) % 3}"], M, scale=s)   # scaled about the viewer
-            a += w * rnd.uniform(1.0, 1.6); k += 1
+            a += w * rnd.uniform(1.25, 2.1); k += 1                  # gaps: the skyline and the sky show between
     # the far skyline and sky: a card just inside the far clip
     c = o + out * 37.0
     sky = K.grid("city_sky", 120.0, 46.0, 1, 1, M["sky"], smooth=False, uv_fit=True)
