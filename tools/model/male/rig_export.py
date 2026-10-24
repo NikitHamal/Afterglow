@@ -163,6 +163,7 @@ bpy.data.objects.remove(mrig)
 for o in meshes:
     o.parent = arm; o.matrix_parent_inverse.identity()
     m = o.modifiers.new("Armature", "ARMATURE"); m.object = arm
+    m.use_deform_preserve_volume = True   # dual quaternion, as the engine skins (mesh.vert)
     o.modifiers.move(o.modifiers.find("Armature"), 0)
 NAMES = {"Human": "marcus_body", "Human.high-poly": "marcus_eyes", "Human.eyebrow001": "marcus_brows",
          "Human.eyelashes01": "marcus_lashes", "Human.teeth_base": "marcus_teeth", "Human.tongue01": "marcus_tongue", "marcus_hair": "marcus_hair"}

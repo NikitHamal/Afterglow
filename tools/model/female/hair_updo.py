@@ -358,6 +358,7 @@ for i, wk in enumerate(vw):
         vg = groups.get(g) or hair.vertex_groups.new(name=g); groups[g] = vg
         vg.add([i], float(w), "REPLACE")
 hair.parent = rig; am = hair.modifiers.new("Armature", "ARMATURE"); am.object = rig
+am.use_deform_preserve_volume = True   # dual quaternion, as the engine skins (mesh.vert)
 log(f"hair mesh: {n_cards} card quads + {n_cap} cap faces, {len(verts)} verts, {len(LOOSE)} loose locks (physics)")
 
 def hex_lin(h):

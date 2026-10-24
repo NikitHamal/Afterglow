@@ -16,6 +16,8 @@ def append_blend(path, kinds=("OBJECT",)):
     for ob in dst.objects:
         if ob is None: continue
         if ob.type == "LIGHT": continue
+        for md in getattr(ob, "modifiers", []):
+            if md.type == "ARMATURE": md.use_deform_preserve_volume = True   # deform like the engine (dual quaternion)
         bpy.context.scene.collection.objects.link(ob); out.append(ob)
     return out
 
