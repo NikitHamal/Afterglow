@@ -21,6 +21,17 @@
    "hairName": "Sleek bob",
    "tone": "fair",
    "hairColour": 4
+  },
+  {
+   "id": "amara",
+   "name": "Amara",
+   "tagline": "thirty-four, bold, generous with her laugh",
+   "age": 34,
+   "fixedAge": true,
+   "hair": "puff_amara",
+   "hairName": "High puff",
+   "tone": "deep",
+   "hairColour": 4
   }
  ],
  "him": [
