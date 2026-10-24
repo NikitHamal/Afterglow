@@ -1,0 +1,27 @@
+# Deformation QA: stress poses on both rigs (swimwear / underwear), the stressed joint framed close.
+# keys: stress=<pose> (anim/stress.cpp), focus=<bone>|full, view=yaw:deg,pitch:deg,dist:m, ui=0,
+# outfit=<style>, layer=under (outer off); add skin=lbs to compare with linear blend skinning, rom=0 without ranges.
+v_arms_up_shoulder|screen=customize;tab=her;outfit=sundress_bikini;layer=under;ui=0;t=1;stress=arms_up;focus=腕.L;view=yaw:70,pitch:8,dist:0.85
+v_arms_up_full|screen=customize;tab=her;outfit=sundress_bikini;layer=under;ui=0;t=1;stress=arms_up;focus=full;view=yaw:25,pitch:4,dist:3.2
+v_arms_cross|screen=customize;tab=her;outfit=sundress_bikini;layer=under;ui=0;t=1;stress=arms_cross;focus=上半身2;view=yaw:-35,pitch:10,dist:1.0
+v_elbows|screen=customize;tab=her;outfit=sundress_bikini;layer=under;ui=0;t=1;stress=elbows;focus=ひじ.L;view=yaw:80,pitch:5,dist:0.7
+v_wrists|screen=customize;tab=her;outfit=sundress_bikini;layer=under;ui=0;t=1;stress=wrists;focus=手首.R;view=yaw:-40,pitch:15,dist:0.6
+v_squat_full|screen=customize;tab=her;outfit=sundress_bikini;layer=under;ui=0;t=1;stress=squat;focus=full;view=yaw:55,pitch:6,dist:3.0
+v_squat_knee|screen=customize;tab=her;outfit=sundress_bikini;layer=under;ui=0;t=1;stress=squat;focus=ひざ.L;view=yaw:75,pitch:10,dist:0.85
+v_knee|screen=customize;tab=her;outfit=sundress_bikini;layer=under;ui=0;t=1;stress=knee;focus=ひざ.R;view=yaw:-80,pitch:5,dist:0.8
+v_split_hip|screen=customize;tab=her;outfit=sundress_bikini;layer=under;ui=0;t=1;stress=split;focus=足.L;view=yaw:45,pitch:0,dist:1.0
+v_twist|screen=customize;tab=her;outfit=sundress_bikini;layer=under;ui=0;t=1;stress=twist;focus=上半身;view=yaw:20,pitch:5,dist:1.3
+v_neck|screen=customize;tab=her;outfit=sundress_bikini;layer=under;ui=0;t=1;stress=neck;focus=首;view=yaw:30,pitch:5,dist:0.6
+v_behind|screen=customize;tab=her;outfit=sundress_bikini;layer=under;ui=0;t=1;stress=behind;focus=腕.L;view=yaw:150,pitch:8,dist:0.9
+m_arms_up_shoulder|screen=customize;tab=him;outfit=linen_shirt_shorts;layer=under;ui=0;t=1;stress=arms_up;focus=腕.L;view=yaw:70,pitch:8,dist:0.85
+m_arms_up_full|screen=customize;tab=him;outfit=linen_shirt_shorts;layer=under;ui=0;t=1;stress=arms_up;focus=full;view=yaw:25,pitch:4,dist:3.2
+m_arms_cross|screen=customize;tab=him;outfit=linen_shirt_shorts;layer=under;ui=0;t=1;stress=arms_cross;focus=上半身2;view=yaw:-35,pitch:10,dist:1.0
+m_elbows|screen=customize;tab=him;outfit=linen_shirt_shorts;layer=under;ui=0;t=1;stress=elbows;focus=ひじ.L;view=yaw:80,pitch:5,dist:0.7
+m_wrists|screen=customize;tab=him;outfit=linen_shirt_shorts;layer=under;ui=0;t=1;stress=wrists;focus=手首.R;view=yaw:-40,pitch:15,dist:0.6
+m_squat_full|screen=customize;tab=him;outfit=linen_shirt_shorts;layer=under;ui=0;t=1;stress=squat;focus=full;view=yaw:55,pitch:6,dist:3.0
+m_squat_knee|screen=customize;tab=him;outfit=linen_shirt_shorts;layer=under;ui=0;t=1;stress=squat;focus=ひざ.L;view=yaw:75,pitch:10,dist:0.85
+m_knee|screen=customize;tab=him;outfit=linen_shirt_shorts;layer=under;ui=0;t=1;stress=knee;focus=ひざ.R;view=yaw:-80,pitch:5,dist:0.8
+m_split_hip|screen=customize;tab=him;outfit=linen_shirt_shorts;layer=under;ui=0;t=1;stress=split;focus=足.L;view=yaw:45,pitch:0,dist:1.0
+m_twist|screen=customize;tab=him;outfit=linen_shirt_shorts;layer=under;ui=0;t=1;stress=twist;focus=上半身;view=yaw:20,pitch:5,dist:1.3
+m_neck|screen=customize;tab=him;outfit=linen_shirt_shorts;layer=under;ui=0;t=1;stress=neck;focus=首;view=yaw:30,pitch:5,dist:0.6
+m_behind|screen=customize;tab=him;outfit=linen_shirt_shorts;layer=under;ui=0;t=1;stress=behind;focus=腕.L;view=yaw:150,pitch:8,dist:0.9
