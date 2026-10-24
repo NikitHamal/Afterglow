@@ -190,6 +190,8 @@ void Renderer::bindMaterial(Program& p, const Model& m, int mi, const Character*
 void Renderer::drawCharacter(Program& p, Character& c, int pass) {
     drawModel(p, c.model, c.anim, &c, pass);
     if (Outfit* o = c.outfit()) if (o->loaded() && pass != 2) drawModel(p, o->model, c.anim, &c, pass, o);
+    // a hair style replaces the GLB's own hair (skipped in drawModel), skinned by the character's bones
+    if (HairStyle* h = c.hairStyle()) drawModel(p, h->model, c.anim, &c, pass);
 }
 
 void Renderer::drawModel(Program& p, Model& m, Animator& a, const Character* ch, int pass, const Outfit* outfit) {
@@ -213,6 +215,8 @@ void Renderer::drawModel(Program& p, Model& m, Animator& a, const Character* ch,
             const Material& mat = m.materials[(size_t)std::max(0, prim.material)];
             // his genitals stay out of sight while he still wears something
             if (ch && ch->hideGenitals && !outfit && mat.shading == Shading::Skin && mat.name.find("genital") != std::string::npos) continue;
+            // the character's own hair gives way to a hair style
+            if (ch && &m == &ch->model && mat.shading == Shading::Hair && ch->hairStyle()) continue;
             if (pass == 0 && (!mat.castShadow || mat.alpha == AlphaMode::Blend)) continue;
             if (pass == 3 && mat.alpha == AlphaMode::Blend) continue;
             if (pass == 2 && !(mat.alpha == AlphaMode::Mask && mat.shading == Shading::Hair)) continue;
@@ -251,7 +255,7 @@ void Renderer::drawModel(Program& p, Model& m, Animator& a, const Character* ch,
             }
             // garment fit: skin under a worn garment is not drawn (it can never show through); garments trim along
             // their smoothed border, an under layer hides where the outer one covers it
-            const Outfit* worn = !outfit && ch ? ch->outfit() : nullptr;
+            const Outfit* worn = !outfit && ch && &m == &ch->model ? ch->outfit() : nullptr;   // fit data is per body mesh
             GLuint fitT = outfit ? outfit->fitTexture(n.mesh, pi) : (worn && worn->loaded() ? worn->bodyFitTexture(n.mesh, pi) : 0);
             p.set("u_fitMode", fitT ? (outfit ? 2 : 1) : 0);
             if (fitT) {

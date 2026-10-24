@@ -1,4 +1,5 @@
 #include "scene/character.h"
+#include "scene/identity.h"
 #include "gfx/texture.h"
 #include "core/paths.h"
 #include "core/log.h"
@@ -9,22 +10,32 @@ namespace ag {
 
 static std::string lowerStr(std::string s) { for (auto& c : s) c = (char)std::tolower((unsigned char)c); return s; }
 
-bool Character::load(const std::string& charId, const std::string& path, float targetHeight) {
+std::string Character::own(const std::string& suffix) const {
+    std::string a = paths::join(dir_, asset + suffix);
+    return asset != id && paths::exists(a) ? a : paths::join(dir_, id + suffix);
+}
+
+bool Character::load(const std::string& charId, const std::string& path, float targetHeight, const std::string& assetId) {
     destroy();
     id = charId;
+    asset = assetId.empty() ? charId : assetId;
     if (!model.load(path)) return false;
     dir_ = paths::dirname(path);
+    // another face on this body: its identity deltas go in before anything measures the bind mesh
+    if (asset != id && !applyIdentityPack(model, paths::join(dir_, asset + "_identity.bin"))) {
+        AG_WARN("AG: %s: no identity pack for %s, showing the base face", id.c_str(), asset.c_str());
+    }
     anim.init(&model);
     for (size_t mi = 0; mi < model.meshes.size(); ++mi)
         for (size_t t = 0; t < model.meshes[mi].targetNames.size(); ++t)
             morphIndex_[model.meshes[mi].targetNames[t]].push_back({(int)mi, (int)t});
     baseOverride_.assign(model.materials.size(), 0);
     // optional skin support maps next to the GLB (linear data)
-    std::string maskFile = paths::join(dir_, id + "_skin_mask.png"), detailFile = paths::join(dir_, "skin_detail_n.png");
+    std::string maskFile = own("_skin_mask.png"), detailFile = paths::join(dir_, "skin_detail_n.png");
     if (paths::exists(maskFile)) skinMask_ = textureFromFile(maskFile, false);
     if (paths::exists(detailFile)) skinDetail_ = textureFromFile(detailFile, false);
     // optional eye albedo next to the GLB (tools/model/native/eye_tex.py: limbal ring, richer iris, toned sclera)
-    std::string eyeFile = paths::join(dir_, id + "_eye.png");
+    std::string eyeFile = own("_eye.png");
     if (paths::exists(eyeFile))
         for (size_t mi = 0; mi < model.materials.size(); ++mi)
             if (model.materials[mi].shading == Shading::Eye) {
@@ -50,6 +61,8 @@ bool Character::load(const std::string& charId, const std::string& path, float t
 }
 
 void Character::destroy() {
+    hair_.reset();
+    tone_.clear();   // a reloaded model gets its tone applied again
     outfits_.clear();
     outfitCur_ = -1;
     hideGenitals = false;
@@ -203,6 +216,7 @@ bool Character::setTone(const std::string& tone) {
         else if (n.find("genital") != std::string::npos) part = "genital";
         else continue;
         const std::vector<std::string> cands = {
+            paths::join(dir_, asset + "_" + part + "_" + tone + ".jpg"),
             paths::join(dir_, id + "_" + part + "_" + tone + ".jpg"),
             paths::join(dir_, id + "_" + part + "_" + tone + ".png"),
             paths::join(dir_, part + "_" + tone + ".jpg"),
@@ -231,6 +245,17 @@ bool Character::setTone(const std::string& tone) {
     }
     if (any) tone_ = tone;
     return any;
+}
+
+bool Character::setHairStyle(const std::string& style) {
+    if (style.empty()) { hair_.reset(); return true; }
+    if (hair_ && hair_->loaded() && hair_->style == style) return true;
+    std::string file = paths::join(paths::join(dir_, "hair"), style + ".glb");
+    if (!paths::exists(file)) { AG_WARN("AG: %s: no hair style %s", id.c_str(), style.c_str()); hair_.reset(); return false; }
+    auto h = std::make_unique<HairStyle>();
+    if (!h->load(file, style, *this)) { hair_.reset(); return false; }
+    hair_ = std::move(h);
+    return true;
 }
 
 M4 Character::rootMatrix() const { return placement * m4scale({autoScale_, autoScale_, autoScale_}); }
@@ -280,6 +305,7 @@ void Character::update(float dt) {
         o->syncMorphs(*this);
         hideGenitals = o->visibility(0) > 0.5f || o->visibility(1) > 0.5f;
     } else hideGenitals = false;
+    if (HairStyle* h = hairStyle()) h->syncMorphs(*this);
     // skull centre: hair shading bends card normals around it
     int hb = bone("頭");
     if (hb >= 0) hairCenter_ = xformPoint(anim.global(hb), procedural.headUpLocal() * 0.085f + procedural.headForwardLocal() * 0.01f);

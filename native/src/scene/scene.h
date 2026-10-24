@@ -31,6 +31,10 @@ public:
     void destroy();
     void update(float dt);                  // characters + light flicker
     Character* character(const std::string& id);
+    // (re)load a role ("vivian" / "marcus") with one of its models: the role's GLB (body, skeleton, clips, outfits) plus
+    // the model's own face / skin / eyes (asset files) and hair style ("" = the GLB's own hair). Only the shown model of
+    // each role is in memory.
+    bool loadRole(const std::string& role, const std::string& asset, const std::string& hair);
 
     Character vivian, marcus;
     bool showVivian = true, showMarcus = true;

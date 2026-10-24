@@ -39,6 +39,7 @@ const Story* Game::storyById(const std::string& id) const {
 
 void Game::beginStory(const Story* s, const std::string& node, const std::map<std::string, float>* vars, int line) {
     if (!s) return;
+    ensureCast(true);    // the stories are written for Vivian and Marcus
     stage(Stage::Night);
     enterStoryWorld();
     story_.start(s, node, vars, line);

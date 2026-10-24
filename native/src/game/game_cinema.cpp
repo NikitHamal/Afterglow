@@ -127,6 +127,7 @@ void Game::leaveStoryWorld() {
     stagePending_ = playPending_ = false;
     kiss_ = kissTarget_ = near_ = nearTarget_ = 0.f;
     storyPlaying_ = false;
+    ensureCast(false);   // back to the player's models
 }
 
 int Game::actIndex(const std::string& id) const {

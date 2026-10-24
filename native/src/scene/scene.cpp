@@ -197,6 +197,22 @@ void Scene::update(float dt) {
 }
 
 
+bool Scene::loadRole(const std::string& role, const std::string& asset, const std::string& hair) {
+    bool him = role == "marcus";
+    Character& c = him ? marcus : vivian;
+    std::string want = asset.empty() ? role : asset;
+    if (!c.loaded() || c.asset != want) {
+        std::string path = paths::findAsset({"characters/" + role + ".glb", "legacy/" + role + "/" + role + ".glb"});
+        if (path.empty() || !c.load(role, path, him ? 1.83f : 1.68f, want)) { AG_ERROR("AG: %s (%s) not loaded", role.c_str(), want.c_str()); return false; }
+        c.proc.floorY = info.bedTop;
+        c.setTone("caramel");
+        standingPlacement();
+        hasClips = (vivian.loaded() && !vivian.model.clips.empty()) || (marcus.loaded() && !marcus.model.clips.empty());
+    }
+    c.setHairStyle(hair);
+    return true;
+}
+
 Character* Scene::character(const std::string& id) {
     if (id == "vivian") return &vivian;
     if (id == "marcus") return &marcus;

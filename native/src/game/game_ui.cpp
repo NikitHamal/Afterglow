@@ -5,12 +5,14 @@
 #include "ui/layout.h"
 #include "raylib.h"
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
 
 namespace ag {
 
 namespace {
+std::string upperName(std::string n) { for (auto& c : n) c = (char)std::toupper((unsigned char)c); return n; }
 float clamp01(float v) { return v < 0.f ? 0.f : (v > 1.f ? 1.f : v); }
 const char* kToneLabel[8] = {"Porcelain", "Fair", "Honey", "Olive", "Caramel", "Bronze", "Deep", "Ebony"};
 const Color kToneSwatch[8] = {{246, 214, 196, 255}, {238, 200, 172, 255}, {214, 160, 120, 255}, {192, 152, 106, 255},
@@ -186,6 +188,17 @@ void Game::drawUpdateCard(float x, float y, float w) {
 }
 
 // ------------------------------------------------------------------ customisation
+// a model with its own face has its own age (the base's age shapes were measured on the base's face)
+void Game::fixedAgeRow(int role, Rectangle r) {
+    ui::Ui& U = ui;
+    const Json& e = castEntry(role);
+    char b[24];
+    std::snprintf(b, sizeof b, "%d years", (int)e["age"].num(30));
+    U.textIn(ui::Face::SansMedium, U.u(19.f), "Age", Rectangle{r.x, r.y, r.width * 0.5f, U.u(19.f)}, U.th.inkDim);
+    U.textIn(ui::Face::Sans, U.u(19.f), b, Rectangle{r.x + r.width * 0.5f, r.y, r.width * 0.5f, U.u(19.f)}, U.th.inkFaint, ui::Right);
+    U.textIn(ui::Face::Sans, U.u(14.f), role ? "his face, his age" : "her face, her age", Rectangle{r.x, r.y + U.u(26.f), r.width, U.u(16.f)}, U.th.inkFaint);
+}
+
 void Game::drawCustomize() {
     ui::Ui& U = ui;
     float t = screenTime_;
@@ -205,10 +218,28 @@ void Game::drawCustomize() {
         U.text(ui::Face::Serif, U.u(56.f), "Customize", x, col.y, U.th.ink);
         col.gap(78.f);
         int before = custTab_;
-        U.tabs("cust#tabs", &custTab_, {"VIVIAN", "MARCUS"}, Rectangle{x, col.y, w, U.u(44.f)});
+        U.tabs("cust#tabs", &custTab_, {upperName(castName(0)), upperName(castName(1))}, Rectangle{x, col.y, w, U.u(44.f)});
         if (custTab_ != before) { showcaseWho_ = custTab_; stage(Stage::Showcase); }
         col.gap(64.f);
         const float top = col.y;
+        // the model: another face on the same body (every act, clip and outfit fits each of them)
+        {
+            const Json& list = roster_[custTab_ == 0 ? "her" : "him"];
+            if (list.size() > 1) {
+                col.section("MODEL");
+                const Character& cur = custTab_ == 0 ? scene.vivian : scene.marcus;
+                std::vector<std::string> names;
+                std::vector<bool> act;
+                for (const Json& e : list.arr) { names.push_back(e["name"].str("?")); act.push_back(cur.asset == e["id"].str()); }
+                int pick = chipRow(U, col, custTab_ == 0 ? "hm#" : "mm#", names, act);
+                if (pick >= 0 && !act[(size_t)pick]) {
+                    std::string id = list.arr[(size_t)pick]["id"].str();
+                    if (custTab_ == 0) profile.her.model = id; else profile.him.model = id;
+                    if (ensureCast(false)) stage(Stage::Showcase);
+                }
+                col.gap(14.f);
+            }
+        }
         std::vector<Color> toneCols(kToneSwatch, kToneSwatch + 8);
         std::vector<std::string> toneNames(kToneLabel, kToneLabel + 8);
         char agebuf[24];
@@ -262,8 +293,11 @@ void Game::drawCustomize() {
             }
             // adults only: 21 to 60 years
             std::snprintf(agebuf, sizeof agebuf, "%d years", (int)std::lround(h.age));
-            changed |= U.slider("h_age", "Age", &h.age, kMinAge, kMaxAge, Rectangle{col2, col.y + 3.f * U.u(52.f), colW, U.u(46.f)}, false, agebuf);
-            soonTag(scene.vivian, col2, col.y + 3.f * U.u(52.f));
+            if (castEntry(0)["fixedAge"].boolean(false)) fixedAgeRow(0, Rectangle{col2, col.y + 3.f * U.u(52.f), colW, U.u(46.f)});
+            else {
+                changed |= U.slider("h_age", "Age", &h.age, kMinAge, kMaxAge, Rectangle{col2, col.y + 3.f * U.u(52.f), colW, U.u(46.f)}, false, agebuf);
+                soonTag(scene.vivian, col2, col.y + 3.f * U.u(52.f));
+            }
             col.gap(4.f * 52.f + 6.f);
             col.section("SKIN & HAIR");
             changed |= U.swatches("h_tone", "Skin tone", &h.tone, toneCols, toneNames, Rectangle{x, col.y, w, U.u(72.f)});
@@ -271,7 +305,7 @@ void Game::drawCustomize() {
             changed |= U.swatches("h_hair", "Hair colour", &h.hair, std::vector<Color>(kHairSwatch, kHairSwatch + 6),
                                   std::vector<std::string>(kHairLabel, kHairLabel + 6), Rectangle{x, col.y, colW, U.u(72.f)});
             U.textIn(ui::Face::SansMedium, U.u(19.f), "Hair style", Rectangle{col2, col.y, colW, U.u(19.f)}, U.th.inkDim);
-            U.chip("h_style", "Low chignon", Rectangle{col2, col.y + U.u(36.f), std::min(colW, U.u(170.f)), U.u(36.f)}, true);
+            U.chip("h_style", castEntry(0)["hairName"].str("Low chignon"), Rectangle{col2, col.y + U.u(36.f), std::min(colW, U.u(190.f)), U.u(36.f)}, true);
             col.gap(80.f);
         } else {
             HisLook& h = profile.him;
@@ -299,8 +333,11 @@ void Game::drawCustomize() {
             changed |= U.slider("m_weight", "Weight", &h.weight, -1.f, 1.f, Rectangle{col2, col.y, colW, U.u(46.f)}, true);
             changed |= U.slider("m_belly", "Belly", &h.belly, 0.f, 1.f, Rectangle{x, col.y + U.u(64.f), colW, U.u(46.f)});
             std::snprintf(agebuf, sizeof agebuf, "%d years", (int)std::lround(h.age));
-            changed |= U.slider("m_age", "Age", &h.age, kMinAge, kMaxAge, Rectangle{col2, col.y + U.u(64.f), colW, U.u(46.f)}, false, agebuf);
-            soonTag(scene.marcus, col2, col.y + U.u(64.f));
+            if (castEntry(1)["fixedAge"].boolean(false)) fixedAgeRow(1, Rectangle{col2, col.y + U.u(64.f), colW, U.u(46.f)});
+            else {
+                changed |= U.slider("m_age", "Age", &h.age, kMinAge, kMaxAge, Rectangle{col2, col.y + U.u(64.f), colW, U.u(46.f)}, false, agebuf);
+                soonTag(scene.marcus, col2, col.y + U.u(64.f));
+            }
             col.gap(140.f);
             col.section("ENDOWMENT", 32.f);
             changed |= U.slider("m_length", "Length", &h.length, -1.f, 1.f, Rectangle{x, col.y, colW, U.u(46.f)}, true);
@@ -335,8 +372,8 @@ void Game::drawCustomize() {
     float left = std::max(U.u(40.f), panel.x - U.u(40.f));
     U.textIn(ui::Face::Sans, U.u(15.f), "Drag to turn  \xc2\xb7  Scroll to look closer", Rectangle{0.f, U.H - U.u(56.f), left, U.u(20.f)},
              U.th.inkFaint, ui::Center);
-    U.textIn(ui::Face::Serif, U.u(46.f), custTab_ == 0 ? "Vivian" : "Marcus", Rectangle{U.u(80.f), U.u(64.f), left - U.u(80.f), U.u(46.f)}, U.th.ink);
-    U.textIn(ui::Face::SerifItalic, U.u(22.f), custTab_ == 0 ? "forty-two, warm, unhurried" : "forty, steady, attentive",
+    U.textIn(ui::Face::Serif, U.u(46.f), castName(custTab_), Rectangle{U.u(80.f), U.u(64.f), left - U.u(80.f), U.u(46.f)}, U.th.ink);
+    U.textIn(ui::Face::SerifItalic, U.u(22.f), castEntry(custTab_)["tagline"].str(custTab_ == 0 ? "forty-two, warm, unhurried" : "forty, steady, attentive"),
              Rectangle{U.u(82.f), U.u(122.f), left - U.u(82.f), U.u(22.f)}, U.th.inkDim);
     U.alpha = 1.f;
 }

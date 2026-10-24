@@ -56,6 +56,7 @@ bool Game::init() {
     if (!meta.empty()) clipsMeta_ = Json::parse(paths::readText(meta));
     std::string presets = paths::findAsset({"characters/presets.json"});
     if (!presets.empty()) clipsPresets_ = Json::parse(paths::readText(presets));
+    ensureCast(false);   // the player's models (characters/roster.json); the base GLBs are already in
     platform::trimHeap();   // loading spikes (file images, decode buffers) go back to the OS
 
     // acts come from the content: every clip family with a base clip (<id>.in = depth-driven, or a loop) is an
@@ -300,7 +301,8 @@ void Game::applyLooks() {
         v.setBody("bust", h.bust); v.setBody("hips", h.hips); v.setBody("waist", h.waist); v.setBody("butt", h.butt);
         v.setBody("weight", h.weight); v.setBody("muscle", h.muscle); v.setBody("belly", h.belly);
         applySkin(v, h.tone);
-        v.setBody("age", ageToMorph(h.age, 42.f));
+        // a model with its own face has that face's age: the base's age shapes were measured on the base's face
+        v.setBody("age", castEntry(0)["fixedAge"].boolean(false) ? 0.f : ageToMorph(h.age, 42.f));
         bool legacyHair = false;
         for (const Material& mat : v.model.materials)
             if (mat.shading == Shading::Hair && mat.baseColor.x > 0.9f) legacyHair = true;
@@ -312,7 +314,7 @@ void Game::applyLooks() {
         const HisLook& h = profile.him;
         m.setBody("muscle", h.muscle); m.setBody("weight", h.weight); m.setBody("belly", h.belly);
         applySkin(m, h.tone);
-        m.setBody("age", ageToMorph(h.age, 40.f));
+        m.setBody("age", castEntry(1)["fixedAge"].boolean(false) ? 0.f : ageToMorph(h.age, 40.f));
     }
 }
 
@@ -358,6 +360,12 @@ void Game::updateMenuCamera(float dt) {
         float z = ui::easeInOut(showcaseZoom_);
         V3 tgt{0.62f - 0.25f * z, hgt * (0.53f + 0.2f * z), 0.f};
         camera.setOrbit(tgt, 0.f, 0.06f, 3.6f - 1.8f * z, 0.f);
+        if (qaPortrait_ > 0.f) {
+            // QA portraits: head and shoulders, framed left of the panel (portrait=1 head, 0.5 bust)
+            V3 hc = c.hairCenter();
+            float d = 0.55f / qaPortrait_;
+            camera.setOrbit(hc + V3{0.16f * d, -0.05f - 0.12f * (d - 0.55f), 0.f}, 0.f, 0.03f, d, 0.f);
+        }
         c.proc.lookTarget = cam_.eye;
     }
 }
@@ -606,6 +614,10 @@ void Game::applySpec(const Spec& s) {
     if (s.has("age")) profile.her.age = std::max(kMinAge, s.num("age", 42.f));
     if (s.has("mage")) profile.him.age = std::max(kMinAge, s.num("mage", 40.f));
     if (s.has("hair")) profile.her.hair = (int)s.num("hair", 0.f);
+    // models (characters/roster.json): hermodel=<id>, himmodel=<id>; story shots keep the stories' own cast
+    if (s.has("hermodel")) profile.her.model = s.get("hermodel");
+    if (s.has("himmodel")) profile.him.model = s.get("himmodel");
+    ensureCast(s.get("screen") == "story");
     std::string q = s.get("quality");
     if (q == "low") settings.quality = 0; else if (q == "medium") settings.quality = 1; else if (q == "high") settings.quality = 2;
     applyQuality(renderer.settings, (Quality)settings.quality);
@@ -718,7 +730,18 @@ void Game::applySpec(const Spec& s) {
     }
     screen_ = target;
     enterScreen(target);
-    if (target == Screen::Customize) { showcaseWho_ = custTab_; stage(Stage::Showcase); }
+    qaPortrait_ = 0.f;
+    if (target == Screen::Customize) {
+        showcaseWho_ = custTab_; stage(Stage::Showcase);
+        // QA stills of the models: turntable angle, a head-and-shoulders camera, an outfit, held expressions
+        if (s.has("turn")) turntable_ = s.num("turn", 0.25f);
+        if (s.has("zoom")) showcaseZoom_ = std::max(0.f, std::min(1.f, s.num("zoom", 0.f)));
+        qaPortrait_ = s.num("portrait", 0.f);
+        Character& c = showcaseWho_ == 0 ? scene.vivian : scene.marcus;
+        std::string of = s.get("outfit");
+        if (!of.empty() && c.setOutfit(of)) if (Outfit* o = c.outfit()) o->setDress(Dress::Dressed, 0.f);
+        for (auto& kv : Spec::pairs(s.get("face"))) c.setMorph(kv.first, kv.second);
+    }
     fade_ = 0.f; fadeDir_ = 0.f; switching_ = false;
     screenTime_ = s.num("t", 3.f);   // past the entrance animations
     introT_ = 10.f;

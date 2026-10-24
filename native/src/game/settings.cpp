@@ -117,6 +117,7 @@ bool Profile::load(const std::string& path) {
     her.tone = tone(h);
     her.hair = ri(h, "hair", 0, 0, 15);
     her.age = rd(h, "age", 42.f, kMinAge, kMaxAge);
+    her.model = h["model"].str("vivian");
     const Json& m = j["him"];
     him.muscle = rd(m, "muscle", 0.f, -1.f, 1.f);
     him.weight = rd(m, "weight", 0.f, -1.f, 1.f);
@@ -125,6 +126,7 @@ bool Profile::load(const std::string& path) {
     him.girth = rd(m, "girth", 0.f, -1.f, 1.f);
     him.tone = tone(m);
     him.age = rd(m, "age", 40.f, kMinAge, kMaxAge);
+    him.model = m["model"].str("marcus");
     const Json& s = j["stats"];
     stats.nights = ri(s, "nights", 0, 0, 1 << 30);
     stats.together = ri(s, "together", 0, 0, 1 << 30);
@@ -160,11 +162,13 @@ bool Profile::save(const std::string& path) const {
     h.set("butt", Json::of(her.butt)); h.set("weight", Json::of(her.weight)); h.set("muscle", Json::of(her.muscle));
     h.set("belly", Json::of(her.belly)); h.set("skin", Json::of(std::string(skinToneName(her.tone)))); h.set("hair", Json::of(her.hair));
     h.set("age", Json::of(std::max(kMinAge, std::min(kMaxAge, her.age))));
+    h.set("model", Json::of(her.model));
     j.set("her", h);
     Json m = Json::object();
     m.set("muscle", Json::of(him.muscle)); m.set("weight", Json::of(him.weight)); m.set("belly", Json::of(him.belly));
     m.set("length", Json::of(him.length)); m.set("girth", Json::of(him.girth)); m.set("skin", Json::of(std::string(skinToneName(him.tone))));
     m.set("age", Json::of(std::max(kMinAge, std::min(kMaxAge, him.age))));
+    m.set("model", Json::of(him.model));
     j.set("him", m);
     Json s = Json::object();
     s.set("nights", Json::of(stats.nights)); s.set("together", Json::of(stats.together));

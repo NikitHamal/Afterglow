@@ -6,6 +6,7 @@
 #include "raylib.h"
 #include <algorithm>
 #include <cmath>
+#include <cctype>
 #include <cstdio>
 
 namespace ag {
@@ -51,9 +52,12 @@ void Game::drawHud() {
             U.box(Rectangle{x, by, fw, th}, b2);
             U.glow(x + fw, by + th * 0.5f, U.u(14.f), ui::withA(c, 0.6f));
         };
-        meter("VIVIAN", night_.her, U.th.rose, y, night_.her > 0.85f);
+        std::string herN = castName(0), hisN = castName(1);
+        for (auto& ch : herN) ch = (char)std::toupper((unsigned char)ch);
+        for (auto& ch : hisN) ch = (char)std::toupper((unsigned char)ch);
+        meter(herN.c_str(), night_.her, U.th.rose, y, night_.her > 0.85f);
         if (!p.solo) {
-            meter("MARCUS", night_.him, U.th.gold, y + U.u(52.f), night_.him > 0.82f);
+            meter(hisN.c_str(), night_.him, U.th.gold, y + U.u(52.f), night_.him > 0.82f);
             if (night_.him > 0.82f && !night_.finished) {
                 float a = 0.55f + 0.45f * std::sin(time_ * 5.f);
                 U.text(ui::Face::SerifItalic, U.u(22.f), night_.edging ? "Holding back\xe2\x80\xa6" : "He's close \xe2\x80\x94 ease off",

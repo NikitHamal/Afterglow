@@ -67,6 +67,14 @@ private:
     enum class Stage { Bedroom, Showcase, Night };
     void stage(Stage st);
     void applyLooks();                    // profile -> characters (morphs, tones, hair colour)
+    // the models (characters/roster.json): several faces per role on the same proven body, skeleton and clips
+    const Json& rosterEntry(int role, const std::string& id) const;   // role 0 her, 1 him; null Json when unknown
+    const Json& castEntry(int role) const;                             // the model the role shows right now
+    std::string castName(int role) const;                              // "Vivian", "Mei", ... (story: the story's cast)
+    bool ensureCast(bool story);          // story = the stories' own cast (Vivian, Marcus); else the profile's models; true if one reloaded
+    bool storyCast_ = false;
+    float qaPortrait_ = 0.f;              // QA: Customize head-and-shoulders camera (spec portrait=)
+    void fixedAgeRow(int role, Rectangle r);        // Customize: a fixed-age model's age line
     void standPose(Character& c);         // relaxed standing pose (customisation preview)
     void applySkin(Character& c, int tone);
     static float ageToMorph(float years, float base);
@@ -257,6 +265,7 @@ private:
     ui::Ui ui;
     CameraState cam_;
     Json clipsMeta_, clipsPresets_;   // clips.json, presets.json (body types)
+    Json roster_;                     // characters/roster.json
     float time_ = 0.f, frameDt_ = 1.f / 60.f;
     int fbW_ = 1280, fbH_ = 720;
     int lastRenderW_ = 0, lastRenderH_ = 0;

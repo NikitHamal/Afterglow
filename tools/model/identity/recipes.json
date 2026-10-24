@@ -1,0 +1,53 @@
+{
+  "_doc": "Face identities on the proven rigs (tools/model/identity). base = the shipped character whose body, skeleton, clips and outfits the new model reuses; phenotype = MakeHuman macro overrides used for the HEAD ONLY (the body below the neck is the base's, so every clip and outfit fits); targets = MakeHuman face targets added to the base's own. Adults only: MakeHuman age >= 0.5 (25 y).",
+  "bases": {
+    "vivian": {
+      "phenotype": {"gender": 0.0, "age": 0.63, "muscle": 0.52, "weight": 0.62, "proportions": 0.88, "height": 0.6,
+                    "cupsize": 0.84, "firmness": 0.52, "race": {"caucasian": 0.5, "african": 0.38, "asian": 0.12}},
+      "targets": {"hip-scale-horiz-incr": 0.32, "buttocks-volume-incr": 0.6, "measure-waist-circ-decr": 0.5,
+                  "measure-hips-circ-incr": 0.3, "stomach-pregnant-decr": 0.15, "measure-thigh-circ-incr": 0.18,
+                  "nipple-point-incr": 0.3, "nipple-size-incr": 0.2,
+                  "mouth-upperlip-volume-incr": 0.35, "mouth-lowerlip-volume-incr": 0.45, "mouth-cupidsbow-incr": 0.3,
+                  "l-cheek-bones-incr": 0.35, "r-cheek-bones-incr": 0.35, "l-cheek-volume-decr": 0.25, "r-cheek-volume-decr": 0.25,
+                  "l-eye-corner2-up": 0.25, "r-eye-corner2-up": 0.25, "l-eye-scale-incr": 0.12, "r-eye-scale-incr": 0.12,
+                  "eyebrows-angle-up": 0.2, "chin-prominent-incr": 0.12, "chin-width-decr": 0.15, "head-oval": 0.4,
+                  "head-fat-decr": 0.2, "nose-scale-horiz-decr": 0.18, "nose-point-width-decr": 0.25, "nose-hump-decr": 0.3,
+                  "nose-nostrils-width-decr": 0.1, "nose-volume-decr": 0.1, "forehead-scale-vert-decr": 0.12},
+      "proxies": {"eyes": "high-poly/high-poly.mhclo", "eyebrows": "eyebrow010/eyebrow010.mhclo",
+                  "eyelashes": "eyelashes03/eyelashes03.mhclo", "teeth": "teeth_base/teeth_base.mhclo", "tongue": "tongue01/tongue01.mhclo"},
+      "meshes": {"body": "vivian_body", "eyes": "vivian_eyes", "eyebrows": "vivian_brows", "eyelashes": "vivian_lashes",
+                 "teeth": "vivian_teeth", "tongue": "vivian_tongue"}
+    },
+    "marcus": {
+      "phenotype": {"gender": 1.0, "age": 0.62, "muscle": 0.68, "weight": 0.55, "proportions": 0.85, "height": 0.62,
+                    "cupsize": 0.5, "firmness": 0.5, "race": {"caucasian": 0.6, "african": 0.25, "asian": 0.15}},
+      "targets": {"chin-prominent-incr": 0.22, "chin-width-incr": 0.12, "head-square": 0.3, "l-cheek-bones-incr": 0.25, "r-cheek-bones-incr": 0.25,
+                  "l-cheek-volume-decr": 0.2, "r-cheek-volume-decr": 0.2, "eyebrows-trans-down": 0.18, "nose-hump-decr": 0.15,
+                  "mouth-lowerlip-volume-incr": 0.1, "measure-neck-circ-incr": 0.3,
+                  "torso-vshape-incr": 0.45, "measure-shoulder-dist-incr": 0.18, "measure-waist-circ-decr": 0.18,
+                  "torso-muscle-pectoral-incr": 0.3, "torso-muscle-dorsi-incr": 0.3, "stomach-pregnant-decr": 0.25, "buttocks-volume-incr": 0.12},
+      "proxies": {"eyes": "high-poly/high-poly.mhclo", "eyebrows": "eyebrow001/eyebrow001.mhclo",
+                  "eyelashes": "eyelashes01/eyelashes01.mhclo", "teeth": "teeth_base/teeth_base.mhclo", "tongue": "tongue01/tongue01.mhclo"},
+      "meshes": {"body": "marcus_body", "eyes": "marcus_eyes", "eyebrows": "marcus_brows", "eyelashes": "marcus_lashes",
+                 "teeth": "marcus_teeth", "tongue": "marcus_tongue"}
+    }
+  },
+  "models": {
+    "mei": {"base": "vivian", "age_years": 31,
+            "phenotype": {"age": 0.55, "race": {"asian": 0.86, "caucasian": 0.12, "african": 0.02}},
+            "targets": {"mouth-upperlip-volume-incr": -0.15, "mouth-lowerlip-volume-incr": -0.1, "nose-hump-decr": 0.1,
+                        "chin-width-decr": 0.1, "head-oval": 0.2, "l-cheek-bones-incr": -0.1, "r-cheek-bones-incr": -0.1,
+                        "eyebrows-angle-up": -0.1}},
+    "amara": {"base": "vivian", "age_years": 34,
+              "phenotype": {"age": 0.57, "race": {"african": 0.9, "caucasian": 0.08, "asian": 0.02}},
+              "targets": {"mouth-upperlip-volume-incr": 0.15, "mouth-lowerlip-volume-incr": 0.1, "nose-scale-horiz-decr": -0.18,
+                          "nose-point-width-decr": -0.15, "nose-hump-decr": 0.1, "l-cheek-bones-incr": 0.1, "r-cheek-bones-incr": 0.1,
+                          "chin-prominent-incr": 0.05, "forehead-scale-vert-decr": -0.05}},
+    "daniel": {"base": "marcus", "age_years": 34,
+               "phenotype": {"age": 0.56, "race": {"caucasian": 0.88, "african": 0.04, "asian": 0.08}},
+               "targets": {"chin-width-incr": 0.12, "chin-prominent-incr": 0.08, "nose-hump-decr": -0.15, "nose-hump-incr": 0.2,
+                           "nose-scale-vert-incr": 0.12, "eyebrows-trans-down": 0.1, "head-square": 0.1,
+                           "mouth-lowerlip-volume-incr": 0.08, "mouth-scale-horiz-incr": 0.08, "l-cheek-volume-decr": 0.1,
+                           "r-cheek-volume-decr": 0.1}}
+  }
+}

@@ -51,11 +51,13 @@ struct HerLook {
     int tone = 4;                  // skin tone index (caramel)
     int hair = 0;                  // index into the hair colour table
     float age = 42.f;              // years, 21..60
+    std::string model = "vivian";  // roster model (characters/roster.json); the body and every clip are Vivian's
 };
 struct HisLook {
     float muscle = 0.f, weight = 0.f, belly = 0.f, length = 0.f, girth = 0.f;
     int tone = 4;
     float age = 40.f;
+    std::string model = "marcus";  // roster model (characters/roster.json); the body and every clip are Marcus'
 };
 
 struct SavedNight {
