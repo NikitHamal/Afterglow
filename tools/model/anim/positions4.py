@@ -38,7 +38,13 @@ def arm_side(body, face):
     return [(s, 1.0 if (r.head("腕" + s) - c).dot(left) >= 0 else -1.0) for s in (".L", ".R")]
 
 # ---------------------------------------------------------------- standing
-def stand(body, loc_xy, face, weight=0.6, breath=0.0, chest_lean=0.0, feet="normal"):
+def tip_toes(toes, pitch):
+    """sole direction pitched down toward the toes by `pitch` (rad): the heel lifted, the ball of the foot down"""
+    if pitch <= 0.0: return nrm(toes)                                  # flat on the floor: the sole as authored
+    t = flat(toes)
+    return nrm(t * math.cos(pitch) - UP * math.sin(pitch))
+
+def stand(body, loc_xy, face, weight=0.6, breath=0.0, chest_lean=0.0, feet="normal", heel=0.0):
     """standing on the room floor at loc_xy facing `face`, contrapposto: weight on one leg (+1 her/his right,
     -1 left), the hips shifted over it with the free hip dropped, the free knee soft and that foot a little ahead,
     the shoulders countering; chest_lean (deg, + forward) for leaning in. feet: "normal", "wide" (toes out, an
@@ -53,22 +59,24 @@ def stand(body, loc_xy, face, weight=0.6, breath=0.0, chest_lean=0.0, feet="norm
     body.spine(forward=nrm(f - UP * 0.02), up=nrm(UP - left * math.tan(math.radians(1.0)) * w),
                chest_forward=nrm(f * math.cos(a) - up_c * math.sin(a)), chest_up=nrm(up_c * math.cos(a) + f * math.sin(a)))
     SC.settle(body, target_z=0.0, sink=0.0, region=_mask(body, "all"))
+    if heel > 0: body.move(UP * heel)                                  # on her toes: heels up, the body rises with them
+    pitch = math.atan2(heel, 0.15)                                     # sole line from the raised heel down to the ball
     for s, sx in lr(body, f):
         H = r.head("足" + s)
         stance = (sx < 0) == (w > 0)                                   # +w: the right leg carries the weight
         c = r.head("下半身"); hw = abs((H - c).dot(left))                  # hip half-width
         if feet == "wide":                                             # an embrace's base: feet apart, toes out
-            A = V3(H.x, H.y, 0.075) + left * sx * 0.07 - f * 0.02
+            A = V3(H.x, H.y, 0.075 + heel) + left * sx * 0.07 - f * 0.02
             body.leg_ik(s, A, H + f * 0.5 + left * sx * 0.12 - UP * 0.1)
-            body.foot(s, nrm(f + left * sx * 0.55), UP)
+            body.foot(s, tip_toes(nrm(f + left * sx * 0.55), pitch), UP)
         elif feet == "stagger" and stance:                             # weight on the back foot
-            A = V3(H.x, H.y, 0.075) - f * 0.07 - left * sx * 0.005
+            A = V3(H.x, H.y, 0.075 + heel) - f * 0.07 - left * sx * 0.005
             body.leg_ik(s, A, H + f * 0.5 - UP * 0.1)
-            body.foot(s, nrm(f + left * sx * 0.30), UP)
+            body.foot(s, tip_toes(nrm(f + left * sx * 0.30), pitch), UP)
         elif feet == "stagger":                                        # the free foot forward on the midline, heel light
-            A = V3(H.x, H.y, 0.085) + f * 0.10 - left * sx * hw
+            A = V3(H.x, H.y, 0.085 + heel) + f * 0.10 - left * sx * hw
             body.leg_ik(s, A, H + f * 0.6)
-            body.foot(s, nrm(f - UP * 0.05), nrm(UP + f * 0.05))
+            body.foot(s, tip_toes(nrm(f - UP * 0.05), pitch), nrm(UP + f * 0.05))
         elif stance:
             A = V3(H.x, H.y, 0.075) - left * sx * 0.01 + f * 0.01
             body.leg_ik(s, A, H + f * 0.5 - UP * 0.1)
@@ -142,7 +150,7 @@ def skin_pen(A, B, bones=None, margin=None):
     return tot
 
 def solve_heads(V, M, fv, fm, goal, key, roll=(20.0, 20.0), weight=(2.0, 1.0), yaw_r=(5.0, 5.0), clear=0.175,
-                goal_w=1e4, skin_w=300.0, skin_bones=("頭", "首", "上半身2")):
+                goal_w=1e4, skin_w=300.0, skin_bones=("頭", "首", "上半身2"), rom_w=0.05):
     """neck + head of both found by coordinate descent on goal() (the lip gap, or cheek-on-chest), inside the
     neck/head ranges, crania `clear` apart (no skulls or brows through each other); warm-started from the last
     frame of the clip and held near it, so the solution glides. Returns goal() at the solution."""
@@ -156,7 +164,7 @@ def solve_heads(V, M, fv, fm, goal, key, roll=(20.0, 20.0), weight=(2.0, 1.0), y
         c += (skin_pen(V, M, skin_bones) + skin_pen(M, V, skin_bones)) * skin_w   # skin rests on skin, never in it
         if key in _HEADS: c += 5e-2 * sum((a - b_) ** 2 for a, b_ in zip(q, p0))   # glide from the last frame
         for b in (V, M):
-            for n in ("首", "頭"): c += b.rig.rom_excess(n) ** 2 * 0.05
+            for n in ("首", "頭"): c += b.rig.rom_excess(n) ** 2 * rom_w
         c += 2e-4 * (weight[0] * sum(x * x for x in q[:4]) + weight[1] * sum(x * x for x in q[4:]))
         return c
     best = cost(p)
@@ -178,12 +186,12 @@ def solve_heads(V, M, fv, fm, goal, key, roll=(20.0, 20.0), weight=(2.0, 1.0), y
 def lip_gap(V, M):
     return lambda: max(0.0, (V.lm("mouth") - M.lm("mouth")).length - 0.001)
 
-def kiss_heads(V, M, fv, fm, key, nod=0.0):
+def kiss_heads(V, M, fv, fm, key, nod=0.0, goal_w=2e4, rom_w=0.05):
     """the lips meet (1 mm), each head rolled ~17 deg to its own right so the noses pass, he bends down more than
     she reaches up; a slow nod keeps the kiss alive. Returns the lip gap (m)."""
     V.look(M.rig.head("頭"), up_hint=UP, neck_share=0.5)            # face each other; the roll comes in the solve
     M.look(V.rig.head("頭"), up_hint=UP, neck_share=0.5)
-    g = solve_heads(V, M, fv, fm, lip_gap(V, M), key, roll=(20.0, 20.0), yaw_r=(5.0, 5.0), goal_w=2e4, skin_w=300.0)
+    g = solve_heads(V, M, fv, fm, lip_gap(V, M), key, roll=(20.0, 20.0), yaw_r=(5.0, 5.0), goal_w=goal_w, skin_w=300.0, rom_w=rom_w)
     if nod:
         V.rig.rotate_world("頭", Matrix.Rotation(math.radians(nod), 3, left_of(fv)))
         M.rig.rotate_world("頭", Matrix.Rotation(math.radians(-nod), 3, left_of(fm)))
@@ -247,7 +255,8 @@ def embrace(ctx, t, kiss):
     d = 0.32; best = None
     for rnd in range(rounds):
         for it in range(5):                                              # bodies close until her chest just meets his
-            fv, lv = stand(V, (C - ax * d * 0.48).xy, ax, weight=0.55 + 0.08 * breath, breath=breath, chest_lean=leanV, feet="stagger")
+            fv, lv = stand(V, (C - ax * d * 0.48).xy, ax, weight=0.55 + 0.08 * breath, breath=breath, chest_lean=leanV, feet="stagger",
+                           heel=0.035 if kiss else 0.0)                    # on her toes to reach his lips
             fm, lm = stand(M, (C + ax * d * 0.52).xy, -ax, weight=-0.3 + 0.06 * math.sin(ph + 1.1), breath=math.sin(ph + 0.6),
                            chest_lean=leanM, feet="wide")
             SC.apply_rigs(V, M)
@@ -255,8 +264,8 @@ def embrace(ctx, t, kiss):
             if abs(g + 0.003) < 0.002: break
             d = max(0.10, d - (g + 0.003))                               # breasts press ~3 mm into the embrace
         if not kiss: break
-        _HEADS.pop("kiss.stand", None)                                   # each lean tried from the same cold start
-        g = kiss_heads(V, M, fv, fm, "kiss.stand")
+        if key not in _LAYOUT: _HEADS.pop("kiss.stand", None)            # first frame: each lean tried from the same cold start
+        g = kiss_heads(V, M, fv, fm, "kiss.stand", goal_w=4e4, rom_w=1.0)
         if best is None or g < best[0] - 0.001: best = (g, leanV, leanM)
         if g < 0.003 or rnd == rounds - 1: break
         leanV += 3.0; leanM += 3.0                                       # the necks ran out of range: lean in from the hips
@@ -266,7 +275,7 @@ def embrace(ctx, t, kiss):
             return embrace(ctx, t, kiss)                                 # pose again with the best lean
         _LAYOUT[key] = (leanV, leanM)
     embrace_arms(V, M, fv, fm, kiss)
-    if kiss: kiss_heads(V, M, fv, fm, "kiss.stand", nod=1.2 * math.sin(ph))   # her hands are on his neck now: settle again
+    if kiss: kiss_heads(V, M, fv, fm, "kiss.stand", nod=1.2 * math.sin(ph), goal_w=4e4, rom_w=1.0)   # her hands are on his neck now: settle again
     else: cheek_on_chest(V, M, fv, fm, "stand.embrace")
 
 # ---------------------------------------------------------------- sitting on the bed's edge

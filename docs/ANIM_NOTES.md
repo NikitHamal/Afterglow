@@ -60,21 +60,44 @@ Newest first. Board: molab notebook → tabs **anim** (acts, before/after in the
   `focus=v:<bone>|m:<bone>` + `view=yaw:,pitch:,dist:` (camera on one joint). Shot list used: 12 acts × depth 0/1 ×
   side/front (`/data/tools/qa_acts.txt` in the AgentSky sandbox; the board sheets `anim/act_<id>.jpg`).
 
-## In flight
-- Story clips (positions4.py): `stand.idle` (contrapposto), `sit.bed` (shins clear of the frame: 46 → 0 furniture hits),
-  `stand.embrace` (her arms round his neck, cheek on his chest, his round her back: 4 pairs, 0 mm, max step 8.3°),
-  `kiss.sit` (0 pairs, lips 3-9 mm), `kiss.stand` (unstable: neck steps up to 42°, lips 4-17 mm) — head solve
-  (`solve_heads`: coordinate descent on neck/head angles, skin-vs-skin penalty from per-bone local BVHs + head sample
-  points, crania kept apart, glide from the last frame).
-- Story mapping (`game_cinema.cpp`): authored clips layered by the embrace / kiss amounts (stand.idle → stand.embrace →
-  kiss.stand; sit.bed → kiss.sit); the procedural step, lean, turn and hand goals stand down where they cover it.
+## In flight — story clips authored + verified in Blender, NOT yet in the GLBs (the molab box died: HTTP 410)
+Measured in `author.py` (Blender, same verify as the acts) before the box went away:
 
-## Next
-- kiss.stand: stable head solve (her on her toes, a small lateral offset so the heads tilt apart without extra neck
-  twist, ROM penalty raised so the clamp never fights the solve).
+| clip | bad pairs | deepest mm | max step ° | other |
+|---|---|---|---|---|
+| stand.idle | 0 | 0 | 0.3 | contrapposto: weight on one leg, free hip dropped, soft free knee, shoulders countering, soft elbows |
+| sit.bed | 0 | 0 | 6.2 | furniture hits 46 → 0 (shins hang clear of the frame), his arm round her shoulders |
+| stand.embrace | 4 (her head × his neck, 0 mm) | 0.0 | 8.3 | her arms round his neck, cheek resting on his chest, his round her back |
+| kiss.stand | 5 | 0.1 | 4.6 | lips 2.5-7.6 mm, heads rolled 20° apart (noses pass), she is on her toes (heels 3.5 cm up) |
+| kiss.sit | 0 | 0.0 | 4.6 | lips 3.4-9.5 mm, hips turned in 28°, chests 30° more, knees forward, her hand on his chest, his at her back |
+
+How the heads are solved (`positions4.solve_heads`): coordinate descent on neck/head pitch + yaw of both, each head
+rolled 20° to its own right and yawed 5°, lips (or her cheek on his chest) as the goal; skin-vs-skin penalty from
+per-bone surfaces in each bone's own frame + ~65 sample points per head (lips excepted); crania kept apart; range
+excess penalised (1.0 standing kiss, 0.05 elsewhere); the first frame decides the body lean (best of four, cold),
+later frames warm-start from the last one, glide (5e-2) and move at most 6° per angle per frame.
+
+Story mapping (`game_cinema.cpp`, pushed, inert until the clips are in the GLBs — it checks `hasClip`): standing,
+stand.idle → stand.embrace (by the embrace amount) → kiss.stand (by the kiss amount) as layers 0/1/2; seated, sit.bed →
+kiss.sit; where an authored clip covers it the procedural step, lean, turn and hand goals stand down (the runtime kiss
+IK still closes the last millimetres).
+
+## Exact next step
+1. A render box: `bash molab_setup.sh` (AgentSky task folder `task/tools/`: apt + Blender 4.2.3 + MPFB + repo), then the
+   character pipeline `bash tools/model/native/run_chars.sh both` (needs `/root/agb/goatchan.glb` =
+   `git show 1b10cf2:assets/goatchan/goatchan.glb`), then the authoring prep (Commands below: prepare both + room).
+2. `author.py -- stand.idle,sit.bed,stand.embrace,kiss.stand,kiss.sit --norender` — expect the table above
+   (stand.embrace was last measured before the `tip_toes` no-op fix; re-check it is back to 4 pairs / 0 mm).
+3. `render_story.py` sheets (heads + upper, side/front/top/back) → by eye; then export, splice ONLY those five
+   clips (`splice_anims.mjs ... stand.idle,sit.bed,stand.embrace,kiss.stand,kiss.sit`), merge their clips.json
+   entries, `validate_model.py` both, build, story QA in the game (`screen=story;...;kiss=1` / `near=1`, the
+   couple orbit `orbit=yaw:,pitch:,dist:`; old_flames c4_kiss, the_storm c4_close, salt_and_sun c3_siesta seated),
+   board tab `kiss`, push.
+
+## Next (after that)
 - Residuals: legsup forearm on her knee (15 pairs, 0.3 mm); humerus twist 92-108° in oral / lick / handjob / titjob
   (his arms resting palm-down beside him; better than the shipped 152-178°); her rubbing hand pressing her own top
-  thigh in spoon.rub.
+  thigh in spoon.rub (−30 mm, as shipped).
 
 ## Commands
 ```bash

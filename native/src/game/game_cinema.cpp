@@ -460,12 +460,27 @@ void Game::applyStoryPose(float dt) {
     float k = smoothstep(0.f, 1.f, kiss_), nr = smoothstep(0.f, 1.f, near_);
     bool sit = pose_ == "sit";
     bool both = v.loaded() && m.loaded();
+    // authored story clips (clips.json: stand.embrace, kiss.stand, kiss.sit): both bodies were solved together in the
+    // content pipeline — lips meeting, heads tilted apart, arms round each other, no skin through skin — so they are
+    // layered in by the embrace / kiss amounts and the procedural step, lean, turn and hand goals stand down
+    bool authored = false;
+    if (both) {
+        auto layer = [&](int li, const char* c, float w) {
+            if (w > 0.001f && v.hasClip(c) && m.hasClip(c)) { v.setLayer(li, c, idlePhase_, w); m.setLayer(li, c, idlePhase_, w); return true; }
+            return false;
+        };
+        if (sit) authored = layer(1, "kiss.sit", k) || (k <= 0.001f && v.hasClip("kiss.sit") && m.hasClip("kiss.sit") && nr > 0.001f);
+        else if (clip == "stand.idle" || clip == "stand.embrace" || clip == "kiss.stand") {
+            bool e = layer(1, "stand.embrace", nr), ks = layer(2, "kiss.stand", k);
+            authored = e || ks;
+        }
+    }
     V3 axis = flatv(m.bonePos("センター") - v.bonePos("センター"));
     // the gaps without any step (last frame's bones minus last frame's step): standing, the necks end where a
     // natural bend brings the lips together (the embrace leaves room for her hands on his chest); seated, the hips
     // stop just short of each other and the turn + lean + neck do the rest
     float step = 0.f;
-    if (both && nr > 0.001f) {
+    if (both && nr > 0.001f && !authored) {
         float neckGap = dot(m.bonePos("首") - v.bonePos("首"), axis) + 2.f * step_;
         float hipGap = dot(m.bonePos("下半身") - v.bonePos("下半身"), axis) + 2.f * step_;
         float want = sit ? 0.5f * (hipGap - kSitHips) : 0.5f * (neckGap - lerpf(kEmbraceNeck, kKissNeck, k));
@@ -479,9 +494,9 @@ void Game::applyStoryPose(float dt) {
     V3 u = flatv(mm - mv), meetAt = (mv + mm) * 0.5f;
     meetAt.y = mv.y + 0.45f * (mm.y - mv.y);                    // he bends down a little more than she reaches up
     for (int w = 0; w < 2; ++w) {
-        actors_[w].lean = 0.35f * nr + 0.65f * k;
+        actors_[w].lean = authored ? 0.f : 0.35f * nr + 0.65f * k;
         actors_[w].leanMax = sit ? 0.2f : 0.12f;
-        actors_[w].turn = sit ? std::max(nr, k) : 0.f;
+        actors_[w].turn = sit && !(authored && k > 0.001f) ? std::max(nr, k) : 0.f;
         actors_[w].eyesClosed = k > 0.6f;
         actors_[w].kissW = meet ? k : 0.f;
         actors_[w].kissRoll = 0.38f;
@@ -494,7 +509,7 @@ void Game::applyStoryPose(float dt) {
     // on the real surface (anchors found on the bind mesh), over the clothes' thickness when dressed; elbows low
     TouchGoals tv, tm;
     float hw = smoothstep(0.5f, 1.f, std::max(near_, kiss_));   // hands come with the embrace, not with a half step
-    if (hw > 0.01f && !sit && both) {
+    if (hw > 0.01f && !sit && both && !authored) {
         V3 hc = m.bonePos("上半身2"), hr = flatv(m.bonePos("腕.R") - m.bonePos("腕.L"));
         V3 hf = flatv(cross(V3{0, 1, 0}, hr));
         V3 vc = v.bonePos("下半身"), vr = flatv(v.bonePos("腕.R") - v.bonePos("腕.L"));
@@ -523,7 +538,7 @@ void Game::applyStoryPose(float dt) {
     }
     // seated, kissing: the near hands find each other — hers flat on his chest, his on her waist, each on the side
     // facing the partner (sitting side by side turned in, the far hands stay where the clip rests them)
-    if (sit && both && kiss_ > 0.05f) {
+    if (sit && both && kiss_ > 0.05f && !authored) {
         float sw = smoothstep(0.15f, 0.8f, kiss_);
         V3 vr = flatv(v.bonePos("腕.R") - v.bonePos("腕.L")), hr = flatv(m.bonePos("腕.R") - m.bonePos("腕.L"));
         V3 vf = flatv(cross(V3{0, 1, 0}, vr)), hf = flatv(cross(V3{0, 1, 0}, hr));
