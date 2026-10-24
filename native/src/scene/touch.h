@@ -2,6 +2,7 @@
 // onto a zone (fingertips resting on the skin, palm facing the body, fingers conforming), rubbing / kneading
 // motion, and finger contact spheres that dent the soft tissue in the vertex shader.
 #pragma once
+#include "anim/rom.h"
 #include "core/mathx.h"
 #include <string>
 #include <vector>
@@ -56,8 +57,12 @@ public:
     bool mouthWorld(const Animator& a, float kissMorph, V3& pos) const;
     // signed distance (m, + outside) from a world point to this character's face around the mouth and nose
     float faceDistance(const Animator& a, const V3& p) const;
-    // IK + fingers onto the zones (runs after the procedural layers); fills `contacts`
-    void apply(Animator& a, const TouchGoals& goals);
+    // the face surface samples (front-facing skin within 9 cm of the mouth, ~4 mm apart) in world space
+    void faceWorld(const Animator& a, std::vector<V3>& out) const;
+    void faceNormalsWorld(const Animator& a, std::vector<V3>& out) const;   // ... and their outward normals
+    // IK + fingers onto the zones (runs after the procedural layers); fills `contacts`. With the character's joint
+    // ranges, hands laid on a partner (world goals) are solved inside them (hinge elbows, twist in range)
+    void apply(Animator& a, const TouchGoals& goals, const JointLimits* rom = nullptr);
 
     struct Contact { V3 c; float r; };
     std::vector<Contact> contacts;       // finger/palm spheres in world space (soft-tissue dents)
@@ -72,6 +77,8 @@ private:
         float side = 1.f;                // +1 right, -1 left (palm normal sign)
     };
     void solveArm(Animator& a, const Arm& arm, const HandGoal& g);
+    bool solveArmRanged(Animator& a, const Arm& arm, const V3& wristT, const V3& elbowHint, float weight);
+    const JointLimits* rom_ = nullptr;   // this frame's ranges (apply)
     BodyZone zones_[(int)Zone::Count];
     V3 bindPos_[(int)Zone::Count], bindNrm_[(int)Zone::Count];
     Arm arms_[2];

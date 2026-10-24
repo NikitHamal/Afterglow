@@ -294,13 +294,77 @@ float TouchRig::faceDistance(const Animator& a, const V3& p) const {
     return s < 0.f ? s : std::sqrt(best);
 }
 
-void TouchRig::apply(Animator& a, const TouchGoals& goals) {
+void TouchRig::faceWorld(const Animator& a, std::vector<V3>& out) const {
+    out.clear();
+    const BodyZone& bz = zones_[(int)Zone::Mouth];
+    if (!bz.valid) return;
+    const M4& g = a.global(bz.bone);
+    out.reserve(faceP_.size());
+    for (const V3& p : faceP_) out.push_back(xformPoint(g, p));
+}
+
+void TouchRig::faceNormalsWorld(const Animator& a, std::vector<V3>& out) const {
+    out.clear();
+    const BodyZone& bz = zones_[(int)Zone::Mouth];
+    if (!bz.valid) return;
+    const M4& g = a.global(bz.bone);
+    out.reserve(faceN_.size());
+    for (const V3& n : faceN_) out.push_back(normalize(xformDir(g, n)));
+}
+
+void TouchRig::apply(Animator& a, const TouchGoals& goals, const JointLimits* rom) {
+    rom_ = JointLimits::enabled ? rom : nullptr;
     contacts.clear();
     if (!ready_) return;
     const HandGoal* gs[2] = {&goals.left, &goals.right};
     for (int s = 0; s < 2; ++s)
         if (gs[s]->active && gs[s]->weight > 0.001f && arms_[s].upper >= 0 && arms_[s].elbow >= 0 && arms_[s].wrist >= 0)
             solveArm(a, arms_[s], *gs[s]);
+}
+
+// a hand laid on a partner, inside the joint ranges: the elbow bends about its own hinge only (the shoulder -> wrist
+// distance fixes the angle), the whole arm then turns about the shoulder -> wrist line until the elbow points where the
+// goal wants it, as far as the upper arm's twist range allows. The palm (solveArm) splits its turn between the forearm
+// twist and the wrist inside their ranges. False when the elbow has no hinge range (the plain solve is used).
+bool TouchRig::solveArmRanged(Animator& a, const Arm& arm, const V3& wristT, const V3& elbowHint, float weight) {
+    JointRange er = rom_->range(arm.elbow);
+    if (!er.valid || !er.hinge || arm.upper < 0 || arm.elbow < 0 || arm.wrist < 0) return false;
+    const float kD = 0.0174533f;
+    V3 S = P(a, arm.upper);
+    V3 te = a.restT(arm.elbow), tw = a.restT(arm.wrist);
+    float sc = length(P(a, arm.elbow) - S) / std::max(1e-5f, length(te));
+    Quat re = a.restR(arm.elbow);
+    auto reach = [&](float deg) { return length(te + qrotate(qmul(re, qaxis(er.axis, deg * kD)), tw)) * sc; };
+    float d = length(wristT - S);
+    float lo = er.hingeMin + 6.f, hi = er.hingeMax - 6.f;
+    float best = lo, err = 1e9f;
+    for (float p = lo; p <= hi; p += 1.f) { float e = std::fabs(reach(p) - d); if (e < err) { err = e; best = p; } }
+    for (float st = 0.5f; st > 0.02f; st *= 0.5f)
+        for (float p : {best - st, best + st}) {
+            if (p < lo || p > hi) continue;
+            float e = std::fabs(reach(p) - d);
+            if (e < err) { err = e; best = p; }
+        }
+    a.r(arm.elbow) = qnormalize(qmul(re, qaxis(er.axis, best * kD)));   // pure hinge (the palm adds the twist)
+    a.recomputeSubtree(arm.elbow);
+    V3 ax = wristT - S;
+    if (length(ax) < 1e-4f) return true;
+    ax = normalize(ax);
+    rotateWorld(a, arm.upper, qfromto(normalize(P(a, arm.wrist) - S), ax));
+    V3 e0 = P(a, arm.elbow) - S, h = elbowHint;
+    e0 = e0 - ax * dot(e0, ax); h = h - ax * dot(h, ax);
+    if (length(e0) > 1e-4f && length(h) > 1e-4f) {
+        e0 = normalize(e0); h = normalize(h);
+        float ang = std::atan2(dot(cross(e0, h), ax), dot(e0, h)) * weight;
+        Quat baseW = a.worldRot(arm.upper);
+        for (float f : {1.f, 0.85f, 0.7f, 0.55f, 0.4f, 0.25f, 0.1f, 0.f}) {   // the upper arm's twist stays in range
+            a.setWorldRot(arm.upper, qnormalize(qmul(qaxis(ax, ang * f), baseW)));
+            if (rom_->inRange(arm.upper, a.restR(arm.upper), a.r(arm.upper))) break;
+        }
+        a.recomputeSubtree(arm.upper);
+    }
+    rom_->clampNode(a, arm.upper);   // anything left over (the swing cone)
+    return true;
 }
 
 void TouchRig::solveArm(Animator& a, const Arm& arm, const HandGoal& g) {
@@ -328,26 +392,33 @@ void TouchRig::solveArm(Animator& a, const Arm& arm, const HandGoal& g) {
     }
     float w = clampf(g.weight, 0.f, 1.f);
 
-    // ---- two-bone IK: shoulder -> elbow -> wrist, keeping the clip's bend plane ----
+    // ---- two-bone IK: shoulder -> elbow -> wrist ----
     V3 S = P(a, arm.upper), E = P(a, arm.elbow), W = P(a, arm.wrist);
-    float L1 = length(E - S), L2 = length(W - E);
-    V3 T = lerp(W, wristT, w);
-    V3 st = T - S;
-    float d = length(st);
-    if (d < 1e-4f || L1 < 1e-4f || L2 < 1e-4f) return;
-    float maxReach = (L1 + L2) * 0.999f;
-    if (d > maxReach) { T = S + st * (maxReach / d); st = T - S; d = maxReach; }
-    V3 dir = st / d;
-    V3 pole = (E - S) - dir * dot(E - S, dir);
-    if (length(g.elbowHint) > 0.5f) pole = g.elbowHint - dir * dot(g.elbowHint, dir);   // where the goal wants the elbow
-    if (length(pole) < 1e-3f) pole = (up * -0.6f) + cross(dir, up) * arm.side;
-    pole = normalize(pole);
-    float x = (L1 * L1 - L2 * L2 + d * d) / (2.f * d);
-    float h = std::sqrt(std::max(0.f, L1 * L1 - x * x));
-    V3 E2 = S + dir * x + pole * h;
-    rotateWorld(a, arm.upper, qfromto(normalize(E - S), normalize(E2 - S)));
-    V3 Ecur = P(a, arm.elbow), Wcur = P(a, arm.wrist);
-    rotateWorld(a, arm.elbow, qfromto(normalize(Wcur - Ecur), normalize(T - Ecur)));
+    bool ranged = false;
+    if (g.world && rom_) {
+        V3 hint = length(g.elbowHint) > 0.5f ? g.elbowHint : E - (S + W) * 0.5f;   // none: the clip's elbow
+        ranged = solveArmRanged(a, arm, lerp(W, wristT, clampf(g.weight, 0.f, 1.f)), hint, clampf(g.weight, 0.f, 1.f));
+    }
+    if (!ranged) {   // ... keeping the clip's bend plane (zone goals, or no ranges)
+        float L1 = length(E - S), L2 = length(W - E);
+        V3 T = lerp(W, wristT, w);
+        V3 st = T - S;
+        float d = length(st);
+        if (d < 1e-4f || L1 < 1e-4f || L2 < 1e-4f) return;
+        float maxReach = (L1 + L2) * 0.999f;
+        if (d > maxReach) { T = S + st * (maxReach / d); st = T - S; d = maxReach; }
+        V3 dir = st / d;
+        V3 pole = (E - S) - dir * dot(E - S, dir);
+        if (length(g.elbowHint) > 0.5f) pole = g.elbowHint - dir * dot(g.elbowHint, dir);   // where the goal wants the elbow
+        if (length(pole) < 1e-3f) pole = (up * -0.6f) + cross(dir, up) * arm.side;
+        pole = normalize(pole);
+        float x = (L1 * L1 - L2 * L2 + d * d) / (2.f * d);
+        float h = std::sqrt(std::max(0.f, L1 * L1 - x * x));
+        V3 E2 = S + dir * x + pole * h;
+        rotateWorld(a, arm.upper, qfromto(normalize(E - S), normalize(E2 - S)));
+        V3 Ecur = P(a, arm.elbow), Wcur = P(a, arm.wrist);
+        rotateWorld(a, arm.elbow, qfromto(normalize(Wcur - Ecur), normalize(T - Ecur)));
+    }
 
     // ---- hand: palm faces the body, fingers point along the surface toward the contact ----
     if (arm.middle0 >= 0 && arm.index1 >= 0 && arm.pinky1 >= 0) {
@@ -364,9 +435,17 @@ void TouchRig::solveArm(Animator& a, const Arm& arm, const HandGoal& g) {
         float tw = 2.f * std::atan2(r.x * fa.x + r.y * fa.y + r.z * fa.z, r.w);
         if (tw > 3.14159265f) tw -= 6.2831853f;
         if (tw < -3.14159265f) tw += 6.2831853f;
-        Quat te = qaxis(fa, g.world ? tw * 0.6f : 0.f);   // (zone goals keep their tuned wrist-only turn)
+        float share = g.world ? tw * 0.6f : 0.f;   // (zone goals keep their tuned wrist-only turn)
+        if (ranged) {
+            // the forearm (untwisted after the hinge solve) takes as much of the turn as its twist range allows, the
+            // wrist the rest; then both are held in range
+            JointRange er = rom_->range(arm.elbow);
+            share = clampf(tw, (er.twistMin + 6.f) * 0.0174533f, (er.twistMax - 6.f) * 0.0174533f);
+        }
+        Quat te = qaxis(fa, share);
         rotateWorld(a, arm.elbow, te);
         rotateWorld(a, arm.wrist, qmul(r, qconj(te)));
+        if (ranged) { rom_->clampNode(a, arm.elbow); rom_->clampNode(a, arm.wrist); }
         // fingers conform: curl toward the palm, more for a grab
         V3 fw = normalize(P(a, arm.middle0) - P(a, arm.wrist));
         V3 lw = normalize(P(a, arm.pinky1) - P(a, arm.index1));

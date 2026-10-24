@@ -1,0 +1,45 @@
+name: qa-shots
+
+# QA renders without a render box: push a branch named qa/<anything> whose tools/qa/run.txt says which shot list to
+# render (line 1: list path, line 2: WxH, line 3: harness frames). The Linux build renders it under Xvfb with Mesa
+# llvmpipe and uploads the PNGs + the harness log as the artifact qa-shots-<run id>. main never triggers this.
+on:
+  push:
+    branches: ['qa/**']
+  workflow_dispatch:
+
+jobs:
+  shots:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ninja-build libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev libasound2-dev xvfb xauth libgl1-mesa-dri libglx-mesa0 mesa-utils
+      - name: Cache fetched dependencies
+        uses: actions/cache@v4
+        with:
+          path: native/build/_deps
+          key: qa-deps-linux-raylib55-raygui40-v1
+      - name: Build (Release)
+        run: |
+          cmake -S native -B native/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAG_VERSION=qa
+          cmake --build native/build --parallel
+      - name: Render
+        run: |
+          LIST=$(sed -n 1p tools/qa/run.txt); RES=$(sed -n 2p tools/qa/run.txt); FR=$(sed -n 3p tools/qa/run.txt)
+          mkdir -p qa-out
+          cd native/build/bin
+          export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+          set +e
+          timeout 4800 xvfb-run -a -s "-screen 0 1920x1080x24" ./afterglow --shotlist "$GITHUB_WORKSPACE/$LIST" --outdir "$GITHUB_WORKSPACE/qa-out" --res "${RES:-1280x720}" --frames "${FR:-24}" > "$GITHUB_WORKSPACE/qa-out/harness.log" 2>&1
+          echo "harness exit $?" | tee -a "$GITHUB_WORKSPACE/qa-out/harness.log"
+          ls "$GITHUB_WORKSPACE/qa-out" | wc -l
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qa-shots-${{ github.run_id }}
+          path: qa-out
+          if-no-files-found: warn
+          retention-days: 7

@@ -298,7 +298,7 @@ void Character::update(float dt) {
     if (poseHook) poseHook(anim);
     procedural.apply(anim, dt, proc);
     if (postHook) postHook(anim);
-    if (touch.ready() && (touchGoals.left.active || touchGoals.right.active)) touch.apply(anim, touchGoals);
+    if (touch.ready() && (touchGoals.left.active || touchGoals.right.active)) touch.apply(anim, touchGoals, &rom);
     else touch.contacts.clear();
     rom.apply(anim);           // no layer may bend a joint past its range (clips are inside it by construction)
     anim.guardPose();          // last gate: no NaN, zero scale or broken quaternion reaches the skin

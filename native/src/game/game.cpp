@@ -605,7 +605,7 @@ void Game::reset() {
     holdDepth_ = false;
     autoplay_ = false;
     qaNoActors_ = false;
-    qaStress_.clear(); qaFocus_.clear(); qaNoUi_ = false;
+    qaStress_.clear(); qaFocus_.clear(); qaNoUi_ = false; qaKiss_ = false; qaOrbit_ = false;
     Animator::skinMode = 1;
     JointLimits::enabled = true;
     JointLimits::log = false;
@@ -657,6 +657,7 @@ void Game::applySpec(const Spec& s) {
             else if (kv.first == "dist") qaDist_ = kv.second;
         }
     }
+    qaKiss_ = s.has("kissqa");
     qaOrbit_ = s.has("orbit");
     if (qaOrbit_) {
         qaOYaw_ = 0.f; qaOPitch_ = 0.f; qaODist_ = 1.2f;

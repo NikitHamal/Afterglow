@@ -109,7 +109,8 @@ void Actor::update(float dt, const V3& partnerHead, bool hasPartner, const V3& c
     if (length(lastLook_) > 0.5f && dot(dir, lastLook_) < 0.966f) blinker_.trigger(0.55f);   // > ~15 degrees
     lastLook_ = dir;
     // (close in for a kiss the neck does less of the work: the lean and the step bring the faces together)
-    c_->proc.lookWeight = ((look_ == "camera" ? 0.5f : 0.62f) * acting + 0.25f) * (1.f - 0.45f * lean);
+    // (seated side by side nothing steps in: the look keeps turning the heads toward each other through the kiss)
+    c_->proc.lookWeight = ((look_ == "camera" ? 0.5f : 0.62f) * acting + 0.25f) * (1.f - 0.45f * lean * (1.f - sit));
     c_->proc.eyeWeight = 1.f;
     c_->proc.saccades = !eyesClosed;
     face(dt);
@@ -214,13 +215,17 @@ void Actor::pose(Animator& a) {
     r = normalize(r);
     V3 f = normalize(cross(up, r));
     float w = acting;
-    // toward the partner: seated side by side the upper body turns part of the way (the neck does the rest)
+    // toward the partner: seated side by side the spine turns part of the way, the lower back more than the chest,
+    // each well inside its twist range (40, 30 degrees); the neck and head do the rest (a kiss needs them free for
+    // the reach and the roll, so then the spine takes more)
     V3 toP = hasPartner_ ? partner_ - P(a, upper) : f;
     toP.y = 0.f;
     toP = length(toP) > 1e-3f ? normalize(toP) : f;
     if (turn > 0.001f) {
-        float yaw = std::atan2(dot(cross(f, toP), up), dot(f, toP));
-        rot(a, upper, up, clampf(yaw, -1.2f, 1.2f) * 0.4f * turn * w);
+        float yaw = clampf(std::atan2(dot(cross(f, toP), up), dot(f, toP)), -1.2f, 1.2f);
+        float k = clampf(kissW, 0.f, 1.f);
+        rot(a, upper, up, yaw * (0.4f + 0.05f * k) * turn * w);
+        rot(a, chest, up, yaw * 0.2f * k * turn * w);
         r = P(a, arm[1]) - P(a, arm[0]);
         r.y = 0.f;
         r = length(r) > 1e-3f ? normalize(r) : r;
@@ -286,41 +291,52 @@ void Actor::postPose(Animator& a) {
     kissIK(a);
 }
 
-// the kiss: neck + head as a two-bone chain put the lip front on the target; the crown stays as upright as it can,
-// then the head rolls toward its own right so the noses pass each other
+// the kiss: the lips onto the target with the head, the neck and the chest each taking a share of the aim, each held
+// inside its range at once (cyclic coordinate descent): what the head cannot do, the neck and then the chest take on,
+// so the joint ranges never have to undo the kiss afterwards. Then the head rolls about the line from its pivot to
+// the lips (the lips stay put): the crown as upright as it can be, then toward the character's own right so the
+// noses pass; the neck and chest give back what the head's range took.
 void Actor::kissIK(Animator& a) {
     V3 mo;
     float km = c_->morph("kiss");
     if (!c_->touch.mouthWorld(a, km, mo)) return;
     mouthRest = mo;
     if (kissW <= 0.001f || neck < 0 || head < 0) return;
+    const JointLimits& rom = c_->rom;
     V3 T = lerp(mo, kissTarget, clampf(kissW, 0.f, 1.f));
-    V3 N = P(a, neck), H = P(a, head);
-    float L1 = length(H - N), L2 = length(mo - H);
-    V3 st = T - N;
-    float d = length(st);
-    if (L1 < 1e-4f || L2 < 1e-4f || d < 1e-4f) return;
-    V3 dir = st / d;
-    d = clampf(d, std::fabs(L1 - L2) + 1e-3f, (L1 + L2) * 0.999f);   // out of reach: as close as the chain allows
-    T = N + dir * d;
-    V3 pole = (H - N) - dir * dot(H - N, dir);
-    if (length(pole) < 1e-4f) pole = V3{0, 1, 0} - dir * dir.y;
-    pole = normalize(pole);
-    float x = (L1 * L1 - L2 * L2 + d * d) / (2.f * d);
-    float h = std::sqrt(std::max(0.f, L1 * L1 - x * x));
-    V3 H2 = N + dir * x + pole * h;
-    rotq(a, neck, qfromto(normalize(H - N), normalize(H2 - N)));
+    const int chain[3] = {head, neck, chest};
+    const float share[3] = {0.5f, 0.55f, 0.35f};
+    auto aim = [&](int first, int iters) {
+        for (int it = 0; it < iters; ++it) {
+            for (int j = first; j < 3; ++j) {
+                int n = chain[j];
+                if (n < 0) continue;
+                c_->touch.mouthWorld(a, km, mo);
+                V3 pj = P(a, n), v0 = mo - pj, v1 = T - pj;
+                if (length(v0) < 1e-4f || length(v1) < 1e-4f) continue;
+                rotq(a, n, qslerp(Quat{}, qfromto(normalize(v0), normalize(v1)), share[j]));
+                rom.clampNode(a, n);
+            }
+            c_->touch.mouthWorld(a, km, mo);
+            if (length(mo - T) < 0.001f) break;
+        }
+    };
+    aim(0, 12);
+    V3 H = P(a, head);
     c_->touch.mouthWorld(a, km, mo);
-    H = P(a, head);
-    rotq(a, head, qfromto(normalize(mo - H), normalize(T - H)));
-    V3 ax = normalize(T - H);
-    V3 cu = qrotate(a.worldRot(head), c_->procedural.headUpLocal());
-    V3 u0 = cu - ax * dot(cu, ax), u1 = V3{0, 1, 0} - ax * ax.y;
-    if (length(u0) > 1e-4f && length(u1) > 1e-4f) {
-        u0 = normalize(u0); u1 = normalize(u1);
-        float ang = std::atan2(dot(cross(u0, u1), ax), dot(u0, u1));
-        rotq(a, head, qaxis(ax, ang * kissW + kissRoll * kissW));
+    V3 ax = mo - H;
+    if (length(ax) > 1e-4f) {
+        ax = normalize(ax);
+        V3 cu = qrotate(a.worldRot(head), c_->procedural.headUpLocal());
+        V3 u0 = cu - ax * dot(cu, ax), u1 = V3{0, 1, 0} - ax * ax.y;
+        if (length(u0) > 1e-4f && length(u1) > 1e-4f) {
+            u0 = normalize(u0); u1 = normalize(u1);
+            float ang = std::atan2(dot(cross(u0, u1), ax), dot(u0, u1));
+            rotq(a, head, qaxis(ax, (ang + kissRoll) * kissW));
+            rom.clampNode(a, head);
+        }
     }
+    aim(1, 6);
 }
 
 }  // namespace ag
