@@ -1,0 +1,25 @@
+# Afterglow UI layout QA — every screen with the characters hidden (actors=0: deterministic, cheap, non-explicit).
+# Render at many sizes (see docs/HUD_NOTES.md): the harness logs UI-OVERFLOW / UI-OVERLAP lines and a per-shot count.
+title|screen=title;t=4;actors=0
+menu|screen=menu;t=3;actors=0
+customize_her|screen=customize;tab=her;t=2;actors=0
+customize_him|screen=customize;tab=him;t=2;actors=0
+settings_display|screen=settings;settab=0;t=2;actors=0
+settings_graphics|screen=settings;settab=1;t=2;actors=0
+settings_lighting|screen=settings;settab=2;t=2;actors=0
+settings_audio|screen=settings;settab=3;t=2;actors=0
+settings_controls|screen=settings;settab=4;t=2;actors=0
+settings_game|screen=settings;settab=5;t=2;actors=0
+stories|screen=stories;t=2;actors=0
+story_card|screen=story;story=the_storm;node=c1_knock;card=1;line=0;reveal=20;actors=0
+story_line|screen=story;story=old_flames;node=c1_reception;line=4;shot=close;vt=0.55;actors=0
+story_choice|screen=story;story=old_flames;node=c1_reception;line=99;actors=0
+story_menu|screen=story;story=old_flames;node=c2_terrace;line=2;overlay=5;actors=0
+story_log|screen=story;story=old_flames;node=c2_terrace;line=2;overlay=1;actors=0
+story_save|screen=story;story=old_flames;node=c2_terrace;line=2;overlay=2;actors=0
+story_ending|screen=story;story=the_storm;node=c7_dawn;line=99;actors=0
+play_hud|screen=play;pos=missionary;depth=0.6;her=0.45;him=0.86;desire=faster;cam=side;actors=0
+play_bar|screen=play;pos=spoon;depth=0.5;her=0.3;him=0.2;bar=1;cam=front;actors=0
+play_intro|screen=play;pos=missionary;depth=0.3;her=0.05;him=0.05;intro=1;cam=side;actors=0
+pause|screen=pause;pos=missionary;depth=0.5;her=0.4;him=0.3;actors=0
+results|screen=results;result=together;actors=0

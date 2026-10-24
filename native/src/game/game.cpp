@@ -23,6 +23,7 @@ bool Game::init() {
     profilePath_ = paths::join(paths::userDir(), "profile.json");
     bool firstRun = !paths::exists(settingsPath_);
     if (!harness) { settings.load(settingsPath_); profile.load(profilePath_); }
+    ui.guard = harness;   // QA: every text / widget checked against the screen and its container
     const char* gpu = (const char*)glGetString(GL_RENDERER);
     std::string g = gpu ? gpu : "";
     AG_INFO("AG: GPU: %s", g.c_str());
@@ -471,7 +472,10 @@ void Game::render(int w, int h) {
                   w == lastRenderW_ && h == lastRenderH_ && !debug_;
     if (frozen) ClearBackground(Color{6, 3, 5, 255});
     else {
+        const bool shown[2] = {scene.showVivian, scene.showMarcus};
+        if (qaNoActors_) scene.showVivian = scene.showMarcus = false;   // UI layout shots: the room only
         renderer.render(scene, cam_, w, h, time_);
+        scene.showVivian = shown[0]; scene.showMarcus = shown[1];
         lastRenderW_ = w; lastRenderH_ = h;
         if (renderer.uiBlur) ++blurFresh_;   // blur of this screen's own scene exists now
     }
@@ -579,6 +583,7 @@ void Game::reset() {
     camUser_ = false;
     holdDepth_ = false;
     autoplay_ = false;
+    qaNoActors_ = false;
 }
 
 void Game::applySpec(const Spec& s) {
@@ -605,6 +610,7 @@ void Game::applySpec(const Spec& s) {
     if (q == "low") settings.quality = 0; else if (q == "medium") settings.quality = 1; else if (q == "high") settings.quality = 2;
     applyQuality(renderer.settings, (Quality)settings.quality);
     if (s.has("debug")) debug_ = s.num("debug", 1.f) > 0.5f;
+    qaNoActors_ = s.has("actors") && s.num("actors", 1.f) < 0.5f;
     if (s.has("hints")) settings.hints = (int)s.num("hints", 2.f);
     std::string mood = s.get("mood");
     settings.lightMood = mood == "candle" ? 1 : (mood == "day" ? 2 : 0);

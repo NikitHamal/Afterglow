@@ -34,6 +34,7 @@ public:
     void applySpec(const Spec& spec) override;
     void update(float dt) override;
     void render(int fbWidth, int fbHeight) override;
+    std::vector<std::string> qaFindings() const override { return ui.guardLog(); }
     bool wantsQuit() const override { return quit_; }
 
     // set by main before init()
@@ -103,6 +104,7 @@ private:
     float wheelImpulse_ = 0.f;
     bool holdDepth_ = false;              // harness stills: keep the requested depth
     bool autoplay_ = false;               // harness: a simple player plays the night (end-to-end test)
+    bool qaNoActors_ = false;             // harness: actors=0 hides both characters (UI layout shots)
     float autoLog_ = 0.f;
     void autoplayStep(float dt);
     int camMode_ = 0;                     // 0 side, 1 front, 2 top, 3 first person, 4 her face
