@@ -94,8 +94,11 @@ built sibling of its family first, e.g. `spa_*` → `spa_suite`, then the family
   under two windows on the night city (city pack), a deep sofa on a low platform (sit.bed seat 0.604 m), a dining
   table for two and a galley counter (anchors `table`, `table_l`, `table_r`, `counter`, `side_table`, `piano`,
   `window`, `sofa_l`, `sofa_r`, `drafting`). Note: neighbours c5_wall (her flat, four-A) also plays here.
-- ⏳ ,
-  `apartment_balcony`, `apartment_bedroom` (city view)
+- ✅ `apartment_balcony` (four-B's): barely wide enough for two over the city at night — iron railings, string lights,
+  a lantern by the French doors (the key), a bistro table; the doors stand open on the lit flat behind, so the reverse
+  shots look in. Anchors `rail`, `rail_l`, `rail_r`, `railing_top`, `doorway`, `bistro_table`.
+- ✅ `apartment_bedroom` (four-A's, `build_room.py` with `AG_ROOM_STYLE=apartment`): the authoring bed (every bed
+  clip and sit.bed work as in the bedroom), white plaster, slate-blue linen, lamps and candles, the city at the window.
 
 **Outfits** (`characters/outfits/<who>_<style>.glb`):
 
