@@ -12,7 +12,7 @@ from mathutils import Vector
 from mathutils.kdtree import KDTree
 
 WHO = sys.argv[sys.argv.index("--") + 1]
-NAT = "/root/agb/native"; os.makedirs(NAT, exist_ok=True)
+NAT = os.environ.get("AG_NAT", "/root/agb/native"); os.makedirs(NAT, exist_ok=True)
 def log(*a): print(f"[prep:{WHO}]", *a, flush=True)
 body = bpy.data.objects[f"{WHO}_body"]
 hair = bpy.data.objects.get(f"{WHO}_hair")

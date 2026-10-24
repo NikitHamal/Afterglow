@@ -42,7 +42,16 @@ def kneel(body, knee_w, forward_of_hip, shin_dir, knee_z=0.05, foot_toes=None, f
     return gap
 
 def hands_to(body, s, target, palm, fingers, pole, curl=0.4):
-    body.arm_ik(s, target, pole); body.hand(s, palm=palm, fingers=fingers); body.fingers(s, curl)
+    """wrist to target, hand oriented, fingers curled; a hand resting on the sheet keeps every finger pad above it
+    (the wrist range can tip the fingers down: the wrist is lifted until they clear)"""
+    W = V3(*target)
+    for _ in range(3):
+        body.arm_ik(s, W, pole); body.hand(s, palm=palm, fingers=fingers); body.rig.limit("手首" + s); body.fingers(s, curl)
+        if W.z > BED_TOP + 0.15: break
+        r = body.rig
+        low = min([r.tail(f"{f}３{s}").z for f in ("人指", "中指", "薬指", "小指")] + [r.tail("親指２" + s).z]) - 0.008
+        if low >= BED_TOP - 0.003: break
+        W = W + V3(0, 0, BED_TOP - 0.002 - low)
 
 def supine_him(M, pelvis_y, feet_w=0.22, knees=0.12):
     r = M.rig; r.reset()
@@ -119,9 +128,9 @@ def cowgirl(ctx, t, reverse=False, rub=None):
         else:                                   # knees ahead of her beside his thighs, shins fanned back past his hips
             kneel(V, w, -1, lambda sx: nrm(V3(sx * v[3], 1, 0.04)), knee_z=0.045, min_dy=0.04)
     if not reverse:
-        best_of("seat", [(tl, ln, w) for tl, ln in ((-0.22, 18), (0.05, 26), (0.30, 36)) for w in (0.20, 0.23, 0.26, 0.29)], seat, (V, M))
+        best_of("seat", [(tl, ln, w) for tl, ln in ((-0.22, 18), (0.05, 26), (0.30, 36)) for w in (0.20, 0.23, 0.26, 0.29, 0.32, 0.35)], seat, (V, M))
     else:
-        best_of("seat", [(tl, 18, w, f) for tl in (0.30, 0.50) for w in (0.24, 0.30, 0.36) for f in (0.5, 0.9)], seat, (V, M))
+        best_of("seat", [(tl, 18, w, f) for tl in (0.30, 0.50) for w in (0.24, 0.30, 0.36, 0.42) for f in (0.5, 0.9)], seat, (V, M))
     bvhM = surface(M); bvhV_self = None
     his_leg = dict(sides(M, "足"))
     for s, sx in sides(V, "腕"):
@@ -175,18 +184,22 @@ def legsup(ctx, t):
     kneel(M, 0.16, -1, V3(0, -1, 0.04), knee_z=0.05)
     her_leg = dict(sides(V, "足"))
     def legs_and_hands(v):
-        """her legs up in a V (ankles wide of his head); his hands hold her ankles on their own side"""
-        spread, up, side_off, pole = v
+        """her legs up in a V (ankles wide of his head); his hands hold her legs from the outside, high on the calves
+        (his forearms run along the outside of her shins, never across her knees), elbows out and down"""
+        spread, up, along, pole = v
         for s, sx in sides(V, "足"):
             H = r.head("足" + s)
             V.leg_ik(s, m.head("頭") + V3(sx * spread, 0.04, up), H + V3(sx * 0.4, 0.2, 0.3))
             V.foot_relaxed(s, 28, splay=V3(sx, 0, 0))
         bvhV = surface(V)
         for s, sx in sides(M, "腕"):
-            A = r.head("足首" + (".L" if her_leg[".L"] == sx else ".R"))
-            cup(M, s, bvhV, A + V3(sx * side_off, -0.03, -0.05), nrm(V3(0, 0, 1)), m.head("腕" + s) + V3(sx * pole[0], pole[1], pole[2]))
-    best_of("legs", [(sp, up, o, p) for sp in (0.44, 0.54, 0.64) for up in (0.16, 0.30) for o in (-0.04, 0.04)
-                     for p in ((0.5, -0.2, -0.2), (0.2, 0.2, -0.6))], legs_and_hands, (V, M))
+            hs = ".L" if her_leg[".L"] == sx else ".R"
+            K = r.head("ひざ" + hs); A = r.head("足首" + hs)
+            shin = (A - K).normalized()
+            out = V3(sx, 0, 0) - shin * shin.x * sx; out = out.normalized() if out.length > 1e-6 else V3(sx, 0, 0)
+            cup(M, s, bvhV, K + (A - K) * along + out * 0.05, shin, m.head("腕" + s) + V3(sx * pole[0], pole[1], pole[2]))
+    best_of("legs", [(sp, up, al, p) for sp in (0.44, 0.54, 0.64) for up in (0.16, 0.30) for al in (0.25, 0.45)
+                     for p in ((0.6, -0.2, -0.35), (0.45, 0.1, -0.6))], legs_and_hands, (V, M))
     M.look(r.head("頭"))
 
 # ---------------------------------------------------------------- ORAL (she kneels between his legs) / LICK
@@ -388,7 +401,8 @@ def prone(ctx, t):
         fw, kw = v
         prone_legs(V, fw, back=0.82, knee_out=0.03 if fw < 0.2 else 0.12)
         kneel(M, kw, -1, V3(0, -1, 0.04), knee_z=0.05)
-    best_of("legs", [(0.05, 0.46), (0.05, 0.52), (0.05, 0.58), (0.32, 0.12), (0.40, 0.15), (0.48, 0.18)], legs, (V, M))
+    best_of("legs", [(0.05, 0.46), (0.05, 0.52), (0.05, 0.58), (0.05, 0.64), (0.32, 0.12), (0.40, 0.15), (0.48, 0.18),
+                     (0.52, 0.10), (0.56, 0.13), (0.60, 0.15)], legs, (V, M))
     for s, sx in sides(M, "腕"):
         sh = m.head("腕" + s)
         hands_to(M, s, V3(sx * 0.32, sh.y + 0.10, BED_TOP + 0.085), V3(0, 0, -1), nrm(V3(sx * 0.2, 1, 0)), sh + V3(sx * 0.5, -0.2, 0.3), 0.05)

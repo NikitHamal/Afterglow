@@ -4,7 +4,7 @@
 import bpy, sys, os, json
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 WHO = argv[0].split(",") if argv else ["vivian", "marcus"]
-EXP = "/root/agb/native/export"; os.makedirs(EXP, exist_ok=True)
+EXP = os.environ.get("AG_NAT", "/root/agb/native") + "/export"; os.makedirs(EXP, exist_ok=True)
 PFX = {"vivian": ("VivianRig", "VIV|"), "marcus": ("MarcusRig", "MAR|")}
 def log(*a): print("[export]", *a, flush=True)
 sc = bpy.context.scene
