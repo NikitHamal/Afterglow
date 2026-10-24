@@ -2,6 +2,7 @@
 #include "app/updater.h"
 #include "app/platform.h"
 #include "gfx/texture.h"
+#include "ui/layout.h"
 #include "raylib.h"
 #include <algorithm>
 #include <cmath>
@@ -17,42 +18,24 @@ const Color kToneSwatch[8] = {{246, 214, 196, 255}, {238, 200, 172, 255}, {214, 
 const Color kHairSwatch[6] = {{52, 32, 24, 255}, {104, 56, 34, 255}, {132, 52, 28, 255}, {150, 44, 30, 255}, {24, 20, 22, 255}, {196, 140, 82, 255}};
 const char* kHairLabel[6] = {"Espresso", "Chestnut", "Copper", "Auburn", "Raven", "Honey"};
 
-// preset chips sized to their names, in as few rows as the width allows and spread evenly over them (no lone chip on
-// the last row); several rows are each justified to the full width. *bottom = y below the last row (pitch included).
-std::vector<Rectangle> chipFlow(ui::Ui& U, const std::vector<std::string>& labels, float x, float y, float w, float* bottom) {
-    const float pad = U.u(18.f), gap = U.u(10.f);
-    std::vector<float> cw;
-    for (auto& l : labels) cw.push_back(U.measure(ui::Face::SansMedium, U.u(16.f), l, 0.04f).x + 2.f * pad);
-    auto rowEnds = [&](float wrap) {   // greedy line breaks at this width: one past each row's last chip
-        std::vector<size_t> ends;
-        for (size_t i = 0; i < cw.size();) {
-            size_t j = i + 1;
-            for (float used = cw[i]; j < cw.size() && used + gap + cw[j] <= wrap; ++j) used += gap + cw[j];
-            ends.push_back(j);
-            i = j;
-        }
-        return ends;
-    };
-    std::vector<size_t> ends = rowEnds(w);
-    if (ends.size() > 1) {   // the narrowest wrap that keeps the row count evens the rows out
-        float lo = *std::max_element(cw.begin(), cw.end()), hi = w;
-        for (int it = 0; it < 20; ++it) {
-            float mid = 0.5f * (lo + hi);
-            if (rowEnds(mid).size() <= ends.size()) hi = mid; else lo = mid;
-        }
-        ends = rowEnds(hi);
-    }
-    std::vector<Rectangle> out(cw.size());
-    size_t i = 0;
-    for (size_t e : ends) {
-        float used = gap * (float)(e - i - 1);
-        for (size_t k = i; k < e; ++k) used += cw[k];
-        float extra = ends.size() > 1 ? (w - used) / (float)(e - i) : 0.f;
-        for (float cx = x; i < e; ++i) { out[i] = Rectangle{cx, y, cw[i] + extra, U.u(32.f)}; cx += cw[i] + extra + gap; }
-        y += U.u(40.f);
-    }
-    *bottom = y;
-    return out;
+// a column of sections and rows inside a panel: the cursor moves down as rows are taken
+struct Column {
+    ui::Ui& U;
+    float x, w, y;
+    void section(const char* t, float after = 30.f) { U.sectionLabel(t, x, y, w); y += U.u(after); }
+    void gap(float g) { y += U.u(g); }
+};
+
+// one chip per name, sized to the names and flowed over the column: returns the clicked index or -1. A row of
+// choices (body types, builds, and later the model) is one call.
+int chipRow(ui::Ui& U, Column& c, const std::string& idPrefix, const std::vector<std::string>& names, const std::vector<bool>& active) {
+    float bottom = c.y;
+    std::vector<Rectangle> rects = ui::chipFlow(U, names, c.x, c.y, c.w, &bottom);
+    int hit = -1;
+    for (size_t i = 0; i < names.size(); ++i)
+        if (U.chip(idPrefix + names[i], names[i], rects[i], i < active.size() && active[i])) hit = (int)i;
+    c.y = bottom;
+    return hit;
 }
 }  // namespace
 
@@ -102,6 +85,7 @@ void Game::drawMenu() {
     float t = screenTime_;
     ui::Box shade; shade.fill = Color{8, 4, 6, 215}; shade.fill2 = Color{8, 4, 6, 0}; shade.grad = 1;
     U.box(Rectangle{0.f, 0.f, U.W * 0.55f, U.H}, shade);
+    ui::ScaleScope screenFit(U, U.fitScale(1920.f, 1080.f, 0.f));
     float x = U.u(150.f);
     float ea = ui::easeOut(t / 0.8f);
     U.alpha = ea;
@@ -138,8 +122,8 @@ void Game::drawMenu() {
     }
     U.alpha = ea;
     if (confirmNew_) {
-        U.text(ui::Face::SerifItalic, U.u(22.f), "Start over? Your current night will be lost \xe2\x80\x94 choose again to confirm.",
-               x, y + U.u(10.f), U.th.rose);
+        U.textIn(ui::Face::SerifItalic, U.u(22.f), "Start over? Your current night will be lost \xe2\x80\x94 choose again to confirm.",
+                 Rectangle{x, y + U.u(10.f), U.W - x - U.u(40.f), U.u(22.f)}, U.th.rose);
     }
     // footer: stats + version
     char b[160];
@@ -165,12 +149,12 @@ void Game::drawUpdateCard(float x, float y, float w) {
     U.alpha = a;
     float h = U.u(170.f);
     U.panel(Rectangle{x, y, w, h}, 22.f, 0.6f);
+    ui::ClipScope clip(U, Rectangle{x, y, w, h}, "update card");
     U.text(ui::Face::SansBold, U.u(13.f), "UPDATE AVAILABLE", x + U.u(26.f), y + U.u(22.f), U.th.accent, ui::Left, 0.22f);
     char b[96];
     std::snprintf(b, sizeof b, "Afterglow %s", updater->latest().c_str());
-    U.text(ui::Face::Serif, U.u(34.f), b, x + U.u(26.f), y + U.u(44.f), U.th.ink);
+    U.textIn(ui::Face::Serif, U.u(34.f), b, Rectangle{x + U.u(26.f), y + U.u(44.f), w - U.u(52.f), U.u(34.f)}, U.th.ink);
     std::string notes = updater->notes();
-    if (notes.size() > 70) notes = notes.substr(0, 67) + "...";
     if (s == Updater::State::Downloading) {
         float p = updater->progress();
         std::snprintf(b, sizeof b, "Downloading\xe2\x80\xa6 %d%%", (int)std::lround(p * 100.f));
@@ -180,8 +164,7 @@ void Game::drawUpdateCard(float x, float y, float w) {
         U.box(Rectangle{x + U.u(26.f), y + U.u(126.f), std::max(U.u(5.f), (w - U.u(52.f)) * p), U.u(5.f)}, pb);
     } else {
         std::string line = s == Updater::State::Failed ? updater->error() : (notes.empty() ? "A fresh build is ready." : notes);
-        if (line.size() > 64) line = line.substr(0, 61) + "...";
-        U.text(ui::Face::Sans, U.u(15.f), line, x + U.u(26.f), y + U.u(90.f), s == Updater::State::Failed ? U.th.rose : U.th.inkDim);
+        U.textIn(ui::Face::Sans, U.u(15.f), line, Rectangle{x + U.u(26.f), y + U.u(90.f), w - U.u(52.f), U.u(15.f)}, s == Updater::State::Failed ? U.th.rose : U.th.inkDim);
         Rectangle b1{x + U.u(26.f), y + h - U.u(56.f), U.u(190.f), U.u(40.f)};
         Rectangle b2{x + U.u(230.f), y + h - U.u(56.f), U.u(110.f), U.u(40.f)};
 #if defined(_WIN32)
@@ -207,126 +190,138 @@ void Game::drawCustomize() {
     ui::Ui& U = ui;
     float t = screenTime_;
     float ea = ui::easeOut(t / 0.6f);
-    float px = U.W - U.u(56.f) - U.u(700.f), py = U.u(56.f), pw = U.u(700.f), ph = U.H - U.u(112.f);
+    float pw = U.u(700.f), ph = U.H - U.u(112.f);
+    float px = U.W - U.u(56.f) - pw, py = U.u(56.f);
     U.alpha = ea;
-    U.panel(Rectangle{px + (1.f - ea) * U.u(40.f), py, pw, ph}, 28.f, 0.6f);
-    float x = px + U.u(48.f) + (1.f - ea) * U.u(40.f), w = pw - U.u(96.f), y = py + U.u(40.f);
-    U.text(ui::Face::Serif, U.u(56.f), "Customize", x, y, U.th.ink);
-    y += U.u(78.f);
-    int before = custTab_;
-    U.tabs("cust#tabs", &custTab_, {"VIVIAN", "MARCUS"}, Rectangle{x, y, w, U.u(44.f)});
-    if (custTab_ != before) { showcaseWho_ = custTab_; stage(Stage::Showcase); }
-    y += U.u(64.f);
+    Rectangle panel{px + (1.f - ea) * U.u(40.f), py, pw, ph};
+    U.panel(panel, 28.f, 0.6f);
     bool changed = false;
-    std::vector<Color> toneCols(kToneSwatch, kToneSwatch + 8);
-    std::vector<std::string> toneNames(kToneLabel, kToneLabel + 8);
-    char agebuf[24];
-    // age shapes ship with a later character update; until then the slider says so instead of doing nothing silently
-    auto soonTag = [&](const Character& c, float lx, float ly) {
-        if (!c.loaded() || c.hasMorph("age_up") || c.hasMorph("age_dn")) return;
-        float tx = lx + U.measure(ui::Face::SansMedium, U.u(19.f), "Age").x + U.u(10.f);
-        float tp = U.u(11.f);
-        Vector2 m = U.measure(ui::Face::SansBold, tp, "COMING SOON", 0.12f);
-        U.fillRect(Rectangle{tx, ly + U.u(2.f), m.x + U.u(14.f), U.u(19.f)}, Color{255, 236, 224, 26}, U.u(9.5f));
-        U.text(ui::Face::SansBold, tp, "COMING SOON", tx + U.u(7.f), ly + U.u(5.5f), U.th.inkFaint, ui::Left, 0.12f);
-    };
-    if (custTab_ == 0) {
-        HerLook& h = profile.her;
-        U.sectionLabel("BODY TYPE", x, y, w);
-        y += U.u(30.f);
-        // body types: the content's presets (characters/presets.json), with their skin tone and age
-        const Json& pr = clipsPresets_["vivian"]["presets"];
-        static const char* kSl[8] = {"bust", "hips", "waist", "butt", "weight", "muscle", "belly", "age"};
-        std::vector<std::string> names;
-        for (auto& kv : pr.obj) names.push_back(kv.first);
-        float bottom = y;
-        std::vector<Rectangle> rects = chipFlow(U, names, x, y, w, &bottom);
-        size_t np = 0;
-        for (auto& kv : pr.obj) {
-            const Json& sl = kv.second["sliders"];
-            float want[7];
-            for (int k = 0; k < 7; ++k) want[k] = sl[kSl[k]].f(0.f);
-            float cur[7] = {h.bust, h.hips, h.waist, h.butt, h.weight, h.muscle, h.belly};
-            float d = 0.f;
-            for (int k = 0; k < 7; ++k) d += std::fabs(cur[k] - want[k]);
-            int toneWant = skinToneIndex(kv.second["tone"].str());
-            bool act = d < 0.05f && (toneWant < 0 || toneWant == h.tone);
-            if (U.chip(std::string("hp#") + kv.first, kv.first, rects[np], act)) {
-                h.bust = want[0]; h.hips = want[1]; h.waist = want[2]; h.butt = want[3]; h.weight = want[4];
-                h.muscle = want[5]; h.belly = std::max(0.f, want[6]);
+    {
+        ui::ClipScope clip(U, panel, "customize");
+        // the content shrinks as a whole when it would not fit above the footer (small windows, more rows)
+        ui::ScaleScope fit(U, U.fitGet("customize"));
+        float x = panel.x + U.u(48.f), w = pw - 2.f * U.u(48.f);
+        Column col{U, x, w, py + U.u(40.f)};
+        U.text(ui::Face::Serif, U.u(56.f), "Customize", x, col.y, U.th.ink);
+        col.gap(78.f);
+        int before = custTab_;
+        U.tabs("cust#tabs", &custTab_, {"VIVIAN", "MARCUS"}, Rectangle{x, col.y, w, U.u(44.f)});
+        if (custTab_ != before) { showcaseWho_ = custTab_; stage(Stage::Showcase); }
+        col.gap(64.f);
+        const float top = col.y;
+        std::vector<Color> toneCols(kToneSwatch, kToneSwatch + 8);
+        std::vector<std::string> toneNames(kToneLabel, kToneLabel + 8);
+        char agebuf[24];
+        float colW = (w - U.u(48.f)) * 0.5f, col2 = x + colW + U.u(48.f);
+        // age shapes ship with a later character update; until then the slider says so instead of doing nothing silently
+        auto soonTag = [&](const Character& c, float lx, float ly) {
+            if (!c.loaded() || c.hasMorph("age_up") || c.hasMorph("age_dn")) return;
+            float tx = lx + U.measure(ui::Face::SansMedium, U.u(19.f), "Age").x + U.u(10.f);
+            float tp = U.u(11.f);
+            Vector2 m = U.measure(ui::Face::SansBold, tp, "COMING SOON", 0.12f);
+            U.fillRect(Rectangle{tx, ly + U.u(2.f), m.x + U.u(14.f), U.u(19.f)}, Color{255, 236, 224, 26}, U.u(9.5f));
+            U.text(ui::Face::SansBold, tp, "COMING SOON", tx + U.u(7.f), ly + U.u(5.5f), U.th.inkFaint, ui::Left, 0.12f);
+        };
+        if (custTab_ == 0) {
+            HerLook& h = profile.her;
+            col.section("BODY TYPE");
+            // body types: the content's presets (characters/presets.json), with their skin tone and age
+            const Json& pr = clipsPresets_["vivian"]["presets"];
+            static const char* kSl[8] = {"bust", "hips", "waist", "butt", "weight", "muscle", "belly", "age"};
+            std::vector<std::string> names;
+            std::vector<bool> act;
+            for (auto& kv : pr.obj) {
+                const Json& sl = kv.second["sliders"];
+                float cur[7] = {h.bust, h.hips, h.waist, h.butt, h.weight, h.muscle, h.belly};
+                float d = 0.f;
+                for (int k = 0; k < 7; ++k) d += std::fabs(cur[k] - sl[kSl[k]].f(0.f));
+                int toneWant = skinToneIndex(kv.second["tone"].str());
+                names.push_back(kv.first);
+                act.push_back(d < 0.05f && (toneWant < 0 || toneWant == h.tone));
+            }
+            int pick = chipRow(U, col, "hp#", names, act);
+            if (pick >= 0) {
+                const Json& preset = pr[names[(size_t)pick]];
+                const Json& sl = preset["sliders"];
+                h.bust = sl["bust"].f(0.f); h.hips = sl["hips"].f(0.f); h.waist = sl["waist"].f(0.f); h.butt = sl["butt"].f(0.f);
+                h.weight = sl["weight"].f(0.f); h.muscle = sl["muscle"].f(0.f); h.belly = std::max(0.f, sl["belly"].f(0.f));
+                int toneWant = skinToneIndex(preset["tone"].str());
                 if (toneWant >= 0) h.tone = toneWant;
                 if (sl["age"].isNumber()) { float a = sl["age"].f(); h.age = a < 0.f ? 42.f + a * 17.f : 42.f + a * 18.f; }
                 changed = true;
             }
-            ++np;
-        }
-        y = bottom + U.u(14.f);
-        U.sectionLabel("FIGURE", x, y, w);
-        y += U.u(30.f);
-        struct S { const char* id; const char* label; float* v; float lo; };
-        const S sl[] = {{"h_bust", "Bust", &h.bust, -1.f}, {"h_hips", "Hips", &h.hips, -1.f}, {"h_waist", "Waist", &h.waist, -1.f},
-                        {"h_butt", "Bottom", &h.butt, -1.f}, {"h_weight", "Weight", &h.weight, -1.f}, {"h_muscle", "Tone", &h.muscle, -1.f},
-                        {"h_belly", "Belly", &h.belly, 0.f}};
-        float colW = (w - U.u(48.f)) * 0.5f;
-        for (int i = 0; i < 7; ++i) {
-            float sx = x + (i % 2) * (colW + U.u(48.f)), sy = y + (float)(i / 2) * U.u(52.f);
-            changed |= U.slider(sl[i].id, sl[i].label, sl[i].v, sl[i].lo, 1.f, Rectangle{sx, sy, colW, U.u(46.f)}, sl[i].lo < 0.f);
-        }
-        // adults only: 21 to 60 years
-        std::snprintf(agebuf, sizeof agebuf, "%d years", (int)std::lround(h.age));
-        changed |= U.slider("h_age", "Age", &h.age, kMinAge, kMaxAge, Rectangle{x + colW + U.u(48.f), y + 3.f * U.u(52.f), colW, U.u(46.f)}, false, agebuf);
-        soonTag(scene.vivian, x + colW + U.u(48.f), y + 3.f * U.u(52.f));
-        y += U.u(4.f * 52.f + 6.f);
-        U.sectionLabel("SKIN & HAIR", x, y, w);
-        y += U.u(30.f);
-        changed |= U.swatches("h_tone", "Skin tone", &h.tone, toneCols, toneNames, Rectangle{x, y, w, U.u(72.f)});
-        y += U.u(80.f);
-        changed |= U.swatches("h_hair", "Hair colour", &h.hair, std::vector<Color>(kHairSwatch, kHairSwatch + 6),
-                              std::vector<std::string>(kHairLabel, kHairLabel + 6), Rectangle{x, y, colW, U.u(72.f)});
-        U.text(ui::Face::SansMedium, U.u(19.f), "Hair style", x + colW + U.u(48.f), y, U.th.inkDim);
-        U.chip("h_style", "Low chignon", Rectangle{x + colW + U.u(48.f), y + U.u(36.f), U.u(170.f), U.u(36.f)}, true);
-        y += U.u(86.f);
-    } else {
-        HisLook& h = profile.him;
-        U.sectionLabel("BUILD", x, y, w);
-        y += U.u(30.f);
-        // builds: the content's presets (characters/presets.json)
-        const Json& pr = clipsPresets_["marcus"]["presets"];
-        std::vector<std::string> names;
-        for (auto& kv : pr.obj) names.push_back(kv.first);
-        float bottom = y;
-        std::vector<Rectangle> rects = chipFlow(U, names, x, y, w, &bottom);
-        size_t np = 0;
-        for (auto& kv : pr.obj) {
-            const Json& sl = kv.second["sliders"];
-            float mu = sl["muscle"].f(0.f), we = sl["weight"].f(0.f), be = std::max(0.f, sl["belly"].f(0.f));
-            bool act = std::fabs(h.muscle - mu) + std::fabs(h.weight - we) + std::fabs(h.belly - be) < 0.05f;
-            if (U.chip(std::string("mp#") + kv.first, kv.first, rects[np], act)) {
-                h.muscle = mu; h.weight = we; h.belly = be;
+            col.gap(14.f);
+            col.section("FIGURE");
+            struct S { const char* id; const char* label; float* v; float lo; };
+            const S sl[] = {{"h_bust", "Bust", &h.bust, -1.f}, {"h_hips", "Hips", &h.hips, -1.f}, {"h_waist", "Waist", &h.waist, -1.f},
+                            {"h_butt", "Bottom", &h.butt, -1.f}, {"h_weight", "Weight", &h.weight, -1.f}, {"h_muscle", "Tone", &h.muscle, -1.f},
+                            {"h_belly", "Belly", &h.belly, 0.f}};
+            for (int i = 0; i < 7; ++i) {
+                float sx = i % 2 ? col2 : x, sy = col.y + (float)(i / 2) * U.u(52.f);
+                changed |= U.slider(sl[i].id, sl[i].label, sl[i].v, sl[i].lo, 1.f, Rectangle{sx, sy, colW, U.u(46.f)}, sl[i].lo < 0.f);
+            }
+            // adults only: 21 to 60 years
+            std::snprintf(agebuf, sizeof agebuf, "%d years", (int)std::lround(h.age));
+            changed |= U.slider("h_age", "Age", &h.age, kMinAge, kMaxAge, Rectangle{col2, col.y + 3.f * U.u(52.f), colW, U.u(46.f)}, false, agebuf);
+            soonTag(scene.vivian, col2, col.y + 3.f * U.u(52.f));
+            col.gap(4.f * 52.f + 6.f);
+            col.section("SKIN & HAIR");
+            changed |= U.swatches("h_tone", "Skin tone", &h.tone, toneCols, toneNames, Rectangle{x, col.y, w, U.u(72.f)});
+            col.gap(80.f);
+            changed |= U.swatches("h_hair", "Hair colour", &h.hair, std::vector<Color>(kHairSwatch, kHairSwatch + 6),
+                                  std::vector<std::string>(kHairLabel, kHairLabel + 6), Rectangle{x, col.y, colW, U.u(72.f)});
+            U.textIn(ui::Face::SansMedium, U.u(19.f), "Hair style", Rectangle{col2, col.y, colW, U.u(19.f)}, U.th.inkDim);
+            U.chip("h_style", "Low chignon", Rectangle{col2, col.y + U.u(36.f), std::min(colW, U.u(170.f)), U.u(36.f)}, true);
+            col.gap(80.f);
+        } else {
+            HisLook& h = profile.him;
+            col.section("BUILD");
+            // builds: the content's presets (characters/presets.json)
+            const Json& pr = clipsPresets_["marcus"]["presets"];
+            std::vector<std::string> names;
+            std::vector<bool> act;
+            for (auto& kv : pr.obj) {
+                const Json& sl = kv.second["sliders"];
+                float mu = sl["muscle"].f(0.f), we = sl["weight"].f(0.f), be = std::max(0.f, sl["belly"].f(0.f));
+                names.push_back(kv.first);
+                act.push_back(std::fabs(h.muscle - mu) + std::fabs(h.weight - we) + std::fabs(h.belly - be) < 0.05f);
+            }
+            int pick = chipRow(U, col, "mp#", names, act);
+            if (pick >= 0) {
+                const Json& sl = pr[names[(size_t)pick]]["sliders"];
+                h.muscle = sl["muscle"].f(0.f); h.weight = sl["weight"].f(0.f); h.belly = std::max(0.f, sl["belly"].f(0.f));
                 if (sl["length"].isNumber()) h.length = sl["length"].f();
                 if (sl["girth"].isNumber()) h.girth = sl["girth"].f();
                 changed = true;
             }
-            ++np;
+            col.gap(20.f);
+            changed |= U.slider("m_muscle", "Muscle", &h.muscle, -1.f, 1.f, Rectangle{x, col.y, colW, U.u(46.f)}, true);
+            changed |= U.slider("m_weight", "Weight", &h.weight, -1.f, 1.f, Rectangle{col2, col.y, colW, U.u(46.f)}, true);
+            changed |= U.slider("m_belly", "Belly", &h.belly, 0.f, 1.f, Rectangle{x, col.y + U.u(64.f), colW, U.u(46.f)});
+            std::snprintf(agebuf, sizeof agebuf, "%d years", (int)std::lround(h.age));
+            changed |= U.slider("m_age", "Age", &h.age, kMinAge, kMaxAge, Rectangle{col2, col.y + U.u(64.f), colW, U.u(46.f)}, false, agebuf);
+            soonTag(scene.marcus, col2, col.y + U.u(64.f));
+            col.gap(140.f);
+            col.section("ENDOWMENT", 32.f);
+            changed |= U.slider("m_length", "Length", &h.length, -1.f, 1.f, Rectangle{x, col.y, colW, U.u(46.f)}, true);
+            changed |= U.slider("m_girth", "Girth", &h.girth, -1.f, 1.f, Rectangle{col2, col.y, colW, U.u(46.f)}, true);
+            col.gap(80.f);
+            col.section("SKIN");
+            changed |= U.swatches("m_tone", "Skin tone", &h.tone, toneCols, toneNames, Rectangle{x, col.y, w, U.u(76.f)});
+            col.gap(80.f);
         }
-        y = bottom + U.u(20.f);
-        float colW = (w - U.u(48.f)) * 0.5f;
-        changed |= U.slider("m_muscle", "Muscle", &h.muscle, -1.f, 1.f, Rectangle{x, y, colW, U.u(46.f)}, true);
-        changed |= U.slider("m_weight", "Weight", &h.weight, -1.f, 1.f, Rectangle{x + colW + U.u(48.f), y, colW, U.u(46.f)}, true);
-        changed |= U.slider("m_belly", "Belly", &h.belly, 0.f, 1.f, Rectangle{x, y + U.u(64.f), colW, U.u(46.f)});
-        std::snprintf(agebuf, sizeof agebuf, "%d years", (int)std::lround(h.age));
-        changed |= U.slider("m_age", "Age", &h.age, kMinAge, kMaxAge, Rectangle{x + colW + U.u(48.f), y + U.u(64.f), colW, U.u(46.f)}, false, agebuf);
-        soonTag(scene.marcus, x + colW + U.u(48.f), y + U.u(64.f));
-        y += U.u(140.f);
-        U.sectionLabel("ENDOWMENT", x, y, w);
-        y += U.u(32.f);
-        changed |= U.slider("m_length", "Length", &h.length, -1.f, 1.f, Rectangle{x, y, colW, U.u(46.f)}, true);
-        changed |= U.slider("m_girth", "Girth", &h.girth, -1.f, 1.f, Rectangle{x + colW + U.u(48.f), y, colW, U.u(46.f)}, true);
-        y += U.u(80.f);
-        U.sectionLabel("SKIN", x, y, w);
-        y += U.u(30.f);
-        changed |= U.swatches("m_tone", "Skin tone", &h.tone, toneCols, toneNames, Rectangle{x, y, w, U.u(76.f)});
-        y += U.u(96.f);
+        // footer
+        float by = py + ph - U.u(86.f);
+        U.fitReport("customize", top, col.y + U.u(8.f), by);
+        if (U.button("cust#reset", "Reset", Rectangle{x, by, U.u(150.f), U.u(50.f)})) {
+            if (custTab_ == 0) { int tone = profile.her.tone, hair = profile.her.hair; float age = profile.her.age; profile.her = HerLook{}; profile.her.tone = tone; profile.her.hair = hair; profile.her.age = age; }
+            else { int tone = profile.him.tone; float age = profile.him.age; profile.him = HisLook{}; profile.him.tone = tone; profile.him.age = age; }
+            applyLooks();
+        }
+        if (U.button("cust#done", "Done", Rectangle{x + w - U.u(200.f), by, U.u(200.f), U.u(50.f)}, true) || (U.in.back && !switching_)) {
+            if (!harness) profile.save(profilePath_);
+            go(Screen::Menu, 0.4f);
+        }
     }
     if (changed) applyLooks();
     if (custTab_ == 1 && scene.marcus.loaded()) {
@@ -335,22 +330,14 @@ void Game::drawCustomize() {
         scene.marcus.setBody("length", profile.him.length * k);
         scene.marcus.setBody("girth", profile.him.girth * k);
     }
-    // footer
-    float by = py + ph - U.u(86.f);
-    if (U.button("cust#reset", "Reset", Rectangle{x, by, U.u(150.f), U.u(50.f)})) {
-        if (custTab_ == 0) { int tone = profile.her.tone, hair = profile.her.hair; float age = profile.her.age; profile.her = HerLook{}; profile.her.tone = tone; profile.her.hair = hair; profile.her.age = age; }
-        else { int tone = profile.him.tone; float age = profile.him.age; profile.him = HisLook{}; profile.him.tone = tone; profile.him.age = age; }
-        applyLooks();
-    }
-    if (U.button("cust#done", "Done", Rectangle{x + w - U.u(200.f), by, U.u(200.f), U.u(50.f)}, true) || (U.in.back && !switching_)) {
-        if (!harness) profile.save(profilePath_);
-        go(Screen::Menu, 0.4f);
-    }
-    // preview caption
+    // the preview's name and caption, in the room left of the panel
     U.alpha = ea * 0.85f;
-    U.text(ui::Face::Sans, U.u(15.f), "Drag to turn  \xc2\xb7  Scroll to look closer", (px) * 0.5f, U.H - U.u(70.f), U.th.inkFaint, ui::Center);
-    U.text(ui::Face::Serif, U.u(46.f), custTab_ == 0 ? "Vivian" : "Marcus", U.u(80.f), U.u(64.f), U.th.ink);
-    U.text(ui::Face::SerifItalic, U.u(22.f), custTab_ == 0 ? "forty-two, warm, unhurried" : "forty, steady, attentive", U.u(82.f), U.u(122.f), U.th.inkDim);
+    float left = std::max(U.u(40.f), panel.x - U.u(40.f));
+    U.textIn(ui::Face::Sans, U.u(15.f), "Drag to turn  \xc2\xb7  Scroll to look closer", Rectangle{0.f, U.H - U.u(56.f), left, U.u(20.f)},
+             U.th.inkFaint, ui::Center);
+    U.textIn(ui::Face::Serif, U.u(46.f), custTab_ == 0 ? "Vivian" : "Marcus", Rectangle{U.u(80.f), U.u(64.f), left - U.u(80.f), U.u(46.f)}, U.th.ink);
+    U.textIn(ui::Face::SerifItalic, U.u(22.f), custTab_ == 0 ? "forty-two, warm, unhurried" : "forty, steady, attentive",
+             Rectangle{U.u(82.f), U.u(122.f), left - U.u(82.f), U.u(22.f)}, U.th.inkDim);
     U.alpha = 1.f;
 }
 
@@ -363,16 +350,23 @@ void Game::drawSettings() {
     // lighting previews live: the panel moves aside and the scene stays clear (even from pause)
     float side = U.anim("set#side", lighting ? 1.f : 0.f, 9.f);
     if (settingsReturn_ == Screen::Pause) U.backdrop(1.f - side);
+    ui::ScaleScope screenFit(U, U.fitScale(1060.f, 800.f, 24.f));   // tiny windows: the whole panel shrinks
     float pw = U.u(1060.f - 300.f * side), ph = U.u(800.f);
     float cx = U.W * 0.5f + side * (U.W * 0.5f - U.u(56.f) - pw * 0.5f);
     float px = cx - pw * 0.5f, py = U.H * 0.5f - ph * 0.5f + (1.f - ea) * U.u(24.f);
     U.alpha = ea;
-    U.panel(Rectangle{px, py, pw, ph}, 28.f, 0.62f);
+    Rectangle panel{px, py, pw, ph};
+    U.panel(panel, 28.f, 0.62f);
+    ui::ClipScope clip(U, panel, "settings");
     float x = px + U.u(56.f), w = pw - U.u(112.f), y = py + U.u(44.f);
     U.text(ui::Face::Serif, U.u(56.f), "Settings", x, y, U.th.ink);
     y += U.u(88.f);
     U.tabs("set#tabs", &setTab_, {"DISPLAY", "GRAPHICS", "LIGHTING", "AUDIO", "CONTROLS", "GAME"}, Rectangle{x, y, w, U.u(44.f)});
     y += U.u(78.f);
+    // a tab's rows shrink together when they would reach the footer
+    const std::string fitId = "settings#" + std::to_string(setTab_);
+    const float top = y;
+    ui::ScaleScope fit(U, U.fitGet(fitId));
     float rowH = U.u(60.f);
     Settings before = settings;
     bool displayChanged = false;
@@ -387,8 +381,8 @@ void Game::drawSettings() {
             char b[16]; std::snprintf(b, sizeof b, "%d%%", (int)std::lround(settings.renderScale * 100.f));
             U.slider("s_scale", "Render resolution", &settings.renderScale, 0.5f, 1.f, Rectangle{x, y, w, U.u(52.f)}, false, b);
             y += rowH + U.u(10.f);
-            U.paragraph(ui::Face::Sans, U.u(15.f), "Lower the render resolution or the frame rate limit on laptops: the picture stays smooth and the fans stay quiet.",
-                        x, y + U.u(10.f), w, U.th.inkFaint);
+            y += U.u(10.f) + U.paragraph(ui::Face::Sans, U.u(15.f), "Lower the render resolution or the frame rate limit on laptops: the picture stays smooth and the fans stay quiet.",
+                                         x, y + U.u(10.f), w, U.th.inkFaint);
             break;
         }
         case 1: {
@@ -407,8 +401,11 @@ void Game::drawSettings() {
                                  "Medium: 2K shadows and textures, lighter ambient occlusion.",
                                  "High: 4K shadows and skin, full ambient occlusion, soft hair edges."};
             float used = U.paragraph(ui::Face::Sans, U.u(15.f), qd[settings.quality], x, y + U.u(6.f), w, U.th.inkFaint);
-            if (settings.quality != before.quality || textureMaxSize() != (settings.quality == 0 ? 1024 : (settings.quality == 1 ? 2048 : (1 << 14))))
-                U.text(ui::Face::SansMedium, U.u(15.f), "Texture detail changes apply the next time you start the game.", x, y + U.u(14.f) + used, U.th.accent);
+            y += U.u(6.f) + used;
+            if (settings.quality != before.quality || textureMaxSize() != (settings.quality == 0 ? 1024 : (settings.quality == 1 ? 2048 : (1 << 14)))) {
+                U.textIn(ui::Face::SansMedium, U.u(15.f), "Texture detail changes apply the next time you start the game.", Rectangle{x, y + U.u(8.f), w, U.u(15.f)}, U.th.accent);
+                y += U.u(23.f);
+            }
             break;
         }
         case 2: {
@@ -435,7 +432,8 @@ void Game::drawSettings() {
             U.slider("s_warm", "Warmth", &settings.warmth, -1.f, 1.f, Rectangle{x, y, w, U.u(52.f)}, true, wt);
             y += rowH + U.u(20.f);
             if (U.button("s_lreset", "Reset lighting", Rectangle{x, y, U.u(220.f), U.u(46.f)})) { settings.lightMood = 0; settings.brightness = settings.warmth = 0.f; }
-            U.text(ui::Face::Sans, U.u(15.f), "M cycles the mood during the night.", x + U.u(240.f), y + U.u(14.f), U.th.inkFaint);
+            U.textIn(ui::Face::Sans, U.u(15.f), "M cycles the mood during the night.", Rectangle{x + U.u(240.f), y, w - U.u(240.f), U.u(46.f)}, U.th.inkFaint);
+            y += U.u(46.f);
             break;
         }
         case 3: {
@@ -455,10 +453,10 @@ void Game::drawSettings() {
             int mode = settings.holdRhythm ? 0 : 1;
             if (U.choice("s_rh", "Rhythm key (Space)", &mode, {"Hold", "Toggle"}, Rectangle{x, y, w, rowH})) settings.holdRhythm = mode == 0;
             y += rowH + U.u(24.f);
-            U.paragraph(ui::Face::Sans, U.u(15.f),
-                        "Drag up and down to move, or scroll in strokes. Hold Space for an automatic rhythm: W/S set its tempo, A/D its depth. "
-                        "Right-drag turns the camera, C changes the view, V is his point of view. Tab opens the positions.",
-                        x, y, w, U.th.inkFaint);
+            y += U.paragraph(ui::Face::Sans, U.u(15.f),
+                             "Drag up and down to move, or scroll in strokes. Hold Space for an automatic rhythm: W/S set its tempo, A/D its depth. "
+                             "Right-drag turns the camera, C changes the view, V is his point of view. Tab opens the positions.",
+                             x, y, w, U.th.inkFaint);
             break;
         }
         case 5: {
@@ -479,10 +477,10 @@ void Game::drawSettings() {
                 }
             }
             std::snprintf(b, sizeof b, "Version %s%s%s", Updater::current().c_str(), st[0] ? "  \xc2\xb7  " : "", st);
-            U.text(ui::Face::Sans, U.u(16.f), b, x, y + U.u(18.f), U.th.inkFaint);
+            U.textIn(ui::Face::Sans, U.u(16.f), b, Rectangle{x, y + U.u(6.f), w - (updater ? U.u(190.f) : 0.f), U.u(44.f)}, U.th.inkFaint);
             if (updater && U.button("s_check", "Check now", Rectangle{x + w - U.u(170.f), y + U.u(6.f), U.u(170.f), U.u(44.f)})) updater->checkAsync();
             y += U.u(84.f);
-            U.paragraph(ui::Face::Sans, U.u(14.f),
+            y += U.paragraph(ui::Face::Sans, U.u(14.f),
                         "Sound: \"Lewd Sound Pack\" by Shinlalala (CC BY-SA 4.0). Fonts: Cormorant Garamond and Inter (SIL OFL 1.1). "
                         "Engine: raylib, cgltf, stb. Characters made with MPFB / MakeHuman (CC0). Adults only; all characters are consenting adults.",
                         x, y, w, U.th.inkFaint);
@@ -492,6 +490,7 @@ void Game::drawSettings() {
     if (settings.vsync != before.vsync || settings.fpsCap != before.fpsCap || settings.windowMode != before.windowMode) displayChanged = true;
     if (displayChanged && applyDisplay) applyDisplay(settings, settings.windowMode != before.windowMode);
     float by = py + ph - U.u(86.f);
+    U.fitReport(fitId, top, y + U.u(8.f), by);
     if (U.button("set#back", "Done", Rectangle{x + w - U.u(200.f), by, U.u(200.f), U.u(50.f)}, true) || (U.in.back && !switching_)) {
         saveAll();
         go(settingsReturn_, 0.25f);
@@ -504,10 +503,12 @@ void Game::drawPause() {
     ui::Ui& U = ui;
     float ea = ui::easeOut(screenTime_ / 0.35f);
     U.backdrop(ea);
+    ui::ScaleScope screenFit(U, U.fitScale(560.f, 600.f, 24.f));
     float pw = U.u(560.f), ph = U.u(600.f);
     float px = U.W * 0.5f - pw * 0.5f, py = U.H * 0.5f - ph * 0.5f + (1.f - ea) * U.u(20.f);
     U.alpha = ea;
     U.panel(Rectangle{px, py, pw, ph}, 28.f, 0.55f);
+    ui::ClipScope clip(U, Rectangle{px, py, pw, ph}, "pause");
     U.text(ui::Face::Serif, U.u(64.f), "Paused", U.W * 0.5f, py + U.u(44.f), U.th.ink, ui::Center);
     float y = py + U.u(150.f), x = px + U.u(70.f);
     if (U.menuItem("p_res", "Resume", x, y, pw - U.u(140.f)) || (U.in.back && !switching_ && screenTime_ > 0.2f)) go(pauseReturn_, 0.15f);
@@ -533,7 +534,7 @@ void Game::drawPause() {
     char b[96];
     int mins = (int)(night_.elapsed / 60.f), secs = (int)night_.elapsed % 60;
     std::snprintf(b, sizeof b, "%d:%02d together  \xc2\xb7  connection %d%%", mins, secs, (int)std::lround(night_.connection * 100.f));
-    U.text(ui::Face::Sans, U.u(15.f), b, U.W * 0.5f, py + ph - U.u(52.f), U.th.inkFaint, ui::Center);
+    U.textIn(ui::Face::Sans, U.u(15.f), b, Rectangle{px + U.u(30.f), py + ph - U.u(52.f), pw - U.u(60.f), U.u(15.f)}, U.th.inkFaint, ui::Center);
     U.alpha = 1.f;
 }
 
@@ -543,14 +544,16 @@ void Game::drawResults() {
     float t = screenTime_;
     float ea = ui::easeOut(t / 0.9f);
     U.backdrop(ea * 0.85f);
+    ui::ScaleScope screenFit(U, U.fitScale(900.f, 720.f, 24.f));
     float pw = U.u(900.f), ph = U.u(720.f);
     float px = U.W * 0.5f - pw * 0.5f, py = U.H * 0.5f - ph * 0.5f + (1.f - ea) * U.u(30.f);
     U.alpha = ea;
     U.panel(Rectangle{px, py, pw, ph}, 30.f, 0.55f);
+    ui::ClipScope clip(U, Rectangle{px, py, pw, ph}, "results");
     float cx = U.W * 0.5f;
     U.text(ui::Face::SansBold, U.u(14.f), "THE NIGHT", cx, py + U.u(48.f), U.th.accent, ui::Center, 0.32f);
     U.glow(cx, py + U.u(140.f), U.u(220.f), ui::withA(U.th.rose, 0.10f));
-    U.text(ui::Face::Serif, U.u(92.f), results_.rating, cx, py + U.u(82.f), U.th.ink, ui::Center);
+    U.textIn(ui::Face::Serif, U.u(92.f), results_.rating, Rectangle{px + U.u(40.f), py + U.u(82.f), pw - U.u(80.f), U.u(92.f)}, U.th.ink, ui::Center);
     U.paragraph(ui::Face::SerifItalic, U.u(27.f), results_.line, px + U.u(90.f), py + U.u(204.f), pw - U.u(180.f), U.th.inkDim, 1.3f, ui::Center);
     // stats grid
     struct Cell { std::string v, k; };
@@ -565,8 +568,8 @@ void Game::drawResults() {
         float a = ui::easeOut((t - 0.4f - 0.1f * (float)i) / 0.6f);
         U.alpha = ea * a;
         float ccx = gx + gw * ((float)i + 0.5f);
-        U.text(ui::Face::Serif, U.u(54.f), cells[i].v, ccx, gy + (1.f - a) * U.u(10.f), U.th.ink, ui::Center);
-        U.text(ui::Face::SansBold, U.u(12.f), cells[i].k, ccx, gy + U.u(70.f), U.th.inkFaint, ui::Center, 0.22f);
+        U.textIn(ui::Face::Serif, U.u(54.f), cells[i].v, Rectangle{ccx - gw * 0.5f + U.u(6.f), gy + (1.f - a) * U.u(10.f), gw - U.u(12.f), U.u(54.f)}, U.th.ink, ui::Center);
+        U.textIn(ui::Face::SansBold, U.u(12.f), cells[i].k, Rectangle{ccx - gw * 0.5f + U.u(6.f), gy + U.u(70.f), gw - U.u(12.f), U.u(12.f)}, U.th.inkFaint, ui::Center, 0.22f);
         if (i > 0) U.fillRect(Rectangle{gx + gw * (float)i, gy + U.u(8.f), std::max(1.f, U.u(1.f)), U.u(80.f)}, U.th.hairline);
     }
     U.alpha = ea * ui::easeOut((t - 0.9f) / 0.6f);
