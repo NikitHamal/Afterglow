@@ -5,6 +5,9 @@
 
 namespace ag {
 
+// hair: alpha above this is a dense strand core (opaque, depth); below it the strand sheet, tips and wisps go soft
+constexpr float kHairCore = 0.86f;
+
 void applyQuality(RenderSettings& s, Quality q) {
     s.quality = q;
     switch (q) {
@@ -37,6 +40,7 @@ bool Renderer::reloadShaders() {
     ok = ssao_.build("ssao", fsv, shaderSource("ssao.frag")) && ok;
     ok = ssaoBlur_.build("ssao_blur", fsv, shaderSource("ssao_blur.frag")) && ok;
     ok = dof_.build("dof", fsv, shaderSource("dof.frag")) && ok;
+    oit_.build();   // optional: without it soft hair blends in draw order
     if (!ok) AG_ERROR("AG: shader build failed");
     return ok;
 }
@@ -44,6 +48,7 @@ bool Renderer::reloadShaders() {
 void Renderer::shutdown() {
     for (Program* p : {&pbr_, &depth_, &prefilter_, &down_, &up_, &composite_, &fxaa_, &ssao_, &ssaoBlur_, &dof_}) p->destroy();
     hdr_.destroy(); ldr_.destroy(); aoRaw_.destroy(); ao_.destroy(); dofOut_.destroy();
+    oit_.destroy();
     for (auto& b : bloom_) b.destroy();
     for (auto& b : blur_) b.destroy();
     shadow_.destroy();
@@ -56,6 +61,7 @@ void Renderer::ensureTargets(int w, int h) {
     if (w == w_ && h == h_ && hdr_.fbo) return;
     w_ = w; h_ = h;
     hdr_.create(w, h, GL_RGBA16F, true, true, GL_LINEAR);      // depth as texture (SSAO)
+    oit_.ensure(w, h, hdr_.depth);                             // soft hair layers, depth-tested against the frame
     ldr_.create(w, h, GL_RGBA8, false, false, GL_LINEAR);
     dofOut_.destroy();   // made on first use (story close-ups only)
     aoRaw_.create(std::max(1, w / 2), std::max(1, h / 2), GL_R8, false, false, GL_LINEAR);
@@ -243,6 +249,8 @@ void Renderer::drawModel(Program& p, Model& m, Animator& a, const Character* ch,
             }
             // garments are their own materials: the character's tone swaps / skin masks / tints are not theirs
             bindMaterial(p, m, prim.material, outfit ? nullptr : ch, pass == 0 || pass == 3);
+            if (settings.hairSoft && pass != 0 && mat.shading == Shading::Hair && mat.alpha == AlphaMode::Mask)
+                p.set("u_cutoff", kHairCore);
             if (outfit) {
                 size_t mi = (size_t)std::max(0, prim.material);
                 p.set("u_dissolve", vis);
@@ -273,8 +281,10 @@ void Renderer::drawModel(Program& p, Model& m, Animator& a, const Character* ch,
                 }
             }
             p.set("u_pass", pass == 2 ? 1 : 0);
+            // cards (not a tiled shell / cap) feather their long sides in every pass, depth passes included
+            p.set("u_hairCards", mat.shading == Shading::Hair && !prim.uvTiled ? 1 : 0);
+            if (pass == 1 || pass == 2) p.set("u_hairDebug", settings.hairDebug && mat.shading == Shading::Hair ? 1 : 0);
             if (mat.shading == Shading::Hair && pass != 0 && pass != 3) {
-                p.set("u_hairCards", prim.uvTiled ? 0 : 1);
                 p.set("u_hairUnder", mat.name.find("cap") != std::string::npos ? 1 : 0);
             }
             if (mat.doubleSided || pass == 0) glDisable(GL_CULL_FACE);
@@ -360,12 +370,19 @@ void Renderer::render(Scene& s, const CameraState& cam, int fbW, int fbH, float 
     drawModel(pbr_, s.room, s.roomAnim, nullptr, 1);
     for (auto& c : chars) if (c.second && c.first->loaded()) drawCharacter(pbr_, *c.first, 1);
     if (settings.hairSoft) {
-        glEnable(GL_BLEND);
-        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
-        glDepthMask(GL_FALSE);
+        // everything of the hair under its dense strand cores: accumulated order-independently, then composited
+        bool oit = oit_.ready();
+        if (oit) oit_.begin();
+        else {
+            glEnable(GL_BLEND);
+            glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
+            glDepthMask(GL_FALSE);
+        }
+        pbr_.set("u_oit", oit ? 1 : 0);
         for (auto& c : chars) if (c.second && c.first->loaded()) drawCharacter(pbr_, *c.first, 2);
-        glDepthMask(GL_TRUE);
-        glDisable(GL_BLEND);
+        pbr_.set("u_oit", 0);
+        if (oit) { oit_.end(hdr_.fbo, hdr_.w, hdr_.h, emptyVao_); glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL); }
+        else { glDepthMask(GL_TRUE); glDisable(GL_BLEND); }
     }
     s.particles.render(cam);
     glDisable(GL_DEPTH_TEST);

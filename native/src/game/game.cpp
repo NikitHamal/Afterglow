@@ -640,6 +640,7 @@ void Game::applySpec(const Spec& s) {
     applyQuality(renderer.settings, (Quality)settings.quality);
     if (s.has("debug")) debug_ = s.num("debug", 1.f) > 0.5f;
     qaNoActors_ = s.has("actors") && s.num("actors", 1.f) < 0.5f;
+    renderer.settings.hairDebug = s.has("hairdbg") && s.num("hairdbg", 1.f) > 0.5f;   // QA: soft hair vs strand cores
     qaStress_ = s.get("stress");
     Animator::skinMode = s.get("skin") == "lbs" ? 0 : 1;   // QA: linear blend skinning for comparisons
     JointLimits::enabled = !(s.has("rom") && s.num("rom", 1.f) < 0.5f);   // QA: rom=0, no joint ranges

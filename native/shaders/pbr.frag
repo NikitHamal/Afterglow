@@ -9,10 +9,13 @@ in vec2 v_uv1;
 in vec3 v_opos;                   // bind-space position / normal: garment patterns + the undress wipe
 in vec3 v_onrm;
 in float v_colA;                  // vertex colour alpha (COLOR_0): a hair shell's soft hairline
-out vec4 o_color;
+layout(location = 0) out vec4 o_color;
+layout(location = 1) out vec4 o_oitW;   // soft hair OIT: r = a * w (the HDR pass has no second target)
 
 uniform int u_mode;
-uniform int u_pass;               // 0 opaque / alpha-test, 1 soft hair edges (blended)
+uniform int u_pass;               // 0 opaque / alpha-test, 1 soft hair (everything under the strand cores)
+uniform int u_oit;                // soft hair goes to the weighted blended OIT targets
+uniform int u_hairDebug;          // QA: soft hair green, strand cores red
 uniform vec4 u_baseColor;
 uniform float u_metallic;
 uniform float u_roughness;
@@ -299,6 +302,13 @@ void main() {
     vec4 base = u_baseColor * texS;
     base.rgb *= u_tint;
     if (u_mode == 2) base.a *= v_colA;
+    if (u_mode == 2 && u_hairCards == 1) {
+        // a card's long sides fade out: dense strands reach the atlas column's borders, so without this every card
+        // ends in a straight cut (cards read as paper slabs); the feathered band goes to the soft (OIT) pass
+        float xc = fract(v_uv0.x * 8.0);
+        float edge = clamp(min(xc - 0.03, 0.97 - xc) / 0.94, 0.0, 0.5);
+        base.a *= smoothstep(0.0, 0.2, edge);
+    }
     float alpha = base.a;
     if (u_alphaMode == 1) {
         if (u_pass == 0 && alpha < u_cutoff) discard;
@@ -443,15 +453,25 @@ void main() {
     if (u_mode == 2) {
         // hair cards: shade with normals bent toward the skull-centred sphere so the mass reads as one
         // volume with a coherent highlight band instead of per-card noise; strands run along +V (Bg)
-        if (u_hairShape == 1) N = normalize(normalize(v_wpos - u_hairCenter) * 0.5 + N * 0.5);
+        // cards lean more of their normal on the skull sphere than a shell does: neighbouring cards then light more
+        // alike and the mass reads as one volume (a shell / cap already follows the scalp)
+        float bend = u_hairCards == 1 ? 0.65 : 0.5;
+        if (u_hairShape == 1) N = normalize(normalize(v_wpos - u_hairCenter) * bend + N * (1.0 - bend));
         Tg = normalize(Bg - N * dot(N, Bg));
-        g_strandId = hash12(vec2(floor(v_uv0.x * (u_hairCards == 1 ? 640.0 : 96.0)), 3.7));
+        float strandScale = u_hairCards == 1 ? 640.0 : 96.0;
+        g_strandId = hash12(vec2(floor(v_uv0.x * strandScale), 3.7));
+        // strands thinner than a pixel: their own shifts/strengths would only sparkle, so they settle to the mean
+        float strandsPerPx = fwidth(v_uv0.x * strandScale);
+        g_strandId = mix(g_strandId, 0.5, smoothstep(0.7, 2.2, strandsPerPx));
         if (u_hairCards == 1) {
             // a card is a flat ribbon of hair: rounded across its width (U) so its highlight is a band, not a sheet,
             // and its root sits in the shade of the hair above it
+            // (only where a card is wide enough on screen to read as a ribbon; narrow ones would stripe)
             float x = fract(v_uv0.x * 8.0) * 2.0 - 1.0;
+            float cardPx = 0.94 / max(fwidth(v_uv0.x * 8.0), 1e-4);
+            float roundK = smoothstep(3.0, 14.0, cardPx);
             vec3 across = normalize(cross(Tg, N));
-            N = normalize(N * sqrt(max(0.05, 1.0 - 0.5 * x * x)) + across * x * 0.7);
+            N = normalize(N * sqrt(max(0.05, 1.0 - 0.5 * roundK * x * x)) + across * x * 0.55 * roundK);
             // no lock is ruler-straight: a little wave along each strand breaks one long sheen into glints
             float wave = sin(v_uv0.y * 46.0 + g_strandId * 6.2831) * 0.22 + sin(v_uv0.y * 17.0 + g_strandId * 12.57) * 0.12;
             Tg = normalize(Tg + across * wave);
@@ -540,5 +560,17 @@ void main() {
     float outA = 1.0;
     if (u_pass == 1) outA = sat(alpha / max(u_cutoff, 1e-3));
     else if (u_alphaMode == 2) outA = alpha;
-    o_color = vec4(max(col, vec3(0.0)), outA);
+    col = max(col, vec3(0.0));
+    if (u_hairDebug == 1) col = u_pass == 1 ? vec3(0.0, 0.6, 0.0) : vec3(0.6, 0.0, 0.0);
+    if (u_pass == 1 && u_oit == 1) {
+        // weighted blended OIT: overlapping soft hair layers average (nearer ones count a little more), their
+        // transparencies multiply - independent of the order the cards are drawn in
+        float dz = length(u_camPos - v_wpos);
+        float w = outA * clamp(0.6 / max(dz * dz, 0.02), 0.05, 30.0);
+        o_color = vec4(min(col, vec3(64.0)) * outA * w, outA);
+        o_oitW = vec4(outA * w, 0.0, 0.0, 0.0);
+        return;
+    }
+    o_color = vec4(col, outA);
+    o_oitW = vec4(0.0);
 }
