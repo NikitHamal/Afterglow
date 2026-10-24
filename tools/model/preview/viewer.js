@@ -69,6 +69,22 @@ function selectedShot() {
   return manifest?.shots?.[id] || Object.values(manifest?.shots || {})[0];
 }
 
+function meshBounds(mesh) {
+  if (mesh.isSkinnedMesh && typeof mesh.computeBoundingBox === 'function') {
+    mesh.computeBoundingBox();
+    return mesh.boundingBox.clone().applyMatrix4(mesh.matrixWorld);
+  }
+  return new THREE.Box3().setFromObject(mesh);
+}
+
+function sceneBounds(rootObject) {
+  const box = new THREE.Box3();
+  rootObject.traverse((o) => {
+    if (o.isMesh) box.union(meshBounds(o));
+  });
+  return box;
+}
+
 function setMorphs(rootObject, variant, shotId) {
   const sliders = variant.sliders || {};
   const expression = (variant.expressions && variant.expressions[shotId]) || variant.expression || '';
@@ -86,17 +102,54 @@ function setMorphs(rootObject, variant, shotId) {
   });
 }
 
-function setShotCamera(shot) {
-  if (!shot) return;
-  const target = shot.target || [0, 0.9, 0];
-  controls.target.set(target[0], target[1], target[2]);
-  const distance = Number(shot.distance) || 3.2;
-  camera.position.set(distance * 0.71, target[1] + distance * 0.16, distance * 0.71);
+function fitShotCamera(shot, clip) {
+  if (!shot || !current?.scene) return;
+  const fallback = shot.target || [0, 0.9, 0];
+  const fallbackTarget = new THREE.Vector3(fallback[0], fallback[1], fallback[2]);
+  const box = new THREE.Box3();
+  if (mixer && clip && Number.isFinite(clip.duration) && clip.duration > 0) {
+    const previousTime = mixer.time;
+    const wasPaused = activeAction?.paused || false;
+    if (activeAction) activeAction.paused = true;
+    for (const sample of [0, 0.25, 0.5, 0.75, 1]) {
+      mixer.setTime(clip.duration * sample);
+      current.scene.updateMatrixWorld(true);
+      box.union(sceneBounds(current.scene));
+    }
+    mixer.setTime(previousTime);
+    if (activeAction) activeAction.paused = wasPaused;
+  } else {
+    current.scene.updateMatrixWorld(true);
+    box.copy(sceneBounds(current.scene));
+  }
+  if (box.isEmpty() || !finiteBox(box)) {
+    controls.target.copy(fallbackTarget);
+    const distance = Number(shot.distance) || 3.2;
+    camera.position.set(distance * 0.71, fallback[1] + distance * 0.16, distance * 0.71);
+    controls.update();
+    return;
+  }
+  const target = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const radius = Math.max(0.5, size.length() * 0.5);
+  const fov = THREE.MathUtils.degToRad(camera.fov);
+  const distance = THREE.MathUtils.clamp(radius / Math.tan(fov * 0.5) * 1.18, 1.25, 12);
+  const direction = camera.position.clone().sub(controls.target);
+  if (direction.lengthSq() < 1e-6) direction.set(0.71, 0.16, 0.71);
+  direction.normalize();
+  controls.target.copy(target);
+  camera.position.copy(target).addScaledVector(direction, distance);
+  camera.near = Math.max(0.01, distance / 100);
+  camera.far = Math.max(30, distance * 8);
+  camera.updateProjectionMatrix();
+  const damping = controls.enableDamping;
+  controls.enableDamping = false;
   controls.update();
+  controls.enableDamping = damping;
 }
 
 function resetCamera() {
-  setShotCamera(selectedShot());
+  fitShotCamera(selectedShot(), activeShot && findClip(activeShot.clip));
 }
 
 function findClip(name) {
@@ -115,7 +168,7 @@ function playShot(id = shotSelect.value) {
   if (activeAction) activeAction.fadeOut(0.18);
   activeAction = mixer.clipAction(clip);
   activeAction.reset().fadeIn(0.18).play();
-  setShotCamera(shot);
+  fitShotCamera(shot, clip);
   readout.textContent = `${selectedVariant().label}\n${shot.label} · ${clip.name}\npose guard rail · runtime mesh checks armed`;
 }
 
@@ -136,14 +189,24 @@ function inspectPose() {
       reason = `${o.name || 'mesh'} has a non-finite transform`;
       return;
     }
-    const box = new THREE.Box3().setFromObject(o);
+    const box = meshBounds(o);
     if (!finiteBox(box)) {
       reason = `${o.name || 'mesh'} has a non-finite bound`;
       return;
     }
     const size = box.getSize(new THREE.Vector3());
     maxExtent = Math.max(maxExtent, size.x, size.y, size.z);
+    const scale = o.getWorldScale(new THREE.Vector3());
+    if (scale.toArray().some((value) => !Number.isFinite(value) || value < 0.05 || value > 20)) {
+      reason = `${o.name || 'mesh'} has an unstable world scale`;
+      return;
+    }
     if (maxExtent > 12) reason = `${o.name || 'mesh'} escaped the 12 m guard envelope`;
+  });
+  if (!reason) current.scene.traverse((o) => {
+    if (!o.isBone || reason) return;
+    const determinant = new THREE.Matrix3().setFromMatrix4(o.matrixWorld).determinant();
+    if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-5) reason = `${o.name || 'bone'} has a collapsed basis`;
   });
   return reason ? { ok: false, reason } : { ok: meshes > 0, meshes, maxExtent };
 }
@@ -187,6 +250,18 @@ async function loadVariant(keyName) {
   const loader = new GLTFLoader();
   readout.textContent = `Loading ${variant.label}…`;
   current = await loader.loadAsync(assetUrl(slot.asset));
+  const morphNames = new Set();
+  current.scene.traverse((o) => {
+    if (!o.morphTargetDictionary) return;
+    Object.keys(o.morphTargetDictionary).forEach((name) => morphNames.add(name));
+  });
+  const missingExpressions = (slot.expressionSets || []).filter((name) => !morphNames.has(name));
+  const missingShapes = (slot.shapeSets || []).filter((name) => !morphNames.has(`${name}_up`) && !morphNames.has(`${name}_dn`) && !morphNames.has(name));
+  if (missingExpressions.length || missingShapes.length) {
+    throw new Error(`rig contract missing morphs: ${[...missingExpressions, ...missingShapes].join(', ')}`);
+  }
+  const badClips = current.animations.filter((clip) => !Number.isFinite(clip.duration) || clip.duration <= 0 || clip.tracks.some((track) => track.values.some((value) => !Number.isFinite(value))));
+  if (badClips.length) throw new Error(`animation contract failed: ${badClips.map((clip) => clip.name || 'unnamed').join(', ')}`);
   current.scene.traverse((o) => {
     if (!o.isMesh) return;
     o.castShadow = true;
