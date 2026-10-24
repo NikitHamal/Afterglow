@@ -87,7 +87,10 @@ built sibling of its family first, e.g. `spa_*` → `spa_suite`, then the family
   every bed clip and sit.bed work on it), limestone and teak, a glowing shoji wall, a paper lantern key light,
   candles on a bench; `spa_lobby` / `spa_steam` / `spa_lounge` fall back to it until they exist.
 - ⏳ `spa_lobby`, `spa_steam` (tiled steam room, benches), `spa_lounge` (loungers, tea)
-- ⏳ `apartment_hall` (stairwell landing, two doors), `apartment_living` (sofa, piano, city window),
+- ✅ `apartment_hall` (`places_apartment.py`): the fourth-floor landing — her door 4A and his 4B facing each other,
+  both really open (nodes `door_4a` / `door_4b`, see "Doors and anchors" below), a lit entry behind each, her moving
+  boxes by 4A, bells, doormats, sconces, mailboxes, the stairs down under a window on the night city.
+- ⏳ `apartment_living` (sofa, piano, city window),
   `apartment_balcony`, `apartment_bedroom` (city view)
 
 **Outfits** (`characters/outfits/<who>_<style>.glb`):
@@ -110,3 +113,14 @@ built sibling of its family first, e.g. `spa_*` → `spa_suite`, then the family
 
 **Voices**: ✅ Kokoro takes for every line (`docs/VOICE.md`). ⏳ extra vocal samples for play: `gasp_touch`,
 `laugh_soft`, `sigh_content` (48 kHz WAV like `audio/vox/*`).
+
+
+## Doors and anchors (places built by `build_place.py` publish them in `<id>.json`)
+
+- `"anchors": {"<name>": {"pos": [x, y, z], "yaw": deg}}` — engine coordinates (metres, y up), yaw about +Y with
+  0 = facing +Z. Standing / seating marks: pos on the floor or seat, yaw = the way the person faces. Prop spots: pos on
+  the surface (`table`, `counter`, `boxes`, `side_table` ...). Door marks: `door_<id>_out` (on the hall side, facing
+  the door), `door_<id>_in` (inside, facing out), `bell_<id>` (the bell button).
+- `"doors": [{"id": "4b", "node": "door_4b", "openDeg": 100, "hinge": [...], "width": 0.9}]` — the GLB node has an
+  identity rest rotation and its origin on the hinge line (floor level): rotating it about engine +Y by up to
+  `openDeg` (signed) swings it open into the apartment. The leaf is baked closed.

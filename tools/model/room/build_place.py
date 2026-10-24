@@ -344,7 +344,11 @@ def spa_suite():
     return meta, engine, previews
 
 
-PLACES = {"cabin_living": cabin_living, "spa_suite": spa_suite}
+import places_apartment as PA
+
+PLACES = {"cabin_living": cabin_living, "spa_suite": spa_suite,
+          "apartment_hall": lambda: PA.apartment_hall(common_meta),
+          "apartment_living": lambda: PA.apartment_living(common_meta, sofa, bookshelf)}
 
 if __name__ == "__main__":
     K.init(OUT)

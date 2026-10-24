@@ -1,0 +1,345 @@
+{
+ "version": 1,
+ "units": "m",
+ "up": "+Y",
+ "style": "apartment",
+ "mood": "evening",
+ "place": "apartment_hall",
+ "bedTop": 0.604,
+ "bed": {
+  "center": [
+   0,
+   0.604,
+   0.25
+  ],
+  "width": 2,
+  "length": 2.1,
+  "size": [
+   2,
+   2.1
+  ],
+  "note": "no bed: the staged action's footprint (standing marks + the seat)"
+ },
+ "bedCenter": [
+  0,
+  0.604,
+  0.25
+ ],
+ "lamp": [
+  0,
+  2.64,
+  0.3
+ ],
+ "window": {
+  "center": [
+   0.85,
+   1.1,
+   -4.6
+  ]
+ },
+ "cameraBounds": {
+  "min": [
+   -1.45,
+   0.15,
+   -2.45
+  ],
+  "max": [
+   1.45,
+   2.5,
+   2.45
+  ]
+ },
+ "doors": [
+  {
+   "id": "4a",
+   "node": "door_4a",
+   "openDeg": 100,
+   "hinge": [
+    -1.653,
+    0,
+    0.15
+   ],
+   "width": 0.9,
+   "note": "rotate the node about engine +Y by up to openDeg to open it (identity rest rotation)"
+  },
+  {
+   "id": "4b",
+   "node": "door_4b",
+   "openDeg": 100,
+   "hinge": [
+    1.653,
+    0,
+    -0.75
+   ],
+   "width": 0.9,
+   "note": "rotate the node about engine +Y by up to openDeg to open it (identity rest rotation)"
+  }
+ ],
+ "anchors": {
+  "door_4a_out": {
+   "pos": [
+    -1.05,
+    0,
+    -0.3
+   ],
+   "yaw": -90
+  },
+  "door_4a_in": {
+   "pos": [
+    -2.27,
+    0,
+    -0.3
+   ],
+   "yaw": 90
+  },
+  "door_4b_out": {
+   "pos": [
+    1.05,
+    0,
+    -0.3
+   ],
+   "yaw": 90
+  },
+  "door_4b_in": {
+   "pos": [
+    2.27,
+    0,
+    -0.3
+   ],
+   "yaw": -90
+  },
+  "bell_4a": {
+   "pos": [
+    -1.584,
+    1.32,
+    -0.9
+   ],
+   "yaw": 90
+  },
+  "bell_4b": {
+   "pos": [
+    1.584,
+    1.32,
+    0.3
+   ],
+   "yaw": -90
+  },
+  "stairs_top": {
+   "pos": [
+    0.85,
+    0,
+    -1.4
+   ],
+   "yaw": 0
+  },
+  "landing": {
+   "pos": [
+    0,
+    0,
+    0.5
+   ],
+   "yaw": 0
+  },
+  "boxes": {
+   "pos": [
+    -1.22,
+    0.68,
+    0.98
+   ],
+   "yaw": 90
+  },
+  "floor_spill": {
+   "pos": [
+    -0.85,
+    0,
+    1.15
+   ],
+   "yaw": 90
+  },
+  "mailboxes": {
+   "pos": [
+    -0.8,
+    1.1,
+    -2.4
+   ],
+   "yaw": 180
+  },
+  "entry_4a_boxes": {
+   "pos": [
+    -2.75,
+    0.72,
+    -0.9
+   ],
+   "yaw": 90
+  }
+ },
+ "lights": [
+  {
+   "name": "lamp_key",
+   "type": "spot",
+   "position": [
+    0,
+    2.56000018119812,
+    0.30000001192092896
+   ],
+   "color": [
+    1,
+    0.82,
+    0.62
+   ],
+   "power_w": 0,
+   "radius": 0.2,
+   "direction": [
+    0,
+    -1,
+    0
+   ],
+   "outer_rad": 1.1344640254974365
+  },
+  {
+   "name": "ceiling_glow",
+   "type": "area",
+   "position": [
+    0,
+    2.5900001525878906,
+    0.30000001192092896
+   ],
+   "color": [
+    1,
+    0.84,
+    0.66
+   ],
+   "power_w": 70,
+   "radius": 0.05,
+   "direction": [
+    0,
+    -1,
+    0
+   ]
+  },
+  {
+   "name": "lamp_0",
+   "type": "point",
+   "position": [
+    -1.4700000286102295,
+    1.909999966621399,
+    0.550000011920929
+   ],
+   "color": [
+    1,
+    0.74,
+    0.5
+   ],
+   "power_w": 22,
+   "radius": 0.08
+  },
+  {
+   "name": "lamp_1",
+   "type": "point",
+   "position": [
+    1.4700000286102295,
+    1.909999966621399,
+    -1.149999976158142
+   ],
+   "color": [
+    1,
+    0.74,
+    0.5
+   ],
+   "power_w": 22,
+   "radius": 0.08
+  },
+  {
+   "name": "lamp_2",
+   "type": "point",
+   "position": [
+    -2.5,
+    2.200000047683716,
+    -0.30000001192092896
+   ],
+   "color": [
+    1,
+    0.72,
+    0.45
+   ],
+   "power_w": 30,
+   "radius": 0.03
+  },
+  {
+   "name": "lamp_3",
+   "type": "point",
+   "position": [
+    2.5999999046325684,
+    1.809999942779541,
+    -1.2699999809265137
+   ],
+   "color": [
+    1,
+    0.74,
+    0.5
+   ],
+   "power_w": 26,
+   "radius": 0.08
+  },
+  {
+   "name": "lamp_4",
+   "type": "point",
+   "position": [
+    0.8500000238418579,
+    2.049999952316284,
+    -3.4000000953674316
+   ],
+   "color": [
+    1,
+    0.76,
+    0.52
+   ],
+   "power_w": 28,
+   "radius": 0.1
+  },
+  {
+   "name": "moon",
+   "type": "sun",
+   "color": [
+    0.55,
+    0.62,
+    0.9
+   ],
+   "power_w": 0.15,
+   "radius": 0.05,
+   "direction": [
+    7.571034643660823e-8,
+    -0.4999999701976776,
+    0.866025447845459
+   ]
+  },
+  {
+   "name": "window_glow",
+   "type": "area",
+   "position": [
+    0.85,
+    1.0999999999999999,
+    -4.3999999999999995
+   ],
+   "color": [
+    0.55,
+    0.62,
+    0.95
+   ],
+   "power_w": 25,
+   "radius": 0.05,
+   "direction": [
+    0,
+    4.371138828673793e-8,
+    -1
+   ]
+  }
+ ],
+ "lightmap": {
+  "slot": "emissiveTexture",
+  "texCoord": 1,
+  "encoding": "sRGB",
+  "scale": 2.6257856667041706,
+  "mode": "full diffuse irradiance (direct+indirect) from all static lights; room colour = base x lightmap"
+ }
+}

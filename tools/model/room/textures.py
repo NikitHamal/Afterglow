@@ -261,3 +261,141 @@ def woven(path, npath, color=(0.72, 0.62, 0.42), S=512, strands=16, seed=41):
     col = np.array(color)[None, None] * (0.62 + 0.38 * bump[..., None]) * (0.85 + 0.25 * streak[..., None])
     save_rgb(np.clip(col, 0, 1), path)
     save_rgb(normal_from_height(bump * 0.8 + streak * 0.2, 3.0), npath)
+
+
+FONTS = __import__("os").path.join(__import__("os").path.dirname(__import__("os").path.abspath(__file__)), "../../../native/res/fonts")
+
+
+def _font(name, size):
+    from PIL import ImageFont
+    return ImageFont.truetype(f"{FONTS}/{name}", size)
+
+
+def city_night(path, W=2048, H=1024, seed=5):
+    """a city at night seen from a few floors up: blue hour sky, skyline of lit towers, nearer blocks (windows)"""
+    r = np.random.default_rng(seed)
+    y, x = np.mgrid[0:H, 0:W].astype(np.float32); v = y / H
+    sky = np.dstack([0.05 + 0.20 * v ** 2, 0.06 + 0.10 * v ** 2, 0.16 + 0.06 * v])           # deep blue, warm haze low
+    img = np.clip(sky, 0, 1)
+    for layer, (base, hmin, hmax, wmin, wmax, lit, tone) in enumerate((
+            (0.62, 0.10, 0.36, 18, 60, 0.18, 0.05), (0.78, 0.08, 0.30, 40, 120, 0.32, 0.035), (0.96, 0.10, 0.42, 90, 260, 0.45, 0.025))):
+        xx = 0
+        while xx < W:
+            w = int(r.uniform(wmin, wmax)); h = int(H * r.uniform(hmin, hmax)); top = int(H * base) - h
+            x0, x1 = xx, min(W, xx + w)
+            img[max(0, top):int(H * base) + (H if layer == 2 else 0), x0:x1] = tone
+            # windows: a grid, some lit (warm / cool)
+            cw, ch = (3, 4) if layer == 0 else ((5, 7) if layer == 1 else (9, 13))
+            for wy in range(max(0, top) + ch, min(H, int(H * base) + (H if layer == 2 else 0)) - ch, ch * 2):
+                for wx in range(x0 + cw, x1 - cw, cw * 2):
+                    if r.random() < lit:
+                        c = np.array([1.0, 0.78, 0.45]) if r.random() < 0.75 else np.array([0.75, 0.85, 1.0])
+                        img[wy:wy + ch, wx:wx + cw] = c * r.uniform(0.55, 1.0)
+            if layer == 0 and r.random() < 0.15 and top > 4:
+                img[top - 3:top, x0 + w // 2 - 1:x0 + w // 2 + 2] = np.array([1.0, 0.1, 0.05])      # aviation light
+            xx += w + int(r.uniform(0, 12))
+    glow = np.exp(-((v - 0.78) / 0.12) ** 2)[..., None] * np.array([0.10, 0.06, 0.03])
+    save_rgb(np.clip(img + glow, 0, 1), path, 92)
+
+
+def plaque(path, text, S=256):
+    """an engraved brass door number"""
+    from PIL import Image as I, ImageDraw
+    n = fbm(S // 2, S, 6, 3, 61)
+    base = np.dstack([0.72 + 0.1 * n, 0.55 + 0.08 * n, 0.26 + 0.05 * n])
+    im = I.fromarray((np.clip(base, 0, 1) * 255).astype(np.uint8))
+    d = ImageDraw.Draw(im)
+    f = _font("CormorantGaramond-SemiBold.ttf", int(S * 0.36))
+    tw, th = d.textbbox((0, 0), text, font=f)[2:]
+    d.text(((S - tw) / 2, (S // 2 - th) / 2 - S * 0.03), text, font=f, fill=(48, 34, 16))
+    im.save(path, quality=92)
+
+
+def cardboard(path, label, S=512, seed=71):
+    """a moving box side: kraft board, a strip of tape, a marker label"""
+    from PIL import Image as I, ImageDraw
+    y, x = np.mgrid[0:S, 0:S].astype(np.float32) / S
+    n = fbm(S, S, 20, 4, seed)
+    flutes = 0.5 + 0.5 * np.sin(x * S * 0.9)
+    col = np.array([0.58, 0.42, 0.26])[None, None] * (0.88 + 0.12 * n[..., None] + 0.03 * flutes[..., None])
+    tape = np.abs(y - 0.06) < 0.05
+    col[tape] = np.array([0.66, 0.55, 0.38]) * (0.95 + 0.1 * n[tape][:, None])
+    im = I.fromarray((np.clip(col, 0, 1) * 255).astype(np.uint8))
+    d = ImageDraw.Draw(im)
+    lines = label.split("|")
+    f = _font("Inter-SemiBold.ttf", int(S * (0.13 if len(lines) == 1 else 0.1)))
+    yy = S * 0.42 - len(lines) * S * 0.06
+    for ln in lines:
+        tw = d.textbbox((0, 0), ln, font=f)[2]
+        d.text(((S - tw) / 2, yy), ln, font=f, fill=(28, 24, 22)); yy += S * 0.13
+    im.save(path, quality=90)
+
+
+def terrazzo(path, npath, base=(0.70, 0.67, 0.62), S=1024, seed=81):
+    """stairwell terrazzo: chips of stone in a pale matrix"""
+    r = np.random.default_rng(seed)
+    col = np.broadcast_to(np.array(base), (S, S, 3)).copy() * (0.95 + 0.06 * fbm(S, S, 8, 3, seed)[..., None])
+    h = np.zeros((S, S), np.float32)
+    for _ in range(2600):
+        cx, cy, rr = r.integers(0, S), r.integers(0, S), r.uniform(2, 9)
+        c = r.choice([0.25, 0.45, 0.8, 0.95]) * np.array([1.0, r.uniform(0.85, 1.0), r.uniform(0.75, 0.95)])
+        x0, x1, y0, y1 = int(max(0, cx - rr)), int(min(S, cx + rr + 1)), int(max(0, cy - rr)), int(min(S, cy + rr + 1))
+        yy, xx = np.mgrid[y0:y1, x0:x1]
+        m = (xx - cx) ** 2 + ((yy - cy) * 1.3) ** 2 < rr * rr
+        col[y0:y1, x0:x1][m] = c; h[y0:y1, x0:x1][m] = 0.4
+    save_rgb(np.clip(col, 0, 1), path)
+    save_rgb(normal_from_height(h, 0.6), npath)
+
+
+def facade(path, seed=1, bays=16, floors=8, lit=0.42, wall=(0.03, 0.03, 0.04), S=1024):
+    """a city facade at night (emissive): window bays x floors over a square tile, lit windows warm / cool / TV-blue,
+    some with curtains, the rest dark sky reflections"""
+    r = np.random.default_rng(seed)
+    img = np.broadcast_to(np.array(wall), (S, S, 3)).copy() * (0.8 + 0.4 * fbm(S, S, 8, 3, seed)[..., None])
+    bw, fh = S / bays, S / floors
+    for fy in range(floors):
+        for bx in range(bays):
+            x0, x1 = int(bx * bw + bw * 0.22), int((bx + 1) * bw - bw * 0.22)
+            y0, y1 = int(fy * fh + fh * 0.25), int((fy + 1) * fh - fh * 0.18)
+            if r.random() < lit:
+                kind = r.random()
+                c = np.array([1.0, 0.76, 0.44]) if kind < 0.7 else (np.array([0.78, 0.86, 1.0]) if kind < 0.92 else np.array([0.45, 0.6, 1.0]))
+                c = c * r.uniform(0.45, 1.0)
+                img[y0:y1, x0:x1] = c
+                if r.random() < 0.4:                                   # a curtain half drawn
+                    cx = x0 + int((x1 - x0) * r.uniform(0.3, 0.7))
+                    img[y0:y1, x0:cx] = c * 0.45
+            else:
+                img[y0:y1, x0:x1] = np.array([0.04, 0.05, 0.08]) * r.uniform(0.8, 1.4)
+    save_rgb(np.clip(img, 0, 1), path, 88)
+
+
+def sketch(path, seed=3, S=512):
+    """an architect's drawing on cartridge paper: a facade or plan in ink, some construction lines, a title block"""
+    from PIL import Image as I, ImageDraw
+    r = np.random.default_rng(seed)
+    n = fbm(S, S, 10, 3, seed)
+    paper = np.dstack([0.92 + 0.03 * n, 0.90 + 0.03 * n, 0.84 + 0.03 * n])
+    im = I.fromarray((np.clip(paper, 0, 1) * 255).astype(np.uint8)); d = ImageDraw.Draw(im)
+    ink = (34, 32, 40)
+    for _ in range(18):                                     # faint construction lines
+        y = int(r.uniform(0.08, 0.92) * S); d.line([(int(S * 0.05), y), (int(S * 0.95), y)], fill=(170, 168, 160), width=1)
+    x0, y0, x1, y1 = int(S * 0.15), int(S * 0.18), int(S * 0.85), int(S * 0.78)
+    if seed % 2:                                            # an elevation: storeys and windows, a roof line
+        d.rectangle([x0, y0, x1, y1], outline=ink, width=3)
+        fl = r.integers(3, 6); bays = r.integers(3, 7)
+        for f in range(fl):
+            for b in range(bays):
+                wx = x0 + (b + 0.25) * (x1 - x0) / bays; wy = y0 + (f + 0.25) * (y1 - y0) / fl
+                d.rectangle([wx, wy, wx + 0.5 * (x1 - x0) / bays, wy + 0.5 * (y1 - y0) / fl], outline=ink, width=2)
+        d.line([(x0 - 10, y0), ((x0 + x1) / 2, y0 - S * 0.1), (x1 + 10, y0)], fill=ink, width=3)
+    else:                                                   # a plan: rooms, doors swings
+        d.rectangle([x0, y0, x1, y1], outline=ink, width=4)
+        for _ in range(4):
+            if r.random() < 0.5: xx = int(r.uniform(x0, x1)); d.line([(xx, y0), (xx, y1)], fill=ink, width=3)
+            else: yy = int(r.uniform(y0, y1)); d.line([(x0, yy), (x1, yy)], fill=ink, width=3)
+        for _ in range(3):
+            cx, cy, rr = r.uniform(x0, x1), r.uniform(y0, y1), S * 0.06
+            d.arc([cx - rr, cy - rr, cx + rr, cy + rr], 180, 270, fill=ink, width=2)
+    d.rectangle([int(S * 0.62), int(S * 0.84), int(S * 0.92), int(S * 0.94)], outline=ink, width=2)
+    im.save(path, quality=88)
