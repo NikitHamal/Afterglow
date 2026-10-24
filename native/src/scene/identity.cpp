@@ -2,7 +2,9 @@
 #include "core/json.h"
 #include "core/log.h"
 #include "core/paths.h"
+#include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 
 namespace ag {
