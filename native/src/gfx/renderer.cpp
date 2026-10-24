@@ -365,6 +365,7 @@ void Renderer::render(Scene& s, const CameraState& cam, int fbW, int fbH, float 
     pbr_.use();
     setFrame(pbr_, s, cam, time);
     pbr_.set("u_ssaoOn", ssaoOn ? 1 : 0);
+    pbr_.set("u_skinDebug", settings.skinDebug);
     pbr_.set("u_screenSize", V2{(float)hdr_.w, (float)hdr_.h});
     pbr_.sampler("u_ssao", 7, ssaoOn ? ao_.color : white_);
     drawModel(pbr_, s.room, s.roomAnim, nullptr, 1);

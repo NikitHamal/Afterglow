@@ -25,6 +25,7 @@ struct RenderSettings {
     bool fxaa = true;
     bool hairSoft = true;
     bool hairDebug = false;           // QA: soft hair layers drawn flat green, strand cores flat red
+    int skinDebug = 0;                // QA: 1 no flush, 2 no key shadow on skin, 3 flush mask as colour
     float renderScale = 1.f;          // internal resolution multiplier
     float exposure = 1.2f, warmth = 0.06f, saturation = 1.0f, contrast = 1.04f, vignette = 0.26f, grain = 0.024f;
     float flash = 0.f;                // climax flash 0..1

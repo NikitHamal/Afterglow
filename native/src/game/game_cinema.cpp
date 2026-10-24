@@ -409,6 +409,16 @@ void Game::directStory(float dt) {
     view(scene.vivian, scene.showVivian, her);
     view(scene.marcus, scene.showMarcus, him);
     ShotFrame f = director_.frame(dt, her, him, V3{0.f, 1.2f, 1.4f});
+    if (qaOrbit_ && (her.shown || him.shown)) {
+        // QA: a fixed orbit round the couple's heads, yaw 0 = the kiss in profile, +90 over his shoulder onto her
+        V3 mid = her.shown && him.shown ? (her.head + him.head) * 0.5f : (her.shown ? her.head : him.head);
+        V3 ax = her.shown && him.shown ? him.head - her.head : V3{1.f, 0.f, 0.f};
+        ax.y = 0.f;
+        ax = length(ax) > 1e-3f ? normalize(ax) : V3{1.f, 0.f, 0.f};
+        V3 side = normalize(cross(V3{0.f, 1.f, 0.f}, ax));
+        V3 dir = side * (std::cos(qaOYaw_) * std::cos(qaOPitch_)) + ax * (std::sin(qaOYaw_) * std::cos(qaOPitch_)) + V3{0.f, std::sin(qaOPitch_), 0.f};
+        f.eye = mid + dir * qaODist_; f.target = mid; f.fov = 30.f; f.aperture = 0.f; f.focus = qaODist_;
+    }
     camera.setDirect(f.eye, f.target, f.fov, director_.takeCut());
     renderer.settings.dofAmount = settings.depthOfField ? f.aperture * 0.75f : 0.f;
     renderer.settings.dofFocus = f.focus;

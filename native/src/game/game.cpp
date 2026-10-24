@@ -641,6 +641,7 @@ void Game::applySpec(const Spec& s) {
     if (s.has("debug")) debug_ = s.num("debug", 1.f) > 0.5f;
     qaNoActors_ = s.has("actors") && s.num("actors", 1.f) < 0.5f;
     renderer.settings.hairDebug = s.has("hairdbg") && s.num("hairdbg", 1.f) > 0.5f;   // QA: soft hair vs strand cores
+    renderer.settings.skinDebug = (int)s.num("skindbg", 0.f);                           // QA: skin flush / shadow
     qaStress_ = s.get("stress");
     Animator::skinMode = s.get("skin") == "lbs" ? 0 : 1;   // QA: linear blend skinning for comparisons
     JointLimits::enabled = !(s.has("rom") && s.num("rom", 1.f) < 0.5f);   // QA: rom=0, no joint ranges
@@ -654,6 +655,15 @@ void Game::applySpec(const Spec& s) {
             if (kv.first == "yaw") qaYaw_ = kv.second * kPi / 180.f;
             else if (kv.first == "pitch") qaPitch_ = kv.second * kPi / 180.f;
             else if (kv.first == "dist") qaDist_ = kv.second;
+        }
+    }
+    qaOrbit_ = s.has("orbit");
+    if (qaOrbit_) {
+        qaOYaw_ = 0.f; qaOPitch_ = 0.f; qaODist_ = 1.2f;
+        for (auto& kv : Spec::pairs(s.get("orbit"))) {
+            if (kv.first == "yaw") qaOYaw_ = kv.second * kPi / 180.f;
+            else if (kv.first == "pitch") qaOPitch_ = kv.second * kPi / 180.f;
+            else if (kv.first == "dist") qaODist_ = kv.second;
         }
     }
     if (s.has("hints")) settings.hints = (int)s.num("hints", 2.f);
