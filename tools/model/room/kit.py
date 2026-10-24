@@ -95,12 +95,15 @@ def grid(name, sx, sy, nx, ny, material, fn=None, loc=(0, 0, 0), smooth=True, uv
 
 
 def cylinder(name, r0, r1, h, loc, material, seg=32, cap=True, axis="Z"):
+    """a cylinder / cone standing on `loc` (its origin: a rotation set afterwards turns it about its base)"""
     bm = bmesh.new()
     bmesh.ops.create_cone(bm, cap_ends=cap, cap_tris=False, segments=seg, radius1=r0, radius2=r1, depth=h)
     for v in bm.verts:
         x, y, z = v.co.x, v.co.y, v.co.z + h / 2
-        v.co = Vector({"Z": (x, y, z), "X": (z, x, y), "Y": (x, z, y)}[axis]) + Vector(loc)
-    ob = from_bm(name, bm, material, True); box_uv(ob, 1.0); return ob
+        v.co = Vector({"Z": (x, y, z), "X": (z, x, y), "Y": (x, z, y)}[axis])
+    ob = from_bm(name, bm, material, True)
+    ob.location = loc; bpy.context.view_layer.update()
+    box_uv(ob, 1.0); return ob
 
 
 def quad(name, corners, material, inward, uv_scale=1.0):
