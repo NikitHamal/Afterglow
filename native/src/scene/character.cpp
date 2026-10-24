@@ -23,6 +23,17 @@ bool Character::load(const std::string& charId, const std::string& path, float t
     std::string maskFile = paths::join(dir_, id + "_skin_mask.png"), detailFile = paths::join(dir_, "skin_detail_n.png");
     if (paths::exists(maskFile)) skinMask_ = textureFromFile(maskFile, false);
     if (paths::exists(detailFile)) skinDetail_ = textureFromFile(detailFile, false);
+    // optional eye albedo next to the GLB (tools/model/native/eye_tex.py: limbal ring, richer iris, toned sclera)
+    std::string eyeFile = paths::join(dir_, id + "_eye.png");
+    if (paths::exists(eyeFile))
+        for (size_t mi = 0; mi < model.materials.size(); ++mi)
+            if (model.materials[mi].shading == Shading::Eye) {
+                GLuint t = 0;
+                auto it = toneCache_.find(eyeFile);
+                if (it != toneCache_.end()) t = it->second;
+                else if ((t = textureFromFile(eyeFile, true)) != 0) toneCache_[eyeFile] = t;
+                if (t) replaceBase(mi, t);
+            }
 
     float mn = 0.f, mx = 0.f;
     measureBindHeight(mn, mx);
@@ -204,17 +215,9 @@ bool Character::setTone(const std::string& tone) {
         if (it != toneCache_.end()) t = it->second;
         else { t = textureFromFile(file, true); toneCache_[file] = t; }
         if (!t) continue;
-        // VRAM: the override replaces the embedded albedo for good, and only the live tone stays cached
         GLuint prev = baseOverride_[mi];
-        baseOverride_[mi] = t;
+        replaceBase(mi, t);
         any = true;
-        Material& mat = model.materials[mi];
-        if (mat.texBase && mat.texBase != t) {
-            for (auto& mt : model.textures) if (mt == mat.texBase) mt = 0;
-            GLuint dead = mat.texBase;
-            for (auto& other : model.materials) if (other.texBase == dead) other.texBase = 0;
-            textureDestroy(dead);
-        }
         if (prev && prev != t) {
             bool used = false;
             for (GLuint o : baseOverride_) used = used || o == prev;
@@ -306,6 +309,18 @@ M4 Character::boneWorld(const std::string& name) const {
     int b = bone(name);
     return b >= 0 ? anim.global(b) : placement;
 }
+// VRAM: an override replaces the embedded albedo for good (only the live override stays cached)
+void Character::replaceBase(size_t mi, GLuint t) {
+    baseOverride_[mi] = t;
+    Material& mat = model.materials[mi];
+    if (mat.texBase && mat.texBase != t) {
+        for (auto& mt : model.textures) if (mt == mat.texBase) mt = 0;
+        GLuint dead = mat.texBase;
+        for (auto& other : model.materials) if (other.texBase == dead) other.texBase = 0;
+        textureDestroy(dead);
+    }
+}
+
 V3 Character::forward() const { return normalize(xformDir(placement, V3{0, 0, 1})); }
 
 }  // namespace ag

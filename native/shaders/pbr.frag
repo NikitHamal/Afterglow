@@ -57,6 +57,8 @@ uniform int u_hasDetailN;
 vec4 g_mask = vec4(0.6, 0.4, 0.5, 0.0);
 uniform vec3 u_camPos;
 uniform float u_time;
+uniform vec3 u_headUp;            // eyes: the head's frame (the lids shade the eyeball relative to the head, not the eye)
+uniform vec3 u_headFwd;
 
 uniform vec3 u_keyPos;
 uniform vec3 u_keyDir;
@@ -416,7 +418,17 @@ void main() {
         rough = clamp(rough * (1.0 - 0.38 * u_sweat * g_mask.b) * (1.0 - 0.6 * g_mask.a * u_wet), 0.2, 1.0);
         base.rgb *= mix(vec3(1.0), vec3(1.0, 0.84, 0.83), sat(u_flush) * 0.6 * g_mask.r);
     }
-    if (u_mode == 3) rough = min(rough, 0.08);
+    float eyeOcc = 1.0;
+    if (u_mode == 3) {
+        rough = min(rough, 0.08);
+        // the upper lid and its lashes shade the top of the eyeball, the lower lid a little, the corners sit deep in
+        // the socket: without this the whole ball is lit like a marble and the eyes read white and blank
+        float up = dot(N, u_headUp);
+        vec3 side = cross(u_headUp, u_headFwd);
+        float lat = abs(dot(N, side)) / max(length(side), 1e-4);
+        eyeOcc = mix(0.3, 1.0, smoothstep(0.40, 0.08, up)) * mix(0.82, 1.0, smoothstep(-0.48, -0.22, up))
+               * mix(1.0, 0.62, smoothstep(0.35, 0.8, lat));
+    }
 
     Surf s;
     s.strand = 1.0;
@@ -474,7 +486,8 @@ void main() {
     }
 
     col *= mix(1.0, ssao, 0.3);   // contact darkening on direct light (subtle)
-    ao *= ssao;
+    col *= eyeOcc;
+    ao *= ssao * eyeOcc;
     // ambient: hemisphere irradiance + cheap glossy environment
     vec3 irr = mix(u_groundColor, u_skyColor, N.y * 0.5 + 0.5) * u_ambient;
     vec3 R = reflect(-V, N);
@@ -484,7 +497,8 @@ void main() {
     float specOcc = sat(pow(NoV + ao, exp2(-16.0 * s.rough - 1.0)) - 1.0 + ao);
     vec3 diffAmb = s.albedo * (1.0 - metal) * irr * ao;
     if (u_mode == 1) diffAmb *= vec3(1.0, 0.94, 0.92);
-    vec3 specAmb = env * Fa * specOcc * (1.0 - s.rough * 0.7) * (u_mode == 3 ? 3.0 : 1.0);
+    // the eye's tear film mirrors the room only where the lids leave it open (not a milky veil over the iris)
+    vec3 specAmb = env * Fa * specOcc * (1.0 - s.rough * 0.7) * (u_mode == 3 ? eyeOcc * eyeOcc : 1.0);
     if (u_mode == 2) specAmb *= 0.12;
     if (u_mode == 6) specAmb = specAmb * g_specW * (g_aT > 0.0 ? 0.6 : 1.0) + g_sheen * irr * ao * (0.12 + 0.35 * pow(1.0 - NoV, 4.0));
     col += diffAmb + specAmb + emis;
@@ -492,9 +506,12 @@ void main() {
     if (bakedRoom) col = mix(col, bakedCol, u_bakeMix);
 
     if (u_mode == 3) {
-        // wet cornea glint from the key light
+        // wet cornea glints: a crisp catchlight from the key, a softer one from the camera-side fill, none under the lid
+        float open = smoothstep(0.45, 0.8, eyeOcc);
         vec3 Hk = normalize(Lk + V);
-        col += u_keyColor * u_keyIntensity * keyAtt * sh * pow(sat(dot(N, Hk)), 900.0) * 3.0;
+        col += u_keyColor * u_keyIntensity * keyAtt * sh * pow(sat(dot(N, Hk)), 900.0) * 3.0 * open;
+        vec3 Hf = normalize(normalize(-u_fillDir) + V);
+        col += u_fillColor * u_fillIntensity * pow(sat(dot(N, Hf)), 600.0) * 1.2 * open;
     }
     float outA = 1.0;
     if (u_pass == 1) outA = sat(alpha / max(u_cutoff, 1e-3));
