@@ -5,6 +5,8 @@
 
 namespace ag {
 
+int Animator::skinMode = 1;
+
 void Animator::init(Model* m) {
     destroy();
     model_ = m;
@@ -36,9 +38,9 @@ void Animator::init(Model* m) {
         morphUser_[i].assign(tc, -1.f);
         morphLast_[i].assign(tc, -999.f);
     }
-    // bone texture: one row per skin, 4 RGBA32F texels (matrix columns) per joint
+    // bone texture: one row per skin, kTexelsPerJoint RGBA32F texels per joint (see animator.h)
     if (!m->skins.empty()) {
-        texW_ = std::max(4, m->maxJoints * 4);
+        texW_ = std::max(kTexelsPerJoint, m->maxJoints * kTexelsPerJoint);
         texH_ = (int)m->skins.size();
         boneData_.assign((size_t)texW_ * (size_t)texH_ * 4, 0.f);
         glGenTextures(1, &boneTex_);
@@ -177,6 +179,35 @@ float Animator::morphWeight(int mesh, int target) const {
     return u >= 0.f ? u : morphAnim_[(size_t)mesh][(size_t)target];
 }
 
+// the rigid part of a skin matrix as a unit dual quaternion (real, dual), its uniform scale, and whether the joint must
+// blend linearly instead (non-uniform scale / shear / mirroring, or linear skinning asked for)
+void Animator::writeDualQuat(const M4& m, float* o) {
+    V3 c0 = m.col3(0), c1 = m.col3(1), c2 = m.col3(2);
+    float l0 = length(c0), l1 = length(c1), l2 = length(c2);
+    float sc = (l0 + l1 + l2) / 3.f;
+    Quat q;
+    bool rigid = false;
+    if (sc > 1e-6f) {
+        V3 x = c0 / std::max(l0, 1e-9f);
+        V3 y = normalize(c1 - x * dot(x, c1));
+        V3 z = cross(x, y);
+        M4 r = M4::identity();
+        r.m[0] = x.x; r.m[1] = x.y; r.m[2] = x.z;
+        r.m[4] = y.x; r.m[5] = y.y; r.m[6] = y.z;
+        r.m[8] = z.x; r.m[9] = z.y; r.m[10] = z.z;
+        q = qnormalize(quatFromM3(r));
+        float tol = 0.02f * sc;
+        rigid = std::fabs(l0 - sc) < tol && std::fabs(l1 - sc) < tol && std::fabs(l2 - sc) < tol &&
+                std::fabs(dot(c0, c1)) < tol * sc && std::fabs(dot(c1, c2)) < tol * sc && std::fabs(dot(c0, c2)) < tol * sc &&
+                dot(cross(c0, c1), c2) > 0.f;
+    }
+    V3 t = m.translation();
+    Quat d = qmul(Quat{t.x, t.y, t.z, 0.f}, q);
+    o[0] = q.x; o[1] = q.y; o[2] = q.z; o[3] = q.w;
+    o[4] = 0.5f * d.x; o[5] = 0.5f * d.y; o[6] = 0.5f * d.z; o[7] = 0.5f * d.w;
+    o[8] = sc; o[9] = (rigid && skinMode == 1) ? 0.f : 1.f; o[10] = 0.f; o[11] = 0.f;
+}
+
 void Animator::finish() {
     if (!model_) return;
     if (boneTex_) {
@@ -185,7 +216,9 @@ void Animator::finish() {
             float* row = &boneData_[s * (size_t)texW_ * 4];
             for (size_t j = 0; j < sk.joints.size(); ++j) {
                 M4 m = global_[(size_t)sk.joints[j]] * sk.invBind[j];
-                std::copy(m.m, m.m + 16, row + j * 16);
+                float* o = row + j * (size_t)kTexelsPerJoint * 4;
+                std::copy(m.m, m.m + 16, o);
+                writeDualQuat(m, o + 16);
             }
         }
         glBindTexture(GL_TEXTURE_2D, boneTex_);
