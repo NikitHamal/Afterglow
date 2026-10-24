@@ -19,6 +19,8 @@ public:
     void begin();
     void applyClip(int clipIndex, float timeSeconds, float weight, const BoneMask* mask = nullptr);
     void computeGlobals(const M4& root);
+    // final data gate before skinning: non-finite / degenerate channels fall back to rest (globals refreshed)
+    void guardPose();
     void finish();
 
     // morph weights: animated value unless a user override (>=0) exists
@@ -53,6 +55,7 @@ private:
     static void writeDualQuat(const M4& m, float* out12);
     void sampleChannel(const Channel& ch, float time, float* out) const;
     void globalOf(int n);
+    bool sanitizePose();
 
     Model* model_ = nullptr;
     struct Pose { std::vector<V3> t; std::vector<Quat> r; std::vector<V3> s; } rest_, pose_;
@@ -64,6 +67,7 @@ private:
     GLuint boneTex_ = 0;
     int texW_ = 0, texH_ = 0;
     std::vector<float> scratch_;
+    bool guardWarned_ = false;
 };
 
 }  // namespace ag

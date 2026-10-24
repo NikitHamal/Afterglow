@@ -466,6 +466,34 @@ bool Model::load(const std::string& p) {
         maxJoints = std::max(maxJoints, (int)cs.joints_count);
     }
 
+    // ---- skin guard: bad exporters occasionally leave a vertex pointing past
+    // the skin or with a non-unit influence sum.  Rebind those influences to
+    // the first joint instead of allowing an out-of-bounds bone fetch to fold
+    // the whole mesh.  The authored file remains untouched; this is the
+    // runtime copy consumed by the renderer.
+    for (size_t ni = 0; ni < nodes.size(); ++ni) {
+        const Node& node = nodes[ni];
+        if (node.mesh < 0 || node.mesh >= (int)meshes.size() || node.skin < 0 || node.skin >= (int)skins.size()) continue;
+        const Skin& skin = skins[(size_t)node.skin];
+        for (Primitive& pr : meshes[(size_t)node.mesh].prims) {
+            if (!pr.skinned || pr.joints.empty() || pr.weights.empty() || skin.joints.empty()) continue;
+            size_t nv = std::min(pr.joints.size() / 4, pr.weights.size() / 4);
+            int repaired = 0;
+            for (size_t v = 0; v < nv; ++v) {
+                float sum = 0.f;
+                for (int k = 0; k < 4; ++k) {
+                    uint16_t& j = pr.joints[v * 4 + (size_t)k];
+                    float& w = pr.weights[v * 4 + (size_t)k];
+                    if (j >= skin.joints.size() || !std::isfinite(w) || w < 0.f) { j = 0; w = 0.f; ++repaired; }
+                    sum += w;
+                }
+                if (sum < 1e-6f) { pr.joints[v * 4] = 0; pr.weights[v * 4] = 1.f; pr.weights[v * 4 + 1] = pr.weights[v * 4 + 2] = pr.weights[v * 4 + 3] = 0.f; ++repaired; }
+                else for (int k = 0; k < 4; ++k) pr.weights[v * 4 + (size_t)k] /= sum;
+            }
+            if (repaired) AG_WARN("AG: skin guard repaired %d influences in %s mesh %s", repaired, p.c_str(), meshes[(size_t)node.mesh].name.c_str());
+        }
+    }
+
     // ---- animations ----
     for (size_t ai = 0; ai < d->animations_count; ++ai) {
         const cgltf_animation& ca = d->animations[ai];

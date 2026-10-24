@@ -1,24 +1,74 @@
 #include "scene/scene.h"
 #include "core/paths.h"
 #include "core/log.h"
+#include <algorithm>
 #include <cctype>
 
 namespace ag {
 
 static std::string lowerS(std::string s) { for (auto& c : s) c = (char)std::tolower((unsigned char)c); return s; }
 
+namespace {
+// characters/models.json: each role's body and its rig contract — the bones clips, contacts and IK rely on, the
+// expression and body morphs the game drives, the bind-scale envelope. tools/model/validate_model.py checks the same
+// contract offline; at load a break is logged, never fatal (an error in the log beats an invisible character).
+const Json& modelManifest() {
+    static const Json j = [] {
+        std::string p = paths::findAsset({"characters/models.json"});
+        return p.empty() ? Json() : Json::parse(paths::readText(p));
+    }();
+    return j;
+}
+
+std::pair<std::string, float> roleAsset(const std::string& role) {
+    std::string asset = "characters/" + role + ".glb";
+    float height = role == "marcus" ? 1.83f : 1.68f;
+    const Json& cfg = modelManifest()["slots"][role];
+    if (cfg.isObject()) {
+        if (!cfg["asset"].str().empty()) asset = "characters/" + cfg["asset"].str();
+        if (cfg["height"].isNumber()) height = cfg["height"].f(height);
+    }
+    return {paths::findAsset({asset, "legacy/" + role + "/" + role + ".glb", "assets/" + role + "/" + role + ".glb"}), height};
+}
+
+int checkRig(Character& c, const std::string& role) {
+    const Json& cfg = modelManifest()["slots"][role];
+    int bad = 0;
+    const Json& req = cfg["requiredBones"];
+    for (size_t i = 0; i < req.size(); ++i)
+        if (c.bone(req[i].str()) < 0) { AG_ERROR("AG: %s: missing required bone %s", c.asset.c_str(), req[i].str().c_str()); ++bad; }
+    const Json& expr = cfg["expressionSets"];
+    for (size_t i = 0; i < expr.size(); ++i)
+        if (!c.hasMorph(expr[i].str())) { AG_ERROR("AG: %s: missing expression morph %s", c.asset.c_str(), expr[i].str().c_str()); ++bad; }
+    const Json& shapes = cfg["shapeSets"];
+    for (size_t i = 0; i < shapes.size(); ++i) {
+        const std::string n = shapes[i].str();
+        if (!c.hasMorph(n + "_up") && !c.hasMorph(n + "_dn") && !c.hasMorph(n)) { AG_ERROR("AG: %s: missing shape morphs %s", c.asset.c_str(), n.c_str()); ++bad; }
+    }
+    const Json& env = cfg["poseEnvelope"];
+    if (env["maxScale"].isNumber()) {
+        float hi = std::max(1.f, env["maxScale"].f(1.35f)), lo = 1.f / hi;
+        if (c.autoScale() < lo || c.autoScale() > hi) { AG_ERROR("AG: %s: bind scale %.3f outside [%.3f, %.3f]", c.asset.c_str(), c.autoScale(), lo, hi); ++bad; }
+    }
+    if (bad) AG_ERROR("AG: %s breaks the %s rig contract in %d places (characters/models.json)", c.asset.c_str(), role.c_str(), bad);
+    return bad;
+}
+}  // namespace
+
 bool Scene::load(const std::function<void(float, const char*)>& progress) {
     auto step = [&](float f, const char* what) { if (progress) progress(f, what); };
     step(0.02f, "Lighting the candles");
     setLocation("room");
 
-    // characters (real-scale assets preferred; legacy web GLBs are fitted to real height)
-    std::string vPath = paths::findAsset({"characters/vivian.glb", "legacy/vivian/vivian.glb", "assets/vivian/vivian.glb"});
-    std::string mPath = paths::findAsset({"characters/marcus.glb", "legacy/marcus/marcus.glb", "assets/marcus/marcus.glb"});
-    step(0.12f, "Vivian");
-    if (vPath.empty() || !vivian.load("vivian", vPath, 1.68f)) AG_ERROR("AG: Vivian not found");
-    step(0.62f, "Marcus");
-    if (mPath.empty() || !marcus.load("marcus", mPath, 1.83f)) AG_ERROR("AG: Marcus not found");
+    // character bodies: the role's GLB from characters/models.json (the rig contract), checked against it
+    for (const char* role : {"vivian", "marcus"}) {
+        bool him = role[1] == 'a';
+        step(him ? 0.62f : 0.12f, him ? "Marcus" : "Vivian");
+        Character& c = him ? marcus : vivian;
+        auto a = roleAsset(role);
+        if (a.first.empty() || !c.load(role, a.first, a.second)) { AG_ERROR("AG: %s not found", role); continue; }
+        checkRig(c, role);
+    }
     step(0.9f, "Warming up");
     hasClips = (vivian.loaded() && !vivian.model.clips.empty()) || (marcus.loaded() && !marcus.model.clips.empty());
     for (Character* c : {&vivian, &marcus}) {
@@ -198,12 +248,12 @@ void Scene::update(float dt) {
 
 
 bool Scene::loadRole(const std::string& role, const std::string& asset, const std::string& hair) {
-    bool him = role == "marcus";
-    Character& c = him ? marcus : vivian;
+    Character& c = role == "marcus" ? marcus : vivian;
     std::string want = asset.empty() ? role : asset;
     if (!c.loaded() || c.asset != want) {
-        std::string path = paths::findAsset({"characters/" + role + ".glb", "legacy/" + role + "/" + role + ".glb"});
-        if (path.empty() || !c.load(role, path, him ? 1.83f : 1.68f, want)) { AG_ERROR("AG: %s (%s) not loaded", role.c_str(), want.c_str()); return false; }
+        auto a = roleAsset(role);
+        if (a.first.empty() || !c.load(role, a.first, a.second, want)) { AG_ERROR("AG: %s (%s) not loaded", role.c_str(), want.c_str()); return false; }
+        checkRig(c, role);
         c.proc.floorY = info.bedTop;
         c.setTone("caramel");
         standingPlacement();
