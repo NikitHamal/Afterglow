@@ -6,6 +6,39 @@ Short, current, honest. Newest state at the top. Deeper history: `docs/STATUS.md
 The product is the native game in `native/` (C++17 / raylib, built only on GitHub CI). The web game in the repo
 root is legacy. Adults only (see `AGENTS.md`).
 
+## State (2026-10-24, current)
+
+**Green:** branch `agent-modular-models` is pushed through `5bbb233` (`origin/agent-modular-models`). The modular
+character contract, pose guard, nine fictional adult variants, five neutral preview shots, manifest validator, and
+the Molab-ready viewer are in that branch. Local checks pass: both shipped GLBs validate, the manifest reports
+`slots=2 variants=9 shots=5`, the browser rail passes all nine variant audits, and the preview JavaScript parses.
+The browser rail now checks morph/animation contracts, skinned bounds, bone bases, finite transforms, and auto-fits
+every shot to the sampled motion envelope. Exact sexualized replicas of identifiable people were not authored; the
+variant rail uses original adult designs.
+
+**Half done:** the new Molab rail was edited and executed in session `sess-8ksxj39rjmy208aw`, but both supplied
+notebook servers return HTTP 410 and list no active sessions. No Blender render or Molab browser audit is claimed.
+The native scene contract is pushed as `5bbb233`. The preview hardening and this continuity update are ready for the
+next remote commit. The CI workflow file remains local because the connector returns 404 for `.github/workflows`
+tree writes, and the supplied Git credential is rejected by GitHub.
+
+**Missing:** a live Molab URL/session, actual regenerated GLBs for any new topology, rendered Blender shot evidence,
+and the native CI run for the contract enforcement workflow.
+
+**Exact next step:** push `tools/model/preview/viewer.js` and this continuity update, then obtain a live Molab URL and
+run Blender regeneration plus the preview cell against branch `agent-modular-models`. Open
+`tools/model/preview/index.html`, click `Run pose audit` for each variant, and save the screenshots/JSON output before
+claiming a render pass.
+
+**Latest unit commands:**
+
+```bash
+python3 tools/model/validate_manifest.py native/assets/characters/models.json --root .
+python3 tools/model/validate_model.py native/assets/characters/vivian.glb --manifest native/assets/characters/models.json --slot vivian
+python3 tools/model/validate_model.py native/assets/characters/marcus.glb --manifest native/assets/characters/models.json --slot marcus
+node --check tools/model/preview/viewer.js
+```
+
 ## State (2026-10-23, evening)
 
 **Green:** CI builds Windows / Linux / macOS + nightly on every push (the QA-shots job was removed in `b425acd`;
