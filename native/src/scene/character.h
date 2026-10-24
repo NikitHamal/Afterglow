@@ -102,6 +102,7 @@ public:
 private:
     const BoneMask* mask(const std::string& name);
     void measureBindHeight(float& minY, float& maxY);
+    void replaceBase(size_t material, GLuint tex);
 
     bool loaded_ = false;
     float autoScale_ = 1.f, footY_ = 0.f;
