@@ -247,3 +247,106 @@ def apartment_living(common_meta, sofa, bookshelf):
 def bpy_obj(name):
     import bpy
     return bpy.data.objects[name]
+
+
+def apartment_balcony(common_meta):
+    """the balcony of four-B over the city at night: barely wide enough for two, iron railings, string lights, a
+    bistro table; French doors stand open on the lit flat behind (the camera can stand inside and look out)"""
+    import city
+    H = 2.6
+    BX, BY0, BY1 = 1.7, -1.3, 0.35            # the balcony: x in [-BX, BX], y in [BY0 (the facade), BY1 (the rail)]
+    IR = (-2.6, 2.6, -4.6, BY0 - 0.14)          # the flat behind the facade
+    DOOR = (-1.0, 1.0, 2.3)                     # the French doors' opening: x0, x1, height
+    TX.tiles(K.tex("pavers.jpg"), K.tex("pavers_n.jpg"), color=(0.52, 0.47, 0.42), grout=(0.32, 0.30, 0.28), n=4)
+    TX.plaster(K.tex("render.jpg"), K.tex("render_n.jpg"), color=(0.62, 0.58, 0.54))
+    TX.plaster(K.tex("wall.jpg"), K.tex("wall_n.jpg"), color=(0.84, 0.82, 0.78))
+    TX.wood_planks(K.tex("floor.jpg"), K.tex("floor_n.jpg"), base=(0.40, 0.27, 0.16))
+    TX.fabric(K.tex("sofa.jpg"), K.tex("sofa_n.jpg"), (0.36, 0.40, 0.44), weave=120, sheen=0.08, seed=21)
+    M = dict(
+        pavers=K.mat("place_pavers", K.tex("pavers.jpg"), K.tex("pavers_n.jpg"), rough=0.7),
+        render=K.mat("place_render", K.tex("render.jpg"), K.tex("render_n.jpg"), rough=0.9),
+        wall=K.mat("place_wall", K.tex("wall.jpg"), K.tex("wall_n.jpg"), rough=0.9),
+        floor=K.mat("place_floor", K.tex("floor.jpg"), K.tex("floor_n.jpg"), rough=0.45),
+        ceiling=K.mat("place_ceiling", color=(0.86, 0.85, 0.82), rough=0.95),
+        soffit=K.mat("place_soffit", color=(0.55, 0.52, 0.49), rough=0.9),
+        trim=K.mat("place_trim", color=(0.15, 0.15, 0.16), rough=0.45),
+        iron=K.mat("place_iron", color=(0.05, 0.05, 0.05), rough=0.5),
+        rail=K.mat("place_rail", color=(0.06, 0.06, 0.06), rough=0.45),
+        glass=K.mat("place_glass", color=(0.18, 0.22, 0.26), rough=0.08),
+        sofa=K.mat("place_sofa", K.tex("sofa.jpg"), K.tex("sofa_n.jpg"), rough=0.85),
+        pot=K.mat("place_pot", color=(0.55, 0.30, 0.20), rough=0.7),
+        leaf=K.mat("place_leaf", color=(0.10, 0.22, 0.08), rough=0.6),
+        wood=K.mat("place_wood", K.tex("floor.jpg"), K.tex("floor_n.jpg"), rough=0.4),
+        bulb=K.mat("place_bulb", color=(1.0, 0.85, 0.6), emit=(1.0, 0.72, 0.42), emit_strength=10.0, baked=False),
+        glow=K.mat("place_glow", color=(1.0, 0.9, 0.75), emit=(1.0, 0.78, 0.52), emit_strength=2.5, baked=False),
+    )
+    # the balcony slab (its edge shows), the facade with the French doors, the soffit of the balcony above
+    EL.floor_rect("balcony_floor", -BX, BX, BY0, BY1, 0.0, M["pavers"], uv=0.9)
+    K.box("balcony_edge", (2 * BX + 0.1, 0.12, 0.18), (0.0, BY1 + 0.06, -0.09), M["render"], bevel=0.01)
+    EL.floor_rect("balcony_soffit", -BX, BX, BY0, BY1 + 0.12, H + 0.25, M["soffit"], up=False)
+    EL.wall_span("facade", "-Y", BY0, -BX - 0.6, BX + 0.6, -0.2, H + 0.4, M["render"], holes=[(DOOR[0], DOOR[1], 0.0, DOOR[2])])
+    F = EL.WallFrame("-Y", BY0)
+    for k, (a0, a1) in enumerate(((DOOR[0] - 0.06, DOOR[0]), (DOOR[1], DOOR[1] + 0.06))):
+        F.box(f"doorframe_{k}", a0, a1, -0.14, 0.02, 0.0, DOOR[2] + 0.06, M["trim"])
+    F.box("doorframe_head", DOOR[0] - 0.06, DOOR[1] + 0.06, -0.14, 0.02, DOOR[2], DOOR[2] + 0.06, M["trim"])
+    for k, (hx, sgn) in enumerate(((DOOR[0], 1), (DOOR[1], -1))):          # the two leaves swung open onto the balcony
+        x = hx - sgn * 0.03
+        for nm, y0, y1, z0, z1 in (("stile_a", 0.0, 0.07, 0.0, DOOR[2] - 0.02), ("stile_b", 0.89, 0.96, 0.0, DOOR[2] - 0.02),
+                                   ("rail_b", 0.0, 0.96, 0.0, 0.18), ("rail_m", 0.0, 0.96, 1.0, 1.05), ("rail_t", 0.0, 0.96, DOOR[2] - 0.09, DOOR[2] - 0.02)):
+            K.box(f"french_{k}_{nm}", (0.05, y1 - y0, z1 - z0), (x, BY0 + (y0 + y1) / 2, (z0 + z1) / 2), M["trim"], bevel=0.004)
+        K.box(f"french_glass_{k}", (0.012, 0.82, DOOR[2] - 0.29), (x, BY0 + 0.48, (0.18 + DOOR[2] - 0.09) / 2), M["glass"])
+    # railings: front and sides (balusters + a flat iron handrail), a planter box along the front
+    EL.balustrade("rail_front", (-BX + 0.03, BY1 - 0.03), (BX - 0.03, BY1 - 0.03), M, h=1.05, spacing=0.11)
+    EL.balustrade("rail_left", (-BX + 0.03, BY0 + 0.05), (-BX + 0.03, BY1 - 0.03), M, h=1.05, spacing=0.11)
+    EL.balustrade("rail_right", (BX - 0.03, BY0 + 0.05), (BX - 0.03, BY1 - 0.03), M, h=1.05, spacing=0.11)
+    for k, x in enumerate((-1.3, 1.25)):
+        EL.plant(f"plant_{k}", x, BY0 + 0.3, M, tall=0.9, blades=11, broad=k == 1)
+    # a bistro table and two folding chairs at the right end, out of the standing marks
+    tbl = EL.table("bistro", 1.35, -0.05, M, w=0.6, d=0.6, h=0.72, top="wood", legs="iron")   # clear of the open leaf
+    EL.chair("bistro_chair_a", 1.35, -0.62, (0, 1), M, seat="wood", frame="iron")
+    # string lights: warm bulbs drooping from the facade to the soffit corners
+    bulbs = []
+    for k in range(13):
+        t = k / 12
+        x = -BX + 0.1 + t * (2 * BX - 0.2)
+        y = BY1 - 0.1
+        z = H + 0.05 - 0.28 * math.sin(math.pi * t)
+        K.cylinder(f"string_bulb_{k}", 0.025, 0.025, 0.05, (x, y, z - 0.05), M["bulb"], seg=12)
+        bulbs.append(Vector((x, y, z - 0.03)))
+    # the flat behind: floor, walls, a sofa back and a lamp (the reverse view)
+    EL.floor_rect("flat_floor", IR[0], IR[1], IR[2], IR[3], 0.0, M["floor"], uv=0.7)
+    EL.floor_rect("flat_ceiling", IR[0], IR[1], IR[2], IR[3], H, M["ceiling"], up=False)
+    EL.wall_span("flat_back", "-Y", IR[2], IR[0], IR[1], 0.0, H, M["wall"])
+    EL.wall_span("flat_left", "-X", IR[0], IR[2], IR[3], 0.0, H, M["wall"])
+    EL.wall_span("flat_right", "+X", IR[1], IR[2], IR[3], 0.0, H, M["wall"])
+    EL.wall_span("flat_front", "+Y", IR[3], IR[0], IR[1], 0.0, H, M["wall"], holes=[(DOOR[0], DOOR[1], 0.0, DOOR[2])])
+    K.box("flat_sofa", (2.0, 0.9, 0.45), (0.0, IR[2] + 0.6, 0.225), M["sofa"], bevel=0.05, segs=3)
+    K.box("flat_sofa_back", (2.0, 0.25, 0.5), (0.0, IR[2] + 0.2, 0.7), M["sofa"], bevel=0.05, segs=3)
+    lampI = Vector((-1.9, IR[2] + 0.5, 1.45))
+    K.cylinder("flat_lamp_pole", 0.012, 0.012, 1.4, (lampI.x, lampI.y, 0.0), M["iron"], seg=10)
+    K.cylinder("flat_lamp_shade", 0.2, 0.15, 0.26, (lampI.x, lampI.y, 1.35), M["glow"], seg=32, cap=False)
+    lantern = Vector((DOOR[1] + 0.35, BY0 + 0.1, 2.05))
+    K.box("lantern_plate", (0.14, 0.02, 0.2), (lantern.x, BY0 + 0.01, lantern.z), M["iron"])
+    K.cylinder("lantern_glass", 0.07, 0.07, 0.2, (lantern.x, lantern.y, lantern.z - 0.1), M["glow"], seg=20)
+    city.build_city((0.0, BY1 + 0.15, 0.0), (0, 1), drop=12.0, width=80.0)
+    # light: the lantern by the doors (the key), the string lights, the flat's lamp through the doors, the city
+    key = K.light("SPOT", "lamp_key", tuple(lantern + Vector((0, 0.1, 0.05))), (1.0, 0.74, 0.48), 0.0, 0.1, spot=math.radians(120))
+    K.aim(key, (0.0, -0.3, 0.9))
+    K.light("POINT", "lamp_0", tuple(lantern + Vector((0, 0.12, -0.05))), (1.0, 0.72, 0.45), 20.0, 0.06)
+    K.light("POINT", "lamp_1", tuple(bulbs[4]), (1.0, 0.72, 0.42), 9.0, 0.05)
+    K.light("POINT", "lamp_2", tuple(bulbs[9]), (1.0, 0.72, 0.42), 9.0, 0.05)
+    K.light("POINT", "lamp_3", tuple(lampI - Vector((0, 0, 0.1))), (1.0, 0.7, 0.42), 40.0, 0.1)
+    K.light("AREA", "flat_wash", (0.0, IR[2] + 1.6, H - 0.05), (1.0, 0.8, 0.6), 50.0, size=1.2)
+    K.light("AREA", "city_glow", (0.0, BY1 + 6.0, 1.0), (0.55, 0.62, 0.95), 600.0, rot=(math.radians(-90), 0, 0), size=12.0)
+    K.light("SUN", "moon", (0, 8, 8), (0.55, 0.62, 0.95), 0.25, rot=(math.radians(50), 0, math.radians(180)))
+    meta = common_meta("apartment", "evening", lantern, Vector((0.0, BY1 + 2.0, 1.4)), (-1.55, -4.3, 0.15), (1.55, 0.2, 2.45), (-1.1, 1.1, -1.2, 0.3))
+    meta["anchors"] = {
+        "rail": anchor(0.0, BY1 - 0.35, 0.0, (0, 1)), "rail_l": anchor(-0.35, BY1 - 0.35, 0.0, (0, 1)),
+        "rail_r": anchor(0.35, BY1 - 0.35, 0.0, (0, 1)), "doorway": anchor(0.0, BY0 - 0.2, 0.0, (0, 1)),
+        "bistro_table": anchor(tbl.x, tbl.y, tbl.z, (0, -1)), "railing_top": anchor(0.0, BY1 - 0.03, 1.07, (0, 1)),
+    }
+    engine = {"lamp_key": 120.0, "lamp_0": 0.4, "lamp_1": 0.12, "lamp_2": 0.12, "lamp_3": 0.4, "moon": 0.25,
+              "flat_wash": None, "city_glow": None}
+    previews = [("stand", (0.25, -3.2, 1.55), (0.0, 1.5, 1.2)), ("side", (-1.4, -1.1, 1.6), (1.2, 1.0, 0.9)),
+                ("city", (0.0, -0.8, 1.6), (0.0, 20.0, -2.0))]
+    return meta, engine, previews
