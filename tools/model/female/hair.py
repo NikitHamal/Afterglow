@@ -271,6 +271,7 @@ for i, wk in enumerate(vw):
         vg = groups.get(g) or hair.vertex_groups.new(name=g); groups[g] = vg
         vg.add([i], float(w), "REPLACE")
 hair.parent = rig; am = hair.modifiers.new("Armature", "ARMATURE"); am.object = rig
+am.use_deform_preserve_volume = True   # dual quaternion, as the engine skins (mesh.vert)
 log(f"hair mesh: {len(faces)} card quads ({2*len(faces)} tris), {len(verts)} verts, {NCH} physics chains")
 
 # material: neutral strands x tint, alpha clip

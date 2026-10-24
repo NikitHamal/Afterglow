@@ -102,6 +102,7 @@ Image.fromarray(np.clip((n * 0.5 + 0.5) * 255, 0, 255).astype(np.uint8)).save(TE
 hair = bpy.data.objects.new("marcus_hair", mesh); bpy.context.scene.collection.objects.link(hair)
 g = hair.vertex_groups.new(name="head"); g.add(list(range(len(P2))), 1.0, "REPLACE")
 hair.parent = rig; am = hair.modifiers.new("Armature", "ARMATURE"); am.object = rig
+am.use_deform_preserve_volume = True   # dual quaternion, as the engine skins (mesh.vert)
 def hex_lin(hx):
     cc = np.array([int(hx[i:i + 2], 16) for i in (1, 3, 5)]) / 255.0
     return tuple(np.where(cc <= 0.04045, cc / 12.92, ((cc + 0.055) / 1.055) ** 2.4))

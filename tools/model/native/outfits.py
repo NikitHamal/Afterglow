@@ -115,6 +115,7 @@ def make(style, layer, mask, off, color, rough, kind):
             nk = ob.shape_key_add(name=kb.name, from_mix=False); nk.data.foreach_set("co", (P + d).ravel())
     ob.parent = arm; ob.matrix_parent_inverse.identity()
     am = ob.modifiers.new("Armature", "ARMATURE"); am.object = arm
+    am.use_deform_preserve_volume = True   # dual quaternion, as the engine skins (mesh.vert)
     ob.data.materials.append(fabric_mat(f"{WHO}_outfit_{style}_{layer}", color, rough, kind))
     lower = BOTTOMS.get(style) if layer == "outer" else None
     if lower:                                                 # separate trousers / jeans colour below the waist
