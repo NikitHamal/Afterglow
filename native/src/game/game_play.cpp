@@ -578,11 +578,28 @@ void Game::presentPlay(float dt) {
     postVigAdd_ = 0.08f * him + 0.08f * glow;
     postExpMul_ = 1.f + 0.06f * glow;
 
+    v.postHook = nullptr;
+    if (p.id == "oral" && (std::fabs(oralWristL_) > 1e-4f || std::fabs(oralWristR_) > 1e-4f) && v.loaded()) {
+        v.postHook = [this](Animator& a) {
+            for (const char* s : {".L", ".R"}) {
+                float ang = s[1] == 'L' ? oralWristL_ : oralWristR_;
+                if (std::fabs(ang) < 1e-4f) continue;
+                int w = a.model()->findNode(std::string("手首") + s), e = a.model()->findNode(std::string("ひじ") + s);
+                if (w < 0 || e < 0) continue;
+                V3 ax = a.global(w).translation() - a.global(e).translation();
+                if (length(ax) < 1e-4f) continue;
+                a.setWorldRot(w, qnormalize(qmul(qaxis(normalize(ax), ang), a.worldRot(w))));
+                a.recomputeSubtree(w);
+            }
+        };
+    }
     // the oral correction target: the lips on the shaft axis, the face turned back along it; depth is the authored
     // 0..75 mm travel toward the root (the tip just inside the lips at the entrance)
     v.oralW = 0.f;
     if (p.id == "oral" && v.loaded() && m.loaded()) {
-        V3 root = m.bonePos("竿根"), end = m.bonePos("竿端");
+        // the visible glans is skinned to 竿先; 竿端 is a helper chain with no skin weights, so it can drift away
+        V3 root = m.bonePos("竿根");
+        V3 end = xformPoint(m.boneWorld("竿先"), V3{0.f, 0.0864f, -0.0063f});
         V3 axis = end - root;
         float len = length(axis);
         if (len > 1e-3f) {

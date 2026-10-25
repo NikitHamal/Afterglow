@@ -496,7 +496,10 @@ void Game::render(int w, int h) {
         const bool shown[2] = {scene.showVivian, scene.showMarcus};
         if (qaNoActors_) scene.showVivian = scene.showMarcus = false;   // UI layout shots: the room only
         if (qaHideMarcus_) scene.showMarcus = false;                    // QA: her hips / vulva alone
+        bool hiddenGenitals = scene.marcus.hideGenitals;
+        if (qaHideGenitals_) scene.marcus.hideGenitals = true;          // QA: identify the genital mesh in a close-up
         renderer.render(scene, cam_, w, h, time_);
+        scene.marcus.hideGenitals = hiddenGenitals;
         scene.showVivian = shown[0]; scene.showMarcus = shown[1];
         lastRenderW_ = w; lastRenderH_ = h;
         if (renderer.uiBlur) ++blurFresh_;   // blur of this screen's own scene exists now
@@ -606,7 +609,7 @@ void Game::reset() {
     holdDepth_ = false;
     autoplay_ = false;
     qaNoActors_ = false;
-    qaStress_.clear(); qaFocus_.clear(); qaNoUi_ = false; qaKiss_ = false; qaOral_ = false; oralOpen_ = 2.2f; qaHideMarcus_ = false; qaOrbit_ = false;
+    qaStress_.clear(); qaFocus_.clear(); qaNoUi_ = false; qaKiss_ = false; qaOral_ = false; oralOpen_ = 2.2f; qaHideMarcus_ = false; qaHideGenitals_ = false; oralWristL_ = 0.f; oralWristR_ = -1.5708f; qaOrbit_ = false;
     Animator::skinMode = 1;
     JointLimits::enabled = true;
     JointLimits::log = false;
@@ -662,6 +665,9 @@ void Game::applySpec(const Spec& s) {
     qaOral_ = s.has("oralqa");
     oralOpen_ = s.num("oralopen", 2.2f);
     qaHideMarcus_ = s.has("hidehim") && s.num("hidehim", 1.f) > 0.5f;
+    qaHideGenitals_ = s.has("hidegenitals") && s.num("hidegenitals", 1.f) > 0.5f;
+    oralWristL_ = s.num("oralwristl", 0.f);
+    oralWristR_ = s.num("oralwristr", -1.5708f);
     qaOrbit_ = s.has("orbit");
     if (qaOrbit_) {
         qaOYaw_ = 0.f; qaOPitch_ = 0.f; qaODist_ = 1.2f;

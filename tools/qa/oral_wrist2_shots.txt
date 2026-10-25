@@ -1,0 +1,6 @@
+# engine r3: independent oral wrist corrections, right hand first, then left variants
+ow2_r0_l0|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=fpv;ui=0;frames=50;render_from=48
+ow2_rm90_l0|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=fpv;ui=0;frames=50;render_from=48;oralwristr=-1.5708
+ow2_rm90_lp90|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=fpv;ui=0;frames=50;render_from=48;oralwristr=-1.5708;oralwristl=1.5708
+ow2_rm90_lm90|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=fpv;ui=0;frames=50;render_from=48;oralwristr=-1.5708;oralwristl=-1.5708
+ow2_rm90_l180|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=fpv;ui=0;frames=50;render_from=48;oralwristr=-1.5708;oralwristl=3.1416

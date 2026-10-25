@@ -1,0 +1,4 @@
+# engine r3: final oral side and first-person with the right wrist corrected
+og_side|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;ui=0;frames=60;render_from=58;oralqa=1
+og_fpv|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=fpv;ui=0;frames=60;render_from=58;oralqa=1
+og_face|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;focus=v:頭;view=yaw:90,pitch:2,dist:0.85;ui=0;frames=60;render_from=58;oralqa=1

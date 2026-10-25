@@ -18,7 +18,8 @@ void Game::oralQa() {
     if (!v.loaded() || !m.loaded() || !scene.showVivian || !scene.showMarcus) return;
     V3 mv, mn, nv, nn;
     if (!v.touch.zoneWorld(v.anim, Zone::Mouth, mv, mn) || !v.touch.zoneWorld(v.anim, Zone::Nose, nv, nn)) return;
-    V3 root = m.bonePos("竿根"), end = m.bonePos("竿端");
+    V3 root = m.bonePos("竿根");
+    V3 end = xformPoint(m.boneWorld("竿先"), V3{0.f, 0.0864f, -0.0063f});
     V3 axis = end - root;
     float len = length(axis);
     if (len < 1e-4f) return;
