@@ -322,6 +322,24 @@ void TouchRig::apply(Animator& a, const TouchGoals& goals, const JointLimits* ro
             solveArm(a, arms_[s], *gs[s]);
 }
 
+// close both hands around whatever they are holding: each finger turns about the palm's own knuckle axis
+void TouchRig::curlHands(Animator& a, float amount) {
+    for (int side = 0; side < 2; ++side) {
+        const Arm& arm = arms_[side];
+        if (arm.middle0 < 0 || arm.index1 < 0 || arm.pinky1 < 0) continue;
+        V3 W = P(a, arm.wrist);
+        V3 fw = normalize(P(a, arm.middle0) - W);
+        V3 lw = normalize(P(a, arm.pinky1) - P(a, arm.index1));
+        V3 palm = normalize(cross(fw, lw)) * arm.side;
+        V3 axis = cross(fw, palm);
+        if (length(axis) < 1e-4f) continue;
+        axis = normalize(axis);
+        for (int fi = 0; fi < 4; ++fi)
+            for (size_t k = 0; k < arm.fingers[fi].size(); ++k)
+                rotateWorld(a, arm.fingers[fi][k], qaxis(axis, amount * (k == 0 ? 0.7f : 1.f)));
+    }
+}
+
 // a hand laid on a partner, inside the joint ranges: the elbow bends about its own hinge only (the shoulder -> wrist
 // distance fixes the angle), the whole arm then turns about the shoulder -> wrist line until the elbow points where the
 // goal wants it, as far as the upper arm's twist range allows. The palm (solveArm) splits its turn between the forearm

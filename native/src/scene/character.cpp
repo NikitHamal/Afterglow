@@ -302,6 +302,7 @@ void Character::update(float dt) {
     if (oralW > 0.001f) oralIK(anim);
     if (touch.ready() && (touchGoals.left.active || touchGoals.right.active)) touch.apply(anim, touchGoals, &rom);
     else touch.contacts.clear();
+    if (touch.ready() && oralW > 0.001f && std::fabs(oralCurl) > 1e-3f) touch.curlHands(anim, oralCurl);
     rom.apply(anim);           // no layer may bend a joint past its range (clips are inside it by construction)
     anim.guardPose();          // last gate: no NaN, zero scale or broken quaternion reaches the skin
     anim.finish();

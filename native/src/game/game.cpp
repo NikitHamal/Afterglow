@@ -609,7 +609,7 @@ void Game::reset() {
     holdDepth_ = false;
     autoplay_ = false;
     qaNoActors_ = false;
-    qaStress_.clear(); qaFocus_.clear(); qaNoUi_ = false; qaKiss_ = false; qaOral_ = false; oralOpen_ = 2.2f; qaHideMarcus_ = false; qaHideGenitals_ = false; oralWristL_ = 0.f; oralWristR_ = -1.5708f; qaOrbit_ = false;
+    qaStress_.clear(); qaFocus_.clear(); qaNoUi_ = false; qaKiss_ = false; qaOral_ = false; oralOpen_ = 2.2f; qaHideMarcus_ = false; qaHideGenitals_ = false; oralWristL_ = 0.f; oralWristR_ = -1.5708f; oralCurl_ = 0.35f; oralGrip_ = true; qaOrbit_ = false;
     Animator::skinMode = 1;
     JointLimits::enabled = true;
     JointLimits::log = false;
@@ -668,6 +668,8 @@ void Game::applySpec(const Spec& s) {
     qaHideGenitals_ = s.has("hidegenitals") && s.num("hidegenitals", 1.f) > 0.5f;
     oralWristL_ = s.num("oralwristl", 0.f);
     oralWristR_ = s.num("oralwristr", -1.5708f);
+    oralCurl_ = s.num("oralcurl", 0.35f);
+    oralGrip_ = s.num("oralgrip", 1.f) > 0.5f;
     qaOrbit_ = s.has("orbit");
     if (qaOrbit_) {
         qaOYaw_ = 0.f; qaOPitch_ = 0.f; qaODist_ = 1.2f;

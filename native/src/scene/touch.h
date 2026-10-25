@@ -63,6 +63,7 @@ public:
     // IK + fingers onto the zones (runs after the procedural layers); fills `contacts`. With the character's joint
     // ranges, hands laid on a partner (world goals) are solved inside them (hinge elbows, twist in range)
     void apply(Animator& a, const TouchGoals& goals, const JointLimits* rom = nullptr);
+    void curlHands(Animator& a, float amount);
 
     struct Contact { V3 c; float r; };
     std::vector<Contact> contacts;       // finger/palm spheres in world space (soft-tissue dents)

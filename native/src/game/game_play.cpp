@@ -424,6 +424,36 @@ void Game::presentPlay(float dt) {
         } else if (p.canTouch && rub_ > 0.02f) {
             tg.right.active = true; tg.right.zone = Zone::Vulva; tg.right.weight = 0.95f * rub_; tg.right.phase = rubPhase_;
             tg.right.amplitude = 0.012f; tg.right.curl = 0.28f; tg.right.press = 0.004f;
+        } else if (p.id == "oral" && oralGrip_ && m.loaded()) {
+            float lenUp = clampf(m.morph("length_up"), 0.f, 1.f);
+            V3 root = m.bonePos("竿根");
+            V3 tip = xformPoint(m.boneWorld("竿先"), V3{0.f, 0.08832f + 0.0288f * lenUp, -0.00583f});
+            V3 ax = tip - root;
+            if (length(ax) > 1e-3f) {
+                ax = normalize(ax);
+                auto grip = [&](HandGoal& g, const char* side, float along, float elbowSide) {
+                    V3 shoulder = v.bonePos(std::string("腕") + side);
+                    V3 at = root + ax * along;
+                    V3 out = shoulder - at;
+                    out = out - ax * dot(out, ax);
+                    if (length(out) < 1e-3f) out = V3{elbowSide, 0.f, 0.f};
+                    out = normalize(out);
+                    g.active = true;
+                    g.world = true;
+                    g.weight = 1.f;
+                    g.pos = at + out * 0.025f;
+                    g.normal = out;
+                    g.along = ax;
+                    g.flat = true;
+                    g.palmLift = 0.006f;
+                    g.curl = 0.9f;
+                    g.press = 0.f;
+                    g.dent = false;
+                    g.elbowHint = out * 0.65f + V3{0.f, 0.15f, 0.f};
+                };
+                grip(tg.left, ".L", length(tip - root) * 0.32f, -1.f);
+                grip(tg.right, ".R", length(tip - root) * 0.46f, 1.f);
+            }
         }
         v.touchGoals = tg;
         // sensitivity by zone: vulva 1, breast 0.55
@@ -579,7 +609,7 @@ void Game::presentPlay(float dt) {
     postExpMul_ = 1.f + 0.06f * glow;
 
     v.postHook = nullptr;
-    if (p.id == "oral" && (std::fabs(oralWristL_) > 1e-4f || std::fabs(oralWristR_) > 1e-4f) && v.loaded()) {
+    if (p.id == "oral" && !oralGrip_ && (std::fabs(oralWristL_) > 1e-4f || std::fabs(oralWristR_) > 1e-4f) && v.loaded()) {
         v.postHook = [this](Animator& a) {
             for (const char* s : {".L", ".R"}) {
                 float ang = s[1] == 'L' ? oralWristL_ : oralWristR_;
@@ -597,9 +627,11 @@ void Game::presentPlay(float dt) {
     // 0..75 mm travel toward the root (the tip just inside the lips at the entrance)
     v.oralW = 0.f;
     if (p.id == "oral" && v.loaded() && m.loaded()) {
-        // the visible glans is skinned to 竿先; 竿端 is a helper chain with no skin weights, so it can drift away
+        // The visible glans is skinned to 竿先 and its surface tip moves forward with the length morph. The 竿端
+        // helper has no skin weights; using it left the lips behind the rendered glans on large custom sizes.
+        float lenUp = clampf(m.morph("length_up"), 0.f, 1.f);
         V3 root = m.bonePos("竿根");
-        V3 end = xformPoint(m.boneWorld("竿先"), V3{0.f, 0.0864f, -0.0063f});
+        V3 end = xformPoint(m.boneWorld("竿先"), V3{0.f, 0.08832f + 0.0288f * lenUp, -0.00583f});
         V3 axis = end - root;
         float len = length(axis);
         if (len > 1e-3f) {
@@ -607,6 +639,7 @@ void Game::presentPlay(float dt) {
             v.oralTarget = end - axis * (0.003f + 0.072f * clamp01(depth_));
             v.oralFace = axis * -1.f;
             v.oralW = 1.f;
+            v.oralCurl = oralGrip_ ? 0.f : oralCurl_;
         }
     }
     scene.update(dt * slowmo_);
