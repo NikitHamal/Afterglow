@@ -455,7 +455,7 @@ void Game::presentPlay(float dt) {
         v.setMorph("moan", clamp01(moanPulse_ * (0.25f + 0.7f * her) + 0.85f * climaxH + voiceOpen + 0.55f * beatMouth_));
         v.setMorph("smile", clamp01(0.12f + 0.35f * night_.connection * (1.f - her) + 0.5f * smilePulse_ + 0.6f * std::exp(-afterT_ * 0.2f) * (night_.finished ? 1.f : 0.f)));
         v.setMorph("kiss", clamp01(embrace_ * 0.8f));
-        if (v.hasMorph("oral")) v.setMorph("oral", p.id == "oral" ? 1.f : 0.f);
+        if (v.hasMorph("oral")) v.setMorph("oral", p.id == "oral" ? std::max(1.f, oralOpen_) : 0.f);
         // the v3 face: her lip bitten as it builds, a gasp when a touch lands, the climax face, bliss afterwards
         float after = night_.finished ? std::exp(-afterT_ * 0.12f) : 0.f;
         v.setMorph("bite_lip", clamp01((smoothstepF(0.45f, 0.8f, her) * (0.35f + 0.25f * std::sin(time_ * 0.7f)) * (1.f - climaxH)) * (1.f - moanPulse_)));

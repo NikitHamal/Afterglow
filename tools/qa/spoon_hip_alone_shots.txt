@@ -1,0 +1,4 @@
+# engine r3: her pelvis alone in the spoon (his body hidden), for hip and vulva inspection
+hip_front|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;hidehim=1;focus=v:下半身;view=yaw:0,pitch:5,dist:1.15;ui=0;frames=45;render_from=43
+hip_back|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;hidehim=1;focus=v:下半身;view=yaw:180,pitch:5,dist:1.15;ui=0;frames=45;render_from=43
+hip_side|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;hidehim=1;focus=v:下半身;view=yaw:90,pitch:5,dist:1.15;ui=0;frames=45;render_from=43

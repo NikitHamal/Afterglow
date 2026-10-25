@@ -1,0 +1,6 @@
+# engine r3: mouth aperture on the actual face, front portrait
+mf_10|screen=customize;tab=her;outfit=sundress_bikini;portrait=1;turn=0;face=oral:1;ui=0;frames=24;render_from=22
+mf_18|screen=customize;tab=her;outfit=sundress_bikini;portrait=1;turn=0;face=oral:1.8;ui=0;frames=24;render_from=22
+mf_22|screen=customize;tab=her;outfit=sundress_bikini;portrait=1;turn=0;face=oral:2.2;ui=0;frames=24;render_from=22
+mf_27|screen=customize;tab=her;outfit=sundress_bikini;portrait=1;turn=0;face=oral:2.7;ui=0;frames=24;render_from=22
+mf_27m|screen=customize;tab=her;outfit=sundress_bikini;portrait=1;turn=0;face=oral:2.7,moan:0.5;ui=0;frames=24;render_from=22

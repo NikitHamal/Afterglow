@@ -495,6 +495,7 @@ void Game::render(int w, int h) {
     else {
         const bool shown[2] = {scene.showVivian, scene.showMarcus};
         if (qaNoActors_) scene.showVivian = scene.showMarcus = false;   // UI layout shots: the room only
+        if (qaHideMarcus_) scene.showMarcus = false;                    // QA: her hips / vulva alone
         renderer.render(scene, cam_, w, h, time_);
         scene.showVivian = shown[0]; scene.showMarcus = shown[1];
         lastRenderW_ = w; lastRenderH_ = h;
@@ -605,7 +606,7 @@ void Game::reset() {
     holdDepth_ = false;
     autoplay_ = false;
     qaNoActors_ = false;
-    qaStress_.clear(); qaFocus_.clear(); qaNoUi_ = false; qaKiss_ = false; qaOral_ = false; qaOrbit_ = false;
+    qaStress_.clear(); qaFocus_.clear(); qaNoUi_ = false; qaKiss_ = false; qaOral_ = false; oralOpen_ = 2.2f; qaHideMarcus_ = false; qaOrbit_ = false;
     Animator::skinMode = 1;
     JointLimits::enabled = true;
     JointLimits::log = false;
@@ -659,6 +660,8 @@ void Game::applySpec(const Spec& s) {
     }
     qaKiss_ = s.has("kissqa");
     qaOral_ = s.has("oralqa");
+    oralOpen_ = s.num("oralopen", 2.2f);
+    qaHideMarcus_ = s.has("hidehim") && s.num("hidehim", 1.f) > 0.5f;
     qaOrbit_ = s.has("orbit");
     if (qaOrbit_) {
         qaOYaw_ = 0.f; qaOPitch_ = 0.f; qaODist_ = 1.2f;
