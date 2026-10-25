@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <vector>
@@ -164,7 +165,7 @@ bool httpGet(const std::string& url, std::string& body, std::string& err) {
 
 bool httpDownload(const std::string& url, const std::string& file, std::atomic<long long>& got, std::atomic<long long>& total,
                   std::atomic<bool>& cancel, std::string& err) {
-    std::ofstream f(widen(file), std::ios::binary | std::ios::trunc);
+    std::ofstream f(std::filesystem::u8path(file), std::ios::binary | std::ios::trunc);
     if (!f) { err = "cannot write " + file; return false; }
     long long len = 0;
     got = 0;
