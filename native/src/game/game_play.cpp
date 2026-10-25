@@ -652,9 +652,9 @@ void Game::presentPlay(float dt) {
         float len = length(axis);
         if (len > 1e-3f) {
             axis = axis * (1.f / len);
-            // the lip ring's centre (not the upper-lip front) rides the shaft: 20 mm of entrance puts the glans
-            // just inside the lips at depth 0, and the stroke carries it to 80 mm
-            v.oralTarget = end - axis * (0.020f + 0.060f * clamp01(depth_));
+            // the lip ring's centre rides the shaft; the max-size glans is ~42 mm long, so the shallow end must
+            // already sit past it (50 mm) or the glans pops out onto her nose at the bottom of every stroke
+            v.oralTarget = end - axis * (0.050f + 0.040f * clamp01(depth_));
             if (std::fabs(oralUp_) > 1e-5f) {
                 V3 headUp = qrotate(v.anim.worldRot(v.bone("頭")), v.procedural.headUpLocal());
                 v.oralTarget = v.oralTarget + headUp * oralUp_;
