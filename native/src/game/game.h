@@ -127,6 +127,7 @@ private:
     float oralWristL_ = 0.f, oralWristR_ = -1.5708f;   // pronation correction per hand (radians)
     float oralCurl_ = 0.35f;                            // close the oral hand fingers around the shaft
     bool oralGrip_ = true;                              // solve both oral hands onto the shaft instead of the baked splay
+    float oralUp_ = 0.012f;                             // lift the lip target toward the open mouth's centre
     void oralQa();
     bool qaOrbit_ = false;            // story QA: orbit=yaw:,pitch:,dist: round the couple's heads (yaw 0 = the kiss in profile)
     float qaOYaw_ = 0.f, qaOPitch_ = 0.f, qaODist_ = 1.2f;
