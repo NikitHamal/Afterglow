@@ -578,7 +578,22 @@ void Game::presentPlay(float dt) {
     postVigAdd_ = 0.08f * him + 0.08f * glow;
     postExpMul_ = 1.f + 0.06f * glow;
 
+    // the oral correction target: the lips on the shaft axis, the face turned back along it; depth is the authored
+    // 0..75 mm travel toward the root (the tip just inside the lips at the entrance)
+    v.oralW = 0.f;
+    if (p.id == "oral" && v.loaded() && m.loaded()) {
+        V3 root = m.bonePos("竿根"), end = m.bonePos("竿端");
+        V3 axis = end - root;
+        float len = length(axis);
+        if (len > 1e-3f) {
+            axis = axis * (1.f / len);
+            v.oralTarget = end - axis * (0.003f + 0.072f * clamp01(depth_));
+            v.oralFace = axis * -1.f;
+            v.oralW = 1.f;
+        }
+    }
     scene.update(dt * slowmo_);
+    if (qaOral_) oralQa();
     applyContactTracks();
 }
 

@@ -1,0 +1,12 @@
+# engine r3: oral alignment from the profile, front, top and around her face, at the entrance and full depth
+o_full_side|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;ui=0;frames=12;render_from=10;oralqa=1
+o_full_front|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=front;ui=0;frames=12;render_from=10;oralqa=1
+o_full_top|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=top;ui=0;frames=12;render_from=10;oralqa=1
+o_entry_side|screen=play;pos=oral;depth=0.12;her=0.3;him=0.6;cam=side;ui=0;frames=12;render_from=10;oralqa=1
+o_half_side|screen=play;pos=oral;depth=0.5;her=0.3;him=0.6;cam=side;ui=0;frames=12;render_from=10;oralqa=1
+o_face_p0|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;focus=v:頭;view=yaw:0,pitch:3,dist:0.8;ui=0;frames=12;render_from=10;oralqa=1
+o_face_p45|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;focus=v:頭;view=yaw:45,pitch:3,dist:0.8;ui=0;frames=12;render_from=10;oralqa=1
+o_face_p90|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;focus=v:頭;view=yaw:90,pitch:3,dist:0.8;ui=0;frames=12;render_from=10;oralqa=1
+o_face_p180|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;focus=v:頭;view=yaw:180,pitch:3,dist:0.8;ui=0;frames=12;render_from=10;oralqa=1
+o_face_m90|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;focus=v:頭;view=yaw:-90,pitch:3,dist:0.8;ui=0;frames=12;render_from=10;oralqa=1
+o_entry_close|screen=play;pos=oral;depth=0.12;her=0.3;him=0.6;cam=side;focus=v:頭;view=yaw:0,pitch:3,dist:0.8;ui=0;frames=12;render_from=10;oralqa=1

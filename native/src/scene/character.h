@@ -81,6 +81,10 @@ public:
     std::function<void(Animator&)> poseHook;
     // optional edit after the procedural layers (look-at, breathing), before touch IK
     std::function<void(Animator&)> postHook;
+    // oral: after the procedural layers, put the lips on the shaft axis and keep the face turned back along it
+    float oralW = 0.f;
+    V3 oralTarget{0, 0, 0}, oralFace{0, 0, 1};
+    void oralIK(Animator& a);
     // touch: hands onto her own body zones (IK after the procedural layers) + soft-tissue contacts
     TouchRig touch;
     TouchGoals touchGoals;

@@ -9,6 +9,29 @@
 
 namespace ag {
 
+// Play QA: the mouth and nose against the shaft's own axis, on the final pose. A mouth on the shaft has a small
+// radial distance and a mouth-axis position between root and the tip; a nose closer to the shaft than the mouth
+// means the pose is aiming the wrong part of the face.
+void Game::oralQa() {
+    Character& v = scene.vivian;
+    Character& m = scene.marcus;
+    if (!v.loaded() || !m.loaded() || !scene.showVivian || !scene.showMarcus) return;
+    V3 mv, mn, nv, nn;
+    if (!v.touch.zoneWorld(v.anim, Zone::Mouth, mv, mn) || !v.touch.zoneWorld(v.anim, Zone::Nose, nv, nn)) return;
+    V3 root = m.bonePos("竿根"), end = m.bonePos("竿端");
+    V3 axis = end - root;
+    float len = length(axis);
+    if (len < 1e-4f) return;
+    axis = axis * (1.f / len);
+    float sM = dot(mv - root, axis), sN = dot(nv - root, axis);
+    float rM = length(mv - (root + axis * sM)), rN = length(nv - (root + axis * sN));
+    V3 face = qrotate(v.anim.worldRot(v.bone("頭")), v.procedural.headForwardLocal());
+    AG_INFO("AG: ORAL-QA depth=%.2f mouthTip=%.1fmm mouthAx=%.0f/%.0fmm radial=%.1fmm noseTip=%.1fmm noseAx=%.0fmm "
+            "noseRadial=%.1fmm faceRoot=%.2f",
+            depth_, length(mv - end) * 1000.f, sM * 1000.f, len * 1000.f, rM * 1000.f, length(nv - end) * 1000.f, sN * 1000.f,
+            rN * 1000.f, -dot(face, axis));
+}
+
 void Game::kissQa() {
     Character& v = scene.vivian;
     Character& m = scene.marcus;
