@@ -1,0 +1,7 @@
+# engine r3: spoon upper-body curl variants, with the waist hand solve active
+sb_00_top|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=top;ui=0;frames=45;render_from=43;spoonbend=0
+sb_18_top|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=top;ui=0;frames=45;render_from=43;spoonbend=0.18
+sb_34_top|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=top;ui=0;frames=45;render_from=43;spoonbend=0.34
+sb_18_side|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;ui=0;frames=45;render_from=43;spoonbend=0.18
+sb_18_hands|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;focus=m:手首.L;view=yaw:105,pitch:18,dist:0.95;ui=0;frames=45;render_from=43;spoonbend=0.18
+sb_34_hands|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;focus=m:手首.L;view=yaw:105,pitch:18,dist:0.95;ui=0;frames=45;render_from=43;spoonbend=0.34

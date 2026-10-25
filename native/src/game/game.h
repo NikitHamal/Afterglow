@@ -128,6 +128,7 @@ private:
     float oralCurl_ = 0.35f;                            // close the oral hand fingers around the shaft
     bool oralGrip_ = true;                              // solve both oral hands onto the shaft instead of the baked splay
     float oralUp_ = 0.f;                                // extra lift of the mouth target (0: the lip ring's centre)
+    float oralLogT_ = 0.f;                              // live oral diagnostic: one line a second
     void oralQa();
     bool qaOrbit_ = false;            // story QA: orbit=yaw:,pitch:,dist: round the couple's heads (yaw 0 = the kiss in profile)
     float qaOYaw_ = 0.f, qaOPitch_ = 0.f, qaODist_ = 1.2f;
@@ -218,6 +219,10 @@ private:
     void storyAction(const std::string& action);
     void storyShot(const StoryLine* l, bool newNode);
     void applyStoryPose(float dt);
+    // the oral staging (jaw / mouth on the shaft / both hands) for whichever path is playing the clip
+    void oralStage(bool active);
+    void applyOralGrip(TouchGoals& tg);
+    void oralLiveLog();
     void directStory(float dt);
     void storyStartPlay();
     void storyBeats(float dt);

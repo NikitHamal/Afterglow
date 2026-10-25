@@ -3,6 +3,7 @@
 // ended from its IK target. Logged as "KISS-QA ..." (harness runs with kissqa=1).
 #include "game/game.h"
 #include "core/log.h"
+#include "scene/oral.h"
 #include <algorithm>
 #include <cmath>
 #include <vector>
@@ -19,21 +20,45 @@ void Game::oralQa() {
     V3 mv, mn, nv, nn, av;
     if (!v.touch.zoneWorld(v.anim, Zone::Mouth, mv, mn) || !v.touch.zoneWorld(v.anim, Zone::Nose, nv, nn)) return;
     if (!v.touch.mouthApertureWorld(v.anim, av)) av = mv;
-    float lenUp = clampf(m.morph("length_up"), 0.f, 1.f);
-    V3 root = m.bonePos("竿根");
-    V3 end = xformPoint(m.boneWorld("竿先"), V3{0.f, 0.08832f + 0.0288f * lenUp, -0.00583f});
-    V3 axis = end - root;
-    float len = length(axis);
-    if (len < 1e-4f) return;
-    axis = axis * (1.f / len);
-    float sM = dot(mv - root, axis), sN = dot(nv - root, axis), sA = dot(av - root, axis);
-    float rM = length(mv - (root + axis * sM)), rN = length(nv - (root + axis * sN));
+    V3 root, chord, end, axis;
+    if (!oralShaft(m, root, chord, end, axis)) return;
+    float len = length(end - root);
+    float sM = dot(mv - root, chord), sN = dot(nv - root, axis), sA = dot(av - root, axis);
+    float rM = length(mv - (root + chord * sM)), rN = length(nv - (root + axis * sN));
     float rA = length(av - (root + axis * sA));
+    float bend = std::acos(clampf(dot(chord, axis), -1.f, 1.f)) * 57.29578f;
     V3 face = qrotate(v.anim.worldRot(v.bone("頭")), v.procedural.headForwardLocal());
     AG_INFO("AG: ORAL-QA depth=%.2f mouthTip=%.1fmm radial=%.1fmm apTip=%.1fmm apAx=%.0f/%.0fmm apRadial=%.1fmm "
-            "apMiss=%.1fmm noseTip=%.1fmm noseAx=%.0fmm noseRadial=%.1fmm faceRoot=%.2f",
-            depth_, length(mv - end) * 1000.f, rM * 1000.f, length(av - end) * 1000.f, sA * 1000.f, len * 1000.f, rA * 1000.f,
-            length(av - v.oralTarget) * 1000.f, length(nv - end) * 1000.f, sN * 1000.f, rN * 1000.f, -dot(face, axis));
+            "apMiss=%.1fmm bend=%.0fdeg noseTip=%.1fmm noseAx=%.0fmm noseRadial=%.1fmm faceRoot=%.2f",
+            depth_, length(mv - end) * 1000.f, rM * 1000.f, length(av - end) * 1000.f, sA * 1000.f, len * 1000.f,
+            rA * 1000.f, length(av - v.oralTarget) * 1000.f, bend, length(nv - end) * 1000.f, sN * 1000.f, rN * 1000.f,
+            -dot(face, axis));
+}
+
+// The live version of the same measurement: one line a second while the oral act plays, so a report from the game
+// itself can be read against the harness instead of guessed at.
+void Game::oralLiveLog() {
+    if (harness || posIndex_ < 0 || posIndex_ >= (int)positions_.size()) return;
+    const PositionInfo& p = positions_[(size_t)posIndex_];
+    if (p.id != "oral" || time_ - oralLogT_ < 1.f) return;
+    oralLogT_ = time_;
+    Character& v = scene.vivian;
+    Character& m = scene.marcus;
+    float miss = -1.f, radial = -1.f, tip = -1.f, bend = -1.f;
+    V3 root, chord, end, axis, av;
+    if (v.loaded() && m.loaded() && oralShaft(m, root, chord, end, axis) && v.touch.mouthApertureWorld(v.anim, av)) {
+        float s = dot(av - root, chord);
+        miss = length(av - v.oralTarget) * 1000.f;
+        radial = length(av - (root + chord * s)) * 1000.f;
+        tip = length(av - end) * 1000.f;
+        bend = std::acos(clampf(dot(chord, axis), -1.f, 1.f)) * 57.29578f;
+    }
+    AG_INFO("AG: ORAL-LIVE pos=%s depth=%.2f oralW=%.2f apTip=%.1fmm apRadial=%.1fmm apMiss=%.1fmm bend=%.0fdeg "
+            "grip=%d/%d rub=%.2f embrace=%.2f pending=%d fade=%.2f aroused=%.2f len=%.2f girth=%.2f her=%.2f him=%.2f conn=%.2f",
+            p.id.c_str(), depth_, v.oralW, tip, radial, miss, bend, (int)v.touchGoals.left.active, (int)v.touchGoals.right.active,
+            rub_, embrace_, pendingPos_, posFade_, m.loaded() ? m.morph("aroused") : -1.f,
+            m.loaded() ? m.morph("length_up") : -1.f, m.loaded() ? m.morph("girth_up") : -1.f, night_.her, night_.him,
+            night_.connection);
 }
 
 void Game::kissQa() {

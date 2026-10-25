@@ -1,0 +1,7 @@
+# engine r3: spoon pelvis shape at t=0 / t=1 against a neutral seated clip
+sc_t0_+000|screen=customize;tab=her;clip=spoon.in;clipT=0;focus=下半身;view=yaw:0,pitch:5,dist:0.6;ui=0;frames=24;render_from=22
+sc_t0_+180|screen=customize;tab=her;clip=spoon.in;clipT=0;focus=下半身;view=yaw:180,pitch:5,dist:0.6;ui=0;frames=24;render_from=22
+sc_t1_+000|screen=customize;tab=her;clip=spoon.in;clipT=1;focus=下半身;view=yaw:0,pitch:5,dist:0.6;ui=0;frames=24;render_from=22
+sc_t1_+180|screen=customize;tab=her;clip=spoon.in;clipT=1;focus=下半身;view=yaw:180,pitch:5,dist:0.6;ui=0;frames=24;render_from=22
+sc_neutral_+000|screen=customize;tab=her;clip=sit.bed;clipT=0.5;focus=下半身;view=yaw:0,pitch:5,dist:0.6;ui=0;frames=24;render_from=22
+sc_neutral_+180|screen=customize;tab=her;clip=sit.bed;clipT=0.5;focus=下半身;view=yaw:180,pitch:5,dist:0.6;ui=0;frames=24;render_from=22

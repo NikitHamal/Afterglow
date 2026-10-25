@@ -1,6 +1,7 @@
 #include "app/sandbox.h"
 #include "core/paths.h"
 #include "core/log.h"
+#include "scene/oral.h"
 #include "raylib.h"
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -262,6 +263,7 @@ void Sandbox::applyPose() {
     for (Character* c : {&v, &m}) {
         if (!c->loaded()) continue;
         c->clearLayers();
+        c->touchGoals = TouchGoals{};
         c->proc.hair = hairSim_;
         c->proc.breathAmp = breathing_ ? 1.f : 0.f;
         c->proc.lookAt = lookAt_;
@@ -325,6 +327,11 @@ void Sandbox::applyPose() {
     for (Character* c : {&v, &m}) c->proc.lookWeight = together ? 0.45f : 0.9f;
     if (v.loaded()) v.proc.lookTarget = together ? m.bonePos("頭") : cam_.eye;
     if (m.loaded()) m.proc.lookTarget = v.loaded() ? v.bonePos("頭") : cam_.eye;
+    // the oral staging, exactly as the game paths run it: the baked clip alone leaves her mouth under his glans
+    OralTuning ot;
+    bool oral = pos == "oral";
+    stageOral(v, m, depth_, ot, oral);
+    if (oral) oralGrip(v, m, v.touchGoals, ot);
 }
 
 void Sandbox::update(float dt) {

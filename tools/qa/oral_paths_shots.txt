@@ -1,0 +1,4 @@
+# every path that plays the oral clip, same saved profile
+night_d03|screen=play;pos=oral;depth=0.3;her=0.114;him=0;hermodel=amara;himmodel=daniel;tone=deep;mtone=olive;hair=4;body=bust:1,hips:0.579989,waist:0.3,butt:-0.2,weight:-0.45,muscle:0.1;mbody=length:1,girth:1;ui=0;frames=60;render_from=58;oralqa=1;cam=side;focus=m:竿先;view=yaw:-90,pitch:4,dist:0.65
+story_d03|screen=story;story=neighbours;pose=oral;actT=0.3;hermodel=amara;himmodel=daniel;tone=deep;mtone=olive;hair=4;body=bust:1,hips:0.579989,waist:0.3,butt:-0.2,weight:-0.45,muscle:0.1;mbody=length:1,girth:1;ui=0;frames=60;render_from=58;focus=m:竿先;view=yaw:-90,pitch:4,dist:0.65
+story_fpv|screen=story;story=neighbours;pose=oral;actT=0.3;hermodel=amara;himmodel=daniel;tone=deep;mtone=olive;hair=4;body=bust:1,hips:0.579989,waist:0.3,butt:-0.2,weight:-0.45,muscle:0.1;mbody=length:1,girth:1;ui=0;frames=60;render_from=58

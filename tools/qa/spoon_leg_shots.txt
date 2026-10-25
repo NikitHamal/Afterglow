@@ -1,0 +1,9 @@
+# engine r3: spoon raised-thigh angle sweep
+sl_m028_+000|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;focus=v:下半身;view=yaw:0,pitch:5,dist:0.7;spoonleg=-0.28;ui=0;frames=36;render_from=34
+sl_m028_+180|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;focus=v:下半身;view=yaw:180,pitch:5,dist:0.7;spoonleg=-0.28;ui=0;frames=36;render_from=34
+sl_m014_+000|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;focus=v:下半身;view=yaw:0,pitch:5,dist:0.7;spoonleg=-0.14;ui=0;frames=36;render_from=34
+sl_m014_+180|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;focus=v:下半身;view=yaw:180,pitch:5,dist:0.7;spoonleg=-0.14;ui=0;frames=36;render_from=34
+sl_014_+000|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;focus=v:下半身;view=yaw:0,pitch:5,dist:0.7;spoonleg=0.14;ui=0;frames=36;render_from=34
+sl_014_+180|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;focus=v:下半身;view=yaw:180,pitch:5,dist:0.7;spoonleg=0.14;ui=0;frames=36;render_from=34
+sl_028_+000|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;focus=v:下半身;view=yaw:0,pitch:5,dist:0.7;spoonleg=0.28;ui=0;frames=36;render_from=34
+sl_028_+180|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;focus=v:下半身;view=yaw:180,pitch:5,dist:0.7;spoonleg=0.28;ui=0;frames=36;render_from=34

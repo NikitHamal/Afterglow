@@ -1,0 +1,9 @@
+# engine r3: titjob, spoon and hand contact review from the side, front, top and close on the contact
+tj_side|screen=play;pos=titjob;depth=1;her=0.4;him=0.6;cam=side;ui=0;frames=60;render_from=58
+tj_front|screen=play;pos=titjob;depth=1;her=0.4;him=0.6;cam=front;ui=0;frames=60;render_from=58
+tj_top|screen=play;pos=titjob;depth=1;her=0.4;him=0.6;cam=top;ui=0;frames=60;render_from=58
+tj_contact|screen=play;pos=titjob;depth=1;her=0.4;him=0.6;cam=side;focus=m:竿端;view=yaw:90,pitch:12,dist:0.85;ui=0;frames=60;render_from=58
+sp_side|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;ui=0;frames=60;render_from=58
+sp_front|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=front;ui=0;frames=60;render_from=58
+sp_top|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=top;ui=0;frames=60;render_from=58
+sp_hands|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;focus=m:手首.L;view=yaw:105,pitch:18,dist:0.9;ui=0;frames=60;render_from=58

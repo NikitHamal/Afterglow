@@ -436,8 +436,13 @@ void Game::applyStoryPose(float dt) {
         if (p.solo && v.loaded()) v.setLayer(0, "solo.idle", idlePhase_, 1.f);
         else for (Character* c : {&v, &m}) if (c->loaded()) c->setLayer(0, p.baseClip, p.depthDriven ? depth_ : idlePhase_, 1.f);
         for (Character* c : {&v, &m}) { c->placement = M4::identity(); c->touchGoals = TouchGoals{}; }
+        // the act's own staging: an oral beat needs her jaw, the mouth on the shaft and both hands around it,
+        // exactly as in the night — the baked clip alone leaves the glans at her nose
+        oralStage(p.id == "oral");
+        if (p.id == "oral") applyOralGrip(v.touchGoals);
         return;
     }
+    oralStage(false);   // a kiss or an embrace: nothing of the oral staging may carry over
     std::string clip;
     for (const std::string& c : poseClips(pose_)) if (v.hasClip(c) || m.hasClip(c)) { clip = c; break; }
     if (clip.empty() && (pose_ == "lie" || pose_ == "cuddle")) {

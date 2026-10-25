@@ -2,6 +2,7 @@
 #include "app/platform.h"
 #include "core/log.h"
 #include "scene/lighting.h"
+#include "scene/oral.h"
 #include "scene/touch.h"
 #include "raylib.h"
 #include <algorithm>
@@ -424,50 +425,8 @@ void Game::presentPlay(float dt) {
         } else if (p.canTouch && rub_ > 0.02f) {
             tg.right.active = true; tg.right.zone = Zone::Vulva; tg.right.weight = 0.95f * rub_; tg.right.phase = rubPhase_;
             tg.right.amplitude = 0.012f; tg.right.curl = 0.28f; tg.right.press = 0.004f;
-        } else if (p.id == "oral" && oralGrip_ && m.loaded()) {
-            float lenUp = clampf(m.morph("length_up"), 0.f, 1.f);
-            V3 root = m.bonePos("竿根");
-            V3 tip = xformPoint(m.boneWorld("竿先"), V3{0.f, 0.08832f + 0.0288f * lenUp, -0.00583f});
-            V3 ax = tip - root;
-            if (length(ax) > 1e-3f) {
-                ax = normalize(ax);
-                auto grip = [&](HandGoal& g, const char* side, float along, float elbowSide) {
-                    V3 shoulder = v.bonePos(std::string("腕") + side);
-                    V3 at = root + ax * along;
-                    V3 out = shoulder - at;
-                    out = out - ax * dot(out, ax);
-                    if (length(out) < 1e-3f) out = V3{elbowSide, 0.f, 0.f};
-                    out = normalize(out);
-                    // the palm faces the shaft and the fingers run around it: lengthwise fingers read as a claw
-                    // sliding up the shaft, not a grip. wrapFingers closes each phalanx onto the cylinder.
-                    V3 toFace = v.bonePos("頭") - at;
-                    toFace = toFace - ax * dot(toFace, ax);
-                    V3 tangent = cross(ax, out);
-                    if (length(tangent) < 1e-3f) tangent = cross(ax, V3{1.f, 0.f, 0.f});
-                    tangent = normalize(tangent);
-                    if (dot(tangent, toFace) < 0.f) tangent = tangent * -1.f;
-                    g.active = true;
-                    g.world = true;
-                    g.weight = 1.f;
-                    float girthUp = clampf(m.morph("girth_up"), 0.f, 1.f);
-                    g.pos = at + out * (0.031f + 0.004f * girthUp);
-                    g.normal = out;
-                    g.along = tangent;
-                    g.flat = true;
-                    g.palmLift = 0.012f;
-                    g.curl = 0.f;
-                    g.press = 0.f;
-                    g.dent = false;
-                    g.wrap = true;
-                    g.wrapAxis = ax;
-                    g.wrapDir = tangent;
-                    g.wrapRef = root;
-                    g.elbowHint = out * 0.65f + V3{0.f, 0.15f, 0.f};
-                };
-                grip(tg.left, ".L", length(tip - root) * 0.27f, -1.f);
-                grip(tg.right, ".R", length(tip - root) * 0.40f, 1.f);
-            }
         }
+        if (p.id == "oral") applyOralGrip(tg);
         v.touchGoals = tg;
         // sensitivity by zone: vulva 1, breast 0.55
         float act = (tg.right.active ? tg.right.weight : 0.f) + (tg.left.active ? tg.left.weight * 0.55f : 0.f);
@@ -498,10 +457,8 @@ void Game::presentPlay(float dt) {
         v.setMorph("moan", clamp01(moanPulse_ * (0.25f + 0.7f * her) + 0.85f * climaxH + voiceOpen + 0.55f * beatMouth_));
         v.setMorph("smile", clamp01(0.12f + 0.35f * night_.connection * (1.f - her) + 0.5f * smilePulse_ + 0.6f * std::exp(-afterT_ * 0.2f) * (night_.finished ? 1.f : 0.f)));
         v.setMorph("kiss", clamp01(embrace_ * 0.8f));
-        if (v.hasMorph("oral")) {
-            float girthUp = m.loaded() ? clampf(m.morph("girth_up"), 0.f, 1.f) : 0.f;
-            v.setMorph("oral", p.id == "oral" ? std::max(1.f, oralOpen_) + 0.35f * girthUp : 0.f);
-        }
+        // her jaw opens for him in oralStage(), which the story's acts share
+
         // the v3 face: her lip bitten as it builds, a gasp when a touch lands, the climax face, bliss afterwards
         float after = night_.finished ? std::exp(-afterT_ * 0.12f) : 0.f;
         v.setMorph("bite_lip", clamp01((smoothstepF(0.45f, 0.8f, her) * (0.35f + 0.25f * std::sin(time_ * 0.7f)) * (1.f - climaxH)) * (1.f - moanPulse_)));
@@ -625,47 +582,10 @@ void Game::presentPlay(float dt) {
     postExpMul_ = 1.f + 0.06f * glow;
 
     v.postHook = nullptr;
-    if (p.id == "oral" && !oralGrip_ && (std::fabs(oralWristL_) > 1e-4f || std::fabs(oralWristR_) > 1e-4f) && v.loaded()) {
-        v.postHook = [this](Animator& a) {
-            for (const char* s : {".L", ".R"}) {
-                float ang = s[1] == 'L' ? oralWristL_ : oralWristR_;
-                if (std::fabs(ang) < 1e-4f) continue;
-                int w = a.model()->findNode(std::string("手首") + s), e = a.model()->findNode(std::string("ひじ") + s);
-                if (w < 0 || e < 0) continue;
-                V3 ax = a.global(w).translation() - a.global(e).translation();
-                if (length(ax) < 1e-4f) continue;
-                a.setWorldRot(w, qnormalize(qmul(qaxis(normalize(ax), ang), a.worldRot(w))));
-                a.recomputeSubtree(w);
-            }
-        };
-    }
-    // the oral correction target: the lips on the shaft axis, the face turned back along it; depth is the authored
-    // 0..75 mm travel toward the root (the tip just inside the lips at the entrance)
-    v.oralW = 0.f;
-    if (p.id == "oral" && v.loaded() && m.loaded()) {
-        // The visible glans is skinned to 竿先 and its surface tip moves forward with the length morph. The 竿端
-        // helper has no skin weights; using it left the lips behind the rendered glans on large custom sizes.
-        float lenUp = clampf(m.morph("length_up"), 0.f, 1.f);
-        V3 root = m.bonePos("竿根");
-        V3 end = xformPoint(m.boneWorld("竿先"), V3{0.f, 0.08832f + 0.0288f * lenUp, -0.00583f});
-        V3 axis = end - root;
-        float len = length(axis);
-        if (len > 1e-3f) {
-            axis = axis * (1.f / len);
-            // the lip ring's centre rides the shaft; the max-size glans is ~42 mm long, so the shallow end must
-            // already sit past it (50 mm) or the glans pops out onto her nose at the bottom of every stroke
-            v.oralTarget = end - axis * (0.050f + 0.040f * clamp01(depth_));
-            if (std::fabs(oralUp_) > 1e-5f) {
-                V3 headUp = qrotate(v.anim.worldRot(v.bone("頭")), v.procedural.headUpLocal());
-                v.oralTarget = v.oralTarget + headUp * oralUp_;
-            }
-            v.oralFace = axis * -1.f;
-            v.oralW = 1.f;
-            v.oralCurl = oralGrip_ ? 0.f : oralCurl_;
-        }
-    }
+    oralStage(p.id == "oral");
     scene.update(dt * slowmo_);
     if (qaOral_) oralQa();
+    oralLiveLog();
     applyContactTracks();
 }
 
@@ -710,6 +630,25 @@ void Game::archBody(Animator& a) const {
     if (length(axis) < 1e-4f) return;
     a.setWorldRot(upper, qnormalize(qmul(qaxis(normalize(axis), arch_), a.worldRot(upper))));
     a.recomputeSubtree(upper);
+}
+
+// The oral staging for this path: her jaw, the mouth on the shaft, both hands around it. The same routine runs for
+// the story's acts and for the engine sandbox, so no path plays the baked clip on its own.
+void Game::oralStage(bool active) {
+    OralTuning t;
+    t.open = oralOpen_;
+    t.up = oralUp_;
+    t.curl = oralCurl_;
+    t.grip = oralGrip_;
+    t.wristL = oralWristL_;
+    t.wristR = oralWristR_;
+    stageOral(scene.vivian, scene.marcus, depth_, t, active);
+}
+
+void Game::applyOralGrip(TouchGoals& tg) {
+    OralTuning t;
+    t.grip = oralGrip_;
+    oralGrip(scene.vivian, scene.marcus, tg, t);
 }
 
 }  // namespace ag
