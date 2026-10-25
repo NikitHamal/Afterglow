@@ -325,11 +325,15 @@ void Character::oralIK(Animator& a) {
     if (hd < 0 || nk < 0) return;
     const float w = clampf(oralW, 0.f, 1.f);
     V3 mo;
-    if (!touch.mouthWorld(a, 0.f, mo)) return;
+    auto mouth = [&](V3& p) {
+        if (touch.mouthApertureWorld(a, p)) return true;
+        return touch.mouthWorld(a, 0.f, p);
+    };
+    if (!mouth(mo)) return;
     const int chain[3] = {hd, nk, ch};
     const int count = ch >= 0 ? 3 : 2;
     const float share[3] = {0.62f, 0.52f, 0.30f};
-    const float maxTurn[3] = {0.30f, 0.14f, 0.07f};
+    const float maxTurn[3] = {0.55f, 0.32f, 0.16f};
     Quat before[3];
     for (int j = 0; j < count; ++j) before[j] = a.r(chain[j]);
     auto P = [&](int n) { return a.global(n).translation(); };
@@ -352,14 +356,14 @@ void Character::oralIK(Animator& a) {
         for (int it = 0; it < iters; ++it) {
             for (int j = 0; j < count; ++j) {
                 int n = chain[j];
-                touch.mouthWorld(a, 0.f, mo);
+                mouth(mo);
                 V3 pj = P(n), v0 = mo - pj, v1 = oralTarget - pj;
                 if (length(v0) < 1e-4f || length(v1) < 1e-4f) continue;
                 rotq(n, qslerp(Quat{}, qfromto(normalize(v0), normalize(v1)), share[j]));
                 clampTurn(j);
                 rom.clampNode(a, n);
             }
-            touch.mouthWorld(a, 0.f, mo);
+            mouth(mo);
             if (length(mo - oralTarget) < 0.001f) break;
         }
     };
@@ -372,7 +376,7 @@ void Character::oralIK(Animator& a) {
         rom.clampNode(a, hd);
     }
     aim(6);
-    touch.mouthWorld(a, 0.f, mo);
+    mouth(mo);
     V3 axis = mo - P(hd);
     if (length(axis) > 1e-4f) {
         axis = normalize(axis);

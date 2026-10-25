@@ -16,8 +16,9 @@ void Game::oralQa() {
     Character& v = scene.vivian;
     Character& m = scene.marcus;
     if (!v.loaded() || !m.loaded() || !scene.showVivian || !scene.showMarcus) return;
-    V3 mv, mn, nv, nn;
+    V3 mv, mn, nv, nn, av;
     if (!v.touch.zoneWorld(v.anim, Zone::Mouth, mv, mn) || !v.touch.zoneWorld(v.anim, Zone::Nose, nv, nn)) return;
+    if (!v.touch.mouthApertureWorld(v.anim, av)) av = mv;
     float lenUp = clampf(m.morph("length_up"), 0.f, 1.f);
     V3 root = m.bonePos("竿根");
     V3 end = xformPoint(m.boneWorld("竿先"), V3{0.f, 0.08832f + 0.0288f * lenUp, -0.00583f});
@@ -25,13 +26,14 @@ void Game::oralQa() {
     float len = length(axis);
     if (len < 1e-4f) return;
     axis = axis * (1.f / len);
-    float sM = dot(mv - root, axis), sN = dot(nv - root, axis);
+    float sM = dot(mv - root, axis), sN = dot(nv - root, axis), sA = dot(av - root, axis);
     float rM = length(mv - (root + axis * sM)), rN = length(nv - (root + axis * sN));
+    float rA = length(av - (root + axis * sA));
     V3 face = qrotate(v.anim.worldRot(v.bone("頭")), v.procedural.headForwardLocal());
-    AG_INFO("AG: ORAL-QA depth=%.2f mouthTip=%.1fmm mouthAx=%.0f/%.0fmm radial=%.1fmm noseTip=%.1fmm noseAx=%.0fmm "
-            "noseRadial=%.1fmm faceRoot=%.2f",
-            depth_, length(mv - end) * 1000.f, sM * 1000.f, len * 1000.f, rM * 1000.f, length(nv - end) * 1000.f, sN * 1000.f,
-            rN * 1000.f, -dot(face, axis));
+    AG_INFO("AG: ORAL-QA depth=%.2f mouthTip=%.1fmm radial=%.1fmm apTip=%.1fmm apAx=%.0f/%.0fmm apRadial=%.1fmm "
+            "apMiss=%.1fmm noseTip=%.1fmm noseAx=%.0fmm noseRadial=%.1fmm faceRoot=%.2f",
+            depth_, length(mv - end) * 1000.f, rM * 1000.f, length(av - end) * 1000.f, sA * 1000.f, len * 1000.f, rA * 1000.f,
+            length(av - v.oralTarget) * 1000.f, length(nv - end) * 1000.f, sN * 1000.f, rN * 1000.f, -dot(face, axis));
 }
 
 void Game::kissQa() {

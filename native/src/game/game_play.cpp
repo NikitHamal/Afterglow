@@ -438,18 +438,30 @@ void Game::presentPlay(float dt) {
                     out = out - ax * dot(out, ax);
                     if (length(out) < 1e-3f) out = V3{elbowSide, 0.f, 0.f};
                     out = normalize(out);
+                    // the palm faces the shaft and the fingers run around it: lengthwise fingers read as a claw
+                    // sliding up the shaft, not a grip. wrapFingers closes each phalanx onto the cylinder.
+                    V3 toFace = v.bonePos("頭") - at;
+                    toFace = toFace - ax * dot(toFace, ax);
+                    V3 tangent = cross(ax, out);
+                    if (length(tangent) < 1e-3f) tangent = cross(ax, V3{1.f, 0.f, 0.f});
+                    tangent = normalize(tangent);
+                    if (dot(tangent, toFace) < 0.f) tangent = tangent * -1.f;
                     g.active = true;
                     g.world = true;
                     g.weight = 1.f;
                     float girthUp = clampf(m.morph("girth_up"), 0.f, 1.f);
-                    g.pos = at + out * (0.037f + 0.004f * girthUp);
+                    g.pos = at + out * (0.031f + 0.004f * girthUp);
                     g.normal = out;
-                    g.along = ax;
+                    g.along = tangent;
                     g.flat = true;
-                    g.palmLift = 0.014f;
-                    g.curl = 0.55f;
+                    g.palmLift = 0.012f;
+                    g.curl = 0.f;
                     g.press = 0.f;
                     g.dent = false;
+                    g.wrap = true;
+                    g.wrapAxis = ax;
+                    g.wrapDir = tangent;
+                    g.wrapRef = root;
                     g.elbowHint = out * 0.65f + V3{0.f, 0.15f, 0.f};
                 };
                 grip(tg.left, ".L", length(tip - root) * 0.27f, -1.f);
@@ -640,9 +652,13 @@ void Game::presentPlay(float dt) {
         float len = length(axis);
         if (len > 1e-3f) {
             axis = axis * (1.f / len);
+            // the lip ring's centre (not the upper-lip front) rides the shaft: 20 mm of entrance puts the glans
+            // just inside the lips at depth 0, and the stroke carries it to 80 mm
             v.oralTarget = end - axis * (0.020f + 0.060f * clamp01(depth_));
-            V3 headUp = qrotate(v.anim.worldRot(v.bone("頭")), v.procedural.headUpLocal());
-            v.oralTarget = v.oralTarget + headUp * oralUp_;
+            if (std::fabs(oralUp_) > 1e-5f) {
+                V3 headUp = qrotate(v.anim.worldRot(v.bone("頭")), v.procedural.headUpLocal());
+                v.oralTarget = v.oralTarget + headUp * oralUp_;
+            }
             v.oralFace = axis * -1.f;
             v.oralW = 1.f;
             v.oralCurl = oralGrip_ ? 0.f : oralCurl_;
