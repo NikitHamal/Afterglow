@@ -233,6 +233,7 @@ private:
     float letterbox_ = 0.f;
     float kiss_ = 0.f, kissTarget_ = 0.f, near_ = 0.f, nearTarget_ = 0.f;
     float step_ = 0.f;                  // how far each has stepped (slid, seated) toward the other this frame (m)
+    V3 kissShift_{0, 0, 0};              // small horizontal contact correction, shared in opposite directions
     // how far the worn clothes stand off the skin at each body zone, per character (bind shapes: the cloth follows the
     // skin), rebuilt when the outfit or its shown layers change; an embracing hand rests on the cloth, not in it
     struct ClothAt { const Outfit* outfit = nullptr; int layers = -1; float off[(int)Zone::Count] = {}; };

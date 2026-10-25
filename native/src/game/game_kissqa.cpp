@@ -42,11 +42,12 @@ void Game::kissQa() {
     if (m.touch.zoneWorld(m.anim, Zone::Nose, nm, nmn)) noseM = v.touch.faceDistance(v.anim, nm);
     float rv = actors_[0].kissW > 0.01f ? length(mv - actors_[0].kissTarget) : 0.f;
     float rm = actors_[1].kissW > 0.01f ? length(mm - actors_[1].kissTarget) : 0.f;
-    V3 rest = actors_[1].mouthRest - actors_[0].mouthRest;
-    AG_INFO("AG: KISS-QA kiss=%.2f near=%.2f lips=%.1fmm herFaceIn=%.1fmm hisFaceIn=%.1fmm noseHer=%.1fmm noseHis=%.1fmm "
-            "missHer=%.1fmm missHis=%.1fmm restGap=%.0fmm (h %.0f, up %.0f) step=%.0fmm", kiss_, near_, length(mv - mm) * 1000.f,
+    V3 rest = actors_[1].mouthRest - actors_[0].mouthRest, lip = mm - mv;
+    AG_INFO("AG: KISS-QA kiss=%.2f near=%.2f lips=%.1fmm (h %.1f, up %.1f) herFaceIn=%.1fmm hisFaceIn=%.1fmm noseHer=%.1fmm noseHis=%.1fmm "
+            "missHer=%.1fmm missHis=%.1fmm restGap=%.0fmm (h %.0f, up %.0f) step=%.0fmm shift=%.0fmm", kiss_, near_, length(lip) * 1000.f,
+            std::sqrt(lip.x * lip.x + lip.z * lip.z) * 1000.f, lip.y * 1000.f,
             std::min(0.f, herIn) * 1000.f, std::min(0.f, himIn) * 1000.f, noseV * 1000.f, noseM * 1000.f, rv * 1000.f, rm * 1000.f,
-            length(rest) * 1000.f, std::sqrt(rest.x * rest.x + rest.z * rest.z) * 1000.f, rest.y * 1000.f, step_ * 1000.f);
+            length(rest) * 1000.f, std::sqrt(rest.x * rest.x + rest.z * rest.z) * 1000.f, rest.y * 1000.f, step_ * 1000.f, length(kissShift_) * 1000.f);
 }
 
 }  // namespace ag
