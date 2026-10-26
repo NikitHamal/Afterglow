@@ -269,8 +269,8 @@ void Game::storyLineStarted() {
         story_.voicedHold = 0.65f;
     }
     // vocal samples and sound effects riding on the line (legacy "voice": sample names too)
-    if (!l->vox.empty()) voice(l->vox, 0.8f, 1.f);
-    else if (!l->voice.empty() && l->voice != "none" && audio.has("vox/" + l->voice)) voice(l->voice, 0.8f, 1.f);
+    if (!l->vox.empty()) voice(l->who == "marcus" ? 1 : 0, l->vox.c_str(), 0.8f, 1.f);
+    else if (!l->voice.empty() && l->voice != "none" && audio.has("vox/" + l->voice)) voice(l->who == "marcus" ? 1 : 0, l->voice.c_str(), 0.8f, 1.f);
     if (!l->sfx.empty()) sfx(l->sfx, 0.6f);
     // acting: the speaker plays the line, the other one listens (and reacts)
     float energy = energyOf(l->delivery);
@@ -835,7 +835,7 @@ void Game::storyBeats(float dt) {
         std::string key;
         beatTake_ = L.voice == "none" ? nullptr : voices_.take(story_.story()->id, b->id, beatLine_, &key, &L.text);
         if (beatTake_ && !harness) voicePlayer_.play(voices_.file(key), settings.voice);
-        if (!L.vox.empty()) voice(L.vox, 0.8f, 1.f);
+        if (!L.vox.empty()) voice(L.who == "marcus" ? 1 : 0, L.vox.c_str(), 0.8f, 1.f);
         beatWho_ = L.who;
         beatText_ = L.text;
         beatT_ = 0.f;

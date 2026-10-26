@@ -268,7 +268,7 @@ private:
     void initAudio();
     void shutdownAudio();
     void updateAudio(float dt);
-    void voice(const std::string& name, float vol = 1.f, float pitch = 1.f);
+    void voice(int role, const char* cue, float vol = 1.f, float pitch = 1.f, bool lipSync = true);
     void sfx(const std::string& prefix, float vol, float pitchJitter = 0.06f);
     void breath(bool in, float vol);
     void setAmbience(const std::string& places);   // party | sea | rain | fire | city | spa ("" = the night room)

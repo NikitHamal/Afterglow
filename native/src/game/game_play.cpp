@@ -436,7 +436,7 @@ void Game::presentPlay(float dt) {
             // a touch begins: a small flinch, a caught breath, a jolt through the breasts
             flinch_ = 1.f;
             breath(true, 0.55f);
-            voice("moan02", 0.35f + 0.3f * her, 1.25f);
+            voice(0, "gasp", 0.35f + 0.3f * her, 1.25f);
             for (const char* b : {"乳親.L", "乳親.R"}) { int bi = v.bone(b); if (bi >= 0) v.procedural.impulse(bi, V3{0.f, 0.25f, 0.1f}); }
         }
         flinch_ = approach(flinch_, 0.f, 3.5f, dt);
