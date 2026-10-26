@@ -668,6 +668,7 @@ void Game::presentStory(float dt) {
     scene.update(dt);
     if (inAct) applyContactTracks();
     if (qaKiss_) kissQa();
+    if (qaOral_ && inAct) oralQa();   // the act paths get measured like the night, or a staging fix proves nothing here
     if (black_ < 0.999f) directStory(dt);
 }
 
