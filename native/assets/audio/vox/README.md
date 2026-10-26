@@ -13,7 +13,7 @@ cue is fine; one is picked at random and never twice in a row.
 
 | cue | role | when |
 |---|---|---|
-| `moans` | her | arousal under 0.45: a soft, held-back sound |
+| `moansoft` | her | arousal under 0.45: a soft, held-back sound |
 | `moan` | her | arousal 0.45+, a desire met, the periodic voice |
 | `climax` | her | her orgasm |
 | `gasp` | her | a touch landing, a desire beginning |

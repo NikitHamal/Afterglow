@@ -223,6 +223,7 @@ private:
     void oralStage(bool active);
     void applyOralGrip(TouchGoals& tg);
     void oralLiveLog();
+    void voiceAudit();
     void directStory(float dt);
     void storyStartPlay();
     void storyBeats(float dt);

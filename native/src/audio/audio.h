@@ -26,7 +26,8 @@ public:
     float length(const std::string& name) const;
     // first prefix (in order) that has samples, then a random name from it (never the same one twice in a row):
     // how a per-model voice bank falls back to the role's, and the role's to the shared one. "" when none.
-    std::string randomFrom(const std::vector<std::string>& prefixes);
+    // digitsOnly keeps a cue from swallowing a longer one: "…/moan" must not match "…/moansoft05".
+    std::string randomFrom(const std::vector<std::string>& prefixes, bool digitsOnly = false);
     // procedural one-shot: generator writes `frames` mono float samples at 44.1 kHz
     bool addProcedural(const std::string& name, int frames, const std::function<void(float*, int)>& gen);
 

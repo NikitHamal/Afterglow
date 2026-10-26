@@ -661,6 +661,7 @@ void Game::applySpec(const Spec& s) {
             else if (kv.first == "dist") qaDist_ = kv.second;
         }
     }
+    if (s.has("voicetest")) voiceAudit();   // QA: prove every cue resolves, per model, without needing a night
     qaKiss_ = s.has("kissqa");
     qaOral_ = s.has("oralqa");
     oralOpen_ = s.num("oralopen", 2.2f);

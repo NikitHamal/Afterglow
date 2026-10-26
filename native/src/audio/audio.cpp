@@ -99,10 +99,20 @@ float Audio::length(const std::string& name) const {
     return (float)it->second.frameCount / (float)it->second.stream.sampleRate;
 }
 
-std::string Audio::randomFrom(const std::vector<std::string>& prefixes) {
+std::string Audio::randomFrom(const std::vector<std::string>& prefixes, bool digitsOnly) {
     if (!ready_) return "";
     for (const std::string& p : prefixes) {
         std::vector<std::string> cands = names(p);
+        if (digitsOnly) {
+            std::vector<std::string> exact;
+            for (const std::string& n : cands) {
+                std::string rest = n.substr(p.size());
+                bool digits = !rest.empty();
+                for (char ch : rest) if (ch < '0' || ch > '9') { digits = false; break; }
+                if (digits) exact.push_back(n);
+            }
+            cands = exact;
+        }
         if (cands.empty()) continue;
         std::string& last = lastRandom_[p];
         std::string pick = cands[(size_t)GetRandomValue(0, (int)cands.size() - 1)];
