@@ -199,6 +199,49 @@
     "r-eye-scale-decr": 0.12,
     "forehead-trans-forward": 0.25
    }
+  },
+  "kari": {
+   "base": "vivian",
+   "age_years": 35,
+   "phenotype": {
+    "age": 0.55,
+    "muscle": 0.45,
+    "weight": 0.66,
+    "race": {
+     "asian": 0.78,
+     "caucasian": 0.17,
+     "african": 0.05
+    }
+   },
+   "targets": {
+    "head-round": 0.35,
+    "head-scale-vert-decr": 0.2,
+    "head-scale-horiz-incr": 0.1,
+    "head-fat-incr": 0.1,
+    "chin-height-decr": 0.25,
+    "chin-width-decr": 0.1,
+    "l-cheek-volume-incr": 0.35,
+    "r-cheek-volume-incr": 0.35,
+    "l-cheek-bones-decr": 0.1,
+    "r-cheek-bones-decr": 0.1,
+    "l-cheek-inner-incr": 0.1,
+    "r-cheek-inner-incr": 0.1,
+    "mouth-upperlip-volume-incr": 0.28,
+    "mouth-lowerlip-volume-incr": 0.35,
+    "mouth-cupidsbow-incr": 0.12,
+    "mouth-angles-up": 0.25,
+    "l-eye-scale-incr": 0.12,
+    "r-eye-scale-incr": 0.12,
+    "l-eye-corner2-up": 0.1,
+    "r-eye-corner2-up": 0.1,
+    "l-eye-epicanthus-in": 0.25,
+    "r-eye-epicanthus-in": 0.25,
+    "nose-scale-vert-decr": 0.08,
+    "nose-volume-decr": 0.05,
+    "nose-point-width-incr": 0.06,
+    "eyebrows-angle-up": -0.1,
+    "forehead-scale-vert-decr": -0.05
+   }
   }
  }
 }

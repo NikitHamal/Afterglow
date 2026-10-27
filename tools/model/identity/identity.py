@@ -16,7 +16,16 @@ MID, OUTF = argv[0], argv[1]
 HERE = os.path.dirname(os.path.abspath(__file__))
 R = json.load(open(os.path.join(HERE, "recipes.json")))
 M = R["models"][MID]; BASE = R["bases"][M["base"]]
-MPFB = os.path.expanduser("~/.config/blender/4.2/extensions/user_default/mpfb/data/targets")
+def _mpfb_targets():
+    # the extension lives under the Blender version that installed it; 4.2 was the original build, 4.3 is what
+    # Debian ships, and a source checkout is the fallback for a box that has neither
+    for v in ("4.3", "4.2"):
+        p = os.path.expanduser(f"~/.config/blender/{v}/extensions/user_default/mpfb/data/targets")
+        if os.path.isdir(p):
+            return p
+    return "/root/mpfb2/src/mpfb/data/targets"
+
+MPFB = _mpfb_targets()
 known = {os.path.basename(p)[:-10] for p in glob.glob(MPFB + "/**/*.target.gz", recursive=True)}
 t0 = time.time()
 def log(*a): print("[identity]", *a, flush=True)
@@ -74,6 +83,9 @@ log(f"head delta: max {np.abs(D).max()*1000:.1f} mm, mean {np.linalg.norm(D, axi
 PROX = {}
 for sub, fn in BASE["proxies"].items():
     p = AssetService.find_asset_absolute_path(fn, asset_subdir=sub)
+    if not p:
+        log(f"proxy {sub} not installed, carried from the head field instead")
+        continue
     m = Mhclo(); m.load(p)
     n = max(m.verts.keys()) + 1
     idx = np.zeros((n, 3), np.int64); w = np.zeros((n, 3)); ok = np.zeros(n, bool)

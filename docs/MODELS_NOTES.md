@@ -44,6 +44,11 @@ Newest first. Board: molab notebook → tabs models / hair (`/root/board/shots/<
 - **Daniel** (`17ece15`): 34, Mediterranean, textured crop (`hair/crop_daniel.glb` 1.5 MB), green eyes, Marcus'
   skin (clean-shaven). Board: models/daniel_*, his_roster.
 
+- **Kari** (`2bdbf0a`, identity rebuilt from MakeHuman): 35, East/Southeast Asian heritage, long dark fall, dark brown
+  eyes, red lips on olive / honey / caramel. Face built through the real MPFB pipeline (`identity.py` + `apply_npz.py`,
+  no base game rig needed: the MakeHuman head fits the shipped GLB at 0.15 mm RMS by ICP), body preset "Kari".
+  Board: character sheet pending.
+
 ## Residuals / next
 - Card hair at grazing light (sides of the chignon, top of the bob) still shows card-to-card noise: the engine's card
   shading (alpha test, per-card highlights) — a hair shading pass (alpha-to-coverage or a depth-peeled soft pass,
