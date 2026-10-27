@@ -2,36 +2,222 @@
  "version": 1,
  "about": "Body presets the game can offer. Slider s in [-1, 1] per name: s > 0 drives <name>_up = s, s < 0 drives <name>_dn = -s (one-sided names like belly only have _up). Apply the same weights to every mesh of the character (body, face parts, hair carry them). All ranges are adult; age -1 = 25 y, 0 = 42 y, +1 = 60 y (never younger). tone = which <who>_skin_<tone>.jpg to swap in.",
  "vivian": {
-  "sliders": ["bust", "hips", "waist", "butt", "weight", "muscle", "belly", "age"],
-  "tones": ["porcelain", "fair", "honey", "olive", "caramel", "bronze", "deep", "ebony"],
-  "default": {"sliders": {}, "tone": "caramel", "hair": "chignon"},
+  "sliders": [
+   "bust",
+   "hips",
+   "waist",
+   "butt",
+   "weight",
+   "muscle",
+   "belly",
+   "age"
+  ],
+  "tones": [
+   "porcelain",
+   "fair",
+   "honey",
+   "olive",
+   "caramel",
+   "bronze",
+   "deep",
+   "ebony"
+  ],
+  "default": {
+   "sliders": {},
+   "tone": "caramel",
+   "hair": "chignon"
+  },
   "presets": {
-   "Natural":       {"sliders": {}, "tone": "caramel"},
-   "Petite":        {"sliders": {"bust": -0.45, "hips": -0.45, "waist": -0.3, "butt": -0.35, "weight": -0.35, "age": -0.5}, "tone": "fair"},
-   "Skinny":        {"sliders": {"weight": -1.0, "bust": -0.6, "hips": -0.5, "butt": -0.5, "waist": -0.5, "muscle": -0.3}, "tone": "honey"},
-   "Slim":          {"sliders": {"weight": -0.5, "bust": -0.2, "hips": -0.2, "waist": -0.4}, "tone": "olive"},
-   "Athletic":      {"sliders": {"muscle": 1.0, "weight": -0.3, "waist": -0.4, "butt": 0.3, "bust": -0.1}, "tone": "bronze"},
-   "Curvy":         {"sliders": {"bust": 0.6, "hips": 0.7, "waist": -0.5, "butt": 0.7, "weight": 0.15}, "tone": "caramel"},
-   "Chubby":        {"sliders": {"weight": 0.6, "belly": 0.5, "bust": 0.5, "hips": 0.5, "butt": 0.4, "waist": 0.3}, "tone": "honey"},
-   "BBW":           {"sliders": {"weight": 1.0, "belly": 0.8, "bust": 1.0, "hips": 0.8, "butt": 0.8, "waist": 0.6}, "tone": "deep"},
-   "Voluptuous":    {"sliders": {"bust": 1.0, "hips": 0.9, "butt": 0.9, "waist": -0.3, "weight": 0.35}, "tone": "caramel"},
-   "Ebony goddess": {"sliders": {"bust": 0.6, "hips": 0.8, "butt": 1.0, "waist": -0.5, "muscle": 0.3, "weight": 0.1}, "tone": "ebony"},
-   "Porcelain":     {"sliders": {"bust": -0.2, "hips": -0.1, "waist": -0.3, "weight": -0.3, "age": -0.6}, "tone": "porcelain"},
-   "Mature":        {"sliders": {"age": 1.0, "weight": 0.3, "bust": 0.35, "belly": 0.3}, "tone": "honey"},
-   "Young adult":   {"sliders": {"age": -1.0, "weight": -0.2, "waist": -0.3}, "tone": "olive"}
+   "Natural": {
+    "sliders": {},
+    "tone": "caramel"
+   },
+   "Petite": {
+    "sliders": {
+     "bust": -0.45,
+     "hips": -0.45,
+     "waist": -0.3,
+     "butt": -0.35,
+     "weight": -0.35,
+     "age": -0.5
+    },
+    "tone": "fair"
+   },
+   "Skinny": {
+    "sliders": {
+     "weight": -1.0,
+     "bust": -0.6,
+     "hips": -0.5,
+     "butt": -0.5,
+     "waist": -0.5,
+     "muscle": -0.3
+    },
+    "tone": "honey"
+   },
+   "Slim": {
+    "sliders": {
+     "weight": -0.5,
+     "bust": -0.2,
+     "hips": -0.2,
+     "waist": -0.4
+    },
+    "tone": "olive"
+   },
+   "Athletic": {
+    "sliders": {
+     "muscle": 1.0,
+     "weight": -0.3,
+     "waist": -0.4,
+     "butt": 0.3,
+     "bust": -0.1
+    },
+    "tone": "bronze"
+   },
+   "Curvy": {
+    "sliders": {
+     "bust": 0.6,
+     "hips": 0.7,
+     "waist": -0.5,
+     "butt": 0.7,
+     "weight": 0.15
+    },
+    "tone": "caramel"
+   },
+   "Chubby": {
+    "sliders": {
+     "weight": 0.6,
+     "belly": 0.5,
+     "bust": 0.5,
+     "hips": 0.5,
+     "butt": 0.4,
+     "waist": 0.3
+    },
+    "tone": "honey"
+   },
+   "BBW": {
+    "sliders": {
+     "weight": 1.0,
+     "belly": 0.8,
+     "bust": 1.0,
+     "hips": 0.8,
+     "butt": 0.8,
+     "waist": 0.6
+    },
+    "tone": "deep"
+   },
+   "Voluptuous": {
+    "sliders": {
+     "bust": 1.0,
+     "hips": 0.9,
+     "butt": 0.9,
+     "waist": -0.3,
+     "weight": 0.35
+    },
+    "tone": "caramel"
+   },
+   "Ebony goddess": {
+    "sliders": {
+     "bust": 0.6,
+     "hips": 0.8,
+     "butt": 1.0,
+     "waist": -0.5,
+     "muscle": 0.3,
+     "weight": 0.1
+    },
+    "tone": "ebony"
+   },
+   "Porcelain": {
+    "sliders": {
+     "bust": -0.2,
+     "hips": -0.1,
+     "waist": -0.3,
+     "weight": -0.3,
+     "age": -0.6
+    },
+    "tone": "porcelain"
+   },
+   "Mature": {
+    "sliders": {
+     "age": 1.0,
+     "weight": 0.3,
+     "bust": 0.35,
+     "belly": 0.3
+    },
+    "tone": "honey"
+   },
+   "Young adult": {
+    "sliders": {
+     "age": -1.0,
+     "weight": -0.2,
+     "waist": -0.3
+    },
+    "tone": "olive"
+   },
+   "Kari": {
+    "sliders": {
+     "bust": 1.0,
+     "hips": 0.85,
+     "waist": -0.15,
+     "butt": 0.4,
+     "weight": 0.1,
+     "muscle": 0.15
+    },
+    "tone": "olive"
+   }
   }
  },
  "marcus": {
-  "sliders": ["muscle", "weight", "belly", "length", "girth"],
-  "tones": ["honey", "caramel", "deep"],
-  "default": {"sliders": {}, "tone": "caramel"},
+  "sliders": [
+   "muscle",
+   "weight",
+   "belly",
+   "length",
+   "girth"
+  ],
+  "tones": [
+   "honey",
+   "caramel",
+   "deep"
+  ],
+  "default": {
+   "sliders": {},
+   "tone": "caramel"
+  },
   "presets": {
-   "Natural":  {"sliders": {}},
-   "Lean":     {"sliders": {"weight": -0.6, "muscle": -0.2}},
-   "Fit":      {"sliders": {"muscle": 0.5, "weight": -0.2}},
-   "Muscular": {"sliders": {"muscle": 1.0, "weight": 0.1}},
-   "Dad bod":  {"sliders": {"weight": 0.5, "belly": 0.6, "muscle": -0.2}},
-   "Heavy":    {"sliders": {"weight": 1.0, "belly": 1.0}}
+   "Natural": {
+    "sliders": {}
+   },
+   "Lean": {
+    "sliders": {
+     "weight": -0.6,
+     "muscle": -0.2
+    }
+   },
+   "Fit": {
+    "sliders": {
+     "muscle": 0.5,
+     "weight": -0.2
+    }
+   },
+   "Muscular": {
+    "sliders": {
+     "muscle": 1.0,
+     "weight": 0.1
+    }
+   },
+   "Dad bod": {
+    "sliders": {
+     "weight": 0.5,
+     "belly": 0.6,
+     "muscle": -0.2
+    }
+   },
+   "Heavy": {
+    "sliders": {
+     "weight": 1.0,
+     "belly": 1.0
+    }
+   }
   }
  }
 }
