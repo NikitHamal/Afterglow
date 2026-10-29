@@ -3,7 +3,11 @@
 // declares them, so the engine can use full GL (32-bit indices, sRGB textures, FBO control) while
 // raylib keeps owning the context, window, input, audio and 2D drawing.
 #pragma once
+#if defined(__ANDROID__)
+#include <GLES3/gl3.h>
+#else
 #include "external/glad.h"
+#endif
 
 #ifndef GL_TEXTURE_MAX_ANISOTROPY_EXT
 #define GL_TEXTURE_MAX_ANISOTROPY_EXT 0x84FE

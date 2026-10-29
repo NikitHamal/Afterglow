@@ -39,3 +39,10 @@ node_modules/
 # Overhaul review screenshots (local only)
 task-shots/
 .claude/
+
+# Android build outputs and generated content
+native/android/.gradle/
+native/android/build/
+native/android/app/build/
+native/android/local.properties
+native/android/app/src/main/assets/

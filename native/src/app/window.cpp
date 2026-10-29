@@ -37,14 +37,24 @@ void centre(int w, int h, const Monitor& m) {
 }  // namespace
 
 unsigned int flags(bool vsync) {
+#if defined(__ANDROID__)
+    (void)vsync;
+    return (unsigned)FLAG_VSYNC_HINT;   // the surface is always fullscreen; there is nothing to resize
+#else
     unsigned int f = (unsigned)FLAG_WINDOW_RESIZABLE | (vsync ? (unsigned)FLAG_VSYNC_HINT : 0u);
 #if defined(__APPLE__)
     f |= FLAG_WINDOW_HIGHDPI;
 #endif
     return f;
+#endif
 }
 
 void placeInitial(Settings& s) {
+#if defined(__ANDROID__)
+    s.winW = GetScreenWidth(); s.winH = GetScreenHeight();
+    AG_INFO("AG: window %dx%d (framebuffer %dx%d, touch)", GetScreenWidth(), GetScreenHeight(), GetRenderWidth(), GetRenderHeight());
+    return;
+#else
     if (s.windowMode != 0) { applyDisplay(s, true); return; }
     Monitor m = current();
     int w0 = GetScreenWidth(), h0 = GetScreenHeight(), w = w0, h = h0;
@@ -64,9 +74,15 @@ void placeInitial(Settings& s) {
     s.winW = w; s.winH = h;
     AG_INFO("AG: window %dx%d (framebuffer %dx%d, display scale %.2f) on a %dx%d monitor", GetScreenWidth(), GetScreenHeight(),
             GetRenderWidth(), GetRenderHeight(), (double)GetWindowScaleDPI().x, m.w, m.h);
+#endif
 }
 
 void applyDisplay(const Settings& s, bool modeChanged) {
+#if defined(__ANDROID__)
+    (void)s; (void)modeChanged;
+    SetTargetFPS(0);
+    return;
+#endif
     if (s.vsync) SetWindowState(FLAG_VSYNC_HINT);
     else ClearWindowState(FLAG_VSYNC_HINT);
     SetTargetFPS(0);   // the main loop paces frames itself (sleeping, never spinning)

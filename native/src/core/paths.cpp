@@ -5,13 +5,31 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#if defined(__ANDROID__)
+#include "raylib.h"
+#endif
 
 namespace fs = std::filesystem;
 
 namespace ag::paths {
 
-bool exists(const std::string& p) { std::error_code ec; return !p.empty() && fs::exists(fs::u8path(p), ec); }
-bool isDir(const std::string& p) { std::error_code ec; return !p.empty() && fs::is_directory(fs::u8path(p), ec); }
+#if defined(__ANDROID__)
+namespace { std::string gFilesDir; }
+void setUserDirOverride(const std::string& dir) { gFilesDir = dir; }
+#endif
+
+bool exists(const std::string& p) {
+#if defined(__ANDROID__)
+    if (!p.empty() && p[0] != '/') return true;   // an APK asset: raylib opens it by name, there is no path to stat
+#endif
+    std::error_code ec; return !p.empty() && fs::exists(fs::u8path(p), ec);
+}
+bool isDir(const std::string& p) {
+#if defined(__ANDROID__)
+    if (!p.empty() && p[0] != '/') return true;   // virtual asset folder
+#endif
+    std::error_code ec; return !p.empty() && fs::is_directory(fs::u8path(p), ec);
+}
 std::string join(const std::string& a, const std::string& b) {
     if (a.empty()) return b;
     char last = a.back();
@@ -26,8 +44,12 @@ static std::string normalizeDir(const std::string& p) {
 }
 
 static std::string exeDir() {
+#if defined(__ANDROID__)
+    return {};   // assets live inside the APK, addressed by relative name
+#else
     const char* d = GetApplicationDirectory();
     return d ? std::string(d) : std::string(".");
+#endif
 }
 
 static bool looksLikeAssetRoot(const std::string& dir) {
@@ -36,6 +58,10 @@ static bool looksLikeAssetRoot(const std::string& dir) {
 }
 
 const std::string& assetRoot() {
+#if defined(__ANDROID__)
+    static std::string root;   // "" = the APK's assets/ directory (raylib resolves bare names there)
+    return root;
+#else
     static std::string root;
     if (!root.empty()) return root;
     std::string ex = exeDir();
@@ -48,6 +74,7 @@ const std::string& assetRoot() {
     if (root.empty()) root = normalizeDir(join(ex, "assets"));
     AG_INFO("AG: asset root %s", root.c_str());
     return root;
+#endif
 }
 
 const std::string& repoRoot() {
@@ -68,11 +95,18 @@ const std::string& repoRoot() {
 }
 
 std::string asset(const std::string& rel) {
+#if defined(__ANDROID__)
+    return rel;   // every shipped asset is in the APK (the loader warns and moves on when one is missing)
+#else
     std::string p = join(assetRoot(), rel);
     return exists(p) ? p : std::string();
+#endif
 }
 
 std::string findAsset(const std::vector<std::string>& candidates) {
+#if defined(__ANDROID__)
+    return candidates.empty() ? std::string() : candidates.front();
+#else
     for (auto& c : candidates) {
         std::string p = join(assetRoot(), c);
         if (exists(p)) return p;
@@ -83,9 +117,16 @@ std::string findAsset(const std::vector<std::string>& candidates) {
             if (exists(p)) return p;
         }
     return {};
+#endif
 }
 
 std::string userDir() {
+#if defined(__ANDROID__)
+    if (gFilesDir.empty()) gFilesDir = "/data/local/tmp/afterglow";   // only if Java never handed a path over
+    std::error_code ec;
+    fs::create_directories(fs::u8path(gFilesDir), ec);
+    return gFilesDir;
+#else
     std::string base;
 #if defined(_WIN32)
     if (const char* a = std::getenv("APPDATA")) base = join(a, "Afterglow");
@@ -99,9 +140,20 @@ std::string userDir() {
     std::error_code ec;
     fs::create_directories(fs::u8path(base), ec);
     return base;
+#endif
 }
 
 std::string readText(const std::string& path) {
+#if defined(__ANDROID__)
+    if (!path.empty() && path[0] != '/') {   // APK asset: raylib's Android file layer
+        int size = 0;
+        unsigned char* data = LoadFileData(path.c_str(), &size);
+        std::string out;
+        if (data && size > 0) out.assign((const char*)data, (size_t)size);
+        if (data) UnloadFileData(data);
+        return out;
+    }
+#endif
     std::ifstream f(fs::u8path(path), std::ios::binary);
     if (!f) return {};
     std::ostringstream ss; ss << f.rdbuf();
@@ -109,6 +161,10 @@ std::string readText(const std::string& path) {
 }
 
 bool writeText(const std::string& path, const std::string& text) {
+#if defined(__ANDROID__)
+    if (!path.empty() && path[0] != '/')   // raylib writes relative names into the app's internal files dir
+        return SaveFileData(path.c_str(), (void*)text.data(), (int)text.size());
+#endif
     std::error_code ec;
     fs::create_directories(fs::u8path(path).parent_path(), ec);
     std::ofstream f(fs::u8path(path), std::ios::binary);
@@ -118,6 +174,9 @@ bool writeText(const std::string& path, const std::string& text) {
 }
 
 bool writeAtomic(const std::string& path, const std::string& text) {
+#if defined(__ANDROID__)
+    if (!path.empty() && path[0] != '/') return writeText(path, text);   // no rename across the asset manager
+#endif
     std::string tmp = path + ".tmp";
     {
         std::error_code ec;
@@ -137,6 +196,9 @@ bool writeAtomic(const std::string& path, const std::string& text) {
 bool removeFile(const std::string& path) { std::error_code ec; return fs::remove(fs::u8path(path), ec); }
 
 long long fileSize(const std::string& path) {
+#if defined(__ANDROID__)
+    if (!path.empty() && path[0] != '/') return -1;   // asset size is not exposed by the manager here
+#endif
     std::error_code ec;
     auto n = fs::file_size(fs::u8path(path), ec);
     return ec ? -1 : (long long)n;
@@ -145,15 +207,51 @@ long long fileSize(const std::string& path) {
 std::string exeDirectory() { return exeDir(); }
 
 std::string tempDir() {
+#if defined(__ANDROID__)
+    std::string d = join(userDir(), "tmp");
+    std::error_code ec;
+    fs::create_directories(fs::u8path(d), ec);
+    return d;
+#else
     std::error_code ec;
     fs::path t = fs::temp_directory_path(ec);
     std::string d = ec ? join(userDir(), "tmp") : join(t.u8string(), "afterglow");
     fs::create_directories(fs::u8path(d), ec);
     return d;
+#endif
 }
 
 std::vector<std::string> listFilesRecursive(const std::string& dir, const std::vector<std::string>& exts) {
     std::vector<std::string> out;
+#if defined(__ANDROID__)
+    // APK assets cannot be enumerated: the build writes assets_manifest.json (one path per line)
+    if (!dir.empty() && dir[0] != '/') {
+        static std::vector<std::string> all;
+        if (all.empty()) {
+            int size = 0;
+            unsigned char* data = LoadFileData("assets_manifest.json", &size);
+            if (data && size > 0) {
+                std::string text((const char*)data, (size_t)size), line;
+                for (char c : text) {
+                    if (c == '\n') { if (!line.empty()) all.push_back(line); line.clear(); }
+                    else if (c != '\r') line.push_back(c);
+                }
+                if (!line.empty()) all.push_back(line);
+            }
+            if (data) UnloadFileData(data);
+        }
+        std::string prefix = dir;
+        if (!prefix.empty() && prefix.back() != '/') prefix.push_back('/');
+        for (const std::string& p : all) {
+            if (p.compare(0, prefix.size(), prefix) != 0) continue;
+            std::string ext = fs::u8path(p).extension().u8string();
+            std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+            if (exts.empty() || std::find(exts.begin(), exts.end(), ext) != exts.end()) out.push_back(p);
+        }
+        std::sort(out.begin(), out.end());
+        return out;
+    }
+#endif
     std::error_code ec;
     if (!isDir(dir)) return out;
     for (auto it = fs::recursive_directory_iterator(fs::u8path(dir), ec); !ec && it != fs::recursive_directory_iterator(); it.increment(ec)) {

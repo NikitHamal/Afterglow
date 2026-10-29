@@ -201,7 +201,20 @@ bool RenderTarget::create(int width, int height, GLenum internalFormat, bool wit
     GLenum st = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
-    if (st != GL_FRAMEBUFFER_COMPLETE) { AG_ERROR("AG: framebuffer incomplete (0x%x) %dx%d", st, w, h); return false; }
+    if (st != GL_FRAMEBUFFER_COMPLETE) {
+#if defined(__ANDROID__)
+        // some ES3 GPUs do not render to float targets: fall back to 8-bit and keep the frame
+        GLenum alt = 0;
+        if (internalFormat == GL_RGBA16F || internalFormat == GL_RGBA32F || internalFormat == GL_R11F_G11F_B10F) alt = GL_RGBA8;
+        else if (internalFormat == GL_R16F || internalFormat == GL_R32F) alt = GL_R8;
+        if (alt) {
+            AG_WARN("AG: %s target unsupported, using 0x%x", internalFormat == GL_RGBA16F ? "HDR" : "float", alt);
+            destroy();
+            return create(width, height, alt, withDepth, depthIsTexture, filter);
+        }
+#endif
+        AG_ERROR("AG: framebuffer incomplete (0x%x) %dx%d", st, w, h); return false;
+    }
     return true;
 }
 
@@ -227,6 +240,13 @@ bool ShadowMap::create(int sz) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, sz, sz, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+#if defined(__ANDROID__)
+    // GLES has no border clamp / border colour; the shadow shader treats outside-frustum taps as lit
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth, 0);
+    glDrawBuffers(0, nullptr);
+#else
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
     float border[4] = {1, 1, 1, 1};
@@ -234,6 +254,7 @@ bool ShadowMap::create(int sz) {
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth, 0);
     glDrawBuffer(GL_NONE);
     glReadBuffer(GL_NONE);
+#endif
     GLenum st = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);

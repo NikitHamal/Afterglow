@@ -366,7 +366,7 @@ void Game::updateMenuCamera(float dt) {
         bool overPanel = ui.in.mouse.x > ui.W * 0.56f;
         if (!overPanel && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && !ui.anyActive()) turnVel_ = GetMouseDelta().x * 0.45f * settings.mouseSens;
         else turnVel_ *= std::exp(-dt * 3.5f);
-        if (!overPanel) showcaseZoom_ = clampf(showcaseZoom_ + GetMouseWheelMove() * 0.12f, 0.f, 1.f);
+        if (!overPanel) showcaseZoom_ = clampf(showcaseZoom_ + ag::platform::wheel() * 0.12f, 0.f, 1.f);
         turntable_ += turnVel_ * dt;
         c.placement = m4trs({0.f, 0.f, 0.f}, qaxis({0, 1, 0}, turntable_), {1, 1, 1});
         float hgt = showcaseWho_ == 0 ? 1.68f : 1.83f;

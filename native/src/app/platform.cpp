@@ -70,6 +70,10 @@ void crashNote(const char* what) {
 }
 }  // namespace
 
+#if !defined(__ANDROID__)
+float wheel() { return GetMouseWheelMove(); }
+#endif
+
 bool acquireSingleInstance() {
 #if defined(_WIN32)
     gMutex = CreateMutexW(nullptr, TRUE, L"AfterglowGameMutex");
@@ -80,6 +84,8 @@ bool acquireSingleInstance() {
         return false;
     }
     return true;
+#elif defined(__ANDROID__)
+    return true;   // one activity per process already
 #else
     std::string p = paths::join(paths::userDir(), ".instance.lock");
     gLockFd = ::open(p.c_str(), O_RDWR | O_CREAT, 0644);
@@ -153,7 +159,9 @@ void installQuitSignals() {
 bool quitRequested() { return gQuit != 0; }
 
 void trimHeap() {
-#if defined(_WIN32)
+#if defined(__ANDROID__)
+    // bionic has no malloc_trim; the allocator returns pages on its own
+#elif defined(_WIN32)
     HeapCompact(GetProcessHeap(), 0);
 #elif defined(__APPLE__)
     malloc_zone_pressure_relief(nullptr, 0);
