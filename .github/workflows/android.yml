@@ -38,17 +38,29 @@ jobs:
           python3 tools/android/es_shaders.py
           python3 tools/android/prepare_assets.py
 
+      - name: Decode the release keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/afterglow-release.jks"
+          test -s "$RUNNER_TEMP/afterglow-release.jks"
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Assemble debug APK
+      - name: Assemble signed release APK
         working-directory: native/android
-        run: gradle assembleDebug --no-daemon --stacktrace
+        env:
+          AG_KEYSTORE: ${{ runner.temp }}/afterglow-release.jks
+          AG_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          AG_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          AG_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: gradle assembleRelease --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: afterglow-android
-          path: native/android/app/build/outputs/apk/debug/app-debug.apk
+          name: afterglow-android-release
+          path: native/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
