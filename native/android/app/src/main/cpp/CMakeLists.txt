@@ -17,13 +17,38 @@ file(MAKE_DIRECTORY ${AG_GEN})
 include(FetchContent)
 set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(raylib
-  URL https://github.com/raysan5/raylib/archive/refs/tags/5.5.tar.gz
-  PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/raylib_touch_mouse.patch)
+  URL https://github.com/raysan5/raylib/archive/refs/tags/5.5.tar.gz)
 FetchContent_GetProperties(raylib)
 if(NOT raylib_POPULATED)
   FetchContent_Populate(raylib)
 endif()
 set(RL_SRC ${raylib_SOURCE_DIR}/src)
+
+# Two edits raylib needs on Android: a real ES3 EGL context (its Android backend always asks for ES2), and a left
+# mouse press from touch so the game's mouse-driven UI and camera drag work. Text replacement keeps the fetch free
+# of patch tools.
+set(RL_ANDROID ${RL_SRC}/platforms/rcore_android.c)
+file(READ ${RL_ANDROID} RL_TEXT)
+string(REPLACE
+  "    if (CORE.Input.Touch.pointCount > 0) CORE.Input.Touch.currentTouchState[MOUSE_BUTTON_LEFT] = 1;
+    else CORE.Input.Touch.currentTouchState[MOUSE_BUTTON_LEFT] = 0;"
+  "    if (CORE.Input.Touch.pointCount > 0) CORE.Input.Touch.currentTouchState[MOUSE_BUTTON_LEFT] = 1;
+    else CORE.Input.Touch.currentTouchState[MOUSE_BUTTON_LEFT] = 0;
+    // Afterglow: a touch is also a left mouse press, so the mouse-driven UI works on a phone
+    CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_LEFT] = (CORE.Input.Touch.pointCount > 0);"
+  RL_TEXT "${RL_TEXT}")
+string(REPLACE
+  "        EGL_CONTEXT_CLIENT_VERSION, 2,"
+  "#if defined(GRAPHICS_API_OPENGL_ES3)
+        EGL_CONTEXT_CLIENT_VERSION, 3,   // Afterglow: ES3 context for GLSL ES 300
+#else
+        EGL_CONTEXT_CLIENT_VERSION, 2,
+#endif"
+  RL_TEXT "${RL_TEXT}")
+if(NOT RL_TEXT MATCHES "Afterglow: ES3 context" OR NOT RL_TEXT MATCHES "Afterglow: a touch is also a left mouse press")
+  message(FATAL_ERROR "raylib Android edits did not apply (its source changed)")
+endif()
+file(WRITE ${RL_ANDROID} "${RL_TEXT}")
 
 add_library(raylib STATIC
   ${RL_SRC}/raudio.c ${RL_SRC}/rcore.c ${RL_SRC}/rmodels.c ${RL_SRC}/rshapes.c
