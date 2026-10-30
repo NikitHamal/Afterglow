@@ -53,13 +53,9 @@ file(WRITE ${RL_ANDROID} "${RL_TEXT}")
 # raylib's rlgl calls the extension entry point for MRT even on ES3, where the core symbol is the bindable one
 set(RL_RLGL ${RL_SRC}/rlgl.h)
 file(READ ${RL_RLGL} RL_RLGL_TEXT)
-string(REPLACE
-  "#if defined(GRAPHICS_API_OPENGL_ES3)
-            glDrawBuffersEXT(count, buffers);"
-  "#if defined(GRAPHICS_API_OPENGL_ES3)
-            glDrawBuffers(count, buffers);"
-  RL_RLGL_TEXT "${RL_RLGL_TEXT}")
-if(NOT RL_RLGL_TEXT MATCHES "glDrawBuffers\(count, buffers\)")
+string(REPLACE "glDrawBuffersEXT(count, buffers);" "glDrawBuffers(count, buffers);" RL_RLGL_TEXT "${RL_RLGL_TEXT}")
+string(FIND "${RL_RLGL_TEXT}" "glDrawBuffersEXT(count, buffers);" RL_EXT_LEFT)
+if(NOT RL_EXT_LEFT EQUAL -1)
   message(FATAL_ERROR "rlgl ES3 draw-buffers edit did not apply (raylib source changed)")
 endif()
 file(WRITE ${RL_RLGL} "${RL_RLGL_TEXT}")
