@@ -1,0 +1,7 @@
+# engine r3: oral aperture sweep — the plain oral morph opens a 12 mm jaw; these compare wider openings at full depth
+mo_open10|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;focus=v:頭;view=yaw:90,pitch:2,dist:0.85;oralopen=1;ui=0;frames=30;render_from=28;oralqa=1
+mo_open18|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;focus=v:頭;view=yaw:90,pitch:2,dist:0.85;oralopen=1.8;ui=0;frames=30;render_from=28;oralqa=1
+mo_open22|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;focus=v:頭;view=yaw:90,pitch:2,dist:0.85;oralopen=2.2;ui=0;frames=30;render_from=28;oralqa=1
+mo_open27|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;focus=v:頭;view=yaw:90,pitch:2,dist:0.85;oralopen=2.7;ui=0;frames=30;render_from=28;oralqa=1
+mo_tip22|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;focus=m:竿端;view=yaw:90,pitch:5,dist:0.55;oralopen=2.2;ui=0;frames=30;render_from=28;oralqa=1
+mo_tip27|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;focus=m:竿端;view=yaw:90,pitch:5,dist:0.55;oralopen=2.7;ui=0;frames=30;render_from=28;oralqa=1

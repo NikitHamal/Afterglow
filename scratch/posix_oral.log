@@ -1,0 +1,138 @@
+INFO: Initializing raylib 5.5
+INFO: Platform backend: DESKTOP (GLFW)
+INFO: Supported raylib modules:
+INFO:     > rcore:..... loaded (mandatory)
+INFO:     > rlgl:...... loaded (mandatory)
+INFO:     > rshapes:... loaded (optional)
+INFO:     > rtextures:. loaded (optional)
+INFO:     > rtext:..... loaded (optional)
+INFO:     > rmodels:... loaded (optional)
+INFO:     > raudio:.... loaded (optional)
+INFO: DISPLAY: Device initialized successfully
+INFO:     > Display size: 1920 x 1080
+INFO:     > Screen size:  1100 x 760
+INFO:     > Render size:  1100 x 760
+INFO:     > Viewport offsets: 0, 0
+INFO: GLAD: OpenGL extensions loaded successfully
+INFO: GL: Supported extensions count: 403
+INFO: GL: OpenGL device information:
+INFO:     > Vendor:   NVIDIA Corporation
+INFO:     > Renderer: NVIDIA GeForce RTX 5050 Laptop GPU/PCIe/SSE2
+INFO:     > Version:  3.3.0 NVIDIA 573.13
+INFO:     > GLSL:     3.30 NVIDIA via Cg compiler
+INFO: GL: VAO extension detected, VAO functions loaded successfully
+INFO: GL: NPOT textures extension detected, full NPOT textures supported
+INFO: GL: DXT compressed textures supported
+INFO: GL: ETC2/EAC compressed textures supported
+INFO: PLATFORM: DESKTOP (GLFW - Win32): Initialized successfully
+INFO: TEXTURE: [ID 1] Texture loaded successfully (1x1 | R8G8B8A8 | 1 mipmaps)
+INFO: TEXTURE: [ID 1] Default texture loaded successfully
+INFO: SHADER: [ID 1] Vertex shader compiled successfully
+INFO: SHADER: [ID 2] Fragment shader compiled successfully
+INFO: SHADER: [ID 3] Program shader loaded successfully
+INFO: SHADER: [ID 3] Default shader loaded successfully
+INFO: RLGL: Render batch vertex buffers loaded successfully in RAM (CPU)
+INFO: RLGL: Render batch vertex buffers loaded successfully in VRAM (GPU)
+INFO: RLGL: Default OpenGL state initialized successfully
+INFO: TEXTURE: [ID 2] Texture loaded successfully (128x128 | GRAY_ALPHA | 1 mipmaps)
+INFO: FONT: Default font loaded successfully (224 glyphs)
+INFO: SYSTEM: Working Directory: F:\Afterglow\native\build\posix-test
+INFO: TIMER: Target time per frame: 0.000 milliseconds
+INFO: AG: harness window: screen 1100x760, render 1100x760, dpi scale 1.25
+INFO: AG: GPU: NVIDIA GeForce RTX 5050 Laptop GPU/PCIe/SSE2
+INFO: AG: asset root F:\Afterglow\native\assets
+INFO: SHADER: [ID 4] Fragment shader compiled successfully
+INFO: SHADER: [ID 5] Program shader loaded successfully
+INFO: TEXTURE: [ID 3] Texture loaded successfully (1024x512 | GRAY_ALPHA | 1 mipmaps)
+INFO: FONT: Data loaded successfully (56 pixel size | 202 glyphs)
+INFO: TEXTURE: [ID 4] Texture loaded successfully (256x256 | GRAY_ALPHA | 1 mipmaps)
+INFO: FONT: Data loaded successfully (12 pixel size | 202 glyphs)
+INFO: AG: loaded F:\Afterglow\native\assets/room/room.glb: 107 nodes, 98 meshes, 54784 tris, 23 materials, 0 skins, 0 clips, 16 textures
+INFO: AG: location room (baked)
+INFO: AG: loaded F:\Afterglow\native\assets/characters/vivian.glb: 95 nodes, 7 meshes, 177162 tris, 8 materials, 1 skins, 21 clips, 10 textures
+INFO: AG: character vivian: bind height 1.693 m -> scale 1.000 (target 1.68 m)
+INFO: AG: procedural: 4 hair chains, 12 colliders, 2 springs
+INFO: AG: touch: zones vulva breast.L breast.R chest.L chest.R waist.L waist.R sternum mouth nose, face 947 pts, hand joints L 33-52 R 57-76
+INFO: AG: loaded F:\Afterglow\native\assets/characters/marcus.glb: 78 nodes, 7 meshes, 44034 tris, 8 materials, 1 skins, 21 clips, 13 textures
+INFO: AG: character marcus: bind height 1.838 m -> scale 1.000 (target 1.83 m)
+INFO: AG: procedural: 0 hair chains, 0 colliders, 1 springs
+INFO: AG: touch: zones breast.L breast.R chest.L chest.R waist.L waist.R sternum mouth nose, face 890 pts, hand joints L 11-30 R 35-54
+INFO: AG: story 'Neighbours': 7 chapters, 23 nodes
+INFO: AG: story 'Old Flames': 7 chapters, 29 nodes
+INFO: AG: story 'Salt and Sun': 7 chapters, 26 nodes
+INFO: AG: story 'The Massage': 7 chapters, 23 nodes
+INFO: AG: story 'The Storm': 7 chapters, 25 nodes
+INFO: AG: game ready: 12 positions, RSS 236 MB, textures 419 MB, meshes 21 MB (GPU)
+INFO: AG: ORAL-QA depth=1.00 mouthTip=114.4mm mouthAx=58/159mm radial=53.8mm noseTip=124.7mm noseAx=38mm noseRadial=32.0mm faceRoot=0.90
+INFO: AG: audio t=140.02 breath in vol 0.27
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.5mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.4mm noseTip=83.5mm noseAx=80mm noseRadial=28.7mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.4mm noseTip=83.4mm noseAx=80mm noseRadial=28.7mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.4mm noseTip=83.4mm noseAx=80mm noseRadial=28.6mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.4mm noseTip=83.4mm noseAx=80mm noseRadial=28.6mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.5mm noseTip=83.4mm noseAx=80mm noseRadial=28.6mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.5mm noseTip=83.4mm noseAx=80mm noseRadial=28.6mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.5mm noseTip=83.3mm noseAx=80mm noseRadial=28.5mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.6mm noseTip=83.3mm noseAx=80mm noseRadial=28.5mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.6mm noseTip=83.3mm noseAx=80mm noseRadial=28.4mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.6mm mouthAx=84/159mm radial=0.8mm noseTip=83.3mm noseAx=80mm noseRadial=28.3mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.4mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.3mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.3mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.3mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.3mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.3mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.3mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.3mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.3mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.1mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.1mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.1mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.1mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.1mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.1mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.1mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.1mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.1mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.1mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.1mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.1mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.1mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=81mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: AG: ORAL-QA depth=1.00 mouthTip=74.7mm mouthAx=84/159mm radial=0.3mm noseTip=83.2mm noseAx=80mm noseRadial=28.8mm faceRoot=0.99
+INFO: FILEIO: [F:/Afterglow/scratch/posix_oral.png] File saved successfully
+INFO: FILEIO: [F:/Afterglow/scratch/posix_oral.png] Image exported successfully
+INFO: AG: harness: wrote F:/Afterglow/scratch/posix_oral.png
+INFO: AG: harness: F:/Afterglow/scratch/posix_oral.png ui-issues 0
+INFO: AG: harness: 1 shots at 1100x760, ui-issues total 0
+INFO: TEXTURE: [ID 4] Unloaded texture data from VRAM (GPU)
+INFO: TEXTURE: [ID 3] Unloaded texture data from VRAM (GPU)
+INFO: SHADER: [ID 5] Unloaded shader program data from VRAM (GPU)
+INFO: TEXTURE: [ID 2] Unloaded texture data from VRAM (GPU)
+INFO: SHADER: [ID 3] Default shader unloaded successfully
+INFO: TEXTURE: [ID 1] Default texture unloaded successfully
+INFO: Window closed successfully

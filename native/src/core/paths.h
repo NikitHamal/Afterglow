@@ -19,6 +19,10 @@ const std::string& repoRoot();
 
 // Writable per-user directory (settings, saves, screenshots). Created on demand.
 std::string userDir();
+#if defined(__ANDROID__)
+// Java hands the app's files dir over before android_main starts (NativeActivity has no writable cwd).
+void setUserDirOverride(const std::string& dir);
+#endif
 
 bool exists(const std::string& path);
 bool isDir(const std::string& path);

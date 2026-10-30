@@ -5,6 +5,7 @@
 #include "core/log.h"
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 
 namespace ag {
 
@@ -298,8 +299,10 @@ void Character::update(float dt) {
     if (poseHook) poseHook(anim);
     procedural.apply(anim, dt, proc);
     if (postHook) postHook(anim);
+    if (oralW > 0.001f) oralIK(anim);
     if (touch.ready() && (touchGoals.left.active || touchGoals.right.active)) touch.apply(anim, touchGoals, &rom);
     else touch.contacts.clear();
+    if (touch.ready() && oralW > 0.001f && std::fabs(oralCurl) > 1e-3f) touch.curlHands(anim, oralCurl);
     rom.apply(anim);           // no layer may bend a joint past its range (clips are inside it by construction)
     anim.guardPose();          // last gate: no NaN, zero scale or broken quaternion reaches the skin
     anim.finish();
@@ -312,6 +315,83 @@ void Character::update(float dt) {
     // skull centre: hair shading bends card normals around it
     int hb = bone("頭");
     if (hb >= 0) hairCenter_ = xformPoint(anim.global(hb), procedural.headUpLocal() * 0.085f + procedural.headForwardLocal() * 0.01f);
+}
+
+// the oral correction: the procedural gaze may turn the head after the clip, so put the lip front back on the shaft
+// axis, turn the face along the shaft, and roll the crown upright about the lip line. Every joint stays in range and
+// only makes a bounded correction to the authored pose.
+void Character::oralIK(Animator& a) {
+    int hd = bone("頭"), nk = bone("首"), ch = bone("上半身2");
+    if (hd < 0 || nk < 0) return;
+    const float w = clampf(oralW, 0.f, 1.f);
+    V3 mo;
+    auto mouth = [&](V3& p) {
+        if (touch.mouthApertureWorld(a, p)) return true;
+        return touch.mouthWorld(a, 0.f, p);
+    };
+    if (!mouth(mo)) return;
+    const int chain[3] = {hd, nk, ch};
+    const int count = ch >= 0 ? 3 : 2;
+    const float share[3] = {0.62f, 0.52f, 0.30f};
+    const float maxTurn[3] = {0.55f, 0.32f, 0.16f};
+    Quat before[3];
+    for (int j = 0; j < count; ++j) before[j] = a.r(chain[j]);
+    auto P = [&](int n) { return a.global(n).translation(); };
+    auto rotq = [&](int n, const Quat& q) {
+        if (n < 0) return;
+        a.setWorldRot(n, qnormalize(qmul(q, a.worldRot(n))));
+        a.recomputeSubtree(n);
+    };
+    auto clampTurn = [&](int j) {
+        int n = chain[j];
+        Quat d = qnormalize(qmul(a.r(n), qconj(before[j])));
+        float angle = 2.f * std::acos(clampf(std::fabs(d.w), 0.f, 1.f));
+        float limit = maxTurn[j] * w;
+        if (angle > limit && angle > 1e-5f) {
+            a.r(n) = qnormalize(qslerp(before[j], a.r(n), limit / angle));
+            a.recomputeSubtree(n);
+        }
+    };
+    auto aim = [&](int iters) {
+        for (int it = 0; it < iters; ++it) {
+            for (int j = 0; j < count; ++j) {
+                int n = chain[j];
+                mouth(mo);
+                V3 pj = P(n), v0 = mo - pj, v1 = oralTarget - pj;
+                if (length(v0) < 1e-4f || length(v1) < 1e-4f) continue;
+                rotq(n, qslerp(Quat{}, qfromto(normalize(v0), normalize(v1)), share[j]));
+                clampTurn(j);
+                rom.clampNode(a, n);
+            }
+            mouth(mo);
+            if (length(mo - oralTarget) < 0.001f) break;
+        }
+    };
+    aim(12);
+    V3 want = normalize(oralFace);
+    V3 face = qrotate(a.worldRot(hd), procedural.headForwardLocal());
+    if (length(face) > 1e-4f && length(want) > 1e-4f) {
+        rotq(hd, qslerp(Quat{}, qfromto(normalize(face), want), 0.8f * w));
+        clampTurn(0);
+        rom.clampNode(a, hd);
+    }
+    aim(6);
+    mouth(mo);
+    V3 axis = mo - P(hd);
+    if (length(axis) > 1e-4f) {
+        axis = normalize(axis);
+        V3 cu = qrotate(a.worldRot(hd), procedural.headUpLocal());
+        V3 u0 = cu - axis * dot(cu, axis), u1 = V3{0, 1, 0} - axis * axis.y;
+        if (length(u0) > 1e-4f && length(u1) > 1e-4f) {
+            u0 = normalize(u0);
+            u1 = normalize(u1);
+            float ang = std::atan2(dot(cross(u0, u1), axis), dot(u0, u1));
+            rotq(hd, qaxis(axis, clampf(ang, -0.28f, 0.28f) * w));
+            clampTurn(0);
+            rom.clampNode(a, hd);
+        }
+    }
+    aim(4);
 }
 
 void Character::headAxes(V3& center, V3& faceFwd, V3& crownUp) const {

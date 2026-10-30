@@ -32,6 +32,17 @@
    "hairName": "High puff",
    "tone": "deep",
    "hairColour": 4
+  },
+  {
+   "id": "kari",
+   "name": "Kari",
+   "tagline": "thirty-five, dark-eyed, slow to smile",
+   "age": 35,
+   "fixedAge": true,
+   "hair": "long_kari",
+   "hairName": "Long, dark fall",
+   "tone": "olive",
+   "hairColour": 4
   }
  ],
  "him": [

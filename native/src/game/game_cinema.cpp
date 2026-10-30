@@ -192,7 +192,7 @@ void Game::stageStoryNode() {
 void Game::setStoryPose(const std::string& pose, float actT) {
     bool changed = pose != pose_;
     pose_ = pose;
-    if (changed) { kiss_ = kissTarget_ = near_ = nearTarget_ = 0.f; idlePhase_ = 0.f; }
+    if (changed) { kiss_ = kissTarget_ = near_ = nearTarget_ = 0.f; idlePhase_ = 0.f; step_ = 0.f; kissShift_ = V3{0, 0, 0}; }
     int ai = actIndex(pose);
     if (ai >= 0) {
         if (changed || posIndex_ != ai) { posIndex_ = -1; setPosition(ai, true); }
@@ -269,8 +269,8 @@ void Game::storyLineStarted() {
         story_.voicedHold = 0.65f;
     }
     // vocal samples and sound effects riding on the line (legacy "voice": sample names too)
-    if (!l->vox.empty()) voice(l->vox, 0.8f, 1.f);
-    else if (!l->voice.empty() && l->voice != "none" && audio.has("vox/" + l->voice)) voice(l->voice, 0.8f, 1.f);
+    if (!l->vox.empty()) voice(l->who == "marcus" ? 1 : 0, l->vox.c_str(), 0.8f, 1.f);
+    else if (!l->voice.empty() && l->voice != "none" && audio.has("vox/" + l->voice)) voice(l->who == "marcus" ? 1 : 0, l->voice.c_str(), 0.8f, 1.f);
     if (!l->sfx.empty()) sfx(l->sfx, 0.6f);
     // acting: the speaker plays the line, the other one listens (and reacts)
     float energy = energyOf(l->delivery);
@@ -436,8 +436,13 @@ void Game::applyStoryPose(float dt) {
         if (p.solo && v.loaded()) v.setLayer(0, "solo.idle", idlePhase_, 1.f);
         else for (Character* c : {&v, &m}) if (c->loaded()) c->setLayer(0, p.baseClip, p.depthDriven ? depth_ : idlePhase_, 1.f);
         for (Character* c : {&v, &m}) { c->placement = M4::identity(); c->touchGoals = TouchGoals{}; }
+        // the act's own staging: an oral beat needs her jaw, the mouth on the shaft and both hands around it,
+        // exactly as in the night — the baked clip alone leaves the glans at her nose
+        oralStage(p.id == "oral");
+        if (p.id == "oral") applyOralGrip(v.touchGoals);
         return;
     }
+    oralStage(false);   // a kiss or an embrace: nothing of the oral staging may carry over
     std::string clip;
     for (const std::string& c : poseClips(pose_)) if (v.hasClip(c) || m.hasClip(c)) { clip = c; break; }
     if (clip.empty() && (pose_ == "lie" || pose_ == "cuddle")) {
@@ -476,31 +481,42 @@ void Game::applyStoryPose(float dt) {
         }
     }
     V3 axis = flatv(m.bonePos("センター") - v.bonePos("センター"));
-    // the gaps without any step (last frame's bones minus last frame's step): standing, the necks end where a
-    // natural bend brings the lips together (the embrace leaves room for her hands on his chest); seated, the hips
-    // stop just short of each other and the turn + lean + neck do the rest
+    V3 lv, lm;
+    bool contact = both && v.touch.mouthWorld(v.anim, v.morph("kiss"), lv) && m.touch.mouthWorld(m.anim, m.morph("kiss"), lm);
+    V3 wantedShift{0, 0, 0}, previousShift = kissShift_;
+    if (contact && k > 0.001f && !authored) {
+        V3 residual = lm - lv;
+        residual.y = 0.f;
+        wantedShift = (kissShift_ + residual * 0.5f) * smoothstep(0.65f, 1.f, k);
+        if (length(wantedShift) > 0.055f) wantedShift = normalize(wantedShift) * 0.055f;
+    }
+    kissShift_ += (wantedShift - kissShift_) * clamp01(dt * 12.f);
+    // Remove the root offsets carried by the last frame's bones before measuring the gaps: standing, the necks end
+    // where a natural bend brings the lips together; seated, the hips stop just short and the turn + lean do the rest.
     float step = 0.f;
     if (both && nr > 0.001f && !authored) {
-        float neckGap = dot(m.bonePos("首") - v.bonePos("首"), axis) + 2.f * step_;
-        float hipGap = dot(m.bonePos("下半身") - v.bonePos("下半身"), axis) + 2.f * step_;
+        float undo = 2.f * (step_ + dot(previousShift, axis));
+        float neckGap = dot(m.bonePos("首") - v.bonePos("首"), axis) + undo;
+        float hipGap = dot(m.bonePos("下半身") - v.bonePos("下半身"), axis) + undo;
         float want = sit ? 0.5f * (hipGap - kSitHips) : 0.5f * (neckGap - lerpf(kEmbraceNeck, kKissNeck, k));
         step = std::max(0.f, want) * nr;
     }
     step_ = step;
-    v.placement = m4translate(axis * step);
-    m.placement = m4translate(axis * -step);
+    v.placement = m4translate(axis * step + kissShift_);
+    m.placement = m4translate(axis * -step - kissShift_);
     V3 mv = actors_[0].mouthRest, mm = actors_[1].mouthRest;   // last frame, before the kiss IK
     bool meet = both && k > 0.001f && length(mv) > 0.1f && length(mm) > 0.1f;
     V3 u = flatv(mm - mv), meetAt = (mv + mm) * 0.5f;
-    meetAt.y = mv.y + 0.45f * (mm.y - mv.y);                    // he bends down a little more than she reaches up
+    meetAt.y = mv.y + (sit ? 0.65f : 0.25f) * (mm.y - mv.y);     // seated, she reaches up while he stays upright
     for (int w = 0; w < 2; ++w) {
         actors_[w].lean = authored ? 0.f : 0.35f * nr + 0.65f * k;
-        actors_[w].leanMax = sit ? 0.2f : 0.12f;
+        actors_[w].leanMax = sit ? 0.2f : (w ? 0.17f : 0.12f);
         actors_[w].turn = sit && !(authored && k > 0.001f) ? std::max(nr, k) : 0.f;
         actors_[w].eyesClosed = k > 0.6f;
         actors_[w].kissW = meet ? k : 0.f;
         actors_[w].kissRoll = 0.38f;
         actors_[w].kissTarget = meetAt + u * (w ? 0.001f : -0.001f);
+        if (w && contact) actors_[w].kissTarget.y -= (lm.y - lv.y) * smoothstep(0.65f, 1.f, k);
         float& kissExpr = actors_[w].expr["kiss"];
         kissExpr = std::max(kissExpr * (kissTarget_ > 0.5f ? 1.f : 0.f), 0.85f * k);
     }
@@ -652,6 +668,7 @@ void Game::presentStory(float dt) {
     scene.update(dt);
     if (inAct) applyContactTracks();
     if (qaKiss_) kissQa();
+    if (qaOral_ && inAct) oralQa();   // the act paths get measured like the night, or a staging fix proves nothing here
     if (black_ < 0.999f) directStory(dt);
 }
 
@@ -818,7 +835,7 @@ void Game::storyBeats(float dt) {
         std::string key;
         beatTake_ = L.voice == "none" ? nullptr : voices_.take(story_.story()->id, b->id, beatLine_, &key, &L.text);
         if (beatTake_ && !harness) voicePlayer_.play(voices_.file(key), settings.voice);
-        if (!L.vox.empty()) voice(L.vox, 0.8f, 1.f);
+        if (!L.vox.empty()) voice(L.who == "marcus" ? 1 : 0, L.vox.c_str(), 0.8f, 1.f);
         beatWho_ = L.who;
         beatText_ = L.text;
         beatT_ = 0.f;

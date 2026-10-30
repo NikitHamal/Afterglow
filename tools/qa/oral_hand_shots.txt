@@ -1,0 +1,5 @@
+# engine r3: oral far hand on the bed, near hand on the shaft
+oh_side|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;focus=m:竿先;view=yaw:90,pitch:8,dist:0.9;oralopen=2.2;ui=0;frames=40;render_from=38;oralqa=1
+oh_left|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;focus=m:竿先;view=yaw:-90,pitch:8,dist:0.9;oralopen=2.2;ui=0;frames=40;render_from=38;oralqa=1
+oh_wide|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;focus=m:竿先;view=yaw:90,pitch:5,dist:1.35;oralopen=2.2;ui=0;frames=40;render_from=38;oralqa=1
+oh_face|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;focus=v:頭;view=yaw:90,pitch:2,dist:0.85;oralopen=2.2;ui=0;frames=40;render_from=38;oralqa=1

@@ -1,0 +1,9 @@
+# engine r3: spoon pelvis alone, dual-quaternion vs linear blend skinning
+sp_dq_+000|screen=customize;tab=her;clip=spoon.in;clipT=1;focus=下半身;view=yaw:0,pitch:5,dist:0.6;ui=0;frames=24;render_from=22
+sp_dq_+090|screen=customize;tab=her;clip=spoon.in;clipT=1;focus=下半身;view=yaw:90,pitch:5,dist:0.6;ui=0;frames=24;render_from=22
+sp_dq_+180|screen=customize;tab=her;clip=spoon.in;clipT=1;focus=下半身;view=yaw:180,pitch:5,dist:0.6;ui=0;frames=24;render_from=22
+sp_dq_-090|screen=customize;tab=her;clip=spoon.in;clipT=1;focus=下半身;view=yaw:-90,pitch:5,dist:0.6;ui=0;frames=24;render_from=22
+sp_lbs_+000|screen=customize;tab=her;clip=spoon.in;clipT=1;focus=下半身;view=yaw:0,pitch:5,dist:0.6;skin=lbs;ui=0;frames=24;render_from=22
+sp_lbs_+090|screen=customize;tab=her;clip=spoon.in;clipT=1;focus=下半身;view=yaw:90,pitch:5,dist:0.6;skin=lbs;ui=0;frames=24;render_from=22
+sp_lbs_+180|screen=customize;tab=her;clip=spoon.in;clipT=1;focus=下半身;view=yaw:180,pitch:5,dist:0.6;skin=lbs;ui=0;frames=24;render_from=22
+sp_lbs_-090|screen=customize;tab=her;clip=spoon.in;clipT=1;focus=下半身;view=yaw:-90,pitch:5,dist:0.6;skin=lbs;ui=0;frames=24;render_from=22

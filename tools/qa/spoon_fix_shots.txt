@@ -1,0 +1,7 @@
+# engine r3: spoon with the lowered top thigh, body curl and waist hands
+sf_side|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;ui=0;frames=45;render_from=43
+sf_front|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=front;ui=0;frames=45;render_from=43
+sf_top|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=top;ui=0;frames=45;render_from=43
+sf_hips|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;hidehim=1;focus=v:下半身;view=yaw:0,pitch:5,dist:0.7;ui=0;frames=45;render_from=43
+sf_hips_back|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;hidehim=1;focus=v:下半身;view=yaw:180,pitch:5,dist:0.7;ui=0;frames=45;render_from=43
+sf_hands|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;focus=m:手首.L;view=yaw:105,pitch:18,dist:0.95;ui=0;frames=45;render_from=43

@@ -1,0 +1,6 @@
+# engine r3: oral hand pose, baked vs borrowed from the handjob arm layer
+oa_baked_side|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;ui=0;frames=50;render_from=48
+oa_layer_side|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;ui=0;frames=50;render_from=48;oralarms=1
+oa_baked_fpv|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=fpv;ui=0;frames=50;render_from=48
+oa_layer_fpv|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=fpv;ui=0;frames=50;render_from=48;oralarms=1
+oa_layer_face|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;focus=v:頭;view=yaw:90,pitch:2,dist:0.85;ui=0;frames=50;render_from=48;oralarms=1

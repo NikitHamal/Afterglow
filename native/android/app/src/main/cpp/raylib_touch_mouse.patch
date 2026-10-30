@@ -1,0 +1,28 @@
+diff --git a/src/platforms/rcore_android.c b/src/platforms/rcore_android.c
+--- a/src/platforms/rcore_android.c
++++ b/src/platforms/rcore_android.c
+@@ -1316,6 +1316,10 @@
+     if (CORE.Input.Touch.pointCount > 0) CORE.Input.Touch.currentTouchState[MOUSE_BUTTON_LEFT] = 1;
+     else CORE.Input.Touch.currentTouchState[MOUSE_BUTTON_LEFT] = 0;
+ 
++    // Afterglow: a touch is also a left mouse press, so the mouse-driven UI and camera drag work on a phone
++    CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_LEFT] = (CORE.Input.Touch.pointCount > 0);
++
+     // Stores the previous position of touch[0] only while it's active to calculate the delta.
+     if (flags == AMOTION_EVENT_ACTION_MOVE)
+     {
+diff --git a/src/platforms/rcore_android.c b/src/platforms/rcore_android.c
+--- a/src/platforms/rcore_android.c
++++ b/src/platforms/rcore_android.c
+@@ -854,7 +854,11 @@
+ 
+     const EGLint contextAttribs[] =
+     {
++#if defined(GRAPHICS_API_OPENGL_ES3)
++        EGL_CONTEXT_CLIENT_VERSION, 3,      // Afterglow needs a real ES3 context for GLSL ES 300
++#else
+         EGL_CONTEXT_CLIENT_VERSION, 2,
++#endif
+         EGL_NONE
+     };
+ 

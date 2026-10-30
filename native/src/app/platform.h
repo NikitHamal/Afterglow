@@ -22,6 +22,9 @@ void installCrashHandler();
 void installQuitSignals();
 bool quitRequested();
 
+// mouse wheel this frame; on touch screens a two-finger pinch maps onto it
+float wheel();
+
 // hand freed heap pages back to the OS (after loading: decode buffers, file images)
 void trimHeap();
 

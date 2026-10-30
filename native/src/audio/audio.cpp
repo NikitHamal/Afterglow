@@ -93,6 +93,36 @@ bool Audio::playRandom(const std::string& prefix, float volume, float jitter, fl
     return play(pick, vol, pitch, pan);
 }
 
+float Audio::length(const std::string& name) const {
+    auto it = sounds_.find(name);
+    if (it == sounds_.end() || !it->second.stream.sampleRate) return 0.f;
+    return (float)it->second.frameCount / (float)it->second.stream.sampleRate;
+}
+
+std::string Audio::randomFrom(const std::vector<std::string>& prefixes, bool digitsOnly) {
+    if (!ready_) return "";
+    for (const std::string& p : prefixes) {
+        std::vector<std::string> cands = names(p);
+        if (digitsOnly) {
+            std::vector<std::string> exact;
+            for (const std::string& n : cands) {
+                std::string rest = n.substr(p.size());
+                bool digits = !rest.empty();
+                for (char ch : rest) if (ch < '0' || ch > '9') { digits = false; break; }
+                if (digits) exact.push_back(n);
+            }
+            cands = exact;
+        }
+        if (cands.empty()) continue;
+        std::string& last = lastRandom_[p];
+        std::string pick = cands[(size_t)GetRandomValue(0, (int)cands.size() - 1)];
+        if (cands.size() > 1 && pick == last) pick = cands[(size_t)GetRandomValue(0, (int)cands.size() - 1)];
+        last = pick;
+        return pick;
+    }
+    return "";
+}
+
 bool Audio::addProcedural(const std::string& name, int frames, const std::function<void(float*, int)>& gen) {
     if (!ready_ || frames <= 0) return false;
     std::vector<float> data((size_t)frames, 0.f);

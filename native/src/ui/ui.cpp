@@ -1,6 +1,7 @@
 #include "ui/ui.h"
 #include "gfx/shader.h"
 #include "core/log.h"
+#include "app/platform.h"
 #include "rlgl.h"
 #include "embedded_fonts.h"
 #include <algorithm>
@@ -79,7 +80,7 @@ void Ui::begin(float dt, bool readInput) {
     in.clicked = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
     in.released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
     in.rightClicked = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
-    in.wheel = GetMouseWheelMove();
+    in.wheel = ag::platform::wheel();
     auto pr = [](int k) { return IsKeyPressed(k) || IsKeyPressedRepeat(k); };
     in.up = pr(KEY_UP) || pr(KEY_W);
     in.down = pr(KEY_DOWN) || pr(KEY_S);
@@ -87,6 +88,9 @@ void Ui::begin(float dt, bool readInput) {
     in.right = pr(KEY_RIGHT) || pr(KEY_D);
     in.accept = IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_SPACE);
     in.back = IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE);
+#if defined(__ANDROID__)
+    in.back = in.back || IsKeyPressed(KEY_BACK);
+#endif
     bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
     in.tabNext = (IsKeyPressed(KEY_TAB) && !shift) || IsKeyPressed(KEY_E) || IsKeyPressed(KEY_PAGE_DOWN);
     in.tabPrev = (IsKeyPressed(KEY_TAB) && shift) || IsKeyPressed(KEY_Q) || IsKeyPressed(KEY_PAGE_UP);

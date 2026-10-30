@@ -340,16 +340,45 @@ void Game::setAmbience(const std::string& places) {
 // voices speaking: the room and the music step back
 void Game::duckAmbience(float amount) { gAmb.duck.store(clamp01(amount), std::memory_order_relaxed); }
 
-void Game::voice(const std::string& name, float vol, float pitch) {
-    // per-sample gains measured offline (RMS/peak): the moan is mastered hot, the whispered lines quiet
-    static const struct { const char* n; float g; } kGain[] = {{"moan02", 0.4f}, {"loveyou", 0.8f}, {"takeme", 3.f}, {"suck05", 4.f}, {"swallow04", 1.5f}};
-    float g = 1.f;
-    for (const auto& k : kGain) if (name == k.n) g = k.g;
-    if (harness) AG_INFO("AG: audio t=%.2f voice %s vol %.2f pitch %.2f", (double)night_.elapsed, name.c_str(), (double)vol, (double)pitch);
-    if (audio.ready()) audio.play("vox/" + name, vol * g * settings.voice, pitch);
-    // simple lip sync: open her mouth for the length of the line (moans longer, words shorter)
-    if (name == "moan02" || name == "loveyou" || name == "takeme") {
-        mouthDur_ = (name == "moan02" ? 1.9f : 0.9f) / std::max(0.5f, pitch);
+namespace {
+// Every face sounds like itself: the bank decides which recordings play, this is the voice behind them.
+float modelPitch(const std::string& model) {
+    if (model == "vivian") return 0.93f;   // forty-two, warm, unhurried
+    if (model == "mei") return 1.09f;      // thirty-one, quicker and brighter
+    if (model == "amara") return 1.0f;     // thirty-four, bold, full
+    if (model == "marcus") return 0.88f;   // forty, low and steady
+    if (model == "daniel") return 0.97f;   // thirty-four, easy
+    return 1.f;
+}
+// the five shipped samples were mastered apart; a new bank arrives loudness-matched and needs no trim
+float legacyTrim(const std::string& name) {
+    static const std::pair<const char*, float> kGain[] = { {"moan02", 0.4f}, {"loveyou", 0.8f}, {"takeme", 3.f},
+                                                           {"suck05", 4.f}, {"swallow04", 1.5f} };
+    for (const auto& g : kGain) {
+        std::string t = g.first;
+        if (t.size() <= name.size() && name.compare(name.size() - t.size(), t.size(), t) == 0) return g.second;
+    }
+    return 1.f;
+}
+}  // namespace
+
+// role 0 is her, 1 is him. A cue resolves vox/<role>/<model>/<cue> -> vox/<role>/<cue> -> vox/<cue>, so a bank can
+// be as specific as it wants and anything it leaves out falls back to the shared recordings.
+void Game::voice(int role, const char* cue, float vol, float pitch, bool lipSync) {
+    Character& c = role ? scene.marcus : scene.vivian;
+    std::string bank = role ? "him" : "her";
+    std::string id = c.asset.empty() ? c.id : c.asset;
+    std::string pre = "vox/" + bank + "/";
+    std::string name = audio.randomFrom({ pre + id + "/" + cue, pre + cue }, true);
+    if (name.empty()) name = audio.randomFrom({ "vox/" + std::string(cue) });   // the flat legacy bank
+    if (harness) AG_INFO("AG: audio t=%.2f voice %s/%s -> %s vol %.2f pitch %.2f", (double)night_.elapsed, bank.c_str(),
+                         cue, name.empty() ? "none" : name.c_str(), (double)vol, (double)pitch);
+    if (name.empty() || !audio.ready()) return;
+    float p = pitch * modelPitch(id);
+    audio.play(name, vol * legacyTrim(name) * settings.voice, p);
+    // her mouth opens for the length of what actually played, instead of a per-file guess
+    if (!role && lipSync) {
+        mouthDur_ = std::max(0.25f, audio.length(name) / std::max(0.5f, p));
         mouthT_ = mouthDur_;
     }
 }
@@ -361,7 +390,12 @@ void Game::sfx(const std::string& prefix, float vol, float jitter) {
 
 void Game::breath(bool in, float vol) {
     if (harness) AG_INFO("AG: audio t=%.2f breath %s vol %.2f", (double)night_.elapsed, in ? "in" : "out", (double)vol);
-    if (audio.ready()) audio.playRandom(in ? "breath/in" : "breath/out", vol * settings.voice, 0.06f);
+    // the same bank rule as a voice cue: her own breathing first, then the role's, then the shared folder
+    Character& c = scene.vivian;
+    std::string id = c.asset.empty() ? c.id : c.asset;
+    std::string cue = in ? "breath-in" : "breath-out";
+    std::string name = audio.randomFrom({ "vox/her/" + id + "/" + cue, "vox/her/" + cue, std::string("breath/") + (in ? "in" : "out") });
+    if (!name.empty()) audio.play(name, vol * settings.voice, modelPitch(id));
 }
 
 void Game::playAudioEvents() {
@@ -374,16 +408,19 @@ void Game::playAudioEvents() {
                 float impact = clamp01(0.2f + 0.22f * e.value) * (0.55f + 0.45f * clamp01(night_.amplitude * 1.6f));
                 if (p.solo) { if (frand() < 0.6f) sfx("strokes", 0.35f * impact); }
                 else if (p.id == "oral") {
-                    if (frand() < 0.35f) voice("suck05", 0.35f + 0.3f * impact, 0.95f + 0.1f * frand());
+                    if (frand() < 0.35f) voice(0, "suck", 0.35f + 0.3f * impact, 0.95f + 0.1f * frand(), false);
                     else sfx("wet", 0.3f * impact);
                 } else if (p.id == "lick") sfx("wet", 0.28f * impact);
-                else sfx(her > 0.35f ? "wetplaps" : "dryplaps", 0.25f + 0.65f * impact);
+                else {
+                    sfx(her > 0.35f ? "wetplaps" : "dryplaps", 0.25f + 0.65f * impact);
+                    if (night_.him > 0.45f && frand() < 0.22f) voice(1, "groan", 0.2f + 0.5f * night_.him, 0.94f + 0.12f * frand());
+                }
                 break;
             }
             case NightEvent::DesireNew: breath(true, 0.4f); break;
-            case NightEvent::DesireMet: voice("moan02", 0.35f + 0.3f * her, 1.12f + 0.06f * frand()); moanT_ = std::max(moanT_, 2.5f); break;
-            case NightEvent::HerClimax: voice("moan02", 1.f, 1.05f); moanT_ = 3.f; break;
-            case NightEvent::HisClimax: sfx("cum", 0.75f, 0.03f); break;
+            case NightEvent::DesireMet: voice(0, her < 0.5f ? "moansoft" : "moan", 0.35f + 0.3f * her, 1.12f + 0.06f * frand()); moanT_ = std::max(moanT_, 2.5f); break;
+            case NightEvent::HerClimax: voice(0, "climax", 1.f, 1.05f); moanT_ = 3.f; break;
+            case NightEvent::HisClimax: sfx("cum", 0.75f, 0.03f); voice(1, "climax", 0.9f, 1.f); break;
             case NightEvent::Together: break;
             default: break;
         }
@@ -417,17 +454,39 @@ void Game::updateAudio(float dt) {
         bool active = night_.stroking() || p.solo || rub_ > 0.5f || touchAct_ > 0.2f;
         if (active) {
             if (her < 0.15f && frand() < 0.5f) breath(false, 0.45f);                              // a sigh
-            else voice("moan02", 0.18f + 0.7f * her, 0.88f + 0.18f * frand() + 0.06f * her);   // soft early, full later
+            else voice(0, her < 0.45f ? "moansoft" : "moan", 0.18f + 0.7f * her, 0.88f + 0.18f * frand() + 0.06f * her);   // soft early, full later
         }
-        if (her > 0.6f && (night_.desire == Desire::Deeper || night_.desire == Desire::Faster) && frand() < 0.35f) voice("takeme", 0.7f, 1.f);
+        if (her > 0.6f && (night_.desire == Desire::Deeper || night_.desire == Desire::Faster) && frand() < 0.35f) voice(0, "take", 0.7f, 1.f);
         moanT_ = (7.5f - 5.2f * her) * (0.75f + 0.5f * frand());
     }
     // afterglow
-    if (night_.finished && afterT_ > 2.2f && afterT_ - dt <= 2.2f && together_) voice("loveyou", 0.85f, 1.f);
+    if (night_.finished && afterT_ > 2.2f && afterT_ - dt <= 2.2f && together_) voice(0, "love", 0.85f, 1.f);
     wetT_ -= dt;
     if (wetT_ <= 0.f && her > 0.5f && night_.sinceStroke < 0.8f && !p.solo && p.penetrative) {
         sfx("wet", 0.12f + 0.2f * her);
         wetT_ = 0.9f + 1.5f * frand();
+    }
+}
+
+void Game::voiceAudit() {
+    if (!audio.ready()) audio.init();
+    if (audio.names("vox/").empty()) audio.loadAll();   // the night loads it lazily; an audit must not depend on that
+    static const char* kHer[] = { "moansoft", "moan", "climax", "gasp", "breath-in", "breath-out", "suck", "swallow", "take", "love" };
+    static const char* kHim[] = { "groan", "climax", "breath-in", "breath-out" };
+    for (int w = 0; w < 2; ++w) {
+        Character& c = w ? scene.marcus : scene.vivian;
+        if (!c.loaded()) continue;
+        std::string bank = w ? "him" : "her", id = c.asset.empty() ? c.id : c.asset;
+        int n = w ? (int)(sizeof(kHim) / sizeof(*kHim)) : (int)(sizeof(kHer) / sizeof(*kHer));
+        for (int i = 0; i < n; ++i) {
+            const char* cue = (w ? kHim : kHer)[i];
+            std::string pre = "vox/" + bank + "/";
+            std::string hit = audio.randomFrom({ pre + id + "/" + cue, pre + cue }, true);
+            if (hit.empty()) hit = audio.randomFrom({ "vox/" + std::string(cue) });
+            int variants = (int)audio.names(pre + id + "/" + cue).size();
+            AG_INFO("AG: VOICE-AUDIT %s/%s/%s -> %s (%d in the model bank)", bank.c_str(), id.c_str(), cue,
+                    hit.empty() ? "NOTHING" : hit.c_str(), variants);
+        }
     }
 }
 

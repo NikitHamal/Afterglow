@@ -120,6 +120,16 @@ private:
     float qaYaw_ = 0.f, qaPitch_ = 0.1f, qaDist_ = 0.9f;
     bool qaKiss_ = false;             // story QA: log the kiss / embrace geometry every frame (kissqa=1)
     void kissQa();
+    bool qaOral_ = false;             // play QA: log the mouth / shaft geometry every frame (oralqa=1)
+    float oralOpen_ = 2.2f;         // oral aperture target (the plain oral morph is a small O, not a wide open jaw)
+    bool qaHideMarcus_ = false;      // QA: draw her alone (hidehim=1), for pelvis / vulva inspection
+    bool qaHideGenitals_ = false;    // QA: hide his genital material (hidegenitals=1), to identify it in close-ups
+    float oralWristL_ = 0.f, oralWristR_ = -1.5708f;   // pronation correction per hand (radians)
+    float oralCurl_ = 0.35f;                            // close the oral hand fingers around the shaft
+    bool oralGrip_ = true;                              // solve both oral hands onto the shaft instead of the baked splay
+    float oralUp_ = 0.f;                                // extra lift of the mouth target (0: the lip ring's centre)
+    float oralLogT_ = 0.f;                              // live oral diagnostic: one line a second
+    void oralQa();
     bool qaOrbit_ = false;            // story QA: orbit=yaw:,pitch:,dist: round the couple's heads (yaw 0 = the kiss in profile)
     float qaOYaw_ = 0.f, qaOPitch_ = 0.f, qaODist_ = 1.2f;
     bool qaNoUi_ = false;
@@ -209,6 +219,11 @@ private:
     void storyAction(const std::string& action);
     void storyShot(const StoryLine* l, bool newNode);
     void applyStoryPose(float dt);
+    // the oral staging (jaw / mouth on the shaft / both hands) for whichever path is playing the clip
+    void oralStage(bool active);
+    void applyOralGrip(TouchGoals& tg);
+    void oralLiveLog();
+    void voiceAudit();
     void directStory(float dt);
     void storyStartPlay();
     void storyBeats(float dt);
@@ -233,6 +248,7 @@ private:
     float letterbox_ = 0.f;
     float kiss_ = 0.f, kissTarget_ = 0.f, near_ = 0.f, nearTarget_ = 0.f;
     float step_ = 0.f;                  // how far each has stepped (slid, seated) toward the other this frame (m)
+    V3 kissShift_{0, 0, 0};              // small horizontal contact correction, shared in opposite directions
     // how far the worn clothes stand off the skin at each body zone, per character (bind shapes: the cloth follows the
     // skin), rebuilt when the outfit or its shown layers change; an embracing hand rests on the cloth, not in it
     struct ClothAt { const Outfit* outfit = nullptr; int layers = -1; float off[(int)Zone::Count] = {}; };
@@ -253,7 +269,7 @@ private:
     void initAudio();
     void shutdownAudio();
     void updateAudio(float dt);
-    void voice(const std::string& name, float vol = 1.f, float pitch = 1.f);
+    void voice(int role, const char* cue, float vol = 1.f, float pitch = 1.f, bool lipSync = true);
     void sfx(const std::string& prefix, float vol, float pitchJitter = 0.06f);
     void breath(bool in, float vol);
     void setAmbience(const std::string& places);   // party | sea | rain | fire | city | spa ("" = the night room)

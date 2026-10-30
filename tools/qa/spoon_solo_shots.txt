@@ -1,0 +1,7 @@
+# engine r3: Vivian alone in the spoon clip — hip and vulva deformation, no partner occlusion
+sv_front|screen=customize;tab=her;clip=spoon.in;clipT=1;focus=v:下半身;view=yaw:0,pitch:8,dist:0.75;ui=0;frames=24;render_from=22
+sv_right|screen=customize;tab=her;clip=spoon.in;clipT=1;focus=v:下半身;view=yaw:90,pitch:8,dist:0.75;ui=0;frames=24;render_from=22
+sv_back|screen=customize;tab=her;clip=spoon.in;clipT=1;focus=v:下半身;view=yaw:180,pitch:8,dist:0.75;ui=0;frames=24;render_from=22
+sv_left|screen=customize;tab=her;clip=spoon.in;clipT=1;focus=v:下半身;view=yaw:-90,pitch:8,dist:0.75;ui=0;frames=24;render_from=22
+sv_top|screen=customize;tab=her;clip=spoon.in;clipT=1;focus=v:下半身;view=yaw:0,pitch:55,dist:0.75;ui=0;frames=24;render_from=22
+sv_low|screen=customize;tab=her;clip=spoon.in;clipT=1;focus=v:下半身;view=yaw:0,pitch:-25,dist:0.75;ui=0;frames=24;render_from=22

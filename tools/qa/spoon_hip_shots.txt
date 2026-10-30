@@ -1,0 +1,7 @@
+# engine r3: spoon pelvis / vulva deformation review
+hip_side|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;focus=v:下半身;view=yaw:90,pitch:8,dist:0.8;ui=0;frames=45;render_from=43
+hip_top|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=top;focus=v:下半身;view=yaw:0,pitch:45,dist:0.8;ui=0;frames=45;render_from=43
+vulva_full|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=touch;ui=0;frames=45;render_from=43
+vulva_half|screen=play;pos=spoon;depth=0.5;her=0.4;him=0.6;cam=touch;ui=0;frames=45;render_from=43
+vulva_entry|screen=play;pos=spoon;depth=0.05;her=0.4;him=0.6;cam=touch;ui=0;frames=45;render_from=43
+hip_back|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;focus=v:下半身;view=yaw:-90,pitch:15,dist:0.8;ui=0;frames=45;render_from=43

@@ -215,6 +215,15 @@ void TouchRig::init(Character& c) {
                 V3 mp{xc, ys / (float)ny, front};
                 M4 inv = inverse(a.global(headBone));
                 zones_[(int)Zone::Mouth] = {headBone, xformPoint(inv, mp), normalize(xformDir(inv, V3{0, 0, 1})), true};
+                // the lip ring's centre: the front-most vertex sits on the upper lip, a few mm above and in front
+                // of the opening, so a shaft aimed at it rides over the mouth instead of through it
+                float ay = 0.f, az = 0.f;
+                int an = 0;
+                for (const LV& l : lip) if (std::fabs(l.p.x - xc) < 0.008f) { ay += l.p.y; az += l.p.z; ++an; }
+                if (an > 0) {
+                    V3 ap{xc, ay / (float)an, az / (float)an};
+                    zones_[(int)Zone::MouthIn] = {headBone, xformPoint(inv, ap), normalize(xformDir(inv, V3{0, 0, 1})), true};
+                }
                 kissDelta_ = xformDir(inv, nd > 0 ? dsum / (float)nd : V3{0, 0, 0});
                 // the nose tip: the front-most skin on the midline between the mouth and the eyes; the face surface
                 // around (front-facing skin within 9 cm of the mouth, ~4 mm apart) for clearance checks
@@ -249,7 +258,7 @@ void TouchRig::init(Character& c) {
         bindNrm_[z] = normalize(xformDir(a.global(zones_[z].bone), zones_[z].normalLocal));
     }
     static const char* kZoneName[(int)Zone::Count] = {"vulva", "breast.L", "breast.R", "chest.L", "chest.R", "waist.L", "waist.R",
-                                                      "sternum", "mouth", "nose"};
+                                                      "sternum", "mouth", "mouth.in", "nose"};
     std::string zs;
     for (int z = 0; z < (int)Zone::Count; ++z) if (zones_[z].valid) zs += std::string(zs.empty() ? "" : " ") + kZoneName[z];
     AG_INFO("AG: touch: zones %s, face %d pts, hand joints L %d-%d R %d-%d", zs.c_str(), (int)faceP_.size(), handJointLo[0], handJointHi[0],
@@ -276,6 +285,13 @@ bool TouchRig::mouthWorld(const Animator& a, float kissMorph, V3& pos) const {
     const BodyZone& bz = zones_[(int)Zone::Mouth];
     if (!bz.valid) return false;
     pos = xformPoint(a.global(bz.bone), bz.local + kissDelta_ * clampf(kissMorph, 0.f, 1.f));
+    return true;
+}
+
+bool TouchRig::mouthApertureWorld(const Animator& a, V3& pos) const {
+    const BodyZone& bz = zones_[(int)Zone::MouthIn];
+    if (!bz.valid) return false;
+    pos = xformPoint(a.global(bz.bone), bz.local);
     return true;
 }
 
@@ -320,6 +336,53 @@ void TouchRig::apply(Animator& a, const TouchGoals& goals, const JointLimits* ro
     for (int s = 0; s < 2; ++s)
         if (gs[s]->active && gs[s]->weight > 0.001f && arms_[s].upper >= 0 && arms_[s].elbow >= 0 && arms_[s].wrist >= 0)
             solveArm(a, arms_[s], *gs[s]);
+}
+
+// fingers around a shaft: each phalanx subtends its own chord of the circle at its current radius, turning about the
+// shaft itself, so the hand closes onto the surface instead of the fingers crossing into it
+void TouchRig::wrapFingers(Animator& a, const Arm& arm, const HandGoal& g) {
+    V3 A = g.wrapAxis;
+    if (length(A) < 1e-4f) return;
+    A = normalize(A);
+    for (int fi = 0; fi < 4; ++fi) {
+        const std::vector<int>& ch = arm.fingers[fi];
+        if (ch.empty()) continue;
+        V3 J = P(a, ch[0]);
+        V3 radial = (J - g.wrapRef) - A * dot(J - g.wrapRef, A);
+        if (length(radial) < 1e-3f) continue;
+        radial = normalize(radial);
+        float s = dot(cross(A, radial), g.wrapDir) >= 0.f ? 1.f : -1.f;
+        for (size_t k = 0; k < ch.size(); ++k) {
+            int node = ch[k];
+            float len = 0.f;
+            if (k + 1 < ch.size()) len = length(a.restT(ch[k + 1]));
+            else if (k > 0) len = length(a.restT(ch[k]));
+            if (len < 1e-4f) continue;
+            V3 p = P(a, node);
+            V3 r = (p - g.wrapRef) - A * dot(p - g.wrapRef, A);
+            float rad = std::max(0.022f, length(r));
+            float ang = 2.f * std::asin(clampf(len / (2.f * rad), 0.f, 0.98f));
+            rotateWorld(a, node, qaxis(A * s, ang));
+        }
+    }
+}
+
+// close both hands around whatever they are holding: each finger turns about the palm's own knuckle axis
+void TouchRig::curlHands(Animator& a, float amount) {
+    for (int side = 0; side < 2; ++side) {
+        const Arm& arm = arms_[side];
+        if (arm.middle0 < 0 || arm.index1 < 0 || arm.pinky1 < 0) continue;
+        V3 W = P(a, arm.wrist);
+        V3 fw = normalize(P(a, arm.middle0) - W);
+        V3 lw = normalize(P(a, arm.pinky1) - P(a, arm.index1));
+        V3 palm = normalize(cross(fw, lw)) * arm.side;
+        V3 axis = cross(fw, palm);
+        if (length(axis) < 1e-4f) continue;
+        axis = normalize(axis);
+        for (int fi = 0; fi < 4; ++fi)
+            for (size_t k = 0; k < arm.fingers[fi].size(); ++k)
+                rotateWorld(a, arm.fingers[fi][k], qaxis(axis, amount * (k == 0 ? 0.7f : 1.f)));
+    }
 }
 
 // a hand laid on a partner, inside the joint ranges: the elbow bends about its own hinge only (the shoulder -> wrist
@@ -455,6 +518,7 @@ void TouchRig::solveArm(Animator& a, const Arm& arm, const HandGoal& g) {
         for (int fi = 0; fi < 4; ++fi)
             for (size_t k = 0; k < arm.fingers[fi].size(); ++k)
                 rotateWorld(a, arm.fingers[fi][k], qaxis(axis, curl * (k == 0 ? 0.7f : 1.f)));
+        if (g.wrap) wrapFingers(a, arm, g);
         // contact spheres at the finger pads (+ the palm for a grab)
         for (int fi = 0; fi < 3 && g.dent; ++fi) {
             const std::vector<int>& ch = arm.fingers[fi];

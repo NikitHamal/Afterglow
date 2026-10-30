@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
     if (!IsWindowReady()) { AG_ERROR("AG: no OpenGL 3.3 window"); ag::platform::releaseSingleInstance(); ag::platform::closeLog(); return 1; }
     SetWindowMinSize(ag::window::kMinW, ag::window::kMinH);
     SetExitKey(KEY_NULL);
-#if !defined(_WIN32)
+#if !defined(_WIN32) && !defined(__ANDROID__)
     {
         Image icon = LoadImageFromMemory(".png", kAppIconPng, kAppIconPngSize);
         if (icon.data) { SetWindowIcon(icon); UnloadImage(icon); }
@@ -129,11 +129,13 @@ int main(int argc, char** argv) {
             continue;
         }
         int cap = focused ? game.settings.fpsLimit() : 8;    // unfocused: paused game, a few cheap frames a second
+#if !defined(__ANDROID__)
         if (IsKeyPressed(KEY_F11) || ((IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) && IsKeyPressed(KEY_ENTER))) {
             game.settings.windowMode = game.settings.windowMode == 0 ? 1 : 0;
             ag::window::applyDisplay(game.settings, true);
             game.saveAll();
         }
+#endif
         float dt = GetFrameTime();
         if (dt > 0.05f) dt = 0.05f;
         game.update(dt);

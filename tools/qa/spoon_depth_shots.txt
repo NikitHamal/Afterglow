@@ -1,0 +1,6 @@
+# engine r3: spoon pelvis at zero, half and full depth with his body hidden
+sd_00|screen=play;pos=spoon;depth=0;her=0.4;him=0.6;cam=side;hidehim=1;focus=v:下半身;view=yaw:0,pitch:5,dist:0.7;ui=0;frames=45;render_from=43
+sd_05|screen=play;pos=spoon;depth=0.5;her=0.4;him=0.6;cam=side;hidehim=1;focus=v:下半身;view=yaw:0,pitch:5,dist:0.7;ui=0;frames=45;render_from=43
+sd_10|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;hidehim=1;focus=v:下半身;view=yaw:0,pitch:5,dist:0.7;ui=0;frames=45;render_from=43
+sd_00_back|screen=play;pos=spoon;depth=0;her=0.4;him=0.6;cam=side;hidehim=1;focus=v:下半身;view=yaw:180,pitch:5,dist:0.7;ui=0;frames=45;render_from=43
+sd_10_back|screen=play;pos=spoon;depth=1;her=0.4;him=0.6;cam=side;hidehim=1;focus=v:下半身;view=yaw:180,pitch:5,dist:0.7;ui=0;frames=45;render_from=43

@@ -13,9 +13,9 @@ class Animator;
 class Character;
 
 // L / R are the character's own sides (MMD .L / .R); Chest* / Waist* are where a partner's hands rest in an embrace,
-// Sternum the upper chest at the midline (one's own hand: "me"); Mouth is the front of the lips at the midline, Nose
-// its tip (both ride on the head)
-enum class Zone { Vulva = 0, BreastL, BreastR, ChestL, ChestR, WaistL, WaistR, Sternum, Mouth, Nose, Count };
+// Sternum the upper chest at the midline (one's own hand: "me"); Mouth is the front of the lips at the midline,
+// MouthIn the lip ring's own centre (a shaft passes through it, not over the upper lip), Nose its tip (all ride on the head)
+enum class Zone { Vulva = 0, BreastL, BreastR, ChestL, ChestR, WaistL, WaistR, Sternum, Mouth, MouthIn, Nose, Count };
 
 struct BodyZone {
     int bone = -1;              // node the zone rides on
@@ -42,6 +42,9 @@ struct HandGoal {
     bool flat = false;
     float palmLift = 0.02f;
     V3 elbowHint{0, 0, 0};
+    // a hand around a shaft: the fingers curve about the shaft itself instead of the palm knuckle line
+    bool wrap = false;
+    V3 wrapAxis{0, 1, 0}, wrapDir{0, 0, 1}, wrapRef{0, 0, 0};   // shaft direction, the way round it, a point on it
 };
 
 struct TouchGoals { HandGoal left, right; };
@@ -55,6 +58,8 @@ public:
     bool zoneBind(Zone z, V3& pos, V3& normal) const;
     // the lip front with the kiss pucker at `kissMorph` (lips pushed forward)
     bool mouthWorld(const Animator& a, float kissMorph, V3& pos) const;
+    // the centre of the lip ring (behind the front-most upper-lip vertex): where a shaft enters the mouth
+    bool mouthApertureWorld(const Animator& a, V3& pos) const;
     // signed distance (m, + outside) from a world point to this character's face around the mouth and nose
     float faceDistance(const Animator& a, const V3& p) const;
     // the face surface samples (front-facing skin within 9 cm of the mouth, ~4 mm apart) in world space
@@ -63,6 +68,7 @@ public:
     // IK + fingers onto the zones (runs after the procedural layers); fills `contacts`. With the character's joint
     // ranges, hands laid on a partner (world goals) are solved inside them (hinge elbows, twist in range)
     void apply(Animator& a, const TouchGoals& goals, const JointLimits* rom = nullptr);
+    void curlHands(Animator& a, float amount);
 
     struct Contact { V3 c; float r; };
     std::vector<Contact> contacts;       // finger/palm spheres in world space (soft-tissue dents)
@@ -78,6 +84,7 @@ private:
     };
     void solveArm(Animator& a, const Arm& arm, const HandGoal& g);
     bool solveArmRanged(Animator& a, const Arm& arm, const V3& wristT, const V3& elbowHint, float weight);
+    void wrapFingers(Animator& a, const Arm& arm, const HandGoal& g);
     const JointLimits* rom_ = nullptr;   // this frame's ranges (apply)
     BodyZone zones_[(int)Zone::Count];
     V3 bindPos_[(int)Zone::Count], bindNrm_[(int)Zone::Count];

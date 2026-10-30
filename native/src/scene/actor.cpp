@@ -291,11 +291,9 @@ void Actor::postPose(Animator& a) {
     kissIK(a);
 }
 
-// the kiss: the lips onto the target with the head, the neck and the chest each taking a share of the aim, each held
-// inside its range at once (cyclic coordinate descent): what the head cannot do, the neck and then the chest take on,
-// so the joint ranges never have to undo the kiss afterwards. Then the head rolls about the line from its pivot to
-// the lips (the lips stay put): the crown as upright as it can be, then toward the character's own right so the
-// noses pass; the neck and chest give back what the head's range took.
+// the kiss: bounded cyclic coordinate descent brings the lips to the target. Standing, the head shares the positional
+// aim; seated, it is reserved for facing and roll while the neck and chest handle position. The face aims slightly
+// toward the character's own right so the noses pass, then rolls about the head-to-lip axis without moving the lips.
 void Actor::kissIK(Animator& a) {
     V3 mo;
     float km = c_->morph("kiss");
@@ -306,6 +304,20 @@ void Actor::kissIK(Animator& a) {
     V3 T = lerp(mo, kissTarget, clampf(kissW, 0.f, 1.f));
     const int chain[3] = {head, neck, chest};
     const float share[3] = {0.5f, 0.55f, 0.35f};
+    const float maxTurn[3] = {0.55f, 0.20f, 0.16f};
+    Quat before[3];
+    for (int j = 0; j < 3; ++j) if (chain[j] >= 0) before[j] = a.r(chain[j]);
+    auto clampTurn = [&](int j) {
+        int n = chain[j];
+        if (n < 0) return;
+        Quat q = a.r(n), d = qnormalize(qmul(q, qconj(before[j])));
+        float angle = 2.f * std::acos(clampf(std::fabs(d.w), 0.f, 1.f));
+        float limit = maxTurn[j] * clampf(kissW, 0.f, 1.f);
+        if (angle > limit && angle > 1e-5f) {
+            a.r(n) = qnormalize(qslerp(before[j], q, limit / angle));
+            a.recomputeSubtree(n);
+        }
+    };
     auto aim = [&](int first, int iters) {
         for (int it = 0; it < iters; ++it) {
             for (int j = first; j < 3; ++j) {
@@ -315,14 +327,25 @@ void Actor::kissIK(Animator& a) {
                 V3 pj = P(a, n), v0 = mo - pj, v1 = T - pj;
                 if (length(v0) < 1e-4f || length(v1) < 1e-4f) continue;
                 rotq(a, n, qslerp(Quat{}, qfromto(normalize(v0), normalize(v1)), share[j]));
+                clampTurn(j);
                 rom.clampNode(a, n);
             }
             c_->touch.mouthWorld(a, km, mo);
             if (length(mo - T) < 0.001f) break;
         }
     };
-    aim(0, 12);
+    aim(sit > 0.5f ? 1 : 0, 12);
     V3 H = P(a, head);
+    V3 facing = qrotate(a.worldRot(head), c_->procedural.headForwardLocal());
+    V3 toTarget = T - H;
+    if (length(facing) > 1e-4f && length(toTarget) > 1e-4f) {
+        V3 right = cross(facing, V3{0, 1, 0});
+        if (length(right) > 1e-4f) toTarget += normalize(right) * (0.24f * length(toTarget));
+        Quat faceAim = qfromto(normalize(facing), normalize(toTarget));
+        rotq(a, head, qslerp(Quat{}, faceAim, kissW));
+        clampTurn(0);
+        rom.clampNode(a, head);
+    }
     c_->touch.mouthWorld(a, km, mo);
     V3 ax = mo - H;
     if (length(ax) > 1e-4f) {
@@ -333,6 +356,7 @@ void Actor::kissIK(Animator& a) {
             u0 = normalize(u0); u1 = normalize(u1);
             float ang = std::atan2(dot(cross(u0, u1), ax), dot(u0, u1));
             rotq(a, head, qaxis(ax, (ang + kissRoll) * kissW));
+            clampTurn(0);
             rom.clampNode(a, head);
         }
     }

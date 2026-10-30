@@ -1,0 +1,7 @@
+# engine r3: oral wrist pronation sweep, viewed from his eyes and the side
+ow_000_fpv|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=fpv;ui=0;frames=50;render_from=48;oralwrist=0
+ow_p90_fpv|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=fpv;ui=0;frames=50;render_from=48;oralwrist=1.5708
+ow_m90_fpv|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=fpv;ui=0;frames=50;render_from=48;oralwrist=-1.5708
+ow_180_fpv|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=fpv;ui=0;frames=50;render_from=48;oralwrist=3.1416
+ow_p90_side|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;ui=0;frames=50;render_from=48;oralwrist=1.5708
+ow_180_side|screen=play;pos=oral;depth=1;her=0.3;him=0.6;cam=side;ui=0;frames=50;render_from=48;oralwrist=3.1416

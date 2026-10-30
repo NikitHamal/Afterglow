@@ -10,6 +10,7 @@ from PIL import Image, ImageFilter
 RECIPES = {
     # lips: sRGB target, strength; blush: sRGB, strength; stubble: strength
     "mei":    {"base": "vivian", "tones": ["fair", "porcelain", "honey"], "lips": ((0.70, 0.38, 0.40), 0.78), "blush": ((0.86, 0.55, 0.55), 0.10)},
+    "kari":   {"base": "vivian", "tones": ["honey", "olive", "caramel"], "lips": ((0.62, 0.16, 0.18), 0.85), "blush": ((0.82, 0.52, 0.50), 0.08)},
     "amara":  {"base": "vivian", "tones": ["deep", "ebony", "bronze"], "lips": ((0.27, 0.10, 0.12), 0.6), "blush": None},
     # stubble (beard field below) is supported but not shipped: painted grain read as a rash in close-ups
     "daniel": {"base": "marcus", "tones": [], "lips": None, "blush": None, "stubble": None},

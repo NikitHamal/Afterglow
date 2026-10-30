@@ -18,7 +18,8 @@
    "Ebony goddess": {"sliders": {"bust": 0.6, "hips": 0.8, "butt": 1.0, "waist": -0.5, "muscle": 0.3, "weight": 0.1}, "tone": "ebony"},
    "Porcelain":     {"sliders": {"bust": -0.2, "hips": -0.1, "waist": -0.3, "weight": -0.3, "age": -0.6}, "tone": "porcelain"},
    "Mature":        {"sliders": {"age": 1.0, "weight": 0.3, "bust": 0.35, "belly": 0.3}, "tone": "honey"},
-   "Young adult":   {"sliders": {"age": -1.0, "weight": -0.2, "waist": -0.3}, "tone": "olive"}
+   "Young adult":   {"sliders": {"age": -1.0, "weight": -0.2, "waist": -0.3}, "tone": "olive"},
+   "Kari":          {"sliders": {"bust": 1.0, "hips": 0.85, "waist": -0.15, "butt": 0.4, "weight": 0.1, "muscle": 0.15}, "tone": "olive"}
   }
  },
  "marcus": {
