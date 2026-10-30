@@ -18,7 +18,6 @@ include(FetchContent)
 set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(raylib
   URL https://github.com/raysan5/raylib/archive/refs/tags/5.5.tar.gz
-  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
   PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/raylib_touch_mouse.patch)
 FetchContent_GetProperties(raylib)
 if(NOT raylib_POPULATED)
@@ -35,8 +34,7 @@ target_compile_options(raylib PRIVATE -Wno-unused-parameter -Wno-unused-variable
 
 # ---- raygui 4.0 (header only) ----
 FetchContent_Declare(raygui
-  URL https://github.com/raysan5/raygui/archive/refs/tags/4.0.tar.gz
-  DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+  URL https://github.com/raysan5/raygui/archive/refs/tags/4.0.tar.gz)
 FetchContent_GetProperties(raygui)
 if(NOT raygui_POPULATED)
   FetchContent_Populate(raygui)
