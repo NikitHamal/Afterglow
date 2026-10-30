@@ -53,7 +53,7 @@ file(WRITE ${RL_ANDROID} "${RL_TEXT}")
 add_library(raylib STATIC
   ${RL_SRC}/raudio.c ${RL_SRC}/rcore.c ${RL_SRC}/rmodels.c ${RL_SRC}/rshapes.c
   ${RL_SRC}/rtext.c ${RL_SRC}/rtextures.c ${RL_SRC}/utils.c)
-target_include_directories(raylib PUBLIC ${RL_SRC})   # no src/external: its Windows dirent.h would shadow the NDK one
+target_include_directories(raylib PUBLIC ${RL_SRC} ${ANDROID_NDK}/sources/android/native_app_glue)   # no src/external: its Windows dirent.h would shadow the NDK one
 target_compile_definitions(raylib PUBLIC PLATFORM_ANDROID GRAPHICS_API_OPENGL_ES3)
 target_compile_options(raylib PRIVATE -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function)
 
