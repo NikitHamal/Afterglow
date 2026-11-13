@@ -96,8 +96,10 @@ void Actor::update(float dt, const V3& partnerHead, bool hasPartner, const V3& c
     V3 flat = normalize(V3{hf.x, 0.f, hf.z});
     if (length(flat) < 0.5f) flat = {0, 0, 1};
     V3 side = normalize(cross(V3{0, 1, 0}, flat));
-    V3 tgt = hasPartner_ ? partner_ + V3{0.f, 0.02f, 0.f} : hc + flat * 2.f;
-    if (look_ == "camera") tgt = cam_;
+    float sacX = 0.f, sacY = 0.f;
+    if (!eyesClosed) saccade_.step(dt, sacX, sacY);
+    V3 tgt = hasPartner_ ? partner_ + side * sacX + V3{0.f, 0.02f + sacY, 0.f} : hc + flat * 2.f + side * sacX;
+    if (look_ == "camera") tgt = cam_ + side * (0.4f * sacX) + V3{0.f, 0.4f * sacY, 0.f};
     else if (look_ == "away") tgt = hc + flat * 1.2f + side * (0.9f * tiltSide_) + V3{0.f, -0.25f, 0.f};
     else if (look_ == "down") tgt = hc + flat * 0.7f + V3{0.f, -0.75f, 0.f};
     if (react_ == "shy" && reactT_ < 3.f) tgt = lerp(tgt, hc + flat * 0.8f + side * (0.5f * tiltSide_) + V3{0.f, -0.6f, 0.f}, smoothstep(0.f, 0.4f, reactT_) * (1.f - smoothstep(2.4f, 3.f, reactT_)));

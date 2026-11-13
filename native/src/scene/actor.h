@@ -79,6 +79,7 @@ private:
     // face
     std::map<std::string, float> cur_;
     Blinker blinker_;
+    SaccadeGaze saccade_;
     float closed_ = 0.f, pitch_ = 0.f;              // pitch_: gaze elevation in the head's frame (lids follow it)
     V3 lastLook_{0, 0, 0};
     int head = -1, neck = -1, upper = -1, chest = -1, sh[2] = {-1, -1}, arm[2] = {-1, -1}, elbow[2] = {-1, -1}, wrist[2] = {-1, -1};
