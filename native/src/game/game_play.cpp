@@ -408,7 +408,7 @@ void Game::presentPlay(float dt) {
         float t = p.depthDriven ? depth_ : loopPhase_;
         for (Character* c : {&v, &m}) if (c->loaded()) c->setLayer(0, baseClip, t, 1.f);
         if (p.canTouch) layered(1, p.id + ".rub", rubPhase_, rub_, "vivian", "arm.R");
-        if (p.canKiss) layered(2, p.id + ".embrace", 0.f, embrace_, nullptr, "upper");
+        if (p.canKiss) layered(2, p.id + ".embrace", idlePhase_, embrace_, nullptr, "upper");
         scene.showMarcus = m.loaded() && !meta["marcusHidden"].boolean(false);
     }
     scene.showVivian = v.loaded();
