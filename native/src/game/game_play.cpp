@@ -487,6 +487,7 @@ void Game::presentPlay(float dt) {
         float front = 1.f - smoothstepF(0.9f, 1.4f, off);
         v.proc.lookWeight = (together ? 0.45f : 0.8f) * front;
         v.proc.eyeWeight = (1.f - 0.7f * climaxH) * (0.35f + 0.65f * front);
+        v.proc.saccades = climaxH < 0.6f;
         v.proc.lookTarget = front > 0.01f ? tgt : hc + hf;
         // the upper lids follow where the eyes look (v3 gaze lids)
         float pitch = std::asin(clampf(dot(normalize(v.proc.lookTarget - hc), hu), -1.f, 1.f));   // in her head's frame
@@ -496,6 +497,7 @@ void Game::presentPlay(float dt) {
         v.setMorph("lids_up", lu);
     }
     if (m.loaded()) {
+        m.proc.saccades = climaxM < 0.6f;
         float mBlink = hisBlink_.update(dt, 0.8f + 0.4f * him);
         m.setMorph("blink", clamp01(std::max(mBlink, 0.7f * climaxM)));
         m.setMorph("effort", clamp01(0.6f * std::min(1.f, night_.energy) + 0.5f * him * him));
@@ -620,16 +622,26 @@ void Game::applyContactTracks() {
     else if (p.canTouch) run(p.id + ".rub", rubPhase_, rub_);
 }
 
-// her back arches with pleasure: the upper body rotates back about the shoulder line (world space)
+// her back arches with pleasure: distributed across lumbar (spine), thoracic (chest), and cervical (neck) counter-aim
 void Game::archBody(Animator& a) const {
     if (arch_ < 0.002f) return;
     const Model* m = a.model();
-    int upper = m->findNode("spine"), sl = m->findNode("upper_arm.L"), sr = m->findNode("upper_arm.R");
+    int upper = m->findNode("spine"), chest = m->findNode("chest"), neck = m->findNode("neck");
+    int sl = m->findNode("upper_arm.L"), sr = m->findNode("upper_arm.R");
     if (upper < 0 || sl < 0 || sr < 0) return;
     V3 axis = a.global(sr).translation() - a.global(sl).translation();
     if (length(axis) < 1e-4f) return;
-    a.setWorldRot(upper, qnormalize(qmul(qaxis(normalize(axis), arch_), a.worldRot(upper))));
+    V3 ax = normalize(axis);
+    a.setWorldRot(upper, qnormalize(qmul(qaxis(ax, 0.55f * arch_), a.worldRot(upper))));
     a.recomputeSubtree(upper);
+    if (chest >= 0) {
+        a.setWorldRot(chest, qnormalize(qmul(qaxis(ax, 0.45f * arch_), a.worldRot(chest))));
+        a.recomputeSubtree(chest);
+    }
+    if (neck >= 0) {
+        a.setWorldRot(neck, qnormalize(qmul(qaxis(ax, -0.25f * arch_), a.worldRot(neck))));
+        a.recomputeSubtree(neck);
+    }
 }
 
 // The oral staging for this path: her jaw, the mouth on the shaft, both hands around it. The same routine runs for
