@@ -89,14 +89,14 @@ def stand(body, loc_xy, face, weight=0.6, breath=0.0, chest_lean=0.0, feet="norm
     return f, left
 
 def relaxed_arms(body, f, left, swing=0.0, sides=None):
-    """arms hanging with soft elbows (~25 deg), hands beside the thighs, palms in, fingers loosely curled"""
+    """arms hanging with soft elbows (~22 deg), hands beside the thighs, palms in, fingers loosely curled"""
     r = body.rig; bvh = surface(body)
     for s, sx in arm_side(body, f):
         if sides is not None and s not in sides: continue
         sh = r.head("upper_arm" + s); side = left * sx
-        reach = 0.86 * (body.len["upper" + s] + body.len["fore" + s])        # a soft elbow, never locked
-        W = sh + side * 0.07 + f * (0.06 + 0.02 * swing * sx) - UP * reach
-        pole = sh - f * 0.30 + side * 0.10 - UP * 0.10
+        reach = 0.955 * (body.len["upper" + s] + body.len["fore" + s])       # ~22 deg soft elbow, never bowed out
+        W = sh + side * 0.035 + f * (0.045 + 0.025 * swing * sx) - UP * reach
+        pole = sh - f * 0.32 + side * 0.03 - UP * 0.22
         def pose_hand(s=s, side=side):
             body.hand(s, palm=-side + f * 0.15, fingers=nrm(-UP + f * 0.18)); body.rig.limit("wrist" + s); body.fingers(s, 0.38)
         body.arm_ik(s, W, pole); pose_hand()
@@ -319,8 +319,10 @@ def hands_on_thighs(body, f, left, which=None):
 def sit_bed(ctx, t):
     V, M = ctx.V, ctx.M; r = V.rig; m = M.rig
     ph = 2 * math.pi * t
-    fv, lv = sit(V, MAT_W / 2 - 0.20, 0.95, V3(1, 0, 0), lean=6.0, breath=math.sin(ph))
-    fm, lm = sit(M, MAT_W / 2 - 0.22, 1.45, V3(1, 0, 0), lean=10.0, breath=math.sin(ph + 0.8))
+    bv = math.sin(ph) + 0.22 * math.sin(2 * ph - 0.4)
+    bm = math.sin(ph + 0.8) + 0.22 * math.sin(2 * ph + 0.35)
+    fv, lv = sit(V, MAT_W / 2 - 0.20, 0.95, V3(1, 0, 0), lean=6.0 + 1.4 * math.sin(ph - 0.3), breath=bv, side_lean=1.8 * math.sin(ph - 0.2))
+    fm, lm = sit(M, MAT_W / 2 - 0.22, 1.45, V3(1, 0, 0), lean=10.0 + 1.2 * math.sin(ph + 0.5), breath=bm, side_lean=-1.5 * math.sin(ph + 0.6))
     hands_on_thighs(V, fv, lv)
     bvhV = surface(V)
     near = [s for s, sx in arm_side(M, fm) if (m.head("upper_arm" + s) - r.head("chest")).length ==
@@ -330,7 +332,8 @@ def sit_bed(ctx, t):
     her_far = max((".L", ".R"), key=lambda q: (r.head("upper_arm" + q) - r.head("chest")).dot(toward_her))   # his arm round her shoulders
     cup(M, near, bvhV, r.head("upper_arm" + her_far) + UP * 0.07 - fv * 0.02, toward_her, m.head("upper_arm" + near) - toward_her * 0.1 - UP * 0.25 - fm * 0.15)
     hands_on_thighs(M, fm, lm, which=(far,))
-    V.look(m.head("head") + V3(0.05, 0, -0.05)); M.look(r.head("head"))
+    V.look(m.head("head") + V3(0.05, 0.015 * math.sin(2 * ph), -0.05 + 0.012 * math.cos(ph)), neck_share=0.48)
+    M.look(r.head("head") + V3(0, -0.015 * math.cos(2 * ph), 0.01 * math.sin(ph + 0.5)), neck_share=0.48)
 
 def kiss_sit(ctx, t):
     """seated side by side on the edge, turned to each other (the chest turns more than the hips), lips together;

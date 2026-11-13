@@ -69,7 +69,7 @@ def titjob(ctx, t):
     V.look(m.head("head"))
     for s, sx in sides(M, "upper_arm"):
         sh = m.head("upper_arm" + s)
-        hands_to(M, s, V3(sx * 0.34, sh.y + 0.02, BED_TOP + 0.075), V3(0, 0, -1), nrm(V3(sx, 0.2, 0)), sh + V3(sx * 0.3, -0.3, 0.1), 0.08)
+        hands_to(M, s, V3(sx * 0.34, sh.y - 0.36, BED_TOP + 0.075), V3(0, 0, -1), nrm(V3(sx * 0.25, -1, 0)), sh + V3(sx * 0.28, -0.18, 0.08), 0.18)
     M.look(r.head("head"))
 
 # ---------------------------------------------------------------- FACE-RIDING: she kneels astride his head, facing the headboard
