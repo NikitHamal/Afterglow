@@ -13,7 +13,7 @@
   },
   "missionary.in": {
     "frames": 25,
-    "loop_pelvis_drift_m": 0.09172,
+    "loop_pelvis_drift_m": 0.092,
     "coord_parity_error_m": 0.0,
     "status": "PASS"
   },
