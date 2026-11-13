@@ -1,0 +1,32 @@
+{
+  "stand.idle": {
+    "frames": 49,
+    "loop_pelvis_drift_m": 0.0,
+    "coord_parity_error_m": 0.0,
+    "status": "PASS"
+  },
+  "sit.bed": {
+    "frames": 49,
+    "loop_pelvis_drift_m": 0.0,
+    "coord_parity_error_m": 0.0,
+    "status": "PASS"
+  },
+  "missionary.in": {
+    "frames": 25,
+    "loop_pelvis_drift_m": 0.09172,
+    "coord_parity_error_m": 0.0,
+    "status": "PASS"
+  },
+  "cowgirl.in": {
+    "frames": 25,
+    "loop_pelvis_drift_m": 0.05,
+    "coord_parity_error_m": 0.0,
+    "status": "PASS"
+  },
+  "oral.in": {
+    "frames": 25,
+    "loop_pelvis_drift_m": 0.03273,
+    "coord_parity_error_m": 0.0,
+    "status": "PASS"
+  }
+}
