@@ -23,62 +23,59 @@ def _apply_pose_fixes(clip, arm):
     """Fix specific baseline limb/torso pose defects identified by visual contact-sheet inspection."""
     is_viv = "vivian" in arm.name.lower()
     if clip == "stand.idle":
-        # Fix bowed-out chicken-wing elbows by adducting upper arms toward ribs and relaxing elbows
+        # Local X < 0 on upper_arm.L/R adducts both arms inward toward the ribs; Z*sgn swings forward
         for side, sgn in ((".L", 1.0), (".R", -1.0)):
             ua = arm.pose.bones.get("upper_arm" + side)
             el = arm.pose.bones.get("elbow" + side)
             if ua:
-                _add_quat_delta(ua, 0.06 if is_viv else 0.04, -0.14 * sgn if is_viv else -0.22 * sgn, -0.04 * sgn)
+                _add_quat_delta(ua, -0.13 if is_viv else -0.21, 0.04 * sgn, 0.06 * sgn)
             if el:
-                _add_quat_delta(el, -0.08 if is_viv else 0.06, 0.0, -0.10 * sgn if is_viv else -0.05 * sgn)
+                _add_quat_delta(el, -0.06, 0.0, -0.06 * sgn)
     elif clip in ("oral.in", "handjob.in", "titjob.in"):
         if not is_viv:
-            # Fix Marcus's 150-deg backward-folded forearms in supine clips so arms rest naturally along the sheet
+            # Fix Marcus's 150-deg backward-folded forearms in supine clips using his verified cowgirl supine arm pose
             for side, sgn in ((".L", 1.0), (".R", -1.0)):
                 ua = arm.pose.bones.get("upper_arm" + side)
                 el = arm.pose.bones.get("elbow" + side)
                 wr = arm.pose.bones.get("wrist" + side)
                 if ua:
-                    q_fix = Euler((-0.26, 0.42 * sgn, 0.08 * sgn), "XYZ").to_quaternion()
+                    q_fix = Euler((-0.41, 0.60 * sgn, 0.06 * sgn), "XYZ").to_quaternion()
                     ua.rotation_quaternion = q_fix
                     ua.matrix_basis = Matrix.Translation(ua.matrix_basis.to_translation()) @ q_fix.to_matrix().to_4x4()
                 if el:
-                    q_el = Euler((0.22, 0.0, 0.14 * sgn), "XYZ").to_quaternion()
+                    q_el = Euler((0.08, 0.04 * sgn, 0.14 * sgn), "XYZ").to_quaternion()
                     el.rotation_quaternion = q_el
                     el.matrix_basis = Matrix.Translation(el.matrix_basis.to_translation()) @ q_el.to_matrix().to_4x4()
                 if wr:
-                    q_wr = Euler((0.08, -0.10 * sgn, 0.0), "XYZ").to_quaternion()
+                    q_wr = Euler((0.06, -0.08 * sgn, 0.0), "XYZ").to_quaternion()
                     wr.rotation_quaternion = q_wr
                     wr.matrix_basis = Matrix.Translation(wr.matrix_basis.to_translation()) @ q_wr.to_matrix().to_4x4()
         elif clip == "oral.in":
-            # Keep Vivian's left elbow tucked back toward her hip instead of jutting past her head
+            # Keep Vivian's left elbow tucked back toward her hip (mirroring her right arm) instead of jutting past her head
             ua_l = arm.pose.bones.get("upper_arm.L")
             el_l = arm.pose.bones.get("elbow.L")
             if ua_l:
-                _add_quat_delta(ua_l, -0.28, -0.24, 0.22)
+                q_ul = Euler((-1.02, 0.15, 0.04), "XYZ").to_quaternion()
+                ua_l.rotation_quaternion = q_ul
+                ua_l.matrix_basis = Matrix.Translation(ua_l.matrix_basis.to_translation()) @ q_ul.to_matrix().to_4x4()
             if el_l:
-                _add_quat_delta(el_l, 0.20, 0.0, 0.25)
+                q_el = Euler((-0.95, -0.45, -1.05), "XYZ").to_quaternion()
+                el_l.rotation_quaternion = q_el
+                el_l.matrix_basis = Matrix.Translation(el_l.matrix_basis.to_translation()) @ q_el.to_matrix().to_4x4()
     elif clip in ("cowgirl.in", "cowgirl.rub") and is_viv:
-        # Lean Vivian's torso forward so her palms reach Marcus's chest instead of hovering 19 cm in mid-air
-        for sb, ang in (("spine", 0.16), ("chest", 0.18), ("neck", -0.18)):
+        # Lean Vivian's torso forward (X + 0.22 on spine & chest) so her palms rest on Marcus's chest
+        for sb, ang in (("spine", 0.20), ("chest", 0.22), ("neck", -0.22)):
             pb = arm.pose.bones.get(sb)
             if pb:
                 _add_quat_delta(pb, ang, 0.0, 0.0)
-        for side, sgn in ((".L", 1.0), (".R", -1.0)):
-            ua = arm.pose.bones.get("upper_arm" + side)
-            el = arm.pose.bones.get("elbow" + side)
-            if ua:
-                _add_quat_delta(ua, 0.22, -0.08 * sgn, 0.12 * sgn)
-            if el:
-                _add_quat_delta(el, -0.14, 0.0, -0.08 * sgn)
     elif clip in ("spoon.in", "spoon.rub") and is_viv:
-        # Tuck Vivian's right forearm so it rests on the pillow/sheet instead of jutting in front of her face
+        # Tuck Vivian's right arm downward (-X adduction) so it rests on the sheet instead of jutting out
         ua_r = arm.pose.bones.get("upper_arm.R")
         el_r = arm.pose.bones.get("elbow.R")
         if ua_r:
-            _add_quat_delta(ua_r, 0.18, 0.0, -0.22)
+            _add_quat_delta(ua_r, -0.22, 0.0, -0.18)
         if el_r:
-            _add_quat_delta(el_r, 0.24, 0.0, -0.15)
+            _add_quat_delta(el_r, 0.18, 0.0, -0.12)
 
 def overhaul_loaded_clip(clip, profile="idle"):
     """Apply Pass 1-4 biomechanical weight, overlap, secondary hair/soft-tissue, eye saccade, and blendshape curves."""
@@ -96,21 +93,23 @@ def overhaul_loaded_clip(clip, profile="idle"):
             BE.set_frame(min(f, int(round(arm.animation_data.action.frame_range[1])) if (arm.animation_data and arm.animation_data.action) else f))
             _apply_pose_fixes(clip, arm)
             raw_basis[arm.name][f] = {pb.name: pb.matrix_basis.copy() for pb in arm.pose.bones}
-    base_basis = {}
-    for arm in arms:
-        base_basis[arm.name] = {}
-        for idx, f in enumerate(frames):
-            f_prev = frames[max(0, idx - 1)]
-            f_next = frames[min(len(frames) - 1, idx + 1)]
-            smoothed = {}
-            for pb in arm.pose.bones:
-                bn = pb.name
-                m0, m1, m2 = raw_basis[arm.name][f_prev][bn], raw_basis[arm.name][f][bn], raw_basis[arm.name][f_next][bn]
-                t_s = (m0.to_translation() * 0.25) + (m1.to_translation() * 0.5) + (m2.to_translation() * 0.25)
-                q_a = m0.to_quaternion().slerp(m1.to_quaternion(), 0.67)
-                q_s = q_a.slerp(m2.to_quaternion(), 0.25)
-                smoothed[bn] = Matrix.Translation(t_s) @ q_s.to_matrix().to_4x4()
-            base_basis[arm.name][f] = smoothed
+    # 2-pass binomial Gaussian smoothing (effective 5-frame [1,4,6,4,1]/16 kernel) to eliminate IK trajectory jerk spikes
+    base_basis = {arm.name: dict(raw_basis[arm.name]) for arm in arms}
+    for _pass in range(2):
+        prev_pass = {arm.name: dict(base_basis[arm.name]) for arm in arms}
+        for arm in arms:
+            for idx, f in enumerate(frames):
+                f_prev = frames[max(0, idx - 1)]
+                f_next = frames[min(len(frames) - 1, idx + 1)]
+                smoothed = {}
+                for pb in arm.pose.bones:
+                    bn = pb.name
+                    m0, m1, m2 = prev_pass[arm.name][f_prev][bn], prev_pass[arm.name][f][bn], prev_pass[arm.name][f_next][bn]
+                    t_s = (m0.to_translation() * 0.25) + (m1.to_translation() * 0.5) + (m2.to_translation() * 0.25)
+                    q_a = m0.to_quaternion().slerp(m1.to_quaternion(), 0.67)
+                    q_s = q_a.slerp(m2.to_quaternion(), 0.25)
+                    smoothed[bn] = Matrix.Translation(t_s) @ q_s.to_matrix().to_4x4()
+                base_basis[arm.name][f] = smoothed
 
     amp = 0.52 if ("idle" in clip or "sit" in clip or "embrace" in clip or "kiss" in clip) else 0.68
     for arm_idx, arm in enumerate(arms):
@@ -160,13 +159,15 @@ def overhaul_loaded_clip(clip, profile="idle"):
                 if clv:
                     _add_quat_delta(clv, 0.105 * amp * math.sin(th - 0.3 * sgn), 0.06 * sgn * amp * wave2, 0.08 * sgn * amp * wave1)
                     clv.keyframe_insert("rotation_quaternion", frame=f)
-                # Subtle arm & forearm curved arc + overshoot (~6-7 deg, no outward winging)
+                # Subtle arm & forearm curved arc + overshoot along sagittal Z*sgn (never outward X winging)
                 for ab, g_a, lg in (("upper_arm" + side, 0.105, 0.35), ("elbow" + side, 0.115, 0.65), ("wrist" + side, 0.11, 0.95)):
                     pb = arm.pose.bones.get(ab)
                     if pb:
                         wa = math.sin(th - lg + 0.2 * sgn) + 0.18 * math.sin(2.0 * th - lg)
                         wb = math.cos(th - lg * 0.7)
-                        _add_quat_delta(pb, g_a * amp * wa, 0.065 * amp * wb, 0.055 * sgn * amp * settle)
+                        rx_v = (0.032 if "upper_arm" in ab else g_a) * amp * wa
+                        rz_v = (g_a if "upper_arm" in ab else 0.065) * sgn * amp * settle
+                        _add_quat_delta(pb, rx_v, 0.055 * amp * wb, rz_v)
                         pb.keyframe_insert("rotation_quaternion", frame=f)
                 # Fingers articulate with lagged grip wave across proximal/intermediate/distal phalanges (0..2 thumb, 1..3 fingers)
                 for fg_i, fg in enumerate(("thumb", "index", "middle", "ring", "pinky")):
