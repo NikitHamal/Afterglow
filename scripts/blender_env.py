@@ -133,20 +133,27 @@ def eval_bone(name, frame=None, arm_name=None):
             }
     return None
 
+def _make_matcap_clay(name, base_col, rim_col):
+    mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nt = mat.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    emis = nt.nodes.new("ShaderNodeEmission")
+    mix = nt.nodes.new("ShaderNodeMixRGB")
+    lw = nt.nodes.new("ShaderNodeLayerWeight")
+    lw.inputs["Blend"].default_value = 0.35
+    mix.inputs["Color1"].default_value = base_col
+    mix.inputs["Color2"].default_value = rim_col
+    nt.links.new(lw.outputs["Facing"], mix.inputs["Fac"])
+    nt.links.new(mix.outputs["Color"], emis.inputs["Color"])
+    nt.links.new(emis.outputs["Emission"], out.inputs["Surface"])
+    return mat
+
 def _apply_clay_and_lights():
     sc = bpy.context.scene
-    clay_viv = bpy.data.materials.get("ClayViv") or bpy.data.materials.new("ClayViv")
-    clay_viv.use_nodes = True
-    bsdf_v = clay_viv.node_tree.nodes.get("Principled BSDF")
-    if bsdf_v:
-        bsdf_v.inputs["Base Color"].default_value = (0.76, 0.62, 0.54, 1.0)
-        bsdf_v.inputs["Roughness"].default_value = 0.55
-    clay_mar = bpy.data.materials.get("ClayMar") or bpy.data.materials.new("ClayMar")
-    clay_mar.use_nodes = True
-    bsdf_m = clay_mar.node_tree.nodes.get("Principled BSDF")
-    if bsdf_m:
-        bsdf_m.inputs["Base Color"].default_value = (0.56, 0.64, 0.72, 1.0)
-        bsdf_m.inputs["Roughness"].default_value = 0.55
+    clay_viv = _make_matcap_clay("ClayViv", (0.82, 0.67, 0.58, 1.0), (0.36, 0.26, 0.22, 1.0))
+    clay_mar = _make_matcap_clay("ClayMar", (0.62, 0.70, 0.78, 1.0), (0.24, 0.28, 0.34, 1.0))
     for o in sc.objects:
         if o.type == "MESH":
             mat = clay_viv if "vivian" in o.name.lower() else clay_mar

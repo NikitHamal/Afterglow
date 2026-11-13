@@ -104,11 +104,18 @@ def relaxed_arms(body, f, left, swing=0.0, sides=None):
 
 def stand_idle(ctx, t):
     V, M = ctx.V, ctx.M
-    ph = 2 * math.pi * t; breath = math.sin(ph)
-    fv, lv = stand(V, (-0.42, -0.45), V3(0.85, 0.15, 0), weight=0.75 + 0.12 * math.sin(ph), breath=breath)
-    fm, lm = stand(M, (0.42, -0.62), V3(-0.85, 0.2, 0), weight=-0.6 + 0.10 * math.sin(ph + 1.3), breath=math.sin(ph + 0.7))
-    relaxed_arms(V, fv, lv, swing=0.3 * math.sin(ph)); relaxed_arms(M, fm, lm, swing=0.3 * math.sin(ph + 1.3))
-    V.look(M.rig.head("頭") + V3(0, 0, -0.02)); M.look(V.rig.head("頭"))
+    ph = 2 * math.pi * t
+    breath_v = math.sin(ph) + 0.28 * math.sin(2 * ph - 0.45)
+    breath_m = math.sin(ph + 0.85) + 0.25 * math.sin(2 * ph + 0.3)
+    fv, lv = stand(V, (-0.42, -0.45), V3(0.85, 0.15, 0), weight=0.68 + 0.22 * math.sin(ph - 0.2), breath=breath_v, chest_lean=2.2 * math.sin(ph - 0.4))
+    fm, lm = stand(M, (0.42, -0.62), V3(-0.85, 0.2, 0), weight=-0.58 + 0.20 * math.sin(ph + 1.1), breath=breath_m, chest_lean=1.8 * math.sin(ph + 0.5))
+    relaxed_arms(V, fv, lv, swing=0.55 * (math.sin(ph - 0.35) + 0.3 * math.sin(2 * ph)))
+    relaxed_arms(M, fm, lm, swing=0.50 * (math.sin(ph + 0.95) + 0.3 * math.sin(2 * ph + 0.4)))
+    for b_, ph_ in ((V, ph), (M, ph + 0.85)):
+        for s_, sg_ in ((".L", 1.0), (".R", -1.0)):
+            b_.fingers(s_, 0.36 + 0.14 * math.sin(ph_ - 0.3 * sg_))
+    V.look(M.rig.head("頭") + V3(0.02 * math.sin(2 * ph), 0, -0.02 + 0.015 * math.cos(ph)), neck_share=0.48)
+    M.look(V.rig.head("頭") + V3(-0.02 * math.cos(2 * ph), 0, 0.01 * math.sin(ph + 0.6)), neck_share=0.48)
 
 # ---------------------------------------------------------------- the kiss (any posture): lips meet, noses pass
 _HEADS = {}                                                             # last frame's neck/head solution per clip

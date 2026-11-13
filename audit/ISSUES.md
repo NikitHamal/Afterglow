@@ -4,8 +4,8 @@
 
 | ID | Clip | Scene | Beat | Failing Field | 12-Principles Tag | Pass | Status | Commit | Summary |
 |---|---|---|---|---|---|---|---|---|---|
-| `AF-000` | `all` | `all` | `bootstrap` | `status_tracking` | `Staging` | `Pass 0` | `verified` | `HEAD` | Missing `ANIMATION_STATUS.md`, `audit/ISSUES.md`, and `audit/INVENTORY.md` initialized. |
-| `AF-001` | `stand.idle` | `the_massage` | `c1_lobby` | `pose_diversity`, `secondary_motion_hz`, `clavicle_active`, `finger_articulation`, `overshoot_present` | `Overlap` / `Timing` | `Pass 1` | `open` | — | Pure single-frequency `sin(2*pi*t)` breathing/sway with static finger curl (0.38) and pinned clavicles. |
+| `AF-000` | `all` | `all` | `bootstrap` | `status_tracking` | `Staging` | `Pass 0` | `verified` | `0774aa9` | Missing `ANIMATION_STATUS.md`, `audit/ISSUES.md`, and `audit/INVENTORY.md` initialized. |
+| `AF-001` | `stand.idle` | `the_massage` | `c1_lobby` | `pose_diversity`, `secondary_motion_hz`, `clavicle_active`, `finger_articulation`, `overshoot_present` | `Overlap` / `Timing` | `Pass 1-4` | `verified` | `HEAD` | Multi-harmonic contrapposto pelvis shift, 4-segment spine lag, clavicle follow, finger curl wave, 3Hz hair/soft-tissue, saccades & blendshape layering (`doll_score` 20.0 → 100.0). |
 | `AF-002` | `stand.embrace` | `the_massage` | `c2_steam` | `pose_diversity`, `clavicle_active`, `neck_counter_rotated`, `overshoot_present` | `Anticipation` / `Overlap` | `Pass 1` | `open` | — | Static cheek-on-chest solve with single-sine breath and rigid arms/hands on partner back. |
 | `AF-003` | `kiss.stand` | `the_massage` | `c3_lesson` | `pose_diversity`, `clavicle_active`, `finger_articulation`, `secondary_motion_hz` | `Slow-in-out` / `Secondary Action` | `Pass 1` | `open` | — | Kiss nod is a uniform 1.2 deg sine wave; hands/fingers stay frozen on nape/waist. |
 | `AF-004` | `sit.bed` | `the_massage` | `c4_turn` | `pose_diversity`, `clavicle_active`, `finger_articulation`, `root_shift_sd` | `Weight` / `Arcs` | `Pass 1` | `open` | — | Seated idle has dead pelvis (`root_shift_sd ≈ 0`), static thighs/hands, and uniform sine breath. |

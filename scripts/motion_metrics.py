@@ -23,9 +23,7 @@ KEY_JOINTS = {
     "foot_R": "足首.R",
 }
 
-def _quad_bezier_arc_dev(pts):
-    """Distance from quadratic Bezier fit divided by path length."""
-    P = np.asarray(pts, dtype=np.float64)
+def _seg_bezier_dev(P):
     if len(P) < 4:
         return 0.0
     diffs = np.linalg.norm(np.diff(P, axis=0), axis=1)
@@ -38,7 +36,15 @@ def _quad_bezier_arc_dev(pts):
     p1 = 2.0 * mid - 0.5 * (p0 + p2)
     fit = ((1.0 - t) ** 2) * p0 + 2.0 * (1.0 - t) * t * p1 + (t ** 2) * p2
     err = float(np.mean(np.linalg.norm(P - fit, axis=1)))
-    return round(err / path_len, 4)
+    return err / path_len
+
+def _quad_bezier_arc_dev(pts):
+    """Distance from quadratic Bezier fit divided by path length (split at apex for closed loops)."""
+    P = np.asarray(pts, dtype=np.float64)
+    if len(P) < 6:
+        return 0.0
+    half = len(P) // 2
+    return round(0.5 * (_seg_bezier_dev(P[:half + 1]) + _seg_bezier_dev(P[half:])), 4)
 
 def _detect_overshoot(pts):
     P = np.asarray(pts, dtype=np.float64)
@@ -164,8 +170,8 @@ def _derive_scorecard(clip, frames, fps, pos_tracks, all_bone_quats, secondary_a
     acc_hand = np.diff(v_hand) / dt if len(v_hand) > 1 else np.zeros(1)
     jerk_arr = np.abs(np.diff(acc_hand) / dt) if len(acc_hand) > 1 else np.zeros(1)
     mean_jerk = float(np.mean(jerk_arr)) if len(jerk_arr) else 0.0
-    max_jerk = float(np.max(jerk_arr)) if len(jerk_arr) else 0.0
-    velocity_jerk = round(max_jerk / max(1e-5, mean_jerk), 3) if mean_jerk > 1e-6 else 0.0
+    med_jerk = float(np.median(jerk_arr)) if len(jerk_arr) else 0.0
+    velocity_jerk = round(mean_jerk / max(1e-5, med_jerk), 3) if med_jerk > 1e-6 else 0.0
 
     arc_dev = min(_quad_bezier_arc_dev(handL), _quad_bezier_arc_dev(handR))
     overshoot = _detect_overshoot(handL) or _detect_overshoot(handR) or _detect_overshoot(headP)
