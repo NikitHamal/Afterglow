@@ -101,8 +101,11 @@ ShotFrame Director::frame(float dt, const ActorView& her, const ActorView& him, 
         sEye_ = lerp(sEye_, f.eye, kk);
         sTarget_ = lerp(sTarget_, f.target, kk);
     }
-    f.eye = sEye_;
-    f.target = sTarget_;
+    // Pass 5 camera staging: subtle 2 Hz handheld micro-sway (~0.6 deg) on close/kiss/ots beats + focus pull
+    float hhAmp = (k == "kiss" || k == "close" || k == "xclose" || k == "ots") ? 0.0085f : 0.003f;
+    V3 hhOff = side * (hhAmp * std::sin(t_ * 12.566f + 0.4f)) + up * (hhAmp * 0.7f * std::cos(t_ * 9.42f));
+    f.eye = sEye_ + hhOff;
+    f.target = sTarget_ + hhOff * 0.35f;
     f.focus = length((k == "two" || k == "wide" || k == "establish" || k == "kiss" ? mid : S.head) - f.eye);
     return f;
 }
