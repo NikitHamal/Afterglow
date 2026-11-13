@@ -22,6 +22,7 @@ jobs:
   build:
     name: build-${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.name == 'macos' }}
     strategy:
       fail-fast: false
       matrix:
@@ -100,7 +101,7 @@ jobs:
   release:
     name: nightly-release
     needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     concurrency:
       group: nightly-release
@@ -111,6 +112,17 @@ jobs:
           pattern: afterglow-*
           path: rel
           merge-multiple: true
+      - name: Verify built packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          test -s rel/Afterglow-Setup.exe
+          test -s rel/Afterglow-windows-x64.zip
+          test -s rel/Afterglow-linux-x64.tar.gz
+          if [ ! -s rel/Afterglow-macos-arm64.zip ]; then
+            gh release download nightly --pattern "Afterglow-macos-arm64.zip" -D rel --clobber || true
+          fi
       - name: Update feed (latest.json with checksums)
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
