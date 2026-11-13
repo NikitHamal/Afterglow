@@ -84,14 +84,35 @@ def bind_clip(clip):
                     sk = o.data.shape_keys
                     sk.animation_data_create()
                     sk.animation_data.action = act
+                    bound_key = False
                     if hasattr(sk.animation_data, "action_slot") and getattr(act, "slots", None):
                         for sl in act.slots:
                             if getattr(sl, "target_id_type", "") == "KEY":
                                 try:
                                     sk.animation_data.action_slot = sl
+                                    bound_key = True
                                     break
                                 except Exception:
                                     pass
+                    if not bound_key and o.name == "vivian_body":
+                        kbs = sk.key_blocks
+                        N_f = max(2, (f1 - f0) + 1)
+                        b_amp = 1.0 if N_f > 30 else 0.28
+                        for idx_f, fr in enumerate(range(f0, f1 + 1)):
+                            u = idx_f / float(N_f - 1)
+                            th = 2.0 * math.pi * u
+                            if "blink" in kbs:
+                                kbs["blink"].value = float(b_amp * math.exp(-((u - 0.32) / 0.045) ** 2))
+                                kbs["blink"].keyframe_insert("value", frame=fr)
+                            if "smile" in kbs:
+                                kbs["smile"].value = float(0.18 + 0.12 * math.sin(th - 0.4))
+                                kbs["smile"].keyframe_insert("value", frame=fr)
+                            if "gasp" in kbs:
+                                kbs["gasp"].value = float(0.14 + 0.10 * math.sin(2.0 * th + 0.3))
+                                kbs["gasp"].keyframe_insert("value", frame=fr)
+                            if "moan" in kbs:
+                                kbs["moan"].value = float(0.08 + 0.06 * math.cos(th))
+                                kbs["moan"].keyframe_insert("value", frame=fr)
     bpy.context.view_layer.update()
     return f0, f1
 
