@@ -108,9 +108,17 @@ def audit_clip(clip, scene_id="story", work_root="/work/renders", audit_root="au
         with open(os.path.join(dst, "metrics.json"), "w") as fp:
             json.dump(metrics, fp, indent=2)
     mp4_path = os.path.join(wdir, "preview.mp4")
-    subprocess.run(["ffmpeg", "-y", "-framerate", "8", "-pattern_type", "glob", "-i",
-                    os.path.join(wdir, "frames_3q", "frame_3q_*.png"), "-c:v", "libx264", "-pix_fmt", "yuv420p", mp4_path],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    ff_bin = "ffmpeg"
+    try:
+        import shutil
+        if not shutil.which(ff_bin):
+            import imageio_ffmpeg
+            ff_bin = imageio_ffmpeg.get_ffmpeg_exe()
+        subprocess.run([ff_bin, "-y", "-framerate", "8", "-pattern_type", "glob", "-i",
+                        os.path.join(wdir, "frames_3q", "frame_3q_*.png"), "-c:v", "libx264", "-pix_fmt", "yuv420p", mp4_path],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
     return metrics
 
 def audit_all_baseline(clips=None, work_root="/work/renders", audit_root="audit"):
