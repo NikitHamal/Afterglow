@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: native-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   AG_VERSION: 0.${{ github.run_number }}.0

@@ -37,13 +37,14 @@ def _(D, glob, mo, os, refresh, time, ka):
 @app.cell
 def _(D, Path, mo, os):
     import anywidget, traitlets
+    from urllib.parse import quote
     _pub = Path("/marimo/public") if os.path.isdir("/marimo") else D.HERE / "public"
     _pubdir, _copied = D.install_stage(_pub)
 
     class AfterglowStage(anywidget.AnyWidget):
         _esm = D.ROOT / "tools" / "qa" / "molab_stage" / "stage_bundle.js"
         public_base = traitlets.Unicode("/public/afterglow/" if os.path.isdir("/marimo") else "./public/afterglow/").tag(sync=True)
-        notebook_id = traitlets.Unicode("").tag(sync=True)
+        notebook_id = traitlets.Unicode(quote((Path(mo.notebook_dir() or "/marimo") / "notebook.py").as_posix(), safe="") if os.path.isdir("/marimo") else "").tag(sync=True)
         clip = traitlets.Unicode("stand.idle").tag(sync=True)
         capture = traitlets.Unicode("").tag(sync=True)
 
