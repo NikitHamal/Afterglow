@@ -140,13 +140,29 @@ def _make_matcap_clay(name, base_col, rim_col):
     nt.nodes.clear()
     out = nt.nodes.new("ShaderNodeOutputMaterial")
     emis = nt.nodes.new("ShaderNodeEmission")
-    mix = nt.nodes.new("ShaderNodeMixRGB")
+    geom = nt.nodes.new("ShaderNodeNewGeometry")
+    vmath = nt.nodes.new("ShaderNodeVectorMath")
+    vmath.operation = "DOT_PRODUCT"
+    vmath.inputs[1].default_value = (0.45, -0.60, 0.66)
+    mrange = nt.nodes.new("ShaderNodeMapRange")
+    mrange.inputs["From Min"].default_value = -0.85
+    mrange.inputs["From Max"].default_value = 0.95
+    mrange.inputs["To Min"].default_value = 0.18
+    mrange.inputs["To Max"].default_value = 1.0
     lw = nt.nodes.new("ShaderNodeLayerWeight")
-    lw.inputs["Blend"].default_value = 0.35
-    mix.inputs["Color1"].default_value = base_col
-    mix.inputs["Color2"].default_value = rim_col
-    nt.links.new(lw.outputs["Facing"], mix.inputs["Fac"])
-    nt.links.new(mix.outputs["Color"], emis.inputs["Color"])
+    lw.inputs["Blend"].default_value = 0.32
+    mix_light = nt.nodes.new("ShaderNodeMixRGB")
+    mix_light.inputs["Color1"].default_value = rim_col
+    mix_light.inputs["Color2"].default_value = base_col
+    mix_rim = nt.nodes.new("ShaderNodeMixRGB")
+    mix_rim.blend_type = "MIX"
+    mix_rim.inputs["Color2"].default_value = (min(1.0, base_col[0] * 1.15), min(1.0, base_col[1] * 1.15), min(1.0, base_col[2] * 1.15), 1.0)
+    nt.links.new(geom.outputs["Normal"], vmath.inputs[0])
+    nt.links.new(vmath.outputs["Value"], mrange.inputs["Value"])
+    nt.links.new(mrange.outputs["Result"], mix_light.inputs["Fac"])
+    nt.links.new(lw.outputs["Fresnel"], mix_rim.inputs["Fac"])
+    nt.links.new(mix_light.outputs["Color"], mix_rim.inputs["Color1"])
+    nt.links.new(mix_rim.outputs["Color"], emis.inputs["Color"])
     nt.links.new(emis.outputs["Emission"], out.inputs["Surface"])
     return mat
 
