@@ -104,13 +104,15 @@ def overhaul_loaded_clip(clip, profile="idle"):
                         wb = math.cos(th - lg * 0.7)
                         _add_quat_delta(pb, g_a * amp * wa, 0.065 * amp * wb, 0.055 * sgn * amp * settle)
                         pb.keyframe_insert("rotation_quaternion", frame=f)
-                # Fingers articulate with lagged grip wave
+                # Fingers articulate with lagged grip wave across proximal/intermediate/distal phalanges (0..2 thumb, 1..3 fingers)
                 for fg_i, fg in enumerate(("thumb", "index", "middle", "ring", "pinky")):
-                    for d in ("0", "1", "2"):
+                    digits = ("0", "1", "2") if fg == "thumb" else ("1", "2", "3")
+                    for d_idx, d in enumerate(digits):
                         fpb = arm.pose.bones.get(f"{fg}{d}{side}")
                         if fpb:
-                            curl_w = 0.15 * (1.0 + 0.6 * math.sin(th - 0.25 * fg_i + 0.3 * sgn))
-                            _add_quat_delta(fpb, curl_w, 0.03 * sgn * math.cos(th), 0.02 * math.sin(2.0 * th))
+                            phalanx_gain = (0.85, 1.10, 0.75)[d_idx]
+                            curl_w = 0.15 * phalanx_gain * (1.0 + 0.6 * math.sin(th - 0.25 * fg_i - 0.18 * d_idx + 0.3 * sgn))
+                            _add_quat_delta(fpb, curl_w, 0.03 * sgn * math.cos(th - 0.15 * d_idx), 0.02 * math.sin(2.0 * th))
                             fpb.keyframe_insert("rotation_quaternion", frame=f)
 
             # PASS 3: Secondary physics (hair & soft tissue at 2-3 Hz damped oscillation)
