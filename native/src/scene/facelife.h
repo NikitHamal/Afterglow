@@ -48,4 +48,31 @@ inline void lidsFollow(float pitch, float& down, float& up) {
     up = c01(pitch * 1.4f) * 0.5f;
 }
 
+// Saccadic eye micro-triangle (eyes Triangle: left eye <-> right eye <-> lips) with dwell holds so gaze never locks like a doll
+struct SaccadeGaze {
+    uint32_t seed = 1337u;
+    float timer = 0.f, hold = 0.45f;
+    float ox = 0.f, oy = 0.f, tx = 0.f, ty = 0.f;
+    void step(float dt, float& outYaw, float& outPitch) {
+        timer += dt;
+        if (timer >= hold) {
+            timer = 0.f;
+            seed = seed * 1664525u + 1013904223u;
+            float r1 = (float)((seed >> 8) & 0xFFFFu) / 65535.f;
+            seed = seed * 1664525u + 1013904223u;
+            float r2 = (float)((seed >> 8) & 0xFFFFu) / 65535.f;
+            hold = 0.28f + 0.65f * r1;
+            // Triangle dwell: 40% left eye (+0.025m), 40% right eye (-0.025m), 20% mouth (-0.045m down)
+            if (r2 < 0.40f) { tx = 0.028f; ty = 0.008f; }
+            else if (r2 < 0.80f) { tx = -0.028f; ty = 0.008f; }
+            else { tx = 0.0f; ty = -0.042f; }
+        }
+        float k = 1.f - std::exp(-dt * 28.f);
+        ox += (tx - ox) * k;
+        oy += (ty - oy) * k;
+        outYaw = ox;
+        outPitch = oy;
+    }
+};
+
 }  // namespace ag
