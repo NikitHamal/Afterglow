@@ -246,18 +246,23 @@ void Actor::pose(Animator& a) {
         if (g.flex == 0.f && g.elbow == 0.f && g.abduct == 0.f) continue;
         float sg = s == 1 ? 1.f : -1.f;
         float k = gestW_ * w * kD2R;
-        float live = (std::sin(time_ * 2.3f + (float)s * 1.7f) * 5.f * loud_ - 9.f * bump(beatT_, 0.3f)) * speakW_;
+        float phBase = time_ * 2.3f + (float)s * 1.7f;
+        float liveSh  = (std::sin(phBase) * 3.5f * loud_ - 6.f * bump(beatT_, 0.28f)) * speakW_;
+        float liveArm = (std::sin(phBase - 0.28f) * 4.5f * loud_ - 8.f * bump(beatT_ - 0.04f, 0.30f)) * speakW_;
+        float liveElb = (std::sin(phBase - 0.55f) * 5.5f * loud_ - 9.5f * bump(beatT_ - 0.08f, 0.32f)) * speakW_;
+        float liveWri = (std::sin(phBase - 0.85f) * 4.0f * loud_ - 7.f * bump(beatT_ - 0.12f, 0.34f)) * speakW_;
         if (sit > 0.5f) { g.flex *= 0.3f; g.abduct *= 0.3f; g.shrug *= 0.5f; }
-        rot(a, sh[s], f, -sg * g.shrug * k);
-        rot(a, arm[s], r, g.flex * k);
+        rot(a, sh[s], f, -sg * (g.shrug + liveSh * 0.4f) * k);
+        rot(a, arm[s], r, (g.flex + liveArm * 0.6f) * k);
         rot(a, arm[s], f, -sg * g.abduct * k);
         if (elbow[s] < 0 || wrist[s] < 0) continue;
         V3 ua = normalize(P(a, elbow[s]) - P(a, arm[s]));
         V3 h = cross(ua, f);
         h = length(h) > 1e-3f ? normalize(h) : r;
-        rot(a, elbow[s], h, (g.elbow + live) * k);
+        rot(a, elbow[s], h, (g.elbow + liveElb) * k);
         V3 fa = normalize(P(a, wrist[s]) - P(a, elbow[s]));
-        rot(a, wrist[s], fa, sg * g.supin * k);
+        rot(a, wrist[s], fa, sg * (g.supin + liveWri) * k);
+        rot(a, wrist[s], h, (0.35f * liveWri) * k);
     }
 }
 
