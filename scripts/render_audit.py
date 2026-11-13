@@ -117,7 +117,8 @@ def audit_all_baseline(clips=None, work_root="/work/renders", audit_root="audit"
     import shutil
     BE.load_scene("pair")
     all_clips = clips or BE.list_actions()
-    scorecard = {"version": 1, "baseline": {}, "current": {}}
+    sc_path = os.path.join(audit_root, "scorecard.json")
+    scorecard = json.load(open(sc_path)) if os.path.exists(sc_path) else {"version": 1, "baseline": {}, "current": {}}
     base_dir = os.path.join(audit_root, "baseline")
     os.makedirs(base_dir, exist_ok=True)
     t0 = time.time()
