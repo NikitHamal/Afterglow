@@ -258,6 +258,13 @@ export default function render({ model, el }) {
     const penetrative = currentClip.endsWith(".in") && !/^(oral|lick|handjob|titjob)\./.test(currentClip);
     const open = penetrative ? Math.max(0, Math.min(1, depth / 0.12)) : 0;
     setMorph("vag_open", open * open * (3 - 2 * open));
+    const th = 2 * Math.PI * depth;
+    const bAmp = duration > 1.5 ? 1.0 : 0.28;
+    setMorph("blink", bAmp * Math.exp(-Math.pow((depth - 0.32) / 0.045, 2)));
+    setMorph("smile", 0.18 + 0.12 * Math.sin(th - 0.4));
+    setMorph("gasp", oral ? 0.0 : (0.14 + 0.10 * Math.sin(2 * th + 0.3)));
+    setMorph("moan", oral ? 0.0 : (0.08 + 0.06 * Math.cos(th)));
+    setMorph("pleasure", 0.16 + 0.12 * Math.sin(th));
   }
 
   function clearActions() {
