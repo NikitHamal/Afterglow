@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import blender_env as BE
 import contact_sheet as CS
 
-REQUIRED_CORE_BONES = {"全ての親", "下半身", "上半身", "上半身2", "首", "頭", "肩.L", "肩.R", "腕.L", "腕.R", "ひじ.L", "ひじ.R", "手首.L", "手首.R", "足.L", "足.R", "ひざ.L", "ひざ.R", "足首.L", "足首.R"}
+REQUIRED_CORE_BONES = {"root", "pelvis", "spine", "chest", "neck", "head", "shoulder.L", "shoulder.R", "upper_arm.L", "upper_arm.R", "elbow.L", "elbow.R", "wrist.L", "wrist.R", "thigh.L", "thigh.R", "knee.L", "knee.R", "ankle.L", "ankle.R"}
 
 class TestAnimParity(unittest.TestCase):
     @classmethod
@@ -40,8 +40,8 @@ class TestAnimParity(unittest.TestCase):
         report = {}
         for clip in ("stand.idle", "sit.bed", "missionary.in", "cowgirl.in", "oral.in"):
             f0, f1 = BE.bind_clip(clip)
-            p_first = BE.eval_bone("下半身", frame=f0, arm_name="VivianRig")
-            p_last = BE.eval_bone("下半身", frame=f1, arm_name="VivianRig")
+            p_first = BE.eval_bone("pelvis", frame=f0, arm_name="VivianRig")
+            p_last = BE.eval_bone("pelvis", frame=f1, arm_name="VivianRig")
             self.assertIsNotNone(p_first)
             self.assertIsNotNone(p_last)
             drift = float(np.linalg.norm(np.array(p_first["head"]) - np.array(p_last["head"])))

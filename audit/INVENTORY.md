@@ -2,13 +2,13 @@
 
 ## 1. Character Rigs (`native/assets/characters/{vivian,marcus}.glb`)
 - **Vivian (`VivianRig` / `vivian_body`)**:
-  - **Core Spine & Pelvis**: `全ての親` (root), `センター`, `グルーブ`, `下半身` (pelvis), `上半身` (lower spine), `上半身2` (upper chest), `首` (neck), `頭` (head), `両目` / `目.L` / `目.R` (eyes).
-  - **Clavicles & Arms**: `肩.L/R` (clavicle), `腕.L/R` (upper arm), `ひじ.L/R` (forearm), `手首.L/R` (wrist).
-  - **Fingers**: `親指0..2.L/R` (thumb), `人指1..3.L/R` (index), `中指1..3.L/R` (middle), `薬指1..3.L/R` (ring), `小指1..3.L/R` (pinky).
-  - **Legs & Feet**: `足.L/R` (thigh), `ひざ.L/R` (shin), `足首.L/R` (ankle/foot), `つま先.L/R` (toes).
-  - **Soft Tissue & Secondary**: `乳親.L/R`, `乳.L/R` (breasts), hair chains (`髪*`).
+  - **Core Spine & Pelvis**: `root` (root), `center`, `groove`, `pelvis` (pelvis), `spine` (lower spine), `chest` (upper chest), `neck` (neck), `head` (head), `eyes` / `eye.L` / `eye.R` (eyes).
+  - **Clavicles & Arms**: `shoulder.L/R` (clavicle), `upper_arm.L/R` (upper arm), `elbow.L/R` (forearm), `wrist.L/R` (wrist).
+  - **Fingers**: `thumb0..2.L/R` (thumb), `index1..3.L/R` (index), `middle1..3.L/R` (middle), `ring1..3.L/R` (ring), `pinky1..3.L/R` (pinky).
+  - **Legs & Feet**: `thigh.L/R` (thigh), `knee.L/R` (shin), `ankle.L/R` (ankle/foot), `toe.L/R` (toes).
+  - **Soft Tissue & Secondary**: `breast.L/R`, `breast_tip.L/R` (breasts), hair chains (`hair*`).
 - **Marcus (`MarcusRig` / `marcus_body`)**:
-  - Shares full MMD humanoid hierarchy (`下半身`, `上半身`, `上半身2`, `首`, `頭`, `肩.L/R`, `腕.L/R`, `ひじ.L/R`, `手首.L/R`, 5-finger chains, `足.L/R`, `ひざ.L/R`, `足首.L/R`, `つま先.L/R`, `目.L/R`) plus anatomy chain (`竿根`, `竿中`, `竿先`, `竿端`, `玉袋`).
+  - Shares full MMD humanoid hierarchy (`pelvis`, `spine`, `chest`, `neck`, `head`, `shoulder.L/R`, `upper_arm.L/R`, `elbow.L/R`, `wrist.L/R`, 5-finger chains, `thigh.L/R`, `knee.L/R`, `ankle.L/R`, `toe.L/R`, `eye.L/R`) plus anatomy chain (`shaft_base`, `shaft_mid`, `shaft_tip`, `shaft_end`, `scrotum`).
 
 ## 2. Expressions & Shape Keys
 - Authored via `tools/model/native/{expr_units.py,expr_apply.py}` and driven at runtime by `Animator::setMorphOverride`, `native/src/scene/actor.cpp`, `native/src/scene/facelife.h`, and `native/src/game/voice.cpp`.

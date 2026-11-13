@@ -1,5 +1,5 @@
 # Hair styles on the kit (hairkit.py). Each style grows on the character's own head (game space) and returns the
-# builder; rigid parts ride 頭, loose locks the rig's simulated chains (髪.<n>.a..d, Vivian's rig only).
+# builder; rigid parts ride head, loose locks the rig's simulated chains (hair.<n>.a..d, Vivian's rig only).
 import math
 import numpy as np
 from mathutils import Vector
@@ -14,7 +14,7 @@ def chain_weights(ch, u):
     rest = 1.0 - head_w
     if rest <= 0: return out
     f = np.clip((u - CH_U[0]) / (CH_U[-1] - CH_U[0]), 0, 0.9999) * 4.0; j = int(f); t = f - j
-    a = f"髪.{ch}.{SEGS[j]}"; b = f"髪.{ch}.{SEGS[min(j + 1, 3)]}"
+    a = f"hair.{ch}.{SEGS[j]}"; b = f"hair.{ch}.{SEGS[min(j + 1, 3)]}"
     out[a] = out.get(a, 0) + rest * (1 - t)
     if t > 0: out[b] = out.get(b, 0) + rest * t
     return out

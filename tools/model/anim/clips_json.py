@@ -19,7 +19,7 @@ def at(arm, act_name, frame):
 # his eye point in the head bone's local frame (rest): mid-eye from the eyes mesh, plus the face-forward axis
 eyes = bpy.data.objects["marcus_eyes"]
 ec = sum((eyes.matrix_world @ v.co for v in eyes.data.vertices), Vector()) / len(eyes.data.vertices)
-hb = M.data.bones["頭"]
+hb = M.data.bones["head"]
 eye_local = hb.matrix_local.inverted() @ ec
 fwd_local = (hb.matrix_local.to_3x3().inverted() @ Vector((0, -1, 0))).normalized()
 clips = {}
@@ -28,9 +28,9 @@ for name, (fn, frames, kind) in PO.CLIPS.items():
     f = (frames + 1) // 2
     vh, _ = at(V, f"VIV|{name}", f); mh, mrot = at(M, f"MAR|{name}", f)
     solo = name.startswith("solo")
-    tgt = vh["下半身"].copy() if solo else (vh["下半身"] + mh["下半身"]) / 2
+    tgt = vh["pelvis"].copy() if solo else (vh["pelvis"] + mh["pelvis"]) / 2
     tgt.z += 0.12
-    body_axis = (vh["頭"] - vh["下半身"]).normalized()
+    body_axis = (vh["head"] - vh["pelvis"]).normalized()
     side = Vector((1, 0, 0)) if abs(body_axis.x) < 0.7 else Vector((0, -1, 0))
     def orbit(yaw_deg, pitch_deg, dist):
         return dict(target=gl(tgt), yaw=yaw_deg, pitch=pitch_deg, distance=dist)
@@ -54,7 +54,7 @@ for name, (fn, frames, kind) in PO.CLIPS.items():
             orbit_side=orbit(90 if side.x else 0, 18, 2.3),
             orbit_front=orbit(200, 24, 2.6),
             orbit_top=orbit(120, 55, 2.2),
-            fpv=dict(character="marcus", bone="頭", offset_local=[round(eye_local.x, 4), round(eye_local.y, 4), round(eye_local.z, 4)],
+            fpv=dict(character="marcus", bone="head", offset_local=[round(eye_local.x, 4), round(eye_local.y, 4), round(eye_local.z, 4)],
                      forward_local=[round(fwd_local.x, 4), round(fwd_local.y, 4), round(fwd_local.z, 4)], note="bone-local (glTF node frame); look along forward_local"),
         ),
         contacts=rep.get("contacts", []),
@@ -69,7 +69,7 @@ doc = dict(version=1, units="m", up="+Y", fps=24,
                contact="verify counts triangle pairs outside the intended contact: genitals, hands, mouth (oral/lick), the shaft vs her inner thighs/buttocks within 6 cm of the entrance, and pelvis-to-pelvis flesh (her within 19 cm of the entrance, his within 22 cm of the shaft root)",
                layers="<pos>.rub only keys the listed bones; blend it over <pos>.in with a bone mask (rub phase loops 0..1)",
                embrace="missionary.embrace is a pose layer for upper body + arms; blend weight = embrace amount",
-               not_animated="hair chains 髪.* and eyes 目.L/目.R are not keyed: simulate hair (colliders in node extras) and drive gaze live",
+               not_animated="hair chains hair.* and eyes eye.L/eye.R are not keyed: simulate hair (colliders in node extras) and drive gaze live",
                morph_normals="body-shape targets (bust/hips/waist/butt/weight/muscle/belly/age/length/girth _up/_dn) and every hair-mesh target ship POSITION deltas only; expressions and anatomy (vag_open, vag_aroused, anal_open, aroused) include NORMAL",
                contacts="per clip: where a hand / mouth touches skin. {char, effector, bone, offset (bone-local, like fpv.offset_local), "
                         "radius, target {char, bone, region}, gap_mm [min, max] over the clip (0 = touching, - = pressing in), t [first, last] "

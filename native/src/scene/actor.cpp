@@ -28,13 +28,13 @@ void Actor::bind(Character* c) {
     blinker_ = Blinker(female_ ? 3u : 7u);
     reset();
     if (!c) return;
-    head = c->bone("頭"); neck = c->bone("首"); upper = c->bone("上半身"); chest = c->bone("上半身2");
+    head = c->bone("head"); neck = c->bone("neck"); upper = c->bone("spine"); chest = c->bone("chest");
     const char* sx[2] = {".L", ".R"};
     for (int s = 0; s < 2; ++s) {
-        sh[s] = c->bone(std::string("肩") + sx[s]);
-        arm[s] = c->bone(std::string("腕") + sx[s]);
-        elbow[s] = c->bone(std::string("ひじ") + sx[s]);
-        wrist[s] = c->bone(std::string("手首") + sx[s]);
+        sh[s] = c->bone(std::string("shoulder") + sx[s]);
+        arm[s] = c->bone(std::string("upper_arm") + sx[s]);
+        elbow[s] = c->bone(std::string("elbow") + sx[s]);
+        wrist[s] = c->bone(std::string("wrist") + sx[s]);
     }
 }
 

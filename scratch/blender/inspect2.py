@@ -31,8 +31,8 @@ for v in m.vertices:
     buckets.setdefault(n, []).append(v.co.copy())
 
 # Focus on hand/foot bones
-focus = ["手首.L","手首.R","親指０.L","親指１.L","中指１.L","人指１.L","小指１.L","薬指１.L",
-         "足首.L","足首.R","足.L","足.R","ひざ.L","ひざ.R","下半身","上半身","上半身2"]
+focus = ["wrist.L","wrist.R","thumb0.L","thumb1.L","middle1.L","index1.L","pinky1.L","ring1.L",
+         "ankle.L","ankle.R","thigh.L","thigh.R","knee.L","knee.R","pelvis","spine","chest"]
 for n in focus:
     vs = buckets.get(n, [])
     if not vs: print(f"  {n}: NO verts"); continue
@@ -41,11 +41,11 @@ for n in focus:
 
 # What % of hand-area vertices go to fingers vs wrist?
 print("\n--- Finger area verts ---")
-for prefix in ["親指","人指","中指","薬指","小指"]:
-    c = sum(len(buckets.get(f"{prefix}０.L",[])) + len(buckets.get(f"{prefix}１.L",[])) + len(buckets.get(f"{prefix}２.L",[])) +
-            len(buckets.get(f"{prefix}０.R",[])) + len(buckets.get(f"{prefix}１.R",[])) + len(buckets.get(f"{prefix}２.R",[])) for _ in [0])
+for prefix in ["thumb","index","middle","ring","pinky"]:
+    c = sum(len(buckets.get(f"{prefix}0.L",[])) + len(buckets.get(f"{prefix}1.L",[])) + len(buckets.get(f"{prefix}2.L",[])) +
+            len(buckets.get(f"{prefix}0.R",[])) + len(buckets.get(f"{prefix}1.R",[])) + len(buckets.get(f"{prefix}2.R",[])) for _ in [0])
 print(f"Finger total verts: {c}")
-print(f"Wrist L+R: {len(buckets.get('手首.L',[])) + len(buckets.get('手首.R',[]))}")
+print(f"Wrist L+R: {len(buckets.get('wrist.L',[])) + len(buckets.get('wrist.R',[]))}")
 
 # Are there foot-toe bones that are NOT being used?
 print("\n--- Bones with 0 vertices weighted ---")

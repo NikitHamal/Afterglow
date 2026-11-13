@@ -156,8 +156,8 @@ class Rig:
 
     # anatomical hinge sense: an elbow flexes one way (+ about the rest hinge), a knee the other (-); the old
     # continuity rule could pick the mirror solution = the same world bend with the humerus wrung ~180 deg
-    FLEX_SIGN = {"ひじ": 1.0, "ひざ": -1.0}
-    MAX_FLEX = {"ひじ": 150.0, "ひざ": 160.0}            # deg; past this the forearm/shin would pass through the upper limb
+    FLEX_SIGN = {"elbow": 1.0, "knee": -1.0}
+    MAX_FLEX = {"elbow": 150.0, "knee": 160.0}            # deg; past this the forearm/shin would pass through the upper limb
     ARM_TWIST_MAX = 80.0                                # humerus rotation vs rest (internal/external) a shoulder really has (deg)
     floor_z = None                                      # authoring: elbows stay above this (the mattress top + pad)
     obstacles = ()                                      # authoring: [(rig, bone_a, bone_b, radius, margin)] capsules the arm keeps out of
@@ -208,7 +208,7 @@ class Rig:
         dn = d.normalized() if d.length > 1e-9 else Vector((0, 0, -1))
         key = lower[:2]
         sign = self.FLEX_SIGN.get(key, 1.0); fmax = self.MAX_FLEX.get(key, 160.0)
-        if natural is None: natural = key == "ひじ"
+        if natural is None: natural = key == "elbow"
         hl_up = self.hinge.get(upper, Vector((1, 0, 0))); hl_lo = self.hinge.get(lower, Vector((1, 0, 0)))
 
         def hinge_for(E, W, pv):
@@ -357,7 +357,7 @@ class Rig:
             pb = pbs[n]; pb.rotation_mode = "QUATERNION"
             pb.matrix_basis = self.basis[n]
 
-    SKIP_KEY = ("髪", "目", "竿端")       # hair chains + eyes are driven live by the engine (sim/gaze); 竿端 is a marker
+    SKIP_KEY = ("hair", "eye", "shaft_end")       # hair chains + eyes are driven live by the engine (sim/gaze); shaft_end is a marker
 
     def key(self, frame, bones=None):
         """key every authored bone; quaternions are kept sign-continuous with the previous key so interpolation
@@ -378,8 +378,8 @@ class Rig:
     # swing = rotation of the bone axis away from its rest direction, twist = rotation about the bone axis;
     # both relative to the parent (the rest pose is the anatomical neutral: standing, arms relaxed down)
     # wrist twist = forearm pronation/supination (the IK locks the forearm roll to the elbow hinge)
-    ROM = {"首": (40.0, 45.0), "頭": (32.0, 38.0), "手首.L": (65.0, 85.0), "手首.R": (65.0, 85.0),
-           "足首.L": (82.0, 35.0), "足首.R": (82.0, 35.0)}             # ankle incl. midfoot + foot roll
+    ROM = {"neck": (40.0, 45.0), "head": (32.0, 38.0), "wrist.L": (65.0, 85.0), "wrist.R": (65.0, 85.0),
+           "ankle.L": (82.0, 35.0), "ankle.R": (82.0, 35.0)}             # ankle incl. midfoot + foot roll
 
     def swing_twist(self, n):
         q = self.basis[n].to_quaternion(); q.normalize()
@@ -422,11 +422,11 @@ class Rig:
             self.fk(carry_twist_to if carry_twist_to in self.basis else n)
 
     def limit_all(self):
-        for n in ("首", "頭"): self.limit(n)
+        for n in ("neck", "head"): self.limit(n)
         for s in (".L", ".R"):
-            self.share_twist("ひじ" + s, "手首" + s, 0.5)
-            self.limit("手首" + s)
-            self.limit("足首" + s)
+            self.share_twist("elbow" + s, "wrist" + s, 0.5)
+            self.limit("wrist" + s)
+            self.limit("ankle" + s)
 
     def snapshot(self):
         return {n: m.copy() for n, m in self.basis.items()}

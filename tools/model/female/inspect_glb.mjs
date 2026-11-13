@@ -32,7 +32,7 @@ if (process.argv[3]) {
   const A = axes(doc), B = axes(ref);
   const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
   console.log('bone         xdot  ydot  zdot   childAlongY');
-  for (const k of ['上半身', '上半身2', '首', '頭', '下半身', '肩L', '腕L', 'ひじL', '手首L', '腕R', 'ひじR', '足L', 'ひざL', '足首L', 'つま先L', '足R', 'ひざR', '人指０L', '人指１L', '親指０L', '乳親L']) {
+  for (const k of ['spine', 'chest', 'neck', 'head', 'pelvis', 'shoulderL', 'upper_armL', 'elbowL', 'wristL', 'upper_armR', 'elbowR', 'thighL', 'kneeL', 'ankleL', 'toeL', 'thighR', 'kneeR', 'index0L', 'index1L', 'thumb0L', 'breastL']) {
     if (!A[k] || !B[k]) { console.log(k, 'missing', !!A[k], !!B[k]); continue; }
     const c = A[k].child[0]; const along = c ? (c[1] / Math.hypot(...c)).toFixed(2) : '-';
     console.log(k.padEnd(8), dot(A[k].x, B[k].x).toFixed(2), dot(A[k].y, B[k].y).toFixed(2), dot(A[k].z, B[k].z).toFixed(2), '  ', along);

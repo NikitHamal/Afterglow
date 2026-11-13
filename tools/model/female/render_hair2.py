@@ -9,7 +9,7 @@ sc.render.engine = "CYCLES"; sc.cycles.device = "CPU"; sc.cycles.samples = 96; s
 sc.render.resolution_x, sc.render.resolution_y = 900, 900
 sc.view_settings.view_transform = "AgX"; sc.view_settings.look = "AgX - Medium High Contrast"
 arm = next(o for o in bpy.data.objects if o.type == "ARMATURE")
-hb = arm.data.bones["頭"]; H = arm.matrix_world @ hb.head_local
+hb = arm.data.bones["head"]; H = arm.matrix_world @ hb.head_local
 C = H + Vector((0, 0.01, 0.07))
 w = bpy.data.worlds.new("w"); w.use_nodes = True; w.node_tree.nodes["Background"].inputs[0].default_value = (0.02, 0.018, 0.02, 1); sc.world = w
 def light(name, loc, power, color, size=0.6):

@@ -34,13 +34,13 @@ for v in m.vertices:
     buckets.setdefault(n, []).append(v.co.copy())
 
 # Print focus
-focus = ["手首.L","手首.R",
-         "親指０.L","親指１.L","親指２.L","人指０.L","人指１.L","人指２.L",
-         "中指０.L","中指１.L","中指２.L","薬指０.L","薬指１.L","薬指２.L",
-         "小指０.L","小指１.L","小指２.L",
-         "親指０.R","親指１.R","人指１.R","中指１.R","薬指１.R","小指１.R",
-         "足首.L","足首.R","足.L","足.R","ひざ.L","ひざ.R","下半身",
-         "上半身","上半身2","足捩.L","足捩.R"]
+focus = ["wrist.L","wrist.R",
+         "thumb0.L","thumb1.L","thumb2.L","index0.L","index1.L","index2.L",
+         "middle0.L","middle1.L","middle2.L","ring0.L","ring1.L","ring2.L",
+         "pinky0.L","pinky1.L","pinky2.L",
+         "thumb0.R","thumb1.R","index1.R","middle1.R","ring1.R","pinky1.R",
+         "ankle.L","ankle.R","thigh.L","thigh.R","knee.L","knee.R","pelvis",
+         "spine","chest","thigh捩.L","thigh捩.R"]
 print("\n=== DOMINANT BONE BBOX ===")
 for n in focus:
     vs = buckets.get(n, [])
@@ -49,24 +49,24 @@ for n in focus:
     print(f"  {n}: n={len(vs):4d}  x[{min(xs):+.3f},{max(xs):+.3f}] y[{min(ys):+.3f},{max(ys):+.3f}] z[{min(zs):+.3f},{max(zs):+.3f}]")
 
 # Check if there's a foot toe bone
-print("\n=== ALL BONE NAMES containing 足 ===")
+print("\n=== ALL BONE NAMES containing thigh ===")
 for b in arm_obj.data.bones:
-    if "足" in b.name:
+    if "thigh" in b.name:
         print(f"  {b.name}  parent={b.parent.name if b.parent else 'None'}  len={b.length:.3f}")
 
 # Vertex count weighted to each finger
 print("\n=== FINGER VERT COUNTS ===")
-for finger in ["親指","人指","中指","薬指","小指"]:
+for finger in ["thumb","index","middle","ring","pinky"]:
     for side in [".L",".R"]:
-        for seg in ["０","１","２"]:
+        for seg in ["0","1","2"]:
             n = f"{finger}{seg}{side}"
             print(f"  {n}: {len(buckets.get(n,[]))}")
 
 # Vertex count for hand area (any finger bone)
-hand_L = sum(len(buckets.get(f"{p}{s}{side}",[])) for p in ["親指","人指","中指","薬指","小指"] for s in ["０","１","２"] for side in [".L"])
-hand_R = sum(len(buckets.get(f"{p}{s}{side}",[])) for p in ["親指","人指","中指","薬指","小指"] for s in ["０","１","２"] for side in [".R"])
+hand_L = sum(len(buckets.get(f"{p}{s}{side}",[])) for p in ["thumb","index","middle","ring","pinky"] for s in ["0","1","2"] for side in [".L"])
+hand_R = sum(len(buckets.get(f"{p}{s}{side}",[])) for p in ["thumb","index","middle","ring","pinky"] for s in ["0","1","2"] for side in [".R"])
 print(f"\nTotal finger verts: L={hand_L} R={hand_R}")
-print(f"Total wrist verts: L={len(buckets.get('手首.L',[]))} R={len(buckets.get('手首.R',[]))}")
-print(f"Total ankle verts: L={len(buckets.get('足首.L',[]))} R={len(buckets.get('足首.R',[]))}")
-print(f"Total leg verts: L={len(buckets.get('足.L',[]))} R={len(buckets.get('足.R',[]))}")
-print(f"Total knee verts: L={len(buckets.get('ひざ.L',[]))} R={len(buckets.get('ひざ.R',[]))}")
+print(f"Total wrist verts: L={len(buckets.get('wrist.L',[]))} R={len(buckets.get('wrist.R',[]))}")
+print(f"Total ankle verts: L={len(buckets.get('ankle.L',[]))} R={len(buckets.get('ankle.R',[]))}")
+print(f"Total leg verts: L={len(buckets.get('thigh.L',[]))} R={len(buckets.get('thigh.R',[]))}")
+print(f"Total knee verts: L={len(buckets.get('knee.L',[]))} R={len(buckets.get('knee.R',[]))}")

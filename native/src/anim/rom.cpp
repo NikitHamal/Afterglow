@@ -17,33 +17,33 @@ constexpr float kMargin = 9.f;    // authored envelope + margin: authored keys s
 
 // anatomical ranges (degrees) by bone name without the side: swing cone, twist about the bone axis; hinges bend
 // [hingeMin, hingeMax] about their main axis with a little off-axis play. The rest pose is the anatomical neutral
-// (standing, arms relaxed down), as in the content's rigkit (首 40/45, 頭 32/38, 手首 65/85, 足首 82/35).
+// (standing, arms relaxed down), as in the content's rigkit (neck 40/45, head 32/38, wrist 65/85, ankle 82/35).
 struct Anat { const char* name; float swing, twist; bool hinge; float hMin, hMax, off; };
 const Anat kAnat[] = {
-    {"上半身", 60.f, 40.f, false, 0, 0, 0},
-    {"上半身2", 40.f, 30.f, false, 0, 0, 0},
-    {"首", 40.f, 45.f, false, 0, 0, 0},
-    {"頭", 32.f, 38.f, false, 0, 0, 0},
-    {"肩", 25.f, 15.f, false, 0, 0, 0},
-    {"腕", 175.f, 100.f, false, 0, 0, 0},
-    {"ひじ", 0.f, 75.f, true, -5.f, 150.f, 25.f},      // twist = the forearm's share of pronation / supination; off-axis = carrying angle + IK play
-    {"手首", 70.f, 88.f, false, 0, 0, 0},
-    {"親指０", 50.f, 25.f, false, 0, 0, 0},
-    {"親指１", 60.f, 15.f, false, 0, 0, 0},
-    {"親指２", 80.f, 10.f, false, 0, 0, 0},
-    {"人指０", 95.f, 20.f, false, 0, 0, 0}, {"人指１", 105.f, 10.f, false, 0, 0, 0},
-    {"人指２", 95.f, 10.f, false, 0, 0, 0}, {"人指３", 95.f, 10.f, false, 0, 0, 0},
-    {"中指０", 95.f, 20.f, false, 0, 0, 0}, {"中指１", 105.f, 10.f, false, 0, 0, 0},
-    {"中指２", 95.f, 10.f, false, 0, 0, 0}, {"中指３", 95.f, 10.f, false, 0, 0, 0},
-    {"薬指０", 95.f, 20.f, false, 0, 0, 0}, {"薬指１", 105.f, 10.f, false, 0, 0, 0},
-    {"薬指２", 95.f, 10.f, false, 0, 0, 0}, {"薬指３", 95.f, 10.f, false, 0, 0, 0},
-    {"小指０", 95.f, 20.f, false, 0, 0, 0}, {"小指１", 105.f, 10.f, false, 0, 0, 0},
-    {"小指２", 95.f, 10.f, false, 0, 0, 0}, {"小指３", 95.f, 10.f, false, 0, 0, 0},
-    {"足", 125.f, 50.f, false, 0, 0, 0},
-    {"ひざ", 0.f, 20.f, true, -5.f, 150.f, 10.f},
-    {"足首", 82.f, 35.f, false, 0, 0, 0},
-    {"つま先", 50.f, 10.f, false, 0, 0, 0},
-    {"目", 55.f, 5.f, false, 0, 0, 0},       // the eye roll at climax goes past the gaze range
+    {"spine", 60.f, 40.f, false, 0, 0, 0},
+    {"chest", 40.f, 30.f, false, 0, 0, 0},
+    {"neck", 40.f, 45.f, false, 0, 0, 0},
+    {"head", 32.f, 38.f, false, 0, 0, 0},
+    {"shoulder", 25.f, 15.f, false, 0, 0, 0},
+    {"upper_arm", 175.f, 100.f, false, 0, 0, 0},
+    {"elbow", 0.f, 75.f, true, -5.f, 150.f, 25.f},      // twist = the forearm's share of pronation / supination; off-axis = carrying angle + IK play
+    {"wrist", 70.f, 88.f, false, 0, 0, 0},
+    {"thumb0", 50.f, 25.f, false, 0, 0, 0},
+    {"thumb1", 60.f, 15.f, false, 0, 0, 0},
+    {"thumb2", 80.f, 10.f, false, 0, 0, 0},
+    {"index0", 95.f, 20.f, false, 0, 0, 0}, {"index1", 105.f, 10.f, false, 0, 0, 0},
+    {"index2", 95.f, 10.f, false, 0, 0, 0}, {"index3", 95.f, 10.f, false, 0, 0, 0},
+    {"middle0", 95.f, 20.f, false, 0, 0, 0}, {"middle1", 105.f, 10.f, false, 0, 0, 0},
+    {"middle2", 95.f, 10.f, false, 0, 0, 0}, {"middle3", 95.f, 10.f, false, 0, 0, 0},
+    {"ring0", 95.f, 20.f, false, 0, 0, 0}, {"ring1", 105.f, 10.f, false, 0, 0, 0},
+    {"ring2", 95.f, 10.f, false, 0, 0, 0}, {"ring3", 95.f, 10.f, false, 0, 0, 0},
+    {"pinky0", 95.f, 20.f, false, 0, 0, 0}, {"pinky1", 105.f, 10.f, false, 0, 0, 0},
+    {"pinky2", 95.f, 10.f, false, 0, 0, 0}, {"pinky3", 95.f, 10.f, false, 0, 0, 0},
+    {"thigh", 125.f, 50.f, false, 0, 0, 0},
+    {"knee", 0.f, 20.f, true, -5.f, 150.f, 10.f},
+    {"ankle", 82.f, 35.f, false, 0, 0, 0},
+    {"toe", 50.f, 10.f, false, 0, 0, 0},
+    {"eye", 55.f, 5.f, false, 0, 0, 0},       // the eye roll at climax goes past the gaze range
 };
 
 std::string baseName(const std::string& n) {

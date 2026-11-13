@@ -74,7 +74,7 @@ def xp(M, p):
 
 # node ids by name
 by_name = {n.get('name'): i for i, n in enumerate(js['nodes'])}
-head = by_name.get('頭')
+head = by_name.get('head')
 print('head node', head)
 H = global_mat(head)
 Hinv = inv_rigid(H)

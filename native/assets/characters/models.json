@@ -6,7 +6,7 @@
       "asset": "vivian.glb",
       "height": 1.68,
       "baseAge": 42,
-      "requiredBones": ["全ての親", "センター", "腰", "下半身", "上半身", "上半身2", "首", "頭", "肩.L", "肩.R", "腕.L", "腕.R", "ひじ.L", "ひじ.R", "手首.L", "手首.R", "足.L", "足.R", "ひざ.L", "ひざ.R", "足首.L", "足首.R"],
+      "requiredBones": ["root", "center", "waist", "pelvis", "spine", "chest", "neck", "head", "shoulder.L", "shoulder.R", "upper_arm.L", "upper_arm.R", "elbow.L", "elbow.R", "wrist.L", "wrist.R", "thigh.L", "thigh.R", "knee.L", "knee.R", "ankle.L", "ankle.R"],
       "expressionSets": ["blink", "moan", "pleasure", "oral", "kiss", "smile", "bite_lip", "bliss", "gasp", "smirk", "pout", "orgasm", "wink", "shy", "lids_down", "lids_up"],
       "shapeSets": ["bust", "hips", "waist", "butt", "weight", "muscle", "belly", "age"],
       "poseEnvelope": {"maxScale": 1.35, "maxTranslation": 0.45, "maxMorph": 1.0}
@@ -15,7 +15,7 @@
       "asset": "marcus.glb",
       "height": 1.83,
       "baseAge": 40,
-      "requiredBones": ["全ての親", "センター", "腰", "下半身", "上半身", "上半身2", "首", "頭", "肩.L", "肩.R", "腕.L", "腕.R", "ひじ.L", "ひじ.R", "手首.L", "手首.R", "足.L", "足.R", "ひざ.L", "ひざ.R", "足首.L", "足首.R", "竿根", "竿中", "竿先", "竿端", "玉袋"],
+      "requiredBones": ["root", "center", "waist", "pelvis", "spine", "chest", "neck", "head", "shoulder.L", "shoulder.R", "upper_arm.L", "upper_arm.R", "elbow.L", "elbow.R", "wrist.L", "wrist.R", "thigh.L", "thigh.R", "knee.L", "knee.R", "ankle.L", "ankle.R", "shaft_base", "shaft_mid", "shaft_tip", "shaft_end", "scrotum"],
       "expressionSets": ["blink", "effort", "pleasure", "moan", "kiss", "smile", "laugh", "smirk", "brow_up", "frown", "gasp", "bite_lip", "wink", "tender", "lids_down", "lids_up"],
       "shapeSets": ["muscle", "weight", "belly", "length", "girth"],
       "poseEnvelope": {"maxScale": 1.35, "maxTranslation": 0.45, "maxMorph": 1.0}

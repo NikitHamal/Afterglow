@@ -15,10 +15,10 @@ V3 restLocalDir(const Animator& a, int n, const V3& w) { return normalize(qrotat
 void Procedural::init(Animator& a, float rootScale) {
     const Model& m = *a.model();
     scale_ = rootScale;
-    chest_ = m.findNode("上半身2"); belly_ = m.findNode("上半身");
-    neck_ = m.findNode("首"); head_ = m.findNode("頭");
-    eyeL_ = m.findNode("目.L"); eyeR_ = m.findNode("目.R");
-    shoulderL_ = m.findNode("肩.L"); shoulderR_ = m.findNode("肩.R");
+    chest_ = m.findNode("chest"); belly_ = m.findNode("spine");
+    neck_ = m.findNode("neck"); head_ = m.findNode("head");
+    eyeL_ = m.findNode("eye.L"); eyeR_ = m.findNode("eye.R");
+    shoulderL_ = m.findNode("shoulder.L"); shoulderR_ = m.findNode("shoulder.R");
 
     // rest globals with identity root: forward vectors, collider offsets, chain rest lengths
     a.begin();
@@ -48,18 +48,18 @@ void Procedural::init(Animator& a, float rootScale) {
         }
     }
 
-    // hair chains: bones named 髪* whose parent is not hair
+    // hair chains: bones named hair* whose parent is not hair
     chains_.clear();
     for (size_t i = 0; i < m.nodes.size(); ++i) {
         const Node& n = m.nodes[i];
-        if (!startsWith(n.name, "髪")) continue;
-        if (n.parent >= 0 && startsWith(m.nodes[(size_t)n.parent].name, "髪")) continue;
+        if (!startsWith(n.name, "hair.")) continue;
+        if (n.parent >= 0 && startsWith(m.nodes[(size_t)n.parent].name, "hair.")) continue;
         Chain ch;
         int cur = (int)i;
         while (cur >= 0) {
             ch.bones.push_back(cur);
             int next = -1;
-            for (int c : m.nodes[(size_t)cur].children) if (startsWith(m.nodes[(size_t)c].name, "髪")) { next = c; break; }
+            for (int c : m.nodes[(size_t)cur].children) if (startsWith(m.nodes[(size_t)c].name, "hair.")) { next = c; break; }
             cur = next;
         }
         if (ch.bones.size() < 2) continue;
@@ -104,9 +104,9 @@ void Procedural::init(Animator& a, float rootScale) {
             if (springs_.size() > before) springs_.back().maxOff = springs_.back().len * std::sin(ang);
         }
     } else {
-        addSpring("乳親.L", 160.f, 7.5f, 0.035f, 0.25f);
-        addSpring("乳親.R", 160.f, 7.5f, 0.035f, 0.25f);
-        addSpring("玉袋", 90.f, 5.f, 0.03f, 0.6f);
+        addSpring("breast.L", 160.f, 7.5f, 0.035f, 0.25f);
+        addSpring("breast.R", 160.f, 7.5f, 0.035f, 0.25f);
+        addSpring("scrotum", 90.f, 5.f, 0.03f, 0.6f);
     }
     if (agx && (*agx)["hairChains"].isArray()) {
         const Json& hc = (*agx)["hairChains"];

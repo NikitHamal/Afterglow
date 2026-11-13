@@ -50,11 +50,11 @@ if mod is None:
     mod = body.modifiers.new(name='Armature', type='ARMATURE')
 mod.object = arm
 
-# 1) ADD TOE BONES 足先.L / 足先.R
+# 1) ADD TOE BONES thigh先.L / thigh先.R
 bpy.ops.object.mode_set(mode='EDIT')
 arm.data.edit_bones.active = None
 toe_local = 0.04  # 4 cm toe length
-for side, ankle_name, toe_name in [(".L","足首.L","足先.L"), (".R","足首.R","足先.R")]:
+for side, ankle_name, toe_name in [(".L","ankle.L","thigh先.L"), (".R","ankle.R","thigh先.R")]:
     ankle = arm.data.edit_bones.get(ankle_name)
     if ankle is None:
         print(f"[fix] WARN no ankle {ankle_name}")
@@ -76,19 +76,19 @@ for side, ankle_name, toe_name in [(".L","足首.L","足先.L"), (".R","足首.R
 bpy.ops.object.mode_set(mode='OBJECT')
 
 # Ensure vertex groups exist
-vg_ankleL = ensure_vg("足首.L")
-vg_ankleR = ensure_vg("足首.R")
-vg_toeL   = ensure_vg("足先.L")
-vg_toeR   = ensure_vg("足先.R")
-vg_legL   = ensure_vg("足.L")
-vg_legR   = ensure_vg("足.R")
-vg_kneeL  = ensure_vg("ひざ.L")
-vg_kneeR  = ensure_vg("ひざ.R")
-vg_thighL = ensure_vg("足.L")  # alias
+vg_ankleL = ensure_vg("ankle.L")
+vg_ankleR = ensure_vg("ankle.R")
+vg_toeL   = ensure_vg("thigh先.L")
+vg_toeR   = ensure_vg("thigh先.R")
+vg_legL   = ensure_vg("thigh.L")
+vg_legR   = ensure_vg("thigh.R")
+vg_kneeL  = ensure_vg("knee.L")
+vg_kneeR  = ensure_vg("knee.R")
+vg_thighL = ensure_vg("thigh.L")  # alias
 
 # 2) RE-WEIGHT: for each foot-region vertex, split between ankle and toe.
 # Foot region: x in ankle-X band, y in [-0.04, 0.13], z in [-0.04, 0.15]
-# Front-half (lower z) -> 足先 with ankle remaining; back-half (higher z, near ankle joint) -> 足首
+# Front-half (lower z) -> thigh先 with ankle remaining; back-half (higher z, near ankle joint) -> ankle
 def foot_box(side):
     # MMD convention: +X=L, -X=R. So +X is Left, -X is Right.
     if side == "L":
@@ -96,7 +96,7 @@ def foot_box(side):
     else:
         return (-0.085, -0.005)
 
-# Identify foot vertices (those dominated by 足首 or 足 or 足先)
+# Identify foot vertices (those dominated by ankle or thigh or thigh先)
 def get_v_idx_in_group(vg):
     return [v.index for v in body.data.vertices if any(g.group == vg.index for g in v.groups)]
 
@@ -146,12 +146,12 @@ def classify_foot_verts(side):
     return out
 
 def ankle_pos(side):
-    b = arm.data.bones.get(f"足首.{side[0]}")
+    b = arm.data.bones.get(f"ankle.{side[0]}")
     if b is None: return Vector((0,0,0))
     return (b.head_local + b.tail_local) * 0.5
 
 def toe_pos(side):
-    b = arm.data.bones.get(f"足先.{side[0]}")
+    b = arm.data.bones.get(f"thigh先.{side[0]}")
     if b is None: return Vector((0,0,0))
     return (b.head_local + b.tail_local) * 0.5
 
@@ -176,8 +176,8 @@ for side, ankle_vg, toe_vg in [("L", vg_ankleL, vg_toeL), ("R", vg_ankleR, vg_to
     print(f"[fix] reweighted foot {side}: {len(fverts)} verts")
 
 # 5) Mirror missing-side bone weights
-for src, dst in [("足首.L","足首.R"),("足.L","足.R"),("ひざ.L","ひざ.R"),
-                 ("足先.L","足先.R"),("足捩.L","足捩.R")]:
+for src, dst in [("ankle.L","ankle.R"),("thigh.L","thigh.R"),("knee.L","knee.R"),
+                 ("thigh先.L","thigh先.R"),("thigh捩.L","thigh捩.R")]:
     src_v = body.vertex_groups.get(src)
     if src_v and len([v for v in body.data.vertices if any(g.group == src_v.index for g in v.groups)]) == 0:
         print(f"[fix] {src} empty, mirroring to {dst}")
@@ -190,24 +190,24 @@ for src, dst in [("足首.L","足首.R"),("足.L","足.R"),("ひざ.L","ひざ.R
 # 0.8 to tip segment, 0.2 to mid. Mid-cluster: 0.5/0.5 between 0 and 1.
 
 # Finger bone lengths (from earlier inspect): ~0.03m
-# 親指 (thumb) - separate, located at +X-low-Y for L hand
+# thumb (thumb) - separate, located at +X-low-Y for L hand
 # Other fingers stack along +Y for L hand
 
 # Let's use a coord-based per-finger heuristic
 finger_anchors = {
     "L": {  # MMD-L = +X
-        "親指": dict(x=0.39, y=0.05, tip_z=0.69),   # thumb sticks out to +X-lowY
-        "人指": dict(x=0.42, y=0.05, tip_z=0.69),   # index
-        "中指": dict(x=0.43, y=0.08, tip_z=0.69),   # middle
-        "薬指": dict(x=0.44, y=0.10, tip_z=0.69),   # ring
-        "小指": dict(x=0.43, y=0.12, tip_z=0.69),   # pinky (slightly +X for curl back)
+        "thumb": dict(x=0.39, y=0.05, tip_z=0.69),   # thumb sticks out to +X-lowY
+        "index": dict(x=0.42, y=0.05, tip_z=0.69),   # index
+        "middle": dict(x=0.43, y=0.08, tip_z=0.69),   # middle
+        "ring": dict(x=0.44, y=0.10, tip_z=0.69),   # ring
+        "pinky": dict(x=0.43, y=0.12, tip_z=0.69),   # pinky (slightly +X for curl back)
     },
     "R": {  # MMD-R = -X
-        "親指": dict(x=-0.39, y=0.05, tip_z=0.69),
-        "人指": dict(x=-0.42, y=0.05, tip_z=0.69),
-        "中指": dict(x=-0.43, y=0.08, tip_z=0.69),
-        "薬指": dict(x=-0.44, y=0.10, tip_z=0.69),
-        "小指": dict(x=-0.43, y=0.12, tip_z=0.69),
+        "thumb": dict(x=-0.39, y=0.05, tip_z=0.69),
+        "index": dict(x=-0.42, y=0.05, tip_z=0.69),
+        "middle": dict(x=-0.43, y=0.08, tip_z=0.69),
+        "ring": dict(x=-0.44, y=0.10, tip_z=0.69),
+        "pinky": dict(x=-0.43, y=0.12, tip_z=0.69),
     },
 }
 
@@ -224,14 +224,14 @@ def find_finger_verts(side, finger):
 
 # Ensure 0/1/2 vertex groups exist
 for side in ["L","R"]:
-    for f in ["親指","人指","中指","薬指","小指"]:
-        for seg in ["０","１","２"]:
+    for f in ["thumb","index","middle","ring","pinky"]:
+        for seg in ["0","1","2"]:
             ensure_vg(f"{f}{seg}.{side}")
 
 # Re-weight fingers: closest to tip -> seg2, mid -> seg1, base -> seg0
 finger_z_base = 0.715  # base of finger
 for side in ["L","R"]:
-    for f in ["親指","人指","中指","薬指","小指"]:
+    for f in ["thumb","index","middle","ring","pinky"]:
         fverts = find_finger_verts(side, f)
         if not fverts:
             continue
@@ -246,9 +246,9 @@ for side in ["L","R"]:
                 w2, w1, w0 = 0.15, 0.7, 0.15
             else:
                 w2, w1, w0 = 0.0, 0.4, 0.6
-            set_w(body.vertex_groups[f"{f}０.{side}"], v.index, w0)
-            set_w(body.vertex_groups[f"{f}１.{side}"], v.index, w1)
-            set_w(body.vertex_groups[f"{f}２.{side}"], v.index, w2)
+            set_w(body.vertex_groups[f"{f}0.{side}"], v.index, w0)
+            set_w(body.vertex_groups[f"{f}1.{side}"], v.index, w1)
+            set_w(body.vertex_groups[f"{f}2.{side}"], v.index, w2)
         print(f"[fix] reweighted {f} {side}: {len(fverts)} verts")
 
 # 7) HANDS: thicken slightly via scale of hand-cluster verts

@@ -55,56 +55,56 @@ B = np.array([tuple(v.co) for v in body.data.vertices], np.float32)
 def attr(name):
     a = body.data.attributes.get(name); v = np.empty(len(a.data), np.float32); a.data.foreach_get("value", v); return v
 clit = B[np.argmax(attr("v_clit"))]
-V.add_landmark("clit", "下半身", Vector(clit))
+V.add_landmark("clit", "pelvis", Vector(clit))
 for s, sx in ((".L", 1), (".R", -1)):
-    n0 = V.rig.rest["乳親" + s].translation
+    n0 = V.rig.rest["breast" + s].translation
     sel = (np.sign(B[:, 0]) == sx) & (np.abs(B[:, 2] - (n0.z - 0.10)) < 0.09) & (np.abs(B[:, 0] - sx * 0.09) < 0.07)
     nip = B[sel][np.argmin(B[sel][:, 1])]
-    V.add_landmark("nipple" + s, "乳親" + s, Vector(nip))
-    hz = V.rig.rest["下半身"].translation.z - 0.05
+    V.add_landmark("nipple" + s, "breast" + s, Vector(nip))
+    hz = V.rig.rest["pelvis"].translation.z - 0.05
     sel = (np.abs(B[:, 2] - hz) < 0.02) & (np.sign(B[:, 0]) == sx)
     hip = B[sel][np.argmax(np.abs(B[sel][:, 0]))]
-    V.add_landmark("hip" + s, "下半身", Vector(hip))
+    V.add_landmark("hip" + s, "pelvis", Vector(hip))
 def mouth_point(teeth_obj):
     T = np.array([tuple(v.co) for v in teeth_obj.data.vertices], np.float32)
     f = T[(np.abs(T[:, 0]) < 0.01)]
     p = f[np.argmin(f[:, 1])]
     return Vector((0.0, float(p[1]) - 0.011, float(p[2]) - 0.004))
-V.add_landmark("mouth", "頭", mouth_point(objs["vivian_teeth"]))
-M.add_landmark("mouth", "頭", mouth_point(objs["marcus_teeth"]))
+V.add_landmark("mouth", "head", mouth_point(objs["vivian_teeth"]))
+M.add_landmark("mouth", "head", mouth_point(objs["marcus_teeth"]))
 MBr = np.array([tuple(v.co) for v in objs["marcus_body"].data.vertices], np.float32)
-c2 = M.rig.rest["上半身2"].translation
+c2 = M.rig.rest["chest"].translation
 for s, sx in ((".L", 1), (".R", -1)):
     sel = (np.abs(MBr[:, 0] - sx * 0.10) < 0.025) & (np.abs(MBr[:, 2] - (c2.z + 0.24)) < 0.03)
-    M.add_landmark("chest" + s, "上半身2", Vector(MBr[sel][np.argmin(MBr[sel][:, 1])]))
-    hz = (M.rig.rest["足" + s].translation.z + M.rig.rest["ひざ" + s].translation.z) / 2
+    M.add_landmark("chest" + s, "chest", Vector(MBr[sel][np.argmin(MBr[sel][:, 1])]))
+    hz = (M.rig.rest["thigh" + s].translation.z + M.rig.rest["knee" + s].translation.z) / 2
     sel = (np.abs(MBr[:, 0] - sx * 0.12) < 0.03) & (np.abs(MBr[:, 2] - hz) < 0.03)
-    M.add_landmark("thigh" + s, "足" + s, Vector(MBr[sel][np.argmin(MBr[sel][:, 1])]))
+    M.add_landmark("thigh" + s, "thigh" + s, Vector(MBr[sel][np.argmin(MBr[sel][:, 1])]))
 MBb = MBr
-c2 = M.rig.rest["上半身2"].translation
+c2 = M.rig.rest["chest"].translation
 for s, sx in ((".L", 1), (".R", -1)):                  # his upper back (for her embracing hands)
     sel = (np.abs(MBb[:, 0] - sx * 0.11) < 0.03) & (np.abs(MBb[:, 2] - (c2.z + 0.22)) < 0.03)
-    M.add_landmark("back" + s, "上半身2", Vector(MBb[sel][np.argmax(MBb[sel][:, 1])]))
+    M.add_landmark("back" + s, "chest", Vector(MBb[sel][np.argmax(MBb[sel][:, 1])]))
 # her back (his embracing hands) + his nape (her arms round his neck): points on the rest skin, riding their bones
-c1 = V.rig.rest["上半身"].translation; c2v = V.rig.rest["上半身2"].translation
+c1 = V.rig.rest["spine"].translation; c2v = V.rig.rest["chest"].translation
 for s, sx in ((".L", 1), (".R", -1)):
-    for nm_, z_, bone_ in (("back_low", c1.z + 0.05, "上半身"), ("back_mid", c2v.z + 0.10, "上半身2")):
+    for nm_, z_, bone_ in (("back_low", c1.z + 0.05, "spine"), ("back_mid", c2v.z + 0.10, "chest")):
         sel = (np.abs(B[:, 0] - sx * 0.075) < 0.025) & (np.abs(B[:, 2] - z_) < 0.025)
         V.add_landmark(nm_ + s, bone_, Vector(B[sel][np.argmax(B[sel][:, 1])]))
-hv0 = V.rig.rest["頭"].translation; mz = V.lm("mouth").z if "mouth" in V.landmarks else hv0.z - 0.05
+hv0 = V.rig.rest["head"].translation; mz = V.lm("mouth").z if "mouth" in V.landmarks else hv0.z - 0.05
 for s, sx in ((".L", 1), (".R", -1)):                  # her cheekbones (resting her head on his chest)
     sel = (np.abs(B[:, 0] - sx * 0.052) < 0.008) & (np.abs(B[:, 2] - (mz + 0.035)) < 0.01) & (B[:, 1] < hv0.y)
-    V.add_landmark("cheek" + s, "頭", Vector(B[sel][np.argmin(B[sel][:, 1])]))
-nk = M.rig.rest["首"].translation
+    V.add_landmark("cheek" + s, "head", Vector(B[sel][np.argmin(B[sel][:, 1])]))
+nk = M.rig.rest["neck"].translation
 sel = (np.abs(MBr[:, 0]) < 0.02) & (np.abs(MBr[:, 2] - (nk.z + 0.04)) < 0.02)
-M.add_landmark("nape", "首", Vector(MBr[sel][np.argmax(MBr[sel][:, 1])]))
-nk = V.rig.rest["首"].translation
+M.add_landmark("nape", "neck", Vector(MBr[sel][np.argmax(MBr[sel][:, 1])]))
+nk = V.rig.rest["neck"].translation
 sel = (np.abs(B[:, 0]) < 0.02) & (np.abs(B[:, 2] - (nk.z + 0.04)) < 0.02)
-V.add_landmark("nape", "首", Vector(B[sel][np.argmax(B[sel][:, 1])]))
+V.add_landmark("nape", "neck", Vector(B[sel][np.argmax(B[sel][:, 1])]))
 # ---- skin-vs-skin checks for the story clips' head solve: per-bone surfaces in the bone's own frame (rigid parts:
 # head, neck, chest) + sample points on each head (lips left out: the kiss is meant to touch there)
 from mathutils.bvhtree import BVHTree as _BVH
-def _local_surfaces(body_, rest, bones_=("頭", "首", "上半身2", "上半身", "乳親.L", "乳親.R", "肩.L", "肩.R", "腕.L", "腕.R")):
+def _local_surfaces(body_, rest, bones_=("head", "neck", "chest", "spine", "breast.L", "breast.R", "shoulder.L", "shoulder.R", "upper_arm.L", "upper_arm.R")):
     """each face goes to the bone that dominates most of its corners (no gaps at the joints)"""
     dom = SC.dominant_bone(body_.obj); polys = [tuple(p.vertices) for p in body_.obj.data.polygons]
     owner = {}
@@ -120,9 +120,9 @@ def _local_surfaces(body_, rest, bones_=("頭", "首", "上半身2", "上半身"
     return out
 def _head_samples(body_, rest, n=70):
     dom = SC.dominant_bone(body_.obj)
-    idx = np.where(np.array([d == "頭" for d in dom]))[0]
+    idx = np.where(np.array([d == "head" for d in dom]))[0]
     lip = np.array(body_.lm("mouth")) if "mouth" in body_.landmarks else None
-    R_ = body_.rig.rest["頭"].inverted()
+    R_ = body_.rig.rest["head"].inverted()
     pts = []
     for i in idx[:: max(1, len(idx) // n)]:
         if lip is not None and np.linalg.norm(rest[i] - lip) < 0.024: continue
@@ -136,13 +136,13 @@ log(f"scene ready ({time.time()-t0:.0f}s): clit {np.round(clit,3)}, canal {np.ro
 
 # ---------------------------------------------------------------- regions for verification
 her_allow = SC.attr_mask(body, ("v_muc", "v_min", "v_maj", "v_cav", "v_clit", "v_pub", "v_anus"), 0.02)
-her_hand = SC.vgroup_mask(body, [n for n in body.vertex_groups.keys() if n.startswith(("手首", "親指", "人指", "中指", "薬指", "小指"))], 0.3)
+her_hand = SC.vgroup_mask(body, [n for n in body.vertex_groups.keys() if n.startswith(("wrist", "thumb", "index", "middle", "ring", "pinky"))], 0.3)
 mb = objs["marcus_body"]
-his_allow = SC.vgroup_mask(mb, ("竿根", "竿中", "竿先", "玉袋"), 0.2)
-his_hand = SC.vgroup_mask(mb, [n for n in mb.vertex_groups.keys() if n.startswith(("手首", "親指", "人指", "中指", "薬指", "小指"))], 0.3)
+his_allow = SC.vgroup_mask(mb, ("shaft_base", "shaft_mid", "shaft_tip", "scrotum"), 0.2)
+his_hand = SC.vgroup_mask(mb, [n for n in mb.vertex_groups.keys() if n.startswith(("wrist", "thumb", "index", "middle", "ring", "pinky"))], 0.3)
 MB = np.array([tuple(v.co) for v in mb.data.vertices], np.float32)
 her_bones = SC.dominant_bone(body); his_bones = SC.dominant_bone(mb)
-LIMB = ("腕", "ひじ", "手首", "親指", "人指", "中指", "薬指", "小指")
+LIMB = ("upper_arm", "elbow", "wrist", "thumb", "index", "middle", "ring", "pinky")
 her_limb = np.array([b.startswith(LIMB) for b in her_bones]); his_limb = np.array([b.startswith(LIMB) for b in his_bones])
 def side_mask(bones, base, side): return np.array([b.startswith(LIMB[2:]) and b.endswith(side) for b in bones]) & base
 EFFECTORS = {"vivian": {"hand.L": side_mask(her_bones, her_hand, ".L"), "hand.R": side_mask(her_bones, her_hand, ".R")},
@@ -150,39 +150,39 @@ EFFECTORS = {"vivian": {"hand.L": side_mask(her_bones, her_hand, ".L"), "hand.R"
 V.core = np.array([b in SC.CORE_BONES for b in her_bones]); M.core = np.array([b in SC.CORE_BONES for b in his_bones])
 # the arm IK's elbow search keeps out of the mattress, its own trunk/head/legs and the partner's whole body (capsules)
 def _caps(rig_, trunk, limb, arms):
-    out = [(rig_, "下半身", "首", trunk, 0.02), (rig_, "頭", None, 0.095, 0.02), (rig_, "足.L", "足.R", trunk * 0.85, 0.02)]
+    out = [(rig_, "pelvis", "neck", trunk, 0.02), (rig_, "head", None, 0.095, 0.02), (rig_, "thigh.L", "thigh.R", trunk * 0.85, 0.02)]
     for s_ in (".L", ".R"):
-        out += [(rig_, "肩" + s_, "腕" + s_, 0.055, 0.015),                         # shoulder girdle
-                (rig_, "腕" + s_, "上半身", trunk * 0.8, 0.015)]                     # side of the rib cage
-        if "乳親" + s_ in rig_.bones: out += [(rig_, "乳親" + s_, None, 0.07, 0.015)]   # her breasts
-        out += [(rig_, "足" + s_, "ひざ" + s_, limb, 0.015), (rig_, "ひざ" + s_, "足首" + s_, limb * 0.68, 0.01)]
-        if arms: out += [(rig_, "腕" + s_, "ひじ" + s_, 0.045, 0.008), (rig_, "ひじ" + s_, "手首" + s_, 0.04, 0.008)]
+        out += [(rig_, "shoulder" + s_, "upper_arm" + s_, 0.055, 0.015),                         # shoulder girdle
+                (rig_, "upper_arm" + s_, "spine", trunk * 0.8, 0.015)]                     # side of the rib cage
+        if "breast" + s_ in rig_.bones: out += [(rig_, "breast" + s_, None, 0.07, 0.015)]   # her breasts
+        out += [(rig_, "thigh" + s_, "knee" + s_, limb, 0.015), (rig_, "knee" + s_, "ankle" + s_, limb * 0.68, 0.01)]
+        if arms: out += [(rig_, "upper_arm" + s_, "elbow" + s_, 0.045, 0.008), (rig_, "elbow" + s_, "wrist" + s_, 0.04, 0.008)]
     return out
 V.rig.floor_z = M.rig.floor_z = SC.BED_TOP
 V.rig.obstacles = _caps(V.rig, 0.11, 0.075, False) + _caps(M.rig, 0.13, 0.08, True)
 M.rig.obstacles = _caps(M.rig, 0.13, 0.08, False) + _caps(V.rig, 0.11, 0.075, True)
-his_head = np.array([b in ("頭", "首") for b in his_bones])
+his_head = np.array([b in ("head", "neck") for b in his_bones])
 HM = np.array([tuple(v.co) for v in mb.data.vertices], np.float32)
-hh0 = M.rig.rest["頭"].translation
+hh0 = M.rig.rest["head"].translation
 his_mouth = his_head & (HM[:, 2] < hh0.z + 0.06) & (HM[:, 1] < hh0.y - 0.05)
-root0 = Vector(mb.parent.data.bones["竿根"].head_local)
+root0 = Vector(mb.parent.data.bones["shaft_base"].head_local)
 his_allow |= np.linalg.norm(MB - np.array(root0), axis=1) < 0.07          # pubic mound around the shaft root
-his_shaft = SC.vgroup_mask(mb, ("竿根", "竿中", "竿先", "玉袋"), 0.2)
-her_breast = SC.vgroup_mask(body, ("乳親.L", "乳親.R"), 0.3)
-TRUNK = ("上半身", "上半身2", "乳親", "腕", "肩", "首")
+his_shaft = SC.vgroup_mask(mb, ("shaft_base", "shaft_mid", "shaft_tip", "scrotum"), 0.2)
+her_breast = SC.vgroup_mask(body, ("breast.L", "breast.R"), 0.3)
+TRUNK = ("spine", "chest", "breast", "upper_arm", "shoulder", "neck")
 her_trunk = np.array([b.startswith(TRUNK) for b in SC.dominant_bone(body)])
 his_trunk = np.array([b.startswith(TRUNK) for b in SC.dominant_bone(mb)])
-her_arm = np.array([b.startswith(("ひじ", "腕")) for b in SC.dominant_bone(body)])
-his_arm = np.array([b.startswith(("ひじ", "腕")) for b in SC.dominant_bone(mb)])
+her_arm = np.array([b.startswith(("elbow", "upper_arm")) for b in SC.dominant_bone(body)])
+his_arm = np.array([b.startswith(("elbow", "upper_arm")) for b in SC.dominant_bone(mb)])
 E0 = np.array(viv_meas["vagina"]["entrance"], np.float32)
 her_vulva_zone = np.linalg.norm(B - E0, axis=1) < 0.06                    # inner thighs / buttocks squeezing the shaft
 # pelvis-to-pelvis contact (her buttocks / inner thighs on his groin, hips, upper thighs): flesh that compresses in
 # every penetrative position, so touching there is intended contact
-her_seat = (np.linalg.norm(B - E0, axis=1) < 0.26) & np.array([b.startswith(("足", "下半身")) for b in SC.dominant_bone(body)])
-his_seat = (np.linalg.norm(MB - np.array(root0), axis=1) < 0.28) & np.array([b.startswith(("足", "下半身", "上半身")) for b in SC.dominant_bone(mb)])
+her_seat = (np.linalg.norm(B - E0, axis=1) < 0.26) & np.array([b.startswith(("thigh", "ankle", "pelvis")) for b in SC.dominant_bone(body)])
+his_seat = (np.linalg.norm(MB - np.array(root0), axis=1) < 0.28) & np.array([b.startswith(("thigh", "ankle", "pelvis", "spine")) for b in SC.dominant_bone(mb)])
 # straddling (cowgirl / reverse): her inner thighs lie along his flanks / over his thighs the whole way to her knees
-her_seat_wide = (np.linalg.norm(B - E0, axis=1) < 0.36) & np.array([b.startswith(("足", "下半身")) for b in SC.dominant_bone(body)])
-his_seat_wide = (np.linalg.norm(MB - np.array(root0), axis=1) < 0.36) & np.array([b.startswith(("足", "下半身", "上半身")) for b in SC.dominant_bone(mb)])
+her_seat_wide = (np.linalg.norm(B - E0, axis=1) < 0.36) & np.array([b.startswith(("thigh", "ankle", "pelvis")) for b in SC.dominant_bone(body)])
+his_seat_wide = (np.linalg.norm(MB - np.array(root0), axis=1) < 0.36) & np.array([b.startswith(("thigh", "ankle", "pelvis", "spine")) for b in SC.dominant_bone(mb)])
 
 # room furniture the bodies must never enter (the sheet/mattress are the support: checked by the floors instead)
 ROOM_HIT = ("headboard", "pillow", "duvet", "nightstand", "lamp", "bed_base", "candle", "book", "wine", "drawer", "knob")
@@ -204,7 +204,7 @@ PLAY_Y1 = SC.HEAD_Y - 0.24                                           # pillows s
 hair_o = objs.get("vivian_hair")
 hair_head = None
 if hair_o is not None:
-    hg = hair_o.vertex_groups.get("頭")
+    hg = hair_o.vertex_groups.get("head")
     hair_head = np.zeros(len(hair_o.data.vertices), bool)
     if hg is not None:
         for v in hair_o.data.vertices:
@@ -307,7 +307,7 @@ def verify(clip, t):
                 lip_gap_mm=round((V.lm("mouth") - M.lm("mouth")).length * 1000, 1))
 
 # ---------------------------------------------------------------- limb anatomy metrics (strict pass)
-LIMBS = (("腕", "ひじ", "手首"), ("足", "ひざ", "足首"))
+LIMBS = (("upper_arm", "elbow", "wrist"), ("thigh", "knee", "ankle"))
 def _swing_twist_q(q):
     q = q.normalized()
     if q.w < 0: q = -q
@@ -328,7 +328,7 @@ def limb_metrics(body):
     r = body.rig; out = {}
     for s in (".L", ".R"):
         for up, lo, end in LIMBS:
-            k = ("arm" if up == "腕" else "leg") + s
+            k = ("arm" if up == "upper_arm" else "leg") + s
             su, tu, _ = _swing_twist_q(r.basis[up + s].to_quaternion())
             sl, tl, axl = _swing_twist_q(r.basis[lo + s].to_quaternion())
             hl = r.hinge.get(lo + s, Vector((1, 0, 0)))
@@ -365,18 +365,18 @@ def _score_at(clip, t_):
 PO.SCORE = _score
 
 mouth_mask = np.zeros(len(B), bool)
-hb = V.rig.rest["頭"].translation
+hb = V.rig.rest["head"].translation
 mouth_mask |= (np.abs(B[:, 0]) < 0.03) & (B[:, 2] < hb.z + 0.02) & (B[:, 2] > hb.z - 0.08) & (B[:, 1] < hb.y - 0.06)
 lip_v = V.lm("mouth"); lip_m = M.lm("mouth")
-EFFECTORS["vivian"]["mouth"] = np.linalg.norm(B - np.array(V.rig.rest["頭"].translation) * 0 - np.array(lip_v), axis=1) < 0.025
+EFFECTORS["vivian"]["mouth"] = np.linalg.norm(B - np.array(V.rig.rest["head"].translation) * 0 - np.array(lip_v), axis=1) < 0.025
 EFFECTORS["marcus"]["mouth"] = np.linalg.norm(MB - np.array(lip_m), axis=1) < 0.025
 def region(who, bone, P_rest):
     if who == "vivian":
         if np.linalg.norm(P_rest - E0) < 0.045: return "vulva"
-        if bone.startswith("乳親"): return "breast" + bone[-2:]
-    if who == "marcus" and bone.startswith(("竿", "玉袋")): return "genitals"
-    for k, v in (("下半身", "hips"), ("上半身2", "chest"), ("上半身", "belly"), ("足", "thigh"), ("ひざ", "shin"), ("足首", "foot"),
-                 ("頭", "head"), ("首", "neck"), ("腕", "upper_arm"), ("ひじ", "forearm"), ("肩", "shoulder")):
+        if bone.startswith("breast."): return "breast" + bone[-2:]
+    if who == "marcus" and bone.startswith(("shaft", "scrotum")): return "genitals"
+    for k, v in (("pelvis", "hips"), ("chest", "chest"), ("spine", "belly"), ("thigh", "thigh"), ("knee", "shin"), ("ankle", "foot"),
+                 ("head", "head"), ("neck", "neck"), ("upper_arm", "upper_arm"), ("elbow", "forearm"), ("shoulder", "shoulder")):
         if bone.startswith(k): return v + (bone[-2:] if bone[-2:] in (".L", ".R") else "")
     return bone
 
@@ -513,7 +513,7 @@ for clip in only:
         bones_, Rest = (her_bones, B) if who == "vivian" else (his_bones, MB)
         bn = bones_[vi]; body_ = V if who == "vivian" else M
         loc_ = body_.rig.rest[bn].inverted() @ Vector(Rest[vi])
-        rad = 0.02 if eff == "mouth" else (0.012 if bn.startswith(("親指", "人指", "中指", "薬指", "小指")) else 0.035)
+        rad = 0.02 if eff == "mouth" else (0.012 if bn.startswith(("thumb", "index", "middle", "ring", "pinky")) else 0.035)
         out_tracks.append(dict(char=who, effector=eff, bone=bn, offset=[round(loc_.x, 4), round(loc_.y, 4), round(loc_.z, 4)], radius=rad,
                                target=tr["target"], gap_mm=[min(tr["gaps"]), max(tr["gaps"])], t=[min(tr["ts"]), max(tr["ts"])]))
     rep["contacts"] = out_tracks
@@ -538,7 +538,7 @@ for clip in only:
         pt = float(os.environ.get("AG_PREVIEW_T", "0.6"))
         fn(ctx, pt if kind == "depth" else 0.25)
         evaluate(clip, pt)
-        pel = V.rig.head("下半身")
+        pel = V.rig.head("pelvis")
         views = (("side", pel + Vector((1.9, -0.2, 0.75))), ("front", pel + Vector((0.35, -2.1, 0.9))), ("top", pel + Vector((0.6, -0.4, 2.2))),
                  ("feet", pel + Vector((0.05, -2.4, 0.35))), ("close", pel + Vector((0.9, -0.9, 0.45))))
         want = os.environ.get("AG_PREVIEW_VIEWS", "side,front,top").split(",")

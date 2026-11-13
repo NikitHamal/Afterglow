@@ -1,6 +1,6 @@
 """Lengthen a card-based hair style in place: a long fall from an existing short style.
 
-The hair styles are card strips skinned 100% to 頭, and their atlas tiles vertically (the cap's UVs run past -3), so a
+The hair styles are card strips skinned 100% to head, and their atlas tiles vertically (the cap's UVs run past -3), so a
 card can simply keep going. Vertices below `--from` are moved down with a smooth ramp, which stretches the strands and
 the atlas bands together - a bob becomes a straight fall to `--to` without new geometry or a Blender session.
 

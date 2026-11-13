@@ -34,8 +34,8 @@ def buffer_view(idx):
 skin = gltf["skins"][0]
 joints = skin["joints"]
 joint_names = [gltf["nodes"][n].get("name") for n in joints]
-pelvis = joint_names.index("下半身")
-legs = {joint_names.index(n) for n in ("足.L", "足.R", "ひざ.L", "ひざ.R") if n in joint_names}
+pelvis = joint_names.index("pelvis")
+legs = {joint_names.index(n) for n in ("thigh.L", "thigh.R", "knee.L", "knee.R") if n in joint_names}
 legs_names = {joint_names[i] for i in legs}
 body = gltf["meshes"][0]
 target_names = body.get("extras", {}).get("targetNames", [])

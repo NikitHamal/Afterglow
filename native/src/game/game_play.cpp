@@ -110,9 +110,9 @@ void Game::cameraForPosition(float blend) {
     if (camMode_ == 3 && !p.solo && scene.marcus.loaded()) {
         const Json& f = cams["fpv"];
         if (f.isObject() && f["offset_local"].isArray())
-            camera.setFirstPersonLocal(&scene.marcus, f["bone"].str("頭"), {f["offset_local"][0].f(), f["offset_local"][1].f(), f["offset_local"][2].f()},
+            camera.setFirstPersonLocal(&scene.marcus, f["bone"].str("head"), {f["offset_local"][0].f(), f["offset_local"][1].f(), f["offset_local"][2].f()},
                                        {f["forward_local"][0].f(), f["forward_local"][1].f(), f["forward_local"][2].f(1.f)}, blend);
-        else camera.setFirstPerson(&scene.marcus, "頭", {0.f, 0.07f, 0.09f}, blend);
+        else camera.setFirstPerson(&scene.marcus, "head", {0.f, 0.07f, 0.09f}, blend);
         return;
     }
     if (camMode_ == 5 && scene.vivian.loaded()) {
@@ -129,7 +129,7 @@ void Game::cameraForPosition(float blend) {
         V3 hc, hf, hu;
         scene.vivian.headAxes(hc, hf, hu);
         V3 side = normalize(cross(hu, hf));
-        if (scene.showMarcus && dot(side, hc - scene.marcus.bonePos("上半身2")) < 0.f) side = side * -1.f;
+        if (scene.showMarcus && dot(side, hc - scene.marcus.bonePos("chest")) < 0.f) side = side * -1.f;
         V3 d = normalize(hf * 0.85f - hu * 0.1f + side * 0.45f + V3{0.f, 0.25f, 0.f});
         if (d.y < 0.15f) d = normalize(V3{d.x, 0.15f, d.z});
         camera.setOrbit(hc, std::atan2(d.x, d.z), std::min(std::asin(clampf(d.y, -1.f, 1.f)), 1.3f), 0.78f, blend);
@@ -437,7 +437,7 @@ void Game::presentPlay(float dt) {
             flinch_ = 1.f;
             breath(true, 0.55f);
             voice(0, "gasp", 0.35f + 0.3f * her, 1.25f);
-            for (const char* b : {"乳親.L", "乳親.R"}) { int bi = v.bone(b); if (bi >= 0) v.procedural.impulse(bi, V3{0.f, 0.25f, 0.1f}); }
+            for (const char* b : {"breast.L", "breast.R"}) { int bi = v.bone(b); if (bi >= 0) v.procedural.impulse(bi, V3{0.f, 0.25f, 0.1f}); }
         }
         flinch_ = approach(flinch_, 0.f, 3.5f, dt);
     }
@@ -481,7 +481,7 @@ void Game::presentPlay(float dt) {
         // she keeps the pose's own head and looks ahead - never a craned neck
         V3 hc, hf, hu;
         v.headAxes(hc, hf, hu);
-        V3 tgt = together && m.loaded() ? m.bonePos("頭") : cam_.eye;
+        V3 tgt = together && m.loaded() ? m.bonePos("head") : cam_.eye;
         V3 to = tgt - hc;
         float off = length(to) > 1e-3f ? std::acos(clampf(dot(normalize(to), hf), -1.f, 1.f)) : 0.f;
         float front = 1.f - smoothstepF(0.9f, 1.4f, off);
@@ -545,7 +545,7 @@ void Game::presentPlay(float dt) {
         m.proc.breathRate = 0.2f + 0.3f * him + 0.4f * climaxM;
         m.proc.breathAmp = 1.f + 1.2f * him;
         m.proc.lookWeight = 0.45f;
-        m.proc.lookTarget = v.loaded() ? v.bonePos("頭") : cam_.eye;
+        m.proc.lookTarget = v.loaded() ? v.bonePos("head") : cam_.eye;
         m.proc.hair = settings.hairPhysics;
     }
 
@@ -624,7 +624,7 @@ void Game::applyContactTracks() {
 void Game::archBody(Animator& a) const {
     if (arch_ < 0.002f) return;
     const Model* m = a.model();
-    int upper = m->findNode("上半身"), sl = m->findNode("腕.L"), sr = m->findNode("腕.R");
+    int upper = m->findNode("spine"), sl = m->findNode("upper_arm.L"), sr = m->findNode("upper_arm.R");
     if (upper < 0 || sl < 0 || sr < 0) return;
     V3 axis = a.global(sr).translation() - a.global(sl).translation();
     if (length(axis) < 1e-4f) return;

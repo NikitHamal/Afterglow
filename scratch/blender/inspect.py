@@ -14,9 +14,9 @@ print("armature:", arm.name if arm else "NONE")
 if arm:
     bones = arm.data.bones
     print(f"total bones: {len(bones)}")
-    interesting = ["足先","足首","足","ひざ","ひざL","足L","足首L","足先L",
-                   "足R","足首R","足先R","手首","手首L","手首R","中指１","人指１",
-                   "小指１","親指１","薬指１","足親指","足人指"]
+    interesting = ["thigh先","ankle","thigh","knee","kneeL","thighL","ankleL","thigh先L",
+                   "thighR","ankleR","thigh先R","wrist","wristL","wristR","middle1","index1",
+                   "pinky1","thumb1","ring1","thighthumb","thighindex"]
     for b in bones:
         n = b.name
         if any(k in n for k in interesting):

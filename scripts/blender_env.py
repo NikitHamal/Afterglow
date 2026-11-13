@@ -180,7 +180,7 @@ def _camera_for_bounds(cam_mode="3q", frame_override=None):
     arms = _armatures()
     pts = []
     for arm in arms:
-        for b in ("下半身", "上半身2", "頭"):
+        for b in ("pelvis", "chest", "head"):
             pb = arm.pose.bones.get(b)
             if pb:
                 pts.append(arm.matrix_world @ pb.head)

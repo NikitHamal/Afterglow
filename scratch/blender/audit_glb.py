@@ -10,8 +10,8 @@ from mathutils import Vector
 argv = sys.argv
 argv = argv[argv.index("--") + 1:] if "--" in argv else []
 
-FINGER_ROOTS = ["親指", "人指", "中指", "薬指", "小指"]
-FINGER_SEGS = ["０", "１", "２"]
+FINGER_ROOTS = ["thumb", "index", "middle", "ring", "pinky"]
+FINGER_SEGS = ["0", "1", "2"]
 
 
 def wipe():
@@ -108,7 +108,7 @@ def audit(path, label):
 
     # --- per-side hand + leg measurements
     for side in ["L", "R"]:
-        hand_groups = [f"{f}{s}.{side}" for f in FINGER_ROOTS for s in FINGER_SEGS] + [f"手首.{side}"]
+        hand_groups = [f"{f}{s}.{side}" for f in FINGER_ROOTS for s in FINGER_SEGS] + [f"wrist.{side}"]
         hi = vg_verts(body, hand_groups)
         hb = bbox(body, hi)
         res[f"hand_{side}"] = hb
@@ -118,16 +118,16 @@ def audit(path, label):
             for s in FINGER_SEGS:
                 gname = f"{f}{s}.{side}"
                 cov[gname] = len(vg_verts(body, [gname]))
-        cov[f"手首.{side}"] = len(vg_verts(body, [f"手首.{side}"]))
+        cov[f"wrist.{side}"] = len(vg_verts(body, [f"wrist.{side}"]))
         res[f"fingerCov_{side}"] = cov
 
         # lower leg: knee + shin + ankle groups
-        leg_groups = [f"ひざ.{side}", f"足.{side}", f"足首.{side}", f"足先.{side}", f"つま先.{side}"]
+        leg_groups = [f"knee.{side}", f"thigh.{side}", f"ankle.{side}", f"thigh先.{side}", f"toe.{side}"]
         li = vg_verts(body, leg_groups)
         res[f"leg_{side}"] = bbox(body, li)
-        knee_h, knee_t = bone_world(arm, f"ひざ.{side}")
-        ank_h, ank_t = bone_world(arm, f"足首.{side}")
-        toe_h, toe_t = bone_world(arm, f"足先.{side}")
+        knee_h, knee_t = bone_world(arm, f"knee.{side}")
+        ank_h, ank_t = bone_world(arm, f"ankle.{side}")
+        toe_h, toe_t = bone_world(arm, f"thigh先.{side}")
         res[f"knee_{side}"] = [round(c, 4) for c in knee_h] if knee_h else None
         res[f"ankle_{side}"] = [round(c, 4) for c in ank_h] if ank_h else None
         res[f"toe_{side}"] = [round(c, 4) for c in toe_h] if toe_h else None

@@ -27,7 +27,7 @@ void Game::oralQa() {
     float rM = length(mv - (root + chord * sM)), rN = length(nv - (root + axis * sN));
     float rA = length(av - (root + axis * sA));
     float bend = std::acos(clampf(dot(chord, axis), -1.f, 1.f)) * 57.29578f;
-    V3 face = qrotate(v.anim.worldRot(v.bone("頭")), v.procedural.headForwardLocal());
+    V3 face = qrotate(v.anim.worldRot(v.bone("head")), v.procedural.headForwardLocal());
     AG_INFO("AG: ORAL-QA depth=%.2f mouthTip=%.1fmm radial=%.1fmm apTip=%.1fmm apAx=%.0f/%.0fmm apRadial=%.1fmm "
             "apMiss=%.1fmm bend=%.0fdeg noseTip=%.1fmm noseAx=%.0fmm noseRadial=%.1fmm faceRoot=%.2f",
             depth_, length(mv - end) * 1000.f, rM * 1000.f, length(av - end) * 1000.f, sA * 1000.f, len * 1000.f,

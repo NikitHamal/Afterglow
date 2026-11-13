@@ -22,7 +22,7 @@ built only on GitHub CI. Characters: **Vivian** and **Marcus** only (adults; see
 ## Character GLBs (`assets/characters/vivian.glb`, `marcus.glb`)
 
 - Skinned, PBR (baseColor, normal, ORM), alphaMode MASK for hair/brows/lashes, real scale, MMD bone names
-  (as in the web build) + hair chains `髪.<n>.a..z` (Vivian) + eyes `目.L/目.R` + Marcus `竿根/竿中/竿先/竿端/玉袋`.
+  (as in the web build) + hair chains `hair.<n>.a..z` (Vivian) + eyes `eye.L/eye.R` + Marcus `shaft_base/shaft_mid/shaft_tip/shaft_end/scrotum`.
 - Morph targets (names in mesh `extras.targetNames`):
   - faces: `blink, moan, pleasure, oral, kiss, smile` (Vivian), `blink, effort, pleasure, moan, kiss` (Marcus)
   - body (bidirectional pairs, slider −1..+1 → negative uses `_dn`, positive `_up`):

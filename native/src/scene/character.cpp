@@ -149,15 +149,15 @@ const BoneMask* Character::mask(const std::string& name) {
         auto res = masks_.emplace(name, std::move(u));
         return &res.first->second;
     }
-    if (name == "arm.L") roots = {"肩.L"};
-    else if (name == "arm.R") roots = {"肩.R"};
-    else if (name == "arms") roots = {"肩.L", "肩.R"};
-    else if (name == "hand.L") roots = {"手首.L"};
-    else if (name == "hand.R") roots = {"手首.R"};
-    else if (name == "head") roots = {"首"};
-    else if (name == "legs") roots = {"足.L", "足.R"};
-    else if (name == "upper") roots = {"上半身"};
-    else if (name == "lower") roots = {"下半身"};
+    if (name == "arm.L") roots = {"shoulder.L"};
+    else if (name == "arm.R") roots = {"shoulder.R"};
+    else if (name == "arms") roots = {"shoulder.L", "shoulder.R"};
+    else if (name == "hand.L") roots = {"wrist.L"};
+    else if (name == "hand.R") roots = {"wrist.R"};
+    else if (name == "head") roots = {"neck"};
+    else if (name == "legs") roots = {"thigh.L", "thigh.R"};
+    else if (name == "upper") roots = {"spine"};
+    else if (name == "lower") roots = {"pelvis"};
     else if (name.rfind("bones:", 0) == 0) {
         std::string rest = name.substr(6);
         size_t i = 0;
@@ -313,7 +313,7 @@ void Character::update(float dt) {
     } else hideGenitals = false;
     if (HairStyle* h = hairStyle()) h->syncMorphs(*this);
     // skull centre: hair shading bends card normals around it
-    int hb = bone("頭");
+    int hb = bone("head");
     if (hb >= 0) hairCenter_ = xformPoint(anim.global(hb), procedural.headUpLocal() * 0.085f + procedural.headForwardLocal() * 0.01f);
 }
 
@@ -321,7 +321,7 @@ void Character::update(float dt) {
 // axis, turn the face along the shaft, and roll the crown upright about the lip line. Every joint stays in range and
 // only makes a bounded correction to the authored pose.
 void Character::oralIK(Animator& a) {
-    int hd = bone("頭"), nk = bone("首"), ch = bone("上半身2");
+    int hd = bone("head"), nk = bone("neck"), ch = bone("chest");
     if (hd < 0 || nk < 0) return;
     const float w = clampf(oralW, 0.f, 1.f);
     V3 mo;
@@ -395,7 +395,7 @@ void Character::oralIK(Animator& a) {
 }
 
 void Character::headAxes(V3& center, V3& faceFwd, V3& crownUp) const {
-    int hb = bone("頭");
+    int hb = bone("head");
     if (hb < 0) { center = placement.translation() + V3{0, 1.5f, 0}; faceFwd = forward(); crownUp = {0, 1, 0}; return; }
     const M4& g = anim.global(hb);
     center = hairCenter_;

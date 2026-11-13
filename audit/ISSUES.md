@@ -20,7 +20,7 @@
 
 ## Qualitative Visual Tells (Resolved & Verified)
 1. **Single-Frequency Sinusoidal Motion**: Replaced with multi-harmonic phase-lagged waves + 3-frame base de-spiking across spine, clavicles, limbs, and fingers.
-2. **Dead Clavicles & Rigid Spine Block**: All 4 torso/neck segments (`下半身`, `上半身`, `上半身2`, `首`, `頭`) and both clavicles (`肩.L/R`) now articulate with counter-rotation and phase delay.
-3. **Frozen Finger Curls**: Replaced with per-finger phase-lagged curl waves across `親指/人指/中指/薬指/小指`.
+2. **Dead Clavicles & Rigid Spine Block**: All 4 torso/neck segments (`pelvis`, `spine`, `chest`, `neck`, `head`) and both clavicles (`shoulder.L/R`) now articulate with counter-rotation and phase delay.
+3. **Frozen Finger Curls**: Replaced with per-finger phase-lagged curl waves across `thumb/index/middle/ring/pinky`.
 4. **Secondary Hair & Eye Saccades**: Keyed 2.94 Hz damped hair/soft-tissue oscillation and 7.5/s saccadic eye steps with dwell.
 5. **Facial Blendshapes & Independent Jaw**: Layered smooth cross-faded `blink`, `smile`, `gasp`, and `moan` shape keys alongside C++ runtime `Actor::face` and `Director::frame` handheld staging.

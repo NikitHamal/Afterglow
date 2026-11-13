@@ -1,7 +1,7 @@
 # Marcus stage B (v2): natural genitals, part of the body mesh (seamless base).
 # REST shape = flaccid: a soft circumcised penis (~9.8 cm build scale) hanging forward-down along the bind axis with a
 # gentle drape toward the scrotum; the "aroused" shape key turns it into the erect shaft (~16.5 cm, slight dorsal curve,
-# defined corona/frenulum/urethral ridge) along the SAME axis (the game raises it with the 竿 bones), widens the base and
+# defined corona/frenulum/urethral ridge) along the SAME axis (the game raises it with the shaft bones), widens the base and
 # tightens + lifts the scrotum. penis_length / penis_girth are erect-state deltas. The scrotum is a two-lobed, slightly
 # asymmetric sack (left side lower) with its own "scrotum" weight group for a gravity bone.
 # UV contract with paint.py: shaft u 0..0.62 around (u=0 ventral seam), v = erect-normalised station (corona at

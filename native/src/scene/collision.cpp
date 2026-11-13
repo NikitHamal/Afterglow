@@ -36,16 +36,16 @@ void BodyProxies::build(const Character* const* chars, const bool* shown, int co
         V3 hc, hf, hu;
         c->headAxes(hc, hf, hu);
         caps_.push_back({hc - hu * 0.02f + hf * 0.015f, hc - hu * 0.02f + hf * 0.015f, (male ? 0.115f : 0.105f) * k, i, true});
-        cap("首", "頭", male ? 0.06f : 0.052f);
-        cap("下半身", "上半身", male ? 0.15f : 0.155f);
-        cap("上半身", "上半身2", male ? 0.15f : 0.135f);
-        cap("上半身2", "首", male ? 0.14f : 0.12f);
+        cap("neck", "head", male ? 0.06f : 0.052f);
+        cap("pelvis", "spine", male ? 0.15f : 0.155f);
+        cap("spine", "chest", male ? 0.15f : 0.135f);
+        cap("chest", "neck", male ? 0.14f : 0.12f);
         for (const char* side : {".L", ".R"}) {
             std::string s = side;
-            cap(("腕" + s).c_str(), ("ひじ" + s).c_str(), male ? 0.05f : 0.042f);
-            cap(("ひじ" + s).c_str(), ("手首" + s).c_str(), male ? 0.04f : 0.034f);
-            cap(("足" + s).c_str(), ("ひざ" + s).c_str(), male ? 0.08f : 0.078f);
-            cap(("ひざ" + s).c_str(), ("足首" + s).c_str(), male ? 0.055f : 0.05f);
+            cap(("upper_arm" + s).c_str(), ("elbow" + s).c_str(), male ? 0.05f : 0.042f);
+            cap(("elbow" + s).c_str(), ("wrist" + s).c_str(), male ? 0.04f : 0.034f);
+            cap(("thigh" + s).c_str(), ("knee" + s).c_str(), male ? 0.08f : 0.078f);
+            cap(("knee" + s).c_str(), ("ankle" + s).c_str(), male ? 0.055f : 0.05f);
         }
     }
 }

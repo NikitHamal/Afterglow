@@ -61,6 +61,6 @@ Newest first. Board: molab notebook → tabs hair / kiss / anim (`/root/board/sh
 # molab (AgentSky task/tools): sync, build, hair views of every style
 python3 msync.py /data/src/engine /root/wt_engine && python3 mbuild.py /root/wt_engine /root/build_engine
 python3 mshots.py /root/build_engine hair_views.txt /root/qa/<tag> 1920x1080
-#   hair_views.txt: screen=customize;tab=her;hermodel=mei;outfit=knit_sweater_jeans;focus=頭;view=yaw:38,pitch:6,dist:0.62;ui=0;t=2
+#   hair_views.txt: screen=customize;tab=her;hermodel=mei;outfit=knit_sweater_jeans;focus=head;view=yaw:38,pitch:6,dist:0.62;ui=0;t=2
 #   add ;hairdbg=1 to see soft layers (green) vs strand cores (red)
 ```

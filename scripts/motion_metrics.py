@@ -10,17 +10,17 @@ if HERE not in sys.path:
 import blender_env as BE
 
 KEY_JOINTS = {
-    "pelvis": "下半身",
-    "spine": "上半身",
-    "chest": "上半身2",
-    "neck": "首",
-    "head": "頭",
-    "clavicle_L": "肩.L",
-    "clavicle_R": "肩.R",
-    "hand_L": "手首.L",
-    "hand_R": "手首.R",
-    "foot_L": "足首.L",
-    "foot_R": "足首.R",
+    "pelvis": "pelvis",
+    "spine": "spine",
+    "chest": "chest",
+    "neck": "neck",
+    "head": "head",
+    "clavicle_L": "shoulder.L",
+    "clavicle_R": "shoulder.R",
+    "hand_L": "wrist.L",
+    "hand_R": "wrist.R",
+    "foot_L": "ankle.L",
+    "foot_R": "ankle.R",
 }
 
 def _seg_bezier_dev(P):
@@ -97,13 +97,13 @@ def compute_clip_metrics(clip, fps=24.0):
         sec_f = []
         if viv:
             for pb in viv.pose.bones:
-                if pb.name.startswith(("髪", "乳")):
+                if pb.name.startswith(("hair", "breast_tip")):
                     q = pb.matrix_basis.to_quaternion()
                     sec_f.append(2.0 * math.acos(max(-1.0, min(1.0, abs(q.w)))))
         secondary_angles.append(float(np.mean(sec_f)) if sec_f else 0.0)
         # Eye bones
-        if viv and viv.pose.bones.get("目.L"):
-            q = viv.pose.bones["目.L"].matrix_basis.to_quaternion()
+        if viv and viv.pose.bones.get("eye.L"):
+            q = viv.pose.bones["eye.L"].matrix_basis.to_quaternion()
             eye_angles.append(math.degrees(2.0 * math.acos(max(-1.0, min(1.0, abs(q.w))))))
         else:
             eye_angles.append(0.0)
@@ -186,10 +186,10 @@ def _derive_scorecard(clip, frames, fps, pos_tracks, all_bone_quats, secondary_a
         secondary_hz = 0.0
 
     root_shift_sd = round(float(np.linalg.norm(np.std(rootP, axis=0))), 5)
-    clav_active = bool(any(excursions.get(f"{r}:肩.{s}", 0.0) > 1.2 for r in ("VivianRig", "MarcusRig") for s in ("L", "R")))
-    spine_active = int(sum(1 for b in ("下半身", "上半身", "上半身2", "首") if max(excursions.get(f"VivianRig:{b}", 0.0), excursions.get(f"MarcusRig:{b}", 0.0)) > 1.0))
-    neck_counter = bool(excursions.get("VivianRig:首", 0.0) > 1.2 and excursions.get("VivianRig:頭", 0.0) > 1.2)
-    finger_artic = bool(any(v > 2.5 for k, v in excursions.items() if any(fg in k for fg in ("親指", "人指", "中指", "薬指", "小指"))))
+    clav_active = bool(any(excursions.get(f"{r}:shoulder.{s}", 0.0) > 1.2 for r in ("VivianRig", "MarcusRig") for s in ("L", "R")))
+    spine_active = int(sum(1 for b in ("pelvis", "spine", "chest", "neck") if max(excursions.get(f"VivianRig:{b}", 0.0), excursions.get(f"MarcusRig:{b}", 0.0)) > 1.0))
+    neck_counter = bool(excursions.get("VivianRig:neck", 0.0) > 1.2 and excursions.get("VivianRig:head", 0.0) > 1.2)
+    finger_artic = bool(any(v > 2.5 for k, v in excursions.items() if any(fg in k for fg in ("thumb", "index", "middle", "ring", "pinky"))))
 
     b_arr = np.asarray(blink_vals, dtype=np.float64)
     blink_peaks = int(np.sum((b_arr[1:-1] > 0.35) & (b_arr[1:-1] >= b_arr[:-2]) & (b_arr[1:-1] > b_arr[2:]))) if len(b_arr) > 3 else 0

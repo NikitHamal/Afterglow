@@ -24,12 +24,12 @@ deltas between variant MPFB base meshes (head/neck masked, pelvis re-centred). G
 
 **Hair physics** — `hair.py` groups strands into 12 chains (k-means on root + tip), writes chain joints;
 cards are weighted along each chain (two nearest chains, smooth seams) and twisted per card.
-`rig_export.py` adds bones `髪.<n>.a…d` + tip leaf `髪.<n>.z` on `頭`, and body colliders (head, neck,
+`rig_export.py` adds bones `hair.<n>.a…d` + tip leaf `hair.<n>.z` on `head`, and body colliders (head, neck,
 upper-torso quadrants, breasts, shoulders) as glTF extras (`afterglow.hairColliders`).
 Game: `js3d/glbHair.js` (verlet chains with style memory, gravity, damping, collider push-out, teleport
 reset); tune live via `GLB_HAIR_TUNE`.
 
-**Expressions** — eye bones `目.L/目.R` (eyes reweighted to them). `glbEyes3` aims them at the camera with
+**Expressions** — eye bones `eye.L/eye.R` (eyes reweighted to them). `glbEyes3` aims them at the camera with
 saccades, clamped to a natural range, rolling up near/at orgasm. `glbFace3`: breathing lips that quicken
 with arousal; each moan picks an open "ah" or a rounded "oh".
 

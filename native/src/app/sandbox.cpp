@@ -97,8 +97,8 @@ void Sandbox::reset() {
 
 V3 Sandbox::focusPoint() const {
     if (!scene.hasClips) return V3{0.f, 1.05f, 1.72f};
-    V3 a = scene.vivian.loaded() ? scene.vivian.bonePos("下半身") : scene.info.bedCenter;
-    V3 b = scene.marcus.loaded() && scene.showMarcus ? scene.marcus.bonePos("下半身") : a;
+    V3 a = scene.vivian.loaded() ? scene.vivian.bonePos("pelvis") : scene.info.bedCenter;
+    V3 b = scene.marcus.loaded() && scene.showMarcus ? scene.marcus.bonePos("pelvis") : a;
     V3 c = (a + b) * 0.5f;
     return c + V3{0.f, 0.12f, 0.f};
 }
@@ -120,7 +120,7 @@ void Sandbox::cameraPreset(const std::string& name, float blend) {
 bool Sandbox::boneShot(const std::string& name, V3& target, float& yaw, float& pitch, float& dist) const {
     if (name != "close" && name != "portrait") return false;
     const Character* c = scene.showVivian && scene.vivian.loaded() ? &scene.vivian : (scene.marcus.loaded() ? &scene.marcus : nullptr);
-    if (!c || c->bone("頭") < 0) return false;
+    if (!c || c->bone("head") < 0) return false;
     const Character* other = c == &scene.vivian ? &scene.marcus : &scene.vivian;
     bool otherShown = other->loaded() && (other == &scene.marcus ? scene.showMarcus : scene.showVivian);
     V3 center, fwd, up;
@@ -129,13 +129,13 @@ bool Sandbox::boneShot(const std::string& name, V3& target, float& yaw, float& p
     V3 d;
     if (name == "close") {
         target = center + fwd * 0.03f - up * 0.03f;
-        V3 ref = otherShown ? center - other->bonePos("上半身2") : cam_.eye - center;
+        V3 ref = otherShown ? center - other->bonePos("chest") : cam_.eye - center;
         if (dot(side, ref) < 0.f) side = side * -1.f;
         d = normalize(fwd * 0.8f - up * 0.35f + side * 0.35f + V3{0, 0.3f, 0});
         if (fwd.y < -0.45f) d = normalize(side * 0.8f + fwd * 0.15f + V3{0, 0.45f, 0});   // face down: from the side
         dist = 0.62f;
     } else {
-        V3 hips = c->bonePos("下半身");
+        V3 hips = c->bonePos("pelvis");
         target = (center + hips) * 0.5f - V3{0, 0.1f, 0};
         V3 h{fwd.x, 0.f, fwd.z};
         if (length(h) < 0.35f) h = V3{side.x, 0.f, side.z};   // lying face-up: from the side
@@ -163,10 +163,10 @@ void Sandbox::applyCameraPreset() {
     if (name == "fpv" && scene.marcus.loaded()) {
         const Json& f = cams["fpv"];
         if (f.isObject() && f["offset_local"].isArray()) {
-            camera.setFirstPersonLocal(&scene.marcus, f["bone"].str("頭"), {f["offset_local"][0].f(), f["offset_local"][1].f(), f["offset_local"][2].f()},
+            camera.setFirstPersonLocal(&scene.marcus, f["bone"].str("head"), {f["offset_local"][0].f(), f["offset_local"][1].f(), f["offset_local"][2].f()},
                                        {f["forward_local"][0].f(), f["forward_local"][1].f(), f["forward_local"][2].f(1.f)}, blend);
         } else {
-            camera.setFirstPerson(&scene.marcus, "頭", {0.f, 0.07f, 0.09f}, blend);
+            camera.setFirstPerson(&scene.marcus, "head", {0.f, 0.07f, 0.09f}, blend);
         }
         return;
     }
@@ -325,8 +325,8 @@ void Sandbox::applyPose() {
     // gaze: she looks at him (or the camera when alone), he looks at her face
     bool together = !pos.empty() && pos != "solo" && m.loaded() && scene.showMarcus;
     for (Character* c : {&v, &m}) c->proc.lookWeight = together ? 0.45f : 0.9f;
-    if (v.loaded()) v.proc.lookTarget = together ? m.bonePos("頭") : cam_.eye;
-    if (m.loaded()) m.proc.lookTarget = v.loaded() ? v.bonePos("頭") : cam_.eye;
+    if (v.loaded()) v.proc.lookTarget = together ? m.bonePos("head") : cam_.eye;
+    if (m.loaded()) m.proc.lookTarget = v.loaded() ? v.bonePos("head") : cam_.eye;
     // the oral staging, exactly as the game paths run it: the baked clip alone leaves her mouth under his glans
     OralTuning ot;
     bool oral = pos == "oral";

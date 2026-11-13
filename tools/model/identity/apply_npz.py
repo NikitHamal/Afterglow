@@ -63,7 +63,7 @@ def main():
     names = [n.get("name", "") for n in js["nodes"]]
     skin = js["skins"][0]
     jn = [names[j] for j in skin["joints"]]
-    hj, nj = jn.index("頭"), jn.index("首")
+    hj, nj = jn.index("head"), jn.index("neck")
     mesh_i = next(i for i, m in enumerate(js["meshes"]) if m.get("name") == "vivian_body")
     prim = js["meshes"][mesh_i]["primitives"][0]
     P = acc(js, bn, prim["attributes"]["POSITION"])

@@ -41,7 +41,7 @@ Key ideas:
 ## Male (`tools/model/male/`)
 
 `build.py` → `genitals.py` → `paint.py` → `hair.py` → `rig_export.py` → `textures_small.py` →
-`optimize.mjs`; review with `render.py`/`check.py`. 68 bones (MMD set + `竿根/竿中/竿先`), morphs
+`optimize.mjs`; review with `render.py`/`check.py`. 68 bones (MMD set + `shaft_base/shaft_mid/shaft_tip`), morphs
 `blink, effort, pleasure, moan, kiss, body_muscle, body_weight, body_belly, penis_length, penis_girth`.
 Game scale 1.70 (matches the procedural male). Integration: `js3d/glbHim.js`.
 

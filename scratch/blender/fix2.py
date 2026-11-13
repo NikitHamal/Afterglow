@@ -36,7 +36,7 @@ arm.select_set(True)
 bpy.context.view_layer.objects.active = arm
 bpy.ops.object.mode_set(mode='EDIT')
 toe_local = 0.04
-for side, ankle_name, toe_name in [(".L","足首.L","足先.L"), (".R","足首.R","足先.R")]:
+for side, ankle_name, toe_name in [(".L","ankle.L","thigh先.L"), (".R","ankle.R","thigh先.R")]:
     ankle = arm.data.edit_bones.get(ankle_name)
     print(f"[fix] ankle {ankle_name}: found={ankle is not None}")
     if ankle is None:
@@ -58,14 +58,14 @@ body.select_set(True)
 bpy.context.view_layer.objects.active = body
 
 # Ensure vertex groups exist
-vg_ankleL = ensure_vg("足首.L")
-vg_ankleR = ensure_vg("足首.R")
-vg_toeL   = ensure_vg("足先.L")
-vg_toeR   = ensure_vg("足先.R")
-vg_legL   = ensure_vg("足.L")
-vg_legR   = ensure_vg("足.R")
-vg_kneeL  = ensure_vg("ひざ.L")
-vg_kneeR  = ensure_vg("ひざ.R")
+vg_ankleL = ensure_vg("ankle.L")
+vg_ankleR = ensure_vg("ankle.R")
+vg_toeL   = ensure_vg("thigh先.L")
+vg_toeR   = ensure_vg("thigh先.R")
+vg_legL   = ensure_vg("thigh.L")
+vg_legR   = ensure_vg("thigh.R")
+vg_kneeL  = ensure_vg("knee.L")
+vg_kneeR  = ensure_vg("knee.R")
 
 # 2) Re-weight foot verts
 foot_l_x = (0.005, 0.090)
@@ -85,8 +85,8 @@ def bone_mid(name):
 
 for side, ankle_vg, toe_vg in [("L", vg_ankleL, vg_toeL), ("R", vg_ankleR, vg_toeR)]:
     fverts = classify_foot_verts(side)
-    a = bone_mid(f"足首.{side}")
-    t = bone_mid(f"足先.{side}")
+    a = bone_mid(f"ankle.{side}")
+    t = bone_mid(f"thigh先.{side}")
     foot_len = max((a - t).length, 1e-4)
     for v in fverts:
         d_to_toe = (v.co - t).length
@@ -122,8 +122,8 @@ def mirror_vg(src_name, dst_name):
     print(f"[fix] mirror {src_name}->{dst_name}: {mirrored} verts (out of {len(src_verts)})")
     return mirrored
 
-for src, dst in [("足首.L","足首.R"),("足.L","足.R"),("ひざ.L","ひざ.R"),
-                 ("足先.L","足先.R"),("足捩.L","足捩.R")]:
+for src, dst in [("ankle.L","ankle.R"),("thigh.L","thigh.R"),("knee.L","knee.R"),
+                 ("thigh先.L","thigh先.R"),("thigh捩.L","thigh捩.R")]:
     src_v = body.vertex_groups.get(src)
     if src_v:
         n = sum(1 for v in body.data.vertices if get_w(src_v, v.index) > 0)
@@ -134,15 +134,15 @@ for src, dst in [("足首.L","足首.R"),("足.L","足.R"),("ひざ.L","ひざ.R
 
 # 4) FINGERS
 finger_anchors = {
-    "L": {"親指": (0.39,0.045), "人指": (0.42,0.05), "中指": (0.43,0.075),
-          "薬指": (0.44,0.10), "小指": (0.43,0.125)},
-    "R": {"親指": (-0.39,0.045), "人指": (-0.42,0.05), "中指": (-0.43,0.075),
-          "薬指": (-0.44,0.10), "小指": (-0.43,0.125)},
+    "L": {"thumb": (0.39,0.045), "index": (0.42,0.05), "middle": (0.43,0.075),
+          "ring": (0.44,0.10), "pinky": (0.43,0.125)},
+    "R": {"thumb": (-0.39,0.045), "index": (-0.42,0.05), "middle": (-0.43,0.075),
+          "ring": (-0.44,0.10), "pinky": (-0.43,0.125)},
 }
 
 for side in ["L","R"]:
-    for f in ["親指","人指","中指","薬指","小指"]:
-        for seg in ["０","１","２"]:
+    for f in ["thumb","index","middle","ring","pinky"]:
+        for seg in ["0","1","2"]:
             ensure_vg(f"{f}{seg}.{side}")
 
 def find_finger_verts(side, finger):
@@ -159,7 +159,7 @@ def find_finger_verts(side, finger):
     return out
 
 for side in ["L","R"]:
-    for f in ["親指","人指","中指","薬指","小指"]:
+    for f in ["thumb","index","middle","ring","pinky"]:
         fverts = find_finger_verts(side, f)
         if not fverts: continue
         for v in fverts:
@@ -170,9 +170,9 @@ for side in ["L","R"]:
                 w2, w1, w0 = 0.15, 0.7, 0.15
             else:
                 w2, w1, w0 = 0.0, 0.4, 0.6
-            set_w(body.vertex_groups[f"{f}０.{side}"], v.index, w0)
-            set_w(body.vertex_groups[f"{f}１.{side}"], v.index, w1)
-            set_w(body.vertex_groups[f"{f}２.{side}"], v.index, w2)
+            set_w(body.vertex_groups[f"{f}0.{side}"], v.index, w0)
+            set_w(body.vertex_groups[f"{f}1.{side}"], v.index, w1)
+            set_w(body.vertex_groups[f"{f}2.{side}"], v.index, w2)
         print(f"[fix] reweighted {f} {side}: {len(fverts)} verts")
 
 # 5) Thicken hands

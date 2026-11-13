@@ -9,7 +9,7 @@
   "contact": "verify counts triangle pairs outside the intended contact: genitals, hands, mouth (oral/lick), the shaft vs her inner thighs/buttocks within 6 cm of the entrance, and pelvis-to-pelvis flesh (her within 19 cm of the entrance, his within 22 cm of the shaft root)",
   "layers": "<pos>.rub only keys the listed bones; blend it over <pos>.in with a bone mask (rub phase loops 0..1)",
   "embrace": "missionary.embrace is a pose layer for upper body + arms; blend weight = embrace amount",
-  "not_animated": "hair chains 髪.* and eyes 目.L/目.R are not keyed: simulate hair (colliders in node extras) and drive gaze live",
+  "not_animated": "hair chains hair.* and eyes eye.L/eye.R are not keyed: simulate hair (colliders in node extras) and drive gaze live",
   "morph_normals": "body-shape targets (bust/hips/waist/butt/weight/muscle/belly/age/length/girth _up/_dn) and every hair-mesh target ship POSITION deltas only; expressions and anatomy (vag_open, vag_aroused, anal_open, aroused) include NORMAL",
   "contacts": "per clip: where a hand / mouth touches skin. {char, effector, bone, offset (bone-local, like fpv.offset_local), radius, target {char, bone, region}, gap_mm [min, max] over the clip (0 = touching, - = pressing in), t [first, last] normalized time}. Contact point each frame = bone world matrix x offset; deform/react around target.bone/region."
  },
@@ -68,7 +68,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -157,7 +157,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -175,7 +175,7 @@
     {
      "char": "vivian",
      "effector": "hand.R",
-     "bone": "親指２.R",
+     "bone": "thumb2.R",
      "offset": [
       0.0061,
       0.0243,
@@ -184,7 +184,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "下半身",
+      "bone": "pelvis",
       "region": "hips"
      },
      "gap_mm": [
@@ -199,7 +199,7 @@
     {
      "char": "vivian",
      "effector": "hand.R",
-     "bone": "手首.R",
+     "bone": "wrist.R",
      "offset": [
       -0.0111,
       0.007,
@@ -208,7 +208,7 @@
      "radius": 0.035,
      "target": {
       "char": "marcus",
-      "bone": "上半身2",
+      "bone": "chest",
       "region": "chest"
      },
      "gap_mm": [
@@ -296,7 +296,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -314,7 +314,7 @@
     {
      "char": "vivian",
      "effector": "hand.L",
-     "bone": "中指２.L",
+     "bone": "middle2.L",
      "offset": [
       -0.0052,
       0.0224,
@@ -323,7 +323,7 @@
      "radius": 0.012,
      "target": {
       "char": "marcus",
-      "bone": "上半身2",
+      "bone": "chest",
       "region": "chest"
      },
      "gap_mm": [
@@ -338,7 +338,7 @@
     {
      "char": "vivian",
      "effector": "hand.R",
-     "bone": "中指２.R",
+     "bone": "middle2.R",
      "offset": [
       0.0052,
       0.0224,
@@ -347,7 +347,7 @@
      "radius": 0.012,
      "target": {
       "char": "marcus",
-      "bone": "上半身2",
+      "bone": "chest",
       "region": "chest"
      },
      "gap_mm": [
@@ -424,7 +424,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -442,7 +442,7 @@
     {
      "char": "vivian",
      "effector": "hand.L",
-     "bone": "親指２.L",
+     "bone": "thumb2.L",
      "offset": [
       -0.0042,
       0.0147,
@@ -451,7 +451,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "上半身2",
+      "bone": "chest",
       "region": "chest"
      },
      "gap_mm": [
@@ -466,7 +466,7 @@
     {
      "char": "vivian",
      "effector": "hand.R",
-     "bone": "中指２.R",
+     "bone": "middle2.R",
      "offset": [
       0.0052,
       0.0224,
@@ -475,7 +475,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "下半身",
+      "bone": "pelvis",
       "region": "hips"
      },
      "gap_mm": [
@@ -560,7 +560,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -652,7 +652,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -670,7 +670,7 @@
     {
      "char": "marcus",
      "effector": "hand.L",
-     "bone": "手首.L",
+     "bone": "wrist.L",
      "offset": [
       -0.0314,
       0.0199,
@@ -679,7 +679,7 @@
      "radius": 0.035,
      "target": {
       "char": "vivian",
-      "bone": "ひざ.R",
+      "bone": "knee.R",
       "region": "shin.R"
      },
      "gap_mm": [
@@ -694,7 +694,7 @@
     {
      "char": "marcus",
      "effector": "hand.R",
-     "bone": "手首.R",
+     "bone": "wrist.R",
      "offset": [
       0.0314,
       0.0199,
@@ -703,7 +703,7 @@
      "radius": 0.035,
      "target": {
       "char": "vivian",
-      "bone": "ひざ.L",
+      "bone": "knee.L",
       "region": "shin.L"
      },
      "gap_mm": [
@@ -793,7 +793,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -811,7 +811,7 @@
     {
      "char": "marcus",
      "effector": "hand.L",
-     "bone": "親指２.L",
+     "bone": "thumb2.L",
      "offset": [
       -0.0076,
       0.0287,
@@ -820,7 +820,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.L",
+      "bone": "thigh.L",
       "region": "thigh.L"
      },
      "gap_mm": [
@@ -835,7 +835,7 @@
     {
      "char": "marcus",
      "effector": "hand.R",
-     "bone": "親指２.R",
+     "bone": "thumb2.R",
      "offset": [
       0.0076,
       0.0287,
@@ -844,7 +844,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.R",
+      "bone": "thigh.R",
       "region": "thigh.R"
      },
      "gap_mm": [
@@ -931,7 +931,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -949,7 +949,7 @@
     {
      "char": "vivian",
      "effector": "hand.R",
-     "bone": "小指１.R",
+     "bone": "pinky1.R",
      "offset": [
       0.004,
       0.0144,
@@ -958,7 +958,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.R",
+      "bone": "thigh.R",
       "region": "thigh.R"
      },
      "gap_mm": [
@@ -973,7 +973,7 @@
     {
      "char": "marcus",
      "effector": "hand.L",
-     "bone": "親指２.L",
+     "bone": "thumb2.L",
      "offset": [
       -0.0076,
       0.0287,
@@ -982,7 +982,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.L",
+      "bone": "thigh.L",
       "region": "thigh.L"
      },
      "gap_mm": [
@@ -997,7 +997,7 @@
     {
      "char": "marcus",
      "effector": "hand.R",
-     "bone": "親指２.R",
+     "bone": "thumb2.R",
      "offset": [
       0.0076,
       0.0287,
@@ -1006,7 +1006,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.R",
+      "bone": "thigh.R",
       "region": "thigh.R"
      },
      "gap_mm": [
@@ -1096,7 +1096,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -1188,7 +1188,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -1206,7 +1206,7 @@
     {
      "char": "marcus",
      "effector": "hand.L",
-     "bone": "親指２.L",
+     "bone": "thumb2.L",
      "offset": [
       -0.0091,
       0.0268,
@@ -1215,7 +1215,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.R",
+      "bone": "thigh.R",
       "region": "thigh.R"
      },
      "gap_mm": [
@@ -1230,7 +1230,7 @@
     {
      "char": "marcus",
      "effector": "hand.R",
-     "bone": "親指２.R",
+     "bone": "thumb2.R",
      "offset": [
       0.0091,
       0.0268,
@@ -1239,7 +1239,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.L",
+      "bone": "thigh.L",
       "region": "thigh.L"
      },
      "gap_mm": [
@@ -1326,7 +1326,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -1344,7 +1344,7 @@
     {
      "char": "vivian",
      "effector": "hand.R",
-     "bone": "中指２.R",
+     "bone": "middle2.R",
      "offset": [
       0.0052,
       0.0224,
@@ -1353,7 +1353,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "下半身",
+      "bone": "pelvis",
       "region": "hips"
      },
      "gap_mm": [
@@ -1368,7 +1368,7 @@
     {
      "char": "marcus",
      "effector": "hand.L",
-     "bone": "親指２.L",
+     "bone": "thumb2.L",
      "offset": [
       -0.0091,
       0.0268,
@@ -1377,7 +1377,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.R",
+      "bone": "thigh.R",
       "region": "thigh.R"
      },
      "gap_mm": [
@@ -1392,7 +1392,7 @@
     {
      "char": "marcus",
      "effector": "hand.R",
-     "bone": "親指２.R",
+     "bone": "thumb2.R",
      "offset": [
       0.0091,
       0.0268,
@@ -1401,7 +1401,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.L",
+      "bone": "thigh.L",
       "region": "thigh.L"
      },
      "gap_mm": [
@@ -1491,7 +1491,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -1509,7 +1509,7 @@
     {
      "char": "vivian",
      "effector": "hand.L",
-     "bone": "中指２.L",
+     "bone": "middle2.L",
      "offset": [
       -0.0052,
       0.0224,
@@ -1518,7 +1518,7 @@
      "radius": 0.012,
      "target": {
       "char": "marcus",
-      "bone": "足.L",
+      "bone": "thigh.L",
       "region": "thigh.L"
      },
      "gap_mm": [
@@ -1533,7 +1533,7 @@
     {
      "char": "vivian",
      "effector": "hand.R",
-     "bone": "中指２.R",
+     "bone": "middle2.R",
      "offset": [
       0.0052,
       0.0224,
@@ -1542,7 +1542,7 @@
      "radius": 0.012,
      "target": {
       "char": "marcus",
-      "bone": "足.R",
+      "bone": "thigh.R",
       "region": "thigh.R"
      },
      "gap_mm": [
@@ -1557,7 +1557,7 @@
     {
      "char": "marcus",
      "effector": "hand.L",
-     "bone": "中指２.L",
+     "bone": "middle2.L",
      "offset": [
       0.0038,
       0.0261,
@@ -1566,7 +1566,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.L",
+      "bone": "thigh.L",
       "region": "thigh.L"
      },
      "gap_mm": [
@@ -1581,7 +1581,7 @@
     {
      "char": "marcus",
      "effector": "hand.R",
-     "bone": "中指２.R",
+     "bone": "middle2.R",
      "offset": [
       -0.0066,
       0.022,
@@ -1590,7 +1590,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.R",
+      "bone": "thigh.R",
       "region": "thigh.R"
      },
      "gap_mm": [
@@ -1605,7 +1605,7 @@
     {
      "char": "vivian",
      "effector": "hand.L",
-     "bone": "手首.L",
+     "bone": "wrist.L",
      "offset": [
       -0.0105,
       0.0021,
@@ -1614,7 +1614,7 @@
      "radius": 0.035,
      "target": {
       "char": "vivian",
-      "bone": "足.L",
+      "bone": "thigh.L",
       "region": "thigh.L"
      },
      "gap_mm": [
@@ -1629,7 +1629,7 @@
     {
      "char": "vivian",
      "effector": "hand.R",
-     "bone": "手首.R",
+     "bone": "wrist.R",
      "offset": [
       0.0105,
       0.0021,
@@ -1638,7 +1638,7 @@
      "radius": 0.035,
      "target": {
       "char": "vivian",
-      "bone": "足.R",
+      "bone": "thigh.R",
       "region": "thigh.R"
      },
      "gap_mm": [
@@ -1725,7 +1725,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -1743,7 +1743,7 @@
     {
      "char": "vivian",
      "effector": "hand.L",
-     "bone": "手首.L",
+     "bone": "wrist.L",
      "offset": [
       -0.0105,
       0.0021,
@@ -1752,7 +1752,7 @@
      "radius": 0.035,
      "target": {
       "char": "vivian",
-      "bone": "足.L",
+      "bone": "thigh.L",
       "region": "thigh.L"
      },
      "gap_mm": [
@@ -1767,7 +1767,7 @@
     {
      "char": "vivian",
      "effector": "hand.L",
-     "bone": "薬指２.L",
+     "bone": "ring2.L",
      "offset": [
       -0.0002,
       0.025,
@@ -1776,7 +1776,7 @@
      "radius": 0.012,
      "target": {
       "char": "marcus",
-      "bone": "足.L",
+      "bone": "thigh.L",
       "region": "thigh.L"
      },
      "gap_mm": [
@@ -1791,7 +1791,7 @@
     {
      "char": "vivian",
      "effector": "hand.R",
-     "bone": "中指２.R",
+     "bone": "middle2.R",
      "offset": [
       0.0052,
       0.0224,
@@ -1800,7 +1800,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "下半身",
+      "bone": "pelvis",
       "region": "hips"
      },
      "gap_mm": [
@@ -1815,7 +1815,7 @@
     {
      "char": "marcus",
      "effector": "hand.L",
-     "bone": "中指２.L",
+     "bone": "middle2.L",
      "offset": [
       -0.0028,
       0.022,
@@ -1824,7 +1824,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.L",
+      "bone": "thigh.L",
       "region": "thigh.L"
      },
      "gap_mm": [
@@ -1839,7 +1839,7 @@
     {
      "char": "marcus",
      "effector": "hand.R",
-     "bone": "中指２.R",
+     "bone": "middle2.R",
      "offset": [
       0.0028,
       0.022,
@@ -1848,7 +1848,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.R",
+      "bone": "thigh.R",
       "region": "thigh.R"
      },
      "gap_mm": [
@@ -1938,7 +1938,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -1956,7 +1956,7 @@
     {
      "char": "marcus",
      "effector": "hand.R",
-     "bone": "中指２.R",
+     "bone": "middle2.R",
      "offset": [
       0.0048,
       0.0083,
@@ -1965,7 +1965,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "上半身2",
+      "bone": "chest",
       "region": "chest"
      },
      "gap_mm": [
@@ -2052,7 +2052,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -2070,7 +2070,7 @@
     {
      "char": "vivian",
      "effector": "hand.R",
-     "bone": "親指１.R",
+     "bone": "thumb1.R",
      "offset": [
       -0.0098,
       0.0234,
@@ -2079,7 +2079,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.R",
+      "bone": "thigh.R",
       "region": "thigh.R"
      },
      "gap_mm": [
@@ -2094,7 +2094,7 @@
     {
      "char": "vivian",
      "effector": "hand.R",
-     "bone": "手首.R",
+     "bone": "wrist.R",
      "offset": [
       -0.0111,
       0.007,
@@ -2103,7 +2103,7 @@
      "radius": 0.035,
      "target": {
       "char": "marcus",
-      "bone": "足.R",
+      "bone": "thigh.R",
       "region": "thigh.R"
      },
      "gap_mm": [
@@ -2118,7 +2118,7 @@
     {
      "char": "marcus",
      "effector": "hand.R",
-     "bone": "親指２.R",
+     "bone": "thumb2.R",
      "offset": [
       -0.0125,
       0.0042,
@@ -2127,7 +2127,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.R",
+      "bone": "thigh.R",
       "region": "thigh.R"
      },
      "gap_mm": [
@@ -2215,7 +2215,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -2233,7 +2233,7 @@
     {
      "char": "vivian",
      "effector": "hand.L",
-     "bone": "小指２.L",
+     "bone": "pinky2.L",
      "offset": [
       -0.0,
       0.0143,
@@ -2242,7 +2242,7 @@
      "radius": 0.012,
      "target": {
       "char": "marcus",
-      "bone": "足.R",
+      "bone": "thigh.R",
       "region": "thigh.R"
      },
      "gap_mm": [
@@ -2257,7 +2257,7 @@
     {
      "char": "vivian",
      "effector": "hand.R",
-     "bone": "薬指２.R",
+     "bone": "ring2.R",
      "offset": [
       -0.0043,
       0.0235,
@@ -2266,7 +2266,7 @@
      "radius": 0.012,
      "target": {
       "char": "marcus",
-      "bone": "上半身",
+      "bone": "spine",
       "region": "belly"
      },
      "gap_mm": [
@@ -2281,7 +2281,7 @@
     {
      "char": "vivian",
      "effector": "mouth",
-     "bone": "頭",
+     "bone": "head",
      "offset": [
       0.0,
       -0.0032,
@@ -2290,7 +2290,7 @@
      "radius": 0.02,
      "target": {
       "char": "marcus",
-      "bone": "竿先",
+      "bone": "shaft_tip",
       "region": "genitals"
      },
      "gap_mm": [
@@ -2375,7 +2375,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -2393,7 +2393,7 @@
     {
      "char": "marcus",
      "effector": "hand.L",
-     "bone": "親指２.L",
+     "bone": "thumb2.L",
      "offset": [
       -0.0076,
       0.0287,
@@ -2402,7 +2402,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.R",
+      "bone": "thigh.R",
       "region": "thigh.R"
      },
      "gap_mm": [
@@ -2417,7 +2417,7 @@
     {
      "char": "marcus",
      "effector": "hand.R",
-     "bone": "親指２.R",
+     "bone": "thumb2.R",
      "offset": [
       0.0076,
       0.0287,
@@ -2426,7 +2426,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.L",
+      "bone": "thigh.L",
       "region": "thigh.L"
      },
      "gap_mm": [
@@ -2441,7 +2441,7 @@
     {
      "char": "marcus",
      "effector": "mouth",
-     "bone": "頭",
+     "bone": "head",
      "offset": [
       -0.0125,
       -0.0004,
@@ -2450,7 +2450,7 @@
      "radius": 0.02,
      "target": {
       "char": "vivian",
-      "bone": "下半身",
+      "bone": "pelvis",
       "region": "vulva"
      },
      "gap_mm": [
@@ -2535,7 +2535,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -2553,7 +2553,7 @@
     {
      "char": "vivian",
      "effector": "hand.L",
-     "bone": "親指２.L",
+     "bone": "thumb2.L",
      "offset": [
       -0.0071,
       0.0112,
@@ -2562,7 +2562,7 @@
      "radius": 0.012,
      "target": {
       "char": "marcus",
-      "bone": "足.R",
+      "bone": "thigh.R",
       "region": "thigh.R"
      },
      "gap_mm": [
@@ -2577,7 +2577,7 @@
     {
      "char": "vivian",
      "effector": "hand.R",
-     "bone": "手首.R",
+     "bone": "wrist.R",
      "offset": [
       -0.0032,
       0.0149,
@@ -2586,7 +2586,7 @@
      "radius": 0.035,
      "target": {
       "char": "marcus",
-      "bone": "竿中",
+      "bone": "shaft_mid",
       "region": "genitals"
      },
      "gap_mm": [
@@ -2671,7 +2671,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -2689,7 +2689,7 @@
     {
      "char": "vivian",
      "effector": "hand.L",
-     "bone": "親指２.L",
+     "bone": "thumb2.L",
      "offset": [
       -0.0042,
       0.0147,
@@ -2698,7 +2698,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "上半身2",
+      "bone": "chest",
       "region": "chest"
      },
      "gap_mm": [
@@ -2713,7 +2713,7 @@
     {
      "char": "vivian",
      "effector": "hand.R",
-     "bone": "親指２.R",
+     "bone": "thumb2.R",
      "offset": [
       0.0042,
       0.0147,
@@ -2722,7 +2722,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "上半身2",
+      "bone": "chest",
       "region": "chest"
      },
      "gap_mm": [
@@ -2807,7 +2807,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -2825,7 +2825,7 @@
     {
      "char": "vivian",
      "effector": "hand.L",
-     "bone": "薬指２.L",
+     "bone": "ring2.L",
      "offset": [
       -0.0031,
       0.0246,
@@ -2834,7 +2834,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.L",
+      "bone": "thigh.L",
       "region": "thigh.L"
      },
      "gap_mm": [
@@ -2849,7 +2849,7 @@
     {
      "char": "vivian",
      "effector": "hand.R",
-     "bone": "薬指２.R",
+     "bone": "ring2.R",
      "offset": [
       0.0031,
       0.0246,
@@ -2858,7 +2858,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.R",
+      "bone": "thigh.R",
       "region": "thigh.R"
      },
      "gap_mm": [
@@ -2943,7 +2943,7 @@
     },
     "fpv": {
      "character": "marcus",
-     "bone": "頭",
+     "bone": "head",
      "offset_local": [
       0.0,
       0.0394,
@@ -2961,7 +2961,7 @@
     {
      "char": "vivian",
      "effector": "hand.L",
-     "bone": "小指２.L",
+     "bone": "pinky2.L",
      "offset": [
       0.0058,
       0.0102,
@@ -2970,7 +2970,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.L",
+      "bone": "thigh.L",
       "region": "thigh.L"
      },
      "gap_mm": [
@@ -2985,7 +2985,7 @@
     {
      "char": "vivian",
      "effector": "hand.R",
-     "bone": "親指２.R",
+     "bone": "thumb2.R",
      "offset": [
       0.0075,
       0.0227,
@@ -2994,7 +2994,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "足.R",
+      "bone": "thigh.R",
       "region": "thigh.R"
      },
      "gap_mm": [
@@ -3009,7 +3009,7 @@
     {
      "char": "marcus",
      "effector": "hand.L",
-     "bone": "小指２.L",
+     "bone": "pinky2.L",
      "offset": [
       0.005,
       0.0194,
@@ -3018,7 +3018,7 @@
      "radius": 0.012,
      "target": {
       "char": "marcus",
-      "bone": "足.L",
+      "bone": "thigh.L",
       "region": "thigh.L"
      },
      "gap_mm": [
@@ -3033,7 +3033,7 @@
     {
      "char": "marcus",
      "effector": "hand.R",
-     "bone": "親指２.R",
+     "bone": "thumb2.R",
      "offset": [
       0.0091,
       0.0268,
@@ -3042,7 +3042,7 @@
      "radius": 0.012,
      "target": {
       "char": "vivian",
-      "bone": "上半身2",
+      "bone": "chest",
       "region": "chest"
      },
      "gap_mm": [

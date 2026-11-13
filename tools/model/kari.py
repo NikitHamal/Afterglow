@@ -184,12 +184,12 @@ def make_hair(body, eyes, rig, out):
             point[2] = height
             points.append(point)
         for index, suffix in enumerate('abcdz'):
-            bone = rig.data.edit_bones[f'髪.{chain}.{suffix}']
+            bone = rig.data.edit_bones[f'hair.{chain}.{suffix}']
             bone.use_connect = False
             bone.head, bone.tail = points[index], points[index + 1]
     bpy.ops.object.mode_set(mode='OBJECT')
-    groups = {name: obj.vertex_groups.new(name=name) for name in [hairkit.HEAD, '上半身2'] +
-              [f'髪.{chain}.{suffix}' for chain in range(4) for suffix in 'abcdz']}
+    groups = {name: obj.vertex_groups.new(name=name) for name in [hairkit.HEAD, 'chest'] +
+              [f'hair.{chain}.{suffix}' for chain in range(4) for suffix in 'abcdz']}
     for index, p in enumerate(positions):
         head_weight = float(hairkit.ss(h.EC[2] - 0.065, h.EC[2] + 0.020, p[2]))
         if head_weight >= 0.999:
@@ -201,9 +201,9 @@ def make_hair(body, eyes, rig, out):
         fraction = progress - segment
         chest_weight = float(hairkit.ss(h.CHIN_Z - 0.08, h.CHIN_Z - 0.30, p[2])) * 0.30
         loose = 1 - head_weight - chest_weight
-        weights = {hairkit.HEAD: head_weight, '上半身2': chest_weight,
-                   f'髪.{chain}.{"abcdz"[segment]}': loose * (1 - fraction),
-                   f'髪.{chain}.{"abcdz"[segment + 1]}': loose * fraction}
+        weights = {hairkit.HEAD: head_weight, 'chest': chest_weight,
+                   f'hair.{chain}.{"abcdz"[segment]}': loose * (1 - fraction),
+                   f'hair.{chain}.{"abcdz"[segment + 1]}': loose * fraction}
         for name, weight in weights.items():
             if weight > 0:
                 groups[name].add([index], weight, 'REPLACE')
@@ -219,10 +219,10 @@ def make_hair(body, eyes, rig, out):
 def seated_pose(rig, phase):
     for bone in rig.pose.bones:
         bone.matrix_basis.identity()
-    root = rig.pose.bones['全ての親']
+    root = rig.pose.bones['root']
     root.matrix = Matrix.Translation((0, 0, -0.33)) @ root.bone.matrix_local
     bpy.context.view_layer.update()
-    spine = rig.pose.bones['上半身2']
+    spine = rig.pose.bones['chest']
     center = spine.head.copy()
     spine.matrix = Matrix.Translation(center) @ Matrix.Rotation(math.radians(4 + 0.35 * math.sin(phase)), 4, 'X') @ Matrix.Translation(-center) @ spine.matrix
     bpy.context.view_layer.update()
@@ -250,11 +250,11 @@ def seated_pose(rig, phase):
 
     for side, suffix in ((1, 'L'), (-1, 'R')):
         foot = Vector((side * 0.17, -0.40, 0.077))
-        limb(f'足.{suffix}', f'ひざ.{suffix}', foot, Vector((side * 0.15, -1, 0.60)))
-        aim(f'足首.{suffix}', foot + Vector((0, -0.111, -0.061)))
+        limb(f'thigh.{suffix}', f'knee.{suffix}', foot, Vector((side * 0.15, -1, 0.60)))
+        aim(f'ankle.{suffix}', foot + Vector((0, -0.111, -0.061)))
         hand = Vector((side * 0.19, -0.26, 0.63))
-        limb(f'腕.{suffix}', f'ひじ.{suffix}', hand, Vector((side * 0.40, -0.17, 0.78)))
-        aim(f'手首.{suffix}', hand + Vector((0, -0.045, -0.012)))
+        limb(f'upper_arm.{suffix}', f'elbow.{suffix}', hand, Vector((side * 0.40, -0.17, 0.78)))
+        aim(f'wrist.{suffix}', hand + Vector((0, -0.045, -0.012)))
 
 
 def refine_neutral_motion(rig):
@@ -265,7 +265,7 @@ def refine_neutral_motion(rig):
         action = strip.action
         bag = action.layers[0].strips[0].channelbag(strip.action_slot)
         for curve in list(bag.fcurves):
-            if curve.data_path.startswith('pose.bones["髪.'):
+            if curve.data_path.startswith('pose.bones["hair.'):
                 bag.fcurves.remove(curve)
         start, end = action.frame_range
         animation.action = action
@@ -285,7 +285,7 @@ def refine_neutral_motion(rig):
                     point.interpolation = 'LINEAR'
         for chain in range(4):
             for segment, suffix in enumerate('abcd'):
-                bone = rig.pose.bones[f'髪.{chain}.{suffix}']
+                bone = rig.pose.bones[f'hair.{chain}.{suffix}']
                 bone.rotation_mode = 'QUATERNION'
                 for frame in np.linspace(start, end, 25):
                     phase = 2 * math.pi * (frame - start) / (end - start) - segment * 0.35 + chain * 0.65
@@ -293,7 +293,7 @@ def refine_neutral_motion(rig):
                     bone.rotation_quaternion = Quaternion((1, 0, 0), angle)
                     bone.keyframe_insert('rotation_quaternion', frame=frame, group=bone.name)
         for curve in bag.fcurves:
-            if curve.data_path.startswith('pose.bones["髪.'):
+            if curve.data_path.startswith('pose.bones["hair.'):
                 for point in curve.keyframe_points:
                     point.interpolation = 'LINEAR'
     animation.action = None

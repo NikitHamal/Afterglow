@@ -18,7 +18,7 @@ struct OralTuning {
     float wristR = 0.f;
 };
 
-// The rendered glans: skinned to 竿先, its surface tip moves forward with the length morph. The 竿端 helper carries
+// The rendered glans: skinned to shaft_tip, its surface tip moves forward with the length morph. The shaft_end helper carries
 // no skin weights, so aiming at it left the lips behind the glans on large custom sizes. `chord` is the straight
 // root→tip line; `axis` is the direction the glans itself points, which is what a mouth has to follow when he is
 // curved (the two come apart by up to a dozen-odd degrees).

@@ -280,13 +280,13 @@ void Game::standPose(Character& c) {
             a.setWorldRot(b, qmul(qaxis(axis, ang), a.worldRot(b)));
             a.recomputeSubtree(b);
         };
-        aim("腕.L", {0, 0, 1}, -0.72f); aim("腕.R", {0, 0, 1}, 0.72f);
-        aim("腕.L", {0, 1, 0}, 0.12f); aim("腕.R", {0, 1, 0}, -0.12f);
-        aim("ひじ.L", {1, 0, 0}, -0.28f); aim("ひじ.R", {1, 0, 0}, -0.28f);
-        aim("手首.L", {0, 0, 1}, 0.18f); aim("手首.R", {0, 0, 1}, -0.18f);
-        aim("下半身", {0, 0, 1}, 0.03f);
-        aim("上半身", {0, 0, 1}, -0.035f);
-        aim("足.R", {0, 0, 1}, 0.035f); aim("ひざ.R", {1, 0, 0}, 0.08f);
+        aim("upper_arm.L", {0, 0, 1}, -0.72f); aim("upper_arm.R", {0, 0, 1}, 0.72f);
+        aim("upper_arm.L", {0, 1, 0}, 0.12f); aim("upper_arm.R", {0, 1, 0}, -0.12f);
+        aim("elbow.L", {1, 0, 0}, -0.28f); aim("elbow.R", {1, 0, 0}, -0.28f);
+        aim("wrist.L", {0, 0, 1}, 0.18f); aim("wrist.R", {0, 0, 1}, -0.18f);
+        aim("pelvis", {0, 0, 1}, 0.03f);
+        aim("spine", {0, 0, 1}, -0.035f);
+        aim("thigh.R", {0, 0, 1}, 0.035f); aim("knee.R", {1, 0, 0}, 0.08f);
     };
     c.proc.lookWeight = 0.55f;
 }

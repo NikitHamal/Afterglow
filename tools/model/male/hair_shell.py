@@ -8,12 +8,12 @@
 #     top along the skin normal (follows every skull shape of the body);
 #   - COLOR_0.a = the soft hairline (f ramp), so only single strands of the strand texture reach the skin edge;
 #   - UVs polar around the crown (strands = +V, radiating from it, 9 tiles round, wrap seam split), as before;
-#   - weights 100 % 頭 like the old shell; weight_up / weight_dn deltas copied from the body (the face/skull
+#   - weights 100 % head like the old shell; weight_up / weight_dn deltas copied from the body (the face/skull
 #     move with weight, the hair moves with them).
 import json, struct, sys
 import numpy as np
 
-HEAD = "頭"
+HEAD = "head"
 
 
 def read_glb(path):

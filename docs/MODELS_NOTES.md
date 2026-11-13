@@ -9,8 +9,8 @@ Newest first. Board: molab notebook → tabs models / hair (`/root/board/shots/<
   role's file) and a hair style `hair/<style>.glb`. So every act and story clip fits each model by construction.
 - `scene/identity.*`: the pack's per-vertex position + normal deltas are added to the base GLB's bind data right after
   it loads (before bind height, touch zones and collision are measured), then the vertex buffers are re-uploaded.
-- `scene/hairstyle.*`: a hair GLB bound by joint name to the character's skin 0 (like outfits); rigid parts on 頭, loose
-  locks on the role's simulated chains `髪.<n>.a..d`; `weight_up/dn` follow the head. The GLB's own hair is skipped
+- `scene/hairstyle.*`: a hair GLB bound by joint name to the character's skin 0 (like outfits); rigid parts on head, loose
+  locks on the role's simulated chains `hair.<n>.a..d`; `weight_up/dn` follow the head. The GLB's own hair is skipped
   while a style is worn (`renderer.cpp drawModel`).
 - `Character::id` stays the role ("vivian"/"marcus": clips, contacts, outfits, story casting); `Character::asset` is
   the model. `Scene::loadRole(role, model, hair)` reloads one role (only the shown model is in memory).
@@ -53,7 +53,7 @@ Newest first. Board: molab notebook → tabs models / hair (`/root/board/shots/<
 - Card hair at grazing light (sides of the chignon, top of the bob) still shows card-to-card noise: the engine's card
   shading (alpha test, per-card highlights) — a hair shading pass (alpha-to-coverage or a depth-peeled soft pass,
   per-vertex AO into COLOR_0.rgb) would lift every style at once.
-- Hair styles are rigid on 頭 except Vivian's tendrils/nape wisps; Mei's bob could ride Vivian's tendril chains
+- Hair styles are rigid on head except Vivian's tendrils/nape wisps; Mei's bob could ride Vivian's tendril chains
   (they hang where the bob's front does) once checked for face clearance in every clip.
 - vivian.glb still carries the RGBA atlas (3 MB); re-splicing with the palette atlas saves ~2 MB (one more 28 MB commit).
 - A model's age is fixed (its face was built at that age); per-model age shapes would need age deltas measured on the

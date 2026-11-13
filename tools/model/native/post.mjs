@@ -62,9 +62,9 @@ root.getAsset().extras = { afterglow: { character: who, units: 'm', up: '+Y', ve
 // soft bones the engine may simulate as damped springs around their animated pose (same solver as hair tips):
 // his scrotum sags/swings, her breasts jiggle. stiffness 0..1 (1 = rigid), gravity scale, swing limit in degrees.
 const SOFT = {
-  marcus: [{ bone: '玉袋', stiffness: 0.45, damping: 0.35, gravity: 1.0, maxAngleDeg: 28 }],
-  vivian: [{ bone: '乳親.L', stiffness: 0.72, damping: 0.30, gravity: 0.6, maxAngleDeg: 10 },
-           { bone: '乳親.R', stiffness: 0.72, damping: 0.30, gravity: 0.6, maxAngleDeg: 10 }],
+  marcus: [{ bone: 'scrotum', stiffness: 0.45, damping: 0.35, gravity: 1.0, maxAngleDeg: 28 }],
+  vivian: [{ bone: 'breast.L', stiffness: 0.72, damping: 0.30, gravity: 0.6, maxAngleDeg: 10 },
+           { bone: 'breast.R', stiffness: 0.72, damping: 0.30, gravity: 0.6, maxAngleDeg: 10 }],
 };
 const skinRoot = root.listSkins()[0]?.listJoints()[0];
 const armNode = root.listNodes().find(n => n.listChildren().includes(skinRoot)) || skinRoot;

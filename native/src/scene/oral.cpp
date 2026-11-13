@@ -17,15 +17,15 @@ constexpr float kTipBase = 0.08832f, kTipTravel = 0.0288f, kTipBack = 0.00583f;
 bool oralShaft(const Character& him, V3& root, V3& chord, V3& tip, V3& axis) {
     if (!him.loaded()) return false;
     float lenUp = clampf(him.morph("length_up"), 0.f, 1.f);
-    root = him.bonePos("竿根");
-    tip = xformPoint(him.boneWorld("竿先"), V3{0.f, kTipBase + kTipTravel * lenUp, -kTipBack});
+    root = him.bonePos("shaft_base");
+    tip = xformPoint(him.boneWorld("shaft_tip"), V3{0.f, kTipBase + kTipTravel * lenUp, -kTipBack});
     chord = tip - root;
     float len = length(chord);
     if (len <= 1e-3f) return false;
     chord = chord * (1.f / len);
     // the glans points along its own bone, not along the chord: with him curved, a mouth aimed at the chord ends up
     // beside the shaft rather than on it
-    axis = normalize(xformDir(him.boneWorld("竿先"), V3{0.f, 1.f, 0.f}));
+    axis = normalize(xformDir(him.boneWorld("shaft_tip"), V3{0.f, 1.f, 0.f}));
     if (dot(axis, chord) < 0.2f) axis = chord;
     return true;
 }
@@ -43,7 +43,7 @@ void stageOral(Character& her, Character& him, float depth, const OralTuning& t,
     // past it: short of that the glans clears the lips at the bottom of every stroke and rests on her nose.
     her.oralTarget = tip - axis * (0.050f + 0.040f * clamp01f(depth));
     if (std::fabs(t.up) > 1e-5f) {
-        V3 headUp = qrotate(her.anim.worldRot(her.bone("頭")), her.procedural.headUpLocal());
+        V3 headUp = qrotate(her.anim.worldRot(her.bone("head")), her.procedural.headUpLocal());
         her.oralTarget = her.oralTarget + headUp * t.up;
     }
     her.oralFace = axis * -1.f;
@@ -57,7 +57,7 @@ void stageOral(Character& her, Character& him, float depth, const OralTuning& t,
                 float ang = s ? r : l;
                 if (std::fabs(ang) < 1e-4f) continue;
                 std::string side = s ? ".R" : ".L";
-                int w = a.model()->findNode("手首" + side), e = a.model()->findNode("ひじ" + side);
+                int w = a.model()->findNode("wrist" + side), e = a.model()->findNode("elbow" + side);
                 if (w < 0 || e < 0) continue;
                 V3 ax = a.global(w).translation() - a.global(e).translation();
                 if (length(ax) < 1e-4f) continue;
@@ -78,14 +78,14 @@ void oralGrip(Character& her, Character& him, TouchGoals& tg, const OralTuning& 
     float girthUp = clampf(him.morph("girth_up"), 0.f, 1.f);
     auto grip = [&](HandGoal& g, const char* side, float along, float elbowSide) {
         if (g.active) return;   // a hand already somewhere else keeps it
-        V3 shoulder = her.bonePos(std::string("腕") + side);
+        V3 shoulder = her.bonePos(std::string("upper_arm") + side);
         V3 at = root + ax * along;
         V3 out = shoulder - at;
         out = out - ax * dot(out, ax);
         if (length(out) < 1e-3f) out = V3{elbowSide, 0.f, 0.f};
         out = normalize(out);
         // Palm to the shaft, fingers running around it: lengthwise fingers read as a claw sliding up the shaft.
-        V3 toFace = her.bonePos("頭") - at;
+        V3 toFace = her.bonePos("head") - at;
         toFace = toFace - ax * dot(toFace, ax);
         V3 tangent = cross(ax, out);
         if (length(tangent) < 1e-3f) tangent = cross(ax, V3{1.f, 0.f, 0.f});

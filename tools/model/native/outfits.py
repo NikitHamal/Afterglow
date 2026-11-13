@@ -20,17 +20,17 @@ for v in me.vertices:
 dom = np.array(dom)
 def bone_z(n): return float((arm.matrix_world @ arm.data.bones[n].head_local).z)
 def bone_p(n): return np.array(arm.matrix_world @ arm.data.bones[n].head_local)
-LIMB = ("腕", "ひじ", "手首", "親指", "人指", "中指", "薬指", "小指")
+LIMB = ("upper_arm", "elbow", "wrist", "thumb", "index", "middle", "ring", "pinky")
 is_arm = np.array([d.startswith(LIMB) for d in dom])
-is_upperarm = np.array([d.startswith("腕") for d in dom])
-gen = np.array([d.startswith(("竿", "玉袋")) for d in dom])
+is_upperarm = np.array([d.startswith("upper_arm") for d in dom])
+gen = np.array([d.startswith(("shaft", "scrotum")) for d in dom])
 def attr(name):
     a = me.attributes.get(name)
     if a is None: return np.zeros(len(B), np.float32)
     v = np.empty(len(a.data), np.float32); a.data.foreach_get("value", v); return v
 inner = attr("v_cav") > 0.02                              # canal walls stay out of every garment (the fabric bridges them)
-pel = bone_z("下半身"); hipj = bone_z("足.L"); knee = bone_z("ひざ.L"); ankle = bone_z("足首.L")
-neck = bone_z("首"); sh = bone_z("腕.L"); c2 = bone_z("上半身2")
+pel = bone_z("pelvis"); hipj = bone_z("thigh.L"); knee = bone_z("knee.L"); ankle = bone_z("ankle.L")
+neck = bone_z("neck"); sh = bone_z("upper_arm.L"); c2 = bone_z("chest")
 crotch = hipj - 0.06
 front = B[:, 1] < 0                                       # rest pose faces -Y
 def gw(name):
@@ -41,7 +41,7 @@ def gw(name):
         for e in v.groups:
             if e.group == g.index: w[v.index] = e.weight
     return w
-BREAST_W = gw("乳親.L") + gw("乳親.R")
+BREAST_W = gw("breast.L") + gw("breast.R")
 def nip():
     vs = np.where(BREAST_W > 0.25)[0]
     return B[vs] if len(vs) else None

@@ -45,15 +45,15 @@ can be drawn right after it inside `BeginDrawing/EndDrawing`.
 | `setBody("bust", -1..1)` | drives `bust_up`/`bust_dn` pairs (falls back to legacy `body_bust`) |
 | `setTone("honey"|"caramel"|"deep")` | albedo swap from sibling JPEGs `<id>_skin_<tone>.jpg` (and `<id>_genital_<tone>.jpg`) |
 | `hairTint`, `flush`, `sweat` | linear hair multiplier (content hair carries its colour in `baseColorFactor`, so the default is white; only the legacy grey hair gets a chestnut tint); arousal flush 0..1; sweat sheen 0..1 (skin shader) |
-| `setBoneOffset("腕.L", euler)` / `clearBoneOffsets()` | additive local rotations applied after the clips (pose tweaks, QA flex test) |
+| `setBoneOffset("upper_arm.L", euler)` / `clearBoneOffsets()` | additive local rotations applied after the clips (pose tweaks, QA flex test) |
 | `proc` (`ProcParams`) | `breathRate/breathAmp`, `lookAt/lookTarget/lookWeight/eyeWeight/eyeRollUp/saccades`, `hair`, `hairGravity/Stiffness`, `jiggle/jiggleGain`, `floorY` |
 | `placement` | world transform of the model root (identity when clips carry placement) |
 | `bonePos(name)`, `boneWorld(name)`, `forward()` | queries after `update` (camera targets, FX anchors) |
 | `headAxes(center, faceFwd, crownUp)`, `hairCenter()` | world head frame (face cameras, gaze) and skull centre (hair shading) |
 | `resetSimulation()` | re-seed hair/springs after a teleport (position change) |
 
-Bone names are MMD (`頭`, `首`, `上半身2`, `下半身`, `腕.L`, `手首.R`, `乳親.L`, `目.L`, Marcus `竿根..竿端`, `玉袋`).
-Spring bones: `乳親.L/.R`, `玉袋`. Hair chains: any bones named `髪*` (root = parent not `髪`), colliders from node
+Bone names are MMD (`head`, `neck`, `chest`, `pelvis`, `upper_arm.L`, `wrist.R`, `breast.L`, `eye.L`, Marcus `shaft_base..shaft_end`, `scrotum`).
+Spring bones: `breast.L/.R`, `scrotum`. Hair chains: any bones named `hair*` (root = parent not `hair`), colliders from node
 extras `afterglow.hairColliders` (`{bone, c: bind-space centre, r}`, JSON string or object).
 
 Hair follows the VRM spring-bone model at a fixed 90 Hz: each joint is pulled toward its *animated* direction
@@ -79,7 +79,7 @@ face; content clips carry the authored gaze, so the sandbox uses `lookWeight` 0.
   size and colour over life, additive or alpha, velocity stretch, floor collision); the scene keeps lamp-beam
   dust motes alive on its own.
 - `CameraRig`: `setOrbit(target, yaw, pitch, dist, blend)` (yaw 0 = camera on +Z looking toward -Z),
-  `setFirstPerson(&marcus, "頭", offset, blend)`, `setFirstPersonLocal(&marcus, "頭", offsetLocal, forwardLocal,
+  `setFirstPerson(&marcus, "head", offset, blend)`, `setFirstPersonLocal(&marcus, "head", offsetLocal, forwardLocal,
   blend)` (eye + look axis in the bone's frame, from `clips.json`), `follow(target)` (track a moving target
   without touching yaw/pitch/dist), `sway`, `setFov` (orbit 38 deg; first person blends to 58 deg); mouse: RMB
   orbit/look, wheel zoom, MMB pan (`inputEnabled` to block over UI).

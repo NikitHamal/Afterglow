@@ -401,8 +401,8 @@ void Game::directStory(float dt) {
         if (!out.shown) return;
         V3 up;
         c.headAxes(out.head, out.face, up);
-        out.hips = c.bonePos("下半身");
-        V3 sr = c.bonePos("腕.R") - c.bonePos("腕.L");
+        out.hips = c.bonePos("pelvis");
+        V3 sr = c.bonePos("upper_arm.R") - c.bonePos("upper_arm.L");
         sr.y = 0.f;
         if (length(sr) > 1e-3f) out.body = normalize(cross(V3{0, 1, 0}, normalize(sr)));
     };
@@ -480,7 +480,7 @@ void Game::applyStoryPose(float dt) {
             authored = e || ks;
         }
     }
-    V3 axis = flatv(m.bonePos("センター") - v.bonePos("センター"));
+    V3 axis = flatv(m.bonePos("center") - v.bonePos("center"));
     V3 lv, lm;
     bool contact = both && v.touch.mouthWorld(v.anim, v.morph("kiss"), lv) && m.touch.mouthWorld(m.anim, m.morph("kiss"), lm);
     V3 wantedShift{0, 0, 0}, previousShift = kissShift_;
@@ -496,8 +496,8 @@ void Game::applyStoryPose(float dt) {
     float step = 0.f;
     if (both && nr > 0.001f && !authored) {
         float undo = 2.f * (step_ + dot(previousShift, axis));
-        float neckGap = dot(m.bonePos("首") - v.bonePos("首"), axis) + undo;
-        float hipGap = dot(m.bonePos("下半身") - v.bonePos("下半身"), axis) + undo;
+        float neckGap = dot(m.bonePos("neck") - v.bonePos("neck"), axis) + undo;
+        float hipGap = dot(m.bonePos("pelvis") - v.bonePos("pelvis"), axis) + undo;
         float want = sit ? 0.5f * (hipGap - kSitHips) : 0.5f * (neckGap - lerpf(kEmbraceNeck, kKissNeck, k));
         step = std::max(0.f, want) * nr;
     }
@@ -526,9 +526,9 @@ void Game::applyStoryPose(float dt) {
     TouchGoals tv, tm;
     float hw = smoothstep(0.5f, 1.f, std::max(near_, kiss_));   // hands come with the embrace, not with a half step
     if (hw > 0.01f && !sit && both && !authored) {
-        V3 hc = m.bonePos("上半身2"), hr = flatv(m.bonePos("腕.R") - m.bonePos("腕.L"));
+        V3 hc = m.bonePos("chest"), hr = flatv(m.bonePos("upper_arm.R") - m.bonePos("upper_arm.L"));
         V3 hf = flatv(cross(V3{0, 1, 0}, hr));
-        V3 vc = v.bonePos("下半身"), vr = flatv(v.bonePos("腕.R") - v.bonePos("腕.L"));
+        V3 vc = v.bonePos("pelvis"), vr = flatv(v.bonePos("upper_arm.R") - v.bonePos("upper_arm.L"));
         V3 vf = flatv(cross(V3{0, 1, 0}, vr));
         for (int s = 0; s < 2; ++s) {
             float sg = s ? 1.f : -1.f;   // the hand's own side: -1 left, +1 right
@@ -556,9 +556,9 @@ void Game::applyStoryPose(float dt) {
     // facing the partner (sitting side by side turned in, the far hands stay where the clip rests them)
     if (sit && both && kiss_ > 0.05f && !authored) {
         float sw = smoothstep(0.15f, 0.8f, kiss_);
-        V3 vr = flatv(v.bonePos("腕.R") - v.bonePos("腕.L")), hr = flatv(m.bonePos("腕.R") - m.bonePos("腕.L"));
+        V3 vr = flatv(v.bonePos("upper_arm.R") - v.bonePos("upper_arm.L")), hr = flatv(m.bonePos("upper_arm.R") - m.bonePos("upper_arm.L"));
         V3 vf = flatv(cross(V3{0, 1, 0}, vr)), hf = flatv(cross(V3{0, 1, 0}, hr));
-        V3 toHim = flatv(m.bonePos("センター") - v.bonePos("センター"));
+        V3 toHim = flatv(m.bonePos("center") - v.bonePos("center"));
         bool heOnHerRight = dot(toHim, vr) > 0.f, sheOnHisRight = dot(toHim, hr) < 0.f;
         V3 zp, zn;
         Zone hz = sheOnHisRight ? Zone::ChestR : Zone::ChestL, vz = heOnHerRight ? Zone::WaistR : Zone::WaistL;
@@ -568,7 +568,7 @@ void Game::applyStoryPose(float dt) {
             g.palmLift = 0.017f;
             g.pos = zp + zn * clothOver(1, hz);
             g.normal = zn;
-            g.along = normalize(V3{0.f, 1.f, 0.f} + flatv(zp - m.bonePos("上半身2")) * 0.35f);
+            g.along = normalize(V3{0.f, 1.f, 0.f} + flatv(zp - m.bonePos("chest")) * 0.35f);
             g.elbowHint = normalize(V3{0.f, -1.f, 0.f} + vf * 0.45f);        // in front of her, low: clear of his arm
             (heOnHerRight ? tv.right : tv.left) = g;
         }
@@ -591,7 +591,7 @@ void Game::applyStoryPose(float dt) {
         float gw = actors_[w].gestureWeight("chest");
         V3 zp, zn;
         if (gw < 0.01f || tg.right.active || !c.loaded() || !c.touch.zoneWorld(c.anim, Zone::Sternum, zp, zn)) continue;
-        V3 cr = flatv(c.bonePos("腕.R") - c.bonePos("腕.L"));
+        V3 cr = flatv(c.bonePos("upper_arm.R") - c.bonePos("upper_arm.L"));
         HandGoal g;
         g.active = true; g.world = true; g.flat = true; g.dent = false; g.weight = gw; g.curl = 0.15f; g.press = 0.f;
         g.palmLift = w ? 0.02f : 0.017f;

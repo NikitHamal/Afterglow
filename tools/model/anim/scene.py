@@ -59,7 +59,7 @@ def apply_rigs(*bodies):
     for b in bodies: b.rig.apply()
     bpy.context.view_layer.update()
 
-CORE_BONES = ("下半身", "上半身", "上半身2", "首", "頭", "腕.L", "腕.R", "足.L", "足.R", "乳親.L", "乳親.R", "腰")
+CORE_BONES = ("pelvis", "spine", "chest", "neck", "head", "upper_arm.L", "upper_arm.R", "thigh.L", "thigh.R", "breast.L", "breast.R", "waist")
 
 def settle(body, target_z=BED_TOP, sink=0.012, region=None):
     """move the body vertically so its lowest CORE vertex (pelvis/torso/head/upper limbs; hands and feet are

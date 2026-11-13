@@ -76,8 +76,8 @@ if WHO == "marcus":
     wshaft = np.zeros(len(B), np.float32)
     for v in body.data.vertices:
         for g in v.groups:
-            if gi.get(g.group, "") in ("竿根", "竿中", "竿先"): wshaft[v.index] += g.weight
-    r0 = arm.data.bones["竿根"].head_local; r1 = arm.data.bones["竿端"].head_local
+            if gi.get(g.group, "") in ("shaft_base", "shaft_mid", "shaft_tip"): wshaft[v.index] += g.weight
+    r0 = arm.data.bones["shaft_base"].head_local; r1 = arm.data.bones["shaft_end"].head_local
     ax = (r1 - r0).normalized(); L = (r1 - r0).length
     P = A[wshaft > 0.6] - np.array(r0); s = P @ np.array(ax)
     rad = np.linalg.norm(P - np.outer(s, ax), axis=1)

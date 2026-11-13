@@ -89,8 +89,8 @@ def main():
     W = acc(js, bn, prim["attributes"]["WEIGHTS_0"])
     skin = js["skins"][0]
     jn = [names[j] for j in skin["joints"]]
-    head_j = jn.index("頭")
-    neck_j = jn.index("首")
+    head_j = jn.index("head")
+    neck_j = jn.index("neck")
     wh = np.array([sum(W[v, k] for k in range(4) if J[v, k] == head_j) for v in range(len(P))])
     wn = np.array([sum(W[v, k] for k in range(4) if J[v, k] == neck_j) for v in range(len(P))])
     mask = np.clip(wh + 0.8 * wn, 0, 1)

@@ -11,7 +11,7 @@ from mathutils.kdtree import KDTree
 from mathutils import Vector
 from PIL import Image
 
-HEAD = "頭"
+HEAD = "head"
 HAIR_LIN = (0.0423114113509655, 0.015208514407277107, 0.008568125776946545)   # authored espresso (linear)
 
 def ss(e0, e1, x):
@@ -153,11 +153,11 @@ class Head:
     def chain(self, n):
         """a simulated chain's guide points (bone heads a..d + the z tip) in rest"""
         bones = self.rig.data.bones
-        pts = [np.array(bones[f"髪.{n}.{s}"].head_local) for s in "abcd"]
-        pts.append(np.array(bones[f"髪.{n}.z"].head_local))
+        pts = [np.array(bones[f"hair.{n}.{s}"].head_local) for s in "abcd"]
+        pts.append(np.array(bones[f"hair.{n}.z"].head_local))
         return np.array(pts)
     def has_chains(self):
-        return f"髪.0.a" in self.rig.data.bones
+        return f"hair.0.a" in self.rig.data.bones
 
 # ---------------------------------------------------------------------------------------------- geometry builder
 class Builder:

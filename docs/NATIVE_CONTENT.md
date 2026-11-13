@@ -8,8 +8,8 @@ Blender (Z-up, +Y toward the headboard); the exporter converts.
 
 | File | What |
 |---|---|
-| `characters/vivian.glb` | Vivian, 1.68 m, 87 bones (MMD set + 4 loose-hair chains `髪.<n>.a..d/z` + eyes `目.L/R`), 7 meshes, 17 clips |
-| `characters/marcus.glb` | Marcus, 1.83 m, 70 bones (MMD set + `竿根/竿中/竿先/竿端` + `玉袋`), 7 meshes, 17 clips |
+| `characters/vivian.glb` | Vivian, 1.68 m, 87 bones (MMD set + 4 loose-hair chains `hair.<n>.a..d/z` + eyes `eye.L/R`), 7 meshes, 17 clips |
+| `characters/marcus.glb` | Marcus, 1.83 m, 70 bones (MMD set + `shaft_base/shaft_mid/shaft_tip/shaft_end` + `scrotum`), 7 meshes, 17 clips |
 | `characters/<who>_skin_{honey,caramel,deep}.jpg` | alternate 4K skin albedos (caramel is embedded); Marcus also has `marcus_genital_*.jpg` |
 | `characters/<who>_skin_mask.png`, `characters/skin_detail_n.png` | optional skin support maps (see "Skin support maps") |
 | `characters/presets.json` | body presets (Natural, Petite, Skinny, Slim, Athletic, Curvy, Chubby, BBW, Voluptuous, Ebony goddess, Porcelain, Mature, Young adult; his Lean…Heavy): slider values + skin tone |
@@ -87,10 +87,10 @@ outside the cheek) and two short nape wisps. Mesh `vivian_hair`, two primitives:
   its V also runs along the hair flow (toward the bun). Opaque in practice (A = 1).
 - Colour: both carry `baseColorFactor` = authored espresso (linear 0.042, 0.015, 0.009); the game's hair
   presets multiply it (`kHair`), the texture stays neutral.
-- Only the loose hair moves: everything except the tendrils/wisps is weighted 100 % to `頭`, so the swept
+- Only the loose hair moves: everything except the tendrils/wisps is weighted 100 % to `head`, so the swept
   sheets and the bun can never clip the body or cross the face. The armature node's `extras.afterglow`
   (`version 3`) holds `hairColliders` (spheres on head/face/neck/chest/breasts/shoulders, shrunk so no rest
-  joint starts inside one) and `hairChains`: `[{root: "髪.0.a", kind: "tendril", stiffness, damping, gravity,
+  joint starts inside one) and `hairChains`: `[{root: "hair.0.a", kind: "tendril", stiffness, damping, gravity,
   maxAngleDeg}]` — tendrils 0.82 / 0.55 / 0.35 / 28°, wisps 0.70 / 0.55 / 0.35 / 40°. Honour `maxAngleDeg`
   (swing limit from the rest direction) so a tendril can never fall across her face, e.g. when she lies on her side.
 - Bind height incl. hair stays within 1 % of 1.68 m (the bun sits low at the back), so the engine's 3 %
@@ -106,7 +106,7 @@ loop: her head on his chest, arm across him, leg over his thigh, his arm around 
 lying face to face, lips together, her leg over his hip, hands on cheek/waist).
 
 - `.in`: 25 frames, normalized time = penetration depth. Sample both characters at the same t. Her canal is
-  aligned to his shaft in every frame (his `竿根` is aimed along her canal axis, his pelvis rides that axis);
+  aligned to his shaft in every frame (his `shaft_base` is aimed along her canal axis, his pelvis rides that axis);
   knees/hands are re-planted by IK each frame so nothing slides. `clips.json → insert_m` gives the shaft length
   inside her at t=0 and t=1: −6 → 104 mm for most positions; cowgirl 59 → 109 mm and reverse cowgirl 69 → 119 mm
   (she sits down onto him and never leaves him, so `vag_open` is 1 there); oral −4 → 71 mm into her mouth.
@@ -137,8 +137,8 @@ lying face to face, lips together, her leg over his hip, hands on cheek/waist).
   `{char, effector, bone, offset, radius, target {char, bone, region}, gap_mm [min, max], t [first, last]}`. The
   contact point each frame = the effector bone's world matrix × `offset` (bone-local, like `fpv.offset_local`);
   `region` names the soft tissue to deform (`breast.L`, `vulva`, `hips`, `thigh.R`, `chest`, `genitals`, `head`…).
-- **Soft bones** (armature `extras.afterglow.softBones`): his scrotum (`玉袋`, sag + swing) and her breasts
-  (`乳親.L/R`, light jiggle) as damped springs around their animated pose — `{bone, stiffness, damping, gravity,
+- **Soft bones** (armature `extras.afterglow.softBones`): his scrotum (`scrotum`, sag + swing) and her breasts
+  (`breast.L/R`, light jiggle) as damped springs around their animated pose — `{bone, stiffness, damping, gravity,
   maxAngleDeg}`, same solver as the hair tips.
 
 ## Outfits (`tools/model/native/outfits.py`)

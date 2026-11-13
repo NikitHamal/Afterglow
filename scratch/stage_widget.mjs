@@ -306,15 +306,15 @@ export default function render({ model, el }) {
 
   function focusPoint(which) {
     if (which === "face") {
-      const p = bonePos("vivian", "頭");
+      const p = bonePos("vivian", "head");
       if (p) { p.y += 0.035; return p; }
     }
     if (which === "tip") {
-      const p = bonePos("marcus", "竿端") || bonePos("marcus", "竿先");
+      const p = bonePos("marcus", "shaft_end") || bonePos("marcus", "shaft_tip");
       if (p) return p;
     }
-    const a = bonePos("vivian", "下半身");
-    const b = bonePos("marcus", "下半身");
+    const a = bonePos("vivian", "pelvis");
+    const b = bonePos("marcus", "pelvis");
     if (a && b) return a.clone().add(b).multiplyScalar(0.5).add(new THREE.Vector3(0, 0.08, 0));
     return new THREE.Vector3(0, 0.9, -0.9);
   }

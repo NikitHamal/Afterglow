@@ -1,4 +1,4 @@
-# Marcus -> Afterglow: MMD-named skeleton (Goat-chan frames) + 竿根/竿中/竿先 shaft chain, weights, scale, GLB export.
+# Marcus -> Afterglow: MMD-named skeleton (Goat-chan frames) + shaft_base/shaft_mid/shaft_tip shaft chain, weights, scale, GLB export.
 #   blender -b out/marcus_d.blend --python male_rig_export.py
 import bpy, bmesh, os, math, json, time, shlex
 import numpy as np
@@ -55,39 +55,39 @@ log(f"palm directions from nails: {len(PALM)} fingers")
 
 # ------------------------------------------------------------------ 4. build the MMD armature
 LR = {"l": ".L", "r": ".R"}
-FING = {"thumb": "親指", "index": "人指", "middle": "中指", "ring": "薬指", "pinky": "小指"}
+FING = {"thumb": "thumb", "index": "index", "middle": "middle", "ring": "ring", "pinky": "pinky"}
 def P(name, end=0): return Vector(J[name][end]) * S
 spec = []        # (name, head, tail, parent, roll_mode)
 hips = (P("thigh_l") + P("thigh_r")) / 2
 waist = P("spine_01")
-spec += [("全ての親", Vector((0, 0, 0)), Vector((0, 0, 0.08)), None, "goat"),
-         ("センター", Vector((0, 0, hips.z * 0.73)), Vector((0, 0, hips.z * 0.70)), "全ての親", "goat"),
-         ("グルーブ", Vector((0, 0, hips.z * 0.75)), Vector((0, 0, hips.z * 0.98)), "センター", "goat"),
-         ("腰", Vector((0, hips.y, hips.z)), waist.copy(), "グルーブ", "goat"),
-         ("上半身", waist.copy(), P("spine_02"), "腰", "goat"),
-         ("上半身2", P("spine_02"), P("neck_01"), "上半身", "goat"),
-         ("首", P("neck_01"), P("head"), "上半身2", "goat"),
-         ("頭", P("head"), P("head") + Vector((0, 0, 0.09)), "首", "goat")]
-gd = Vector(goat["下半身"]["t"]) - Vector(goat["下半身"]["h"]); gd.normalize()
-spec.append(("下半身", waist.copy(), waist + gd * 0.075, "腰", "goat"))
+spec += [("root", Vector((0, 0, 0)), Vector((0, 0, 0.08)), None, "goat"),
+         ("center", Vector((0, 0, hips.z * 0.73)), Vector((0, 0, hips.z * 0.70)), "root", "goat"),
+         ("groove", Vector((0, 0, hips.z * 0.75)), Vector((0, 0, hips.z * 0.98)), "center", "goat"),
+         ("waist", Vector((0, hips.y, hips.z)), waist.copy(), "groove", "goat"),
+         ("spine", waist.copy(), P("spine_02"), "waist", "goat"),
+         ("chest", P("spine_02"), P("neck_01"), "spine", "goat"),
+         ("neck", P("neck_01"), P("head"), "chest", "goat"),
+         ("head", P("head"), P("head") + Vector((0, 0, 0.09)), "neck", "goat")]
+gd = Vector(goat["pelvis"]["t"]) - Vector(goat["pelvis"]["h"]); gd.normalize()
+spec.append(("pelvis", waist.copy(), waist + gd * 0.075, "waist", "goat"))
 for s_, L in LR.items():
-    spec += [(f"肩{L}", P(f"clavicle_{s_}"), P(f"upperarm_{s_}"), "上半身2", "goat"),
-             (f"腕{L}", P(f"upperarm_{s_}"), P(f"lowerarm_{s_}"), f"肩{L}", "goat"),
-             (f"ひじ{L}", P(f"lowerarm_{s_}"), P(f"hand_{s_}"), f"腕{L}", "goat"),
-             (f"手首{L}", P(f"hand_{s_}"), P(f"middle_01_{s_}"), f"ひじ{L}", "goat"),
-             (f"足{L}", P(f"thigh_{s_}"), P(f"calf_{s_}"), "下半身", "goat"),
-             (f"ひざ{L}", P(f"calf_{s_}"), P(f"foot_{s_}"), f"足{L}", "goat"),
-             (f"足首{L}", P(f"foot_{s_}"), P(f"ball_{s_}"), f"ひざ{L}", "goat"),
-             (f"つま先{L}", P(f"ball_{s_}"), P(f"ball_{s_}", 1), f"足首{L}", "goat"),
-             (f"乳親{L}", P(f"breast_{s_}"), P(f"breast_{s_}", 1), "上半身2", "goat")]
+    spec += [(f"shoulder{L}", P(f"clavicle_{s_}"), P(f"upperarm_{s_}"), "chest", "goat"),
+             (f"upper_arm{L}", P(f"upperarm_{s_}"), P(f"lowerarm_{s_}"), f"shoulder{L}", "goat"),
+             (f"elbow{L}", P(f"lowerarm_{s_}"), P(f"hand_{s_}"), f"upper_arm{L}", "goat"),
+             (f"wrist{L}", P(f"hand_{s_}"), P(f"middle_01_{s_}"), f"elbow{L}", "goat"),
+             (f"thigh{L}", P(f"thigh_{s_}"), P(f"calf_{s_}"), "pelvis", "goat"),
+             (f"knee{L}", P(f"calf_{s_}"), P(f"foot_{s_}"), f"thigh{L}", "goat"),
+             (f"ankle{L}", P(f"foot_{s_}"), P(f"ball_{s_}"), f"knee{L}", "goat"),
+             (f"toe{L}", P(f"ball_{s_}"), P(f"ball_{s_}", 1), f"ankle{L}", "goat"),
+             (f"breast{L}", P(f"breast_{s_}"), P(f"breast_{s_}", 1), "chest", "goat")]
     for f, jp in FING.items():
         segs = [P(f"{f}_01_{s_}"), P(f"{f}_02_{s_}"), P(f"{f}_03_{s_}"), P(f"{f}_03_{s_}", 1)]
         n = 3 if f == "thumb" else 4
         if n == 4:
             tipdir = (segs[3] - segs[2]).normalized(); segs.append(segs[3] + tipdir * (segs[3] - segs[2]).length * 0.6)
-        parent = f"手首{L}"
+        parent = f"wrist{L}"
         for k in range(n):
-            nm = f"{jp}{'０１２３'[k]}{L}"
+            nm = f"{jp}{'0123'[k]}{L}"
             spec.append((nm, segs[k], segs[k + 1], parent, ("palm", f + s_)))
             parent = nm
 
@@ -95,11 +95,11 @@ Bg, Ag, Dg, TIPg, TIPe = (Vector(GEN[k]) * S for k in ("B", "A", "D", "tip", "ti
 Lf = GEN["L_flaccid"] * S
 def shaft_pt(f): return Bg + Ag * (Lf * f)                     # straight chain along the bind axis (rest = flaccid)
 HCg = Vector(GEN["sack_center"]) * S; AXg = Vector(GEN["sack_axis"])
-spec += [("竿根", shaft_pt(0.0), shaft_pt(0.42), "下半身", ("lat",)),
-         ("竿中", shaft_pt(0.42), shaft_pt(0.78), "竿根", ("lat",)),
-         ("竿先", shaft_pt(0.78), shaft_pt(1.0), "竿中", ("lat",)),
-         ("竿端", TIPe, TIPe + Ag * 0.01, "竿先", ("lat",)),     # unweighted marker: erect tip in bind space
-         ("玉袋", HCg, HCg + AXg * (0.06 * S), "下半身", ("lat",))]
+spec += [("shaft_base", shaft_pt(0.0), shaft_pt(0.42), "pelvis", ("lat",)),
+         ("shaft_mid", shaft_pt(0.42), shaft_pt(0.78), "shaft_base", ("lat",)),
+         ("shaft_tip", shaft_pt(0.78), shaft_pt(1.0), "shaft_mid", ("lat",)),
+         ("shaft_end", TIPe, TIPe + Ag * 0.01, "shaft_tip", ("lat",)),     # unweighted marker: erect tip in bind space
+         ("scrotum", HCg, HCg + AXg * (0.06 * S), "pelvis", ("lat",))]
 arm_data = bpy.data.armatures.new("MarcusRig"); arm = bpy.data.objects.new("MarcusRig", arm_data)
 sc.collection.objects.link(arm); bpy.context.view_layer.objects.active = arm
 for o in bpy.context.view_layer.objects: o.select_set(False)
@@ -125,13 +125,13 @@ bpy.ops.object.mode_set(mode="OBJECT")
 log(f"MMD skeleton: {len(arm_data.bones)} bones")
 
 # ------------------------------------------------------------------ 5. weights: MPFB groups -> MMD names
-REN = {"shaft_root": "竿根", "shaft_mid": "竿中", "shaft_tip": "竿先", "scrotum": "玉袋", "pelvis": "下半身", "spine_01": "上半身", "spine_02": "上半身2", "spine_03": "上半身2", "neck_01": "首", "head": "頭"}
+REN = {"shaft_root": "shaft_base", "shaft_mid": "shaft_mid", "shaft_tip": "shaft_tip", "scrotum": "scrotum", "pelvis": "pelvis", "spine_01": "spine", "spine_02": "chest", "spine_03": "chest", "neck_01": "neck", "head": "head"}
 for s_, L in LR.items():
-    REN.update({f"clavicle_{s_}": f"肩{L}", f"upperarm_{s_}": f"腕{L}", f"lowerarm_{s_}": f"ひじ{L}", f"hand_{s_}": f"手首{L}",
-                f"thigh_{s_}": f"足{L}", f"calf_{s_}": f"ひざ{L}", f"foot_{s_}": f"足首{L}", f"ball_{s_}": f"つま先{L}",
-                f"breast_{s_}": f"乳親{L}"})
+    REN.update({f"clavicle_{s_}": f"shoulder{L}", f"upperarm_{s_}": f"upper_arm{L}", f"lowerarm_{s_}": f"elbow{L}", f"hand_{s_}": f"wrist{L}",
+                f"thigh_{s_}": f"thigh{L}", f"calf_{s_}": f"knee{L}", f"foot_{s_}": f"ankle{L}", f"ball_{s_}": f"toe{L}",
+                f"breast_{s_}": f"breast{L}"})
     for f, jp in FING.items():
-        for k in range(3): REN[f"{f}_0{k+1}_{s_}"] = f"{jp}{'０１２３'[k]}{L}"
+        for k in range(3): REN[f"{f}_0{k+1}_{s_}"] = f"{jp}{'0123'[k]}{L}"
 bone_names = set(arm_data.bones.keys())
 for o in meshes:
     old = {vg.index: vg.name for vg in o.vertex_groups}
@@ -196,15 +196,15 @@ FR = 120
 def key(bn, f, rx=0, ry=0, rz=0):
     b = pb[bn]; b.rotation_mode = "XYZ"; b.rotation_euler = (rx, ry, rz); b.keyframe_insert("rotation_euler", frame=f)
 for f, k in [(1, 0), (30, 1), (60, 0), (90, -1), (120, 0)]:
-    key("腕.L", f, 0, 0, 0.5 * k); key("腕.R", f, 0, 0, -0.5 * k)
-    key("ひじ.L", f, 0.9 * abs(k)); key("ひじ.R", f, 0.9 * abs(k))
-    key("ひざ.L", f, 0.8 * abs(k)); key("ひざ.R", f, 0.4 * abs(k))
-    key("足.L", f, -0.5 * abs(k)); key("首", f, 0, 0.35 * k, 0); key("上半身2", f, 0.15 * k)
+    key("upper_arm.L", f, 0, 0, 0.5 * k); key("upper_arm.R", f, 0, 0, -0.5 * k)
+    key("elbow.L", f, 0.9 * abs(k)); key("elbow.R", f, 0.9 * abs(k))
+    key("knee.L", f, 0.8 * abs(k)); key("knee.R", f, 0.4 * abs(k))
+    key("thigh.L", f, -0.5 * abs(k)); key("neck", f, 0, 0.35 * k, 0); key("chest", f, 0.15 * k)
     for s_ in (".L", ".R"):
         for jp in FING.values():
-            for d in "０１２":
+            for d in "012":
                 nm = f"{jp}{d}{s_}"
-                if nm in pb: key(nm, f, 0.9 * abs(k) if jp != "親指" else 0.5 * abs(k))
+                if nm in pb: key(nm, f, 0.9 * abs(k) if jp != "thumb" else 0.5 * abs(k))
 bodyo = bpy.data.objects["marcus_body"]
 sk = bodyo.data.shape_keys
 if sk:
@@ -213,7 +213,7 @@ if sk:
         for f, v in frames:
             if kb in sk.key_blocks: sk.key_blocks[kb].value = v; sk.key_blocks[kb].keyframe_insert("value", frame=f)
 for f, a in [(1, 0.0), (40, 1.0), (85, 1.0), (120, 0.0)]:          # arousal: soft hang -> erect -> soft
-    key("竿根", f, -1.1 * a); key("玉袋", f, 0.18 * a)
+    key("shaft_base", f, -1.1 * a); key("scrotum", f, 0.18 * a)
     if sk and "aroused" in sk.key_blocks: sk.key_blocks["aroused"].value = a; sk.key_blocks["aroused"].keyframe_insert("value", frame=f)
 sc.frame_start, sc.frame_end = 1, FR
 export(PRE + f"/marcus_{int(time.time())}.glb", True)

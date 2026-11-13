@@ -7,9 +7,9 @@
   urethral ridge), widened base, slightly swollen pubic skin, scrotum tightening and lifting. Intermediate weights read as
   a natural semi-erection because both states share the bind axis (no rotation baked into the morph).
 - `penis_length` / `penis_girth` are erect-state deltas; the game scales them by `0.35 + 0.65·aroused`.
-- Scrotum: two-lobed with a raphe, left side lower, weighted to a new `玉袋` bone (gravity sag + thrust swing in game).
-- Bones: `竿根/竿中/竿先` now run straight along the bind axis; `竿端` is an unweighted marker at the erect tip
-  (child of `竿先`) so the game knows where the tip is when hard. 70 bones total.
+- Scrotum: two-lobed with a raphe, left side lower, weighted to a new `scrotum` bone (gravity sag + thrust swing in game).
+- Bones: `shaft_base/shaft_mid/shaft_tip` now run straight along the bind axis; `shaft_end` is an unweighted marker at the erect tip
+  (child of `shaft_tip`) so the game knows where the tip is when hard. 70 bones total.
 - Paint: subtler veins (3 thin dorsal veins, vein relief halved), glans tone closer to his skin, less gloss.
 - Hair: the spiky card cut was replaced by a fitted short-hair **shell** (offset scalp, ~9 mm on top, 3 mm sides) with a
   strand-flow texture radiating from the crown and a hairline fringe carried in `COLOR_0.a` (RGB = 1, so the albedo is
@@ -19,10 +19,10 @@
 - `glbHimArousal(dt)`: 0 at intro / solo; 1 while thrusting, during oral, at climax; 0.62–0.9 with her arousal while in a
   pose; drifts to 0.42 after 8 s without stimulation; 0.55 during his finish, then a 9 s refractory window (≤0.45, ≤0.82
   if stimulated). Rises at 0.9/s when stimulated (0.3/s otherwise), falls at 0.14/s.
-- `竿根`: slerp from a gravity-tilted hang (≤24°) to the procedural shaft aim by smoothstep(arousal). The `aroused`
-  morph follows the same value; tip point lerps between the soft tip and the `竿端` marker.
+- `shaft_base`: slerp from a gravity-tilted hang (≤24°) to the procedural shaft aim by smoothstep(arousal). The `aroused`
+  morph follows the same value; tip point lerps between the soft tip and the `shaft_end` marker.
 - Tip alignment (sliding him so his tip meets the procedural tip) only engages above arousal 0.6, eased in by 0.9.
-- `玉袋` sags toward gravity (≤0.55 rad) and swings with stroke impulses.
+- `scrotum` sags toward gravity (≤0.55 rad) and swings with stroke impulses.
 
 ## Customise panel (`js/charui.js`, `css/app.css`)
 - The dead Goat-chan "GLB attire" section is gone. New **Her body** block: variants Slim / Curvy / Voluptuous / Athletic

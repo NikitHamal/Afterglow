@@ -1,6 +1,6 @@
 // Afterglow engine — hair styles: characters/hair/<style>.glb, a hair mesh skinned to a character's skeleton (bound by
-// joint name, like outfits) that replaces the hair embedded in the character's GLB. Rigid parts ride 頭; loose locks ride
-// the character's own simulated hair chains (髪.<n>.a..d), so the same spring bones and colliders move them. Morph
+// joint name, like outfits) that replaces the hair embedded in the character's GLB. Rigid parts ride head; loose locks ride
+// the character's own simulated hair chains (hair.<n>.a..d), so the same spring bones and colliders move them. Morph
 // targets with the character's names (weight_up / weight_dn) follow its head shape.
 #pragma once
 #include "gfx/model.h"

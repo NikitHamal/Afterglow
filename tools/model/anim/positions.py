@@ -6,10 +6,10 @@ from scene import BED_TOP, BED_C, HEAD_Y, FOOT_Y, MAT_W
 import scene as SC
 
 def V3(*a): return Vector(a)
-def sides(body, bone="足"):
+def sides(body, bone="thigh"):
     """(".L"/".R", world x-sign of that limb): a body facing up has its left at +x, facing down or toward the
     headboard at -x — placement offsets must follow the real side, never the label"""
-    r = body.rig; c = r.head("下半身").x
+    r = body.rig; c = r.head("pelvis").x
     return [(s, 1.0 if r.head(bone + s).x >= c else -1.0) for s in (".L", ".R")]
 def nrm(v): v = Vector(v); return v.normalized()
 def ss(e0, e1, x):
@@ -59,19 +59,19 @@ LINS = 0.110            # insertion at depth 1 (m); her canal is opened to his g
 TIP_OUT = 0.006         # at depth 0 the tip rests 6 mm outside the entrance
 
 class Ctx:
-    """shared measured anatomy: her canal (entrance + axis on 下半身), his shaft (竿根 -> 竿端)"""
+    """shared measured anatomy: her canal (entrance + axis on pelvis), his shaft (shaft_base -> shaft_end)"""
     def __init__(self, V, M, viv_meas, mar_meas):
         self.V, self.M = V, M
         vg = viv_meas["vagina"]
         e = V3(*vg["entrance"]); e.x = 0.0; ax = V3(*vg["axis"]); ax.x = 0.0; ax.normalize()   # sagittal: PCA tilt removed
-        V.add_landmark("vag_E", "下半身", e); V.lm_dir("vag_D", "下半身", ax)
+        V.add_landmark("vag_E", "pelvis", e); V.lm_dir("vag_D", "pelvis", ax)
         if "anus" in viv_meas:
-            an = viv_meas["anus"]; V.add_landmark("anus_E", "下半身", V3(*an["entrance"])); V.lm_dir("anus_D", "下半身", V3(*an["axis"]))
+            an = viv_meas["anus"]; V.add_landmark("anus_E", "pelvis", V3(*an["entrance"])); V.lm_dir("anus_D", "pelvis", V3(*an["axis"]))
         self.L_erect = mar_meas["erect_length"]
         # his natural erect direction: 20 deg above his pelvis' forward axis, in his sagittal plane
         r = M.rig
         nat_world = (V3(0, -1, 0) * math.cos(math.radians(20)) + V3(0, 0, 1) * math.sin(math.radians(20))).normalized()
-        M.lm_dir("shaft_nat", "下半身", nat_world)
+        M.lm_dir("shaft_nat", "pelvis", nat_world)
 
     def entrance(self, which="vag"):
         return self.V.lm(which + "_E"), self.V.dir(which + "_D")
@@ -81,10 +81,10 @@ class Ctx:
         lins: insertion at depth 1 for this position (default LINS)"""
         M = self.M; r = M.rig
         E, D = self.entrance(which)
-        r.aim("竿根", D)
+        r.aim("shaft_base", D)
         tip_in = depth * (LINS if lins is None else lins) - TIP_OUT
         B = E - D * (self.L_erect - tip_in)                # where the shaft root must be
-        M.move(B - r.head("竿根"))
+        M.move(B - r.head("shaft_base"))
         return E, D
 
 def align_pelvis_to(M, D, up_hint):
@@ -94,16 +94,16 @@ def align_pelvis_to(M, D, up_hint):
     # then remove roll so the pelvis left axis stays horizontal-ish (perpendicular to D and up_hint)
     nat = M.dir("shaft_nat")
     q = nat.rotation_difference(D)
-    R_new = q.to_matrix() @ r.P["下半身"].to_3x3().normalized()
-    up = (R_new @ r.loc_up["下半身"]).normalized()
+    R_new = q.to_matrix() @ r.P["pelvis"].to_3x3().normalized()
+    up = (R_new @ r.loc_up["pelvis"]).normalized()
     # twist around D so his up is as close to up_hint as possible
     u_proj = up - D * up.dot(D); h_proj = V3(*up_hint) - D * V3(*up_hint).dot(D)
     if u_proj.length > 1e-6 and h_proj.length > 1e-6:
         ang = u_proj.normalized().angle(h_proj.normalized())
         if u_proj.normalized().cross(h_proj.normalized()).dot(D) < 0: ang = -ang
         R_new = Matrix.Rotation(ang, 3, D) @ R_new
-    f = (R_new @ r.loc_fwd["下半身"]).normalized(); u = (R_new @ r.loc_up["下半身"]).normalized()
-    M.place(r.head("下半身"), f, u)
+    f = (R_new @ r.loc_fwd["pelvis"]).normalized(); u = (R_new @ r.loc_up["pelvis"]).normalized()
+    M.place(r.head("pelvis"), f, u)
 
 # ---------------------------------------------------------------- shared limb recipes
 def supine_her(V, pelvis_y, tilt=-15.0, knees_w=0.40, feet_w=0.40, feet_back=0.40, head_target=None, arch=0.0):
@@ -114,8 +114,8 @@ def supine_her(V, pelvis_y, tilt=-15.0, knees_w=0.40, feet_w=0.40, feet_back=0.4
     V.spine(forward=nrm(V3(0, 0.05 + 0.10 * arch, 1)), up=nrm(V3(0, 1, -0.05 - 0.10 * arch)),
             chest_forward=nrm(V3(0, 0.12 + 0.22 * arch, 1)), chest_up=nrm(V3(0, 1, -0.12 - 0.22 * arch)))
     SC.settle(V, sink=0.008)                                     # back + pelvis on the sheet, before the feet are planted
-    for s, sx in sides(V, "足"):
-        H = r.head("足" + s)
+    for s, sx in sides(V, "thigh"):
+        H = r.head("thigh" + s)
         A = V3(sx * feet_w, pelvis_y - feet_back, BED_TOP + 0.075)
         V.leg_ik(s, A, H + V3(sx * knees_w, -0.05, 0.55))
         V.foot(s, nrm(V3(sx * 0.22, -1.0, 0.0)), V3(sx * 0.06, 0, 1))          # sole flat on the sheet
@@ -124,8 +124,8 @@ def supine_her(V, pelvis_y, tilt=-15.0, knees_w=0.40, feet_w=0.40, feet_back=0.4
 def her_arms_overhead(V, grip=0.0, reach=0.24, width=0.30):
     """hands up beside her head; grip > 0: palms down, fingers clutching the sheet (tightens with grip)"""
     r = V.rig
-    for s, sx in sides(V, "腕"):
-        sh = r.head("腕" + s)
+    for s, sx in sides(V, "upper_arm"):
+        sh = r.head("upper_arm" + s)
         if grip <= 0:
             W = V3(sx * 0.27, sh.y + reach, BED_TOP + 0.10)
             V.arm_ik(s, W, sh + V3(sx * 0.45, 0.05, -0.1))
@@ -137,12 +137,12 @@ def her_arms_overhead(V, grip=0.0, reach=0.24, width=0.30):
                 V.arm_ik(s, W, sh + V3(sx * 0.45, 0.0, -0.05))
                 V.hand(s, palm=V3(0, 0, -1), fingers=nrm(V3(sx * 0.2, 1, -0.15)))
                 V.fingers(s, 0.42 + 0.26 * grip, thumb=0.40 + 0.25 * grip)
-                low = min(min(tip(V, s, f_).z for f_ in FINGERS), V.rig.tail("親指２" + s).z) - 0.008      # pad radius
+                low = min(min(tip(V, s, f_).z for f_ in FINGERS), V.rig.tail("thumb2" + s).z) - 0.008      # pad radius
                 if low >= BED_TOP - 0.003: break
                 W = W + V3(0, 0, BED_TOP - 0.002 - low)
 
 # ---------------------------------------------------------------- hands that really touch (surface-aware)
-LIMB_BONES = ("腕", "ひじ", "手首", "親指", "人指", "中指", "薬指", "小指")
+LIMB_BONES = ("upper_arm", "elbow", "wrist", "thumb", "index", "middle", "ring", "pinky")
 _KEEP = {}
 def surface(body, exclude=LIMB_BONES):
     """BVH of the body's current evaluated skin (limbs in `exclude` left out, so a hand can find its own body)"""
@@ -156,11 +156,11 @@ def surface(body, exclude=LIMB_BONES):
     Pv, Pf = SC.evaluated(body.obj)
     return BVHTree.FromPolygons([tuple(v) for v in Pv], [f for f in Pf if all(keep[i] for i in f)])
 
-FINGERS = ("人指", "中指", "薬指", "小指")
+FINGERS = ("index", "middle", "ring", "pinky")
 def natural_pole(body, s, W, palm, fingers, hint):
     """elbow pole within +-100 deg of `hint` around the shoulder->wrist axis that leaves the wrist with the least bend
     and twist (the forearm does the pronation), elbow above the mattress, close to last frame's choice"""
-    r = body.rig; S = r.head("腕" + s); ax = (Vector(W) - S).normalized()
+    r = body.rig; S = r.head("upper_arm" + s); ax = (Vector(W) - S).normalized()
     h = Vector(hint) - S; h = (h - ax * ax.dot(h)).normalized()
     b2 = ax.cross(h)
     last = r.__dict__.setdefault("_last_pole", {}).get(s)
@@ -170,9 +170,9 @@ def natural_pole(body, s, W, palm, fingers, hint):
     def trial(a):
         p = S + (h * math.cos(a) + b2 * math.sin(a)) * 0.5
         body.arm_ik(s, W, p); body.hand(s, palm=palm, fingers=fingers)
-        sw_, tw, _, _ = r.swing_twist("手首" + s)
+        sw_, tw, _, _ = r.swing_twist("wrist" + s)
         cost = 2.0 * max(0.0, sw_ - 35.0) + 0.6 * abs(tw) + 25.0 * (1 - math.cos(a))
-        cost += 1500.0 * max(0.0, BED_TOP + 0.035 - r.head("ひじ" + s).z)        # elbow never in the mattress
+        cost += 1500.0 * max(0.0, BED_TOP + 0.035 - r.head("elbow" + s).z)        # elbow never in the mattress
         if last is not None: cost += 150.0 * (p - last).length
         return cost, p, a
     best = min((trial(math.radians(20.0 * k)) for k in range(-5, 6)), key=lambda x: x[0])
@@ -183,9 +183,9 @@ def natural_pole(body, s, W, palm, fingers, hint):
     r._last_pole[s] = best[1].copy()
     r._last_hinge = hinge_mem; r._last_bend = bend_mem; r._last_share = share_mem
     return best[1]
-def tip(body, s, f): return body.rig.tail(f + "３" + s)
+def tip(body, s, f): return body.rig.tail(f + "3" + s)
 def palm_centre(body, s):
-    r = body.rig; return (r.head("手首" + s) * 0.45 + r.head("中指１" + s) * 0.55)
+    r = body.rig; return (r.head("wrist" + s) * 0.45 + r.head("middle1" + s) * 0.55)
 
 _HANDV = {}
 def hand_skin_gap(body, s, bvh):
@@ -193,7 +193,7 @@ def hand_skin_gap(body, s, bvh):
     import numpy as np
     key = (body.obj.name, s)
     if key not in _HANDV:
-        _HANDV[key] = np.where(np.array([b.startswith(("手首", "親指", "人指", "中指", "薬指", "小指")) and b.endswith(s)
+        _HANDV[key] = np.where(np.array([b.startswith(("wrist", "thumb", "index", "middle", "ring", "pinky")) and b.endswith(s)
                                          for b in SC.dominant_bone(body.obj)]))[0][::3]
     SC.apply_rigs(body)
     Pv, _ = SC.evaluated(body.obj)
@@ -241,15 +241,15 @@ def _touch_tips(body, s, bvh, anchor, along, pole, curl, pad, lift, iters, frame
     for _ in range(iters):
         body.arm_ik(s, W, pole)
         body.hand(s, palm=-n, fingers=(f - n * 0.35).normalized())
-        r.limit("手首" + s)
+        r.limit("wrist" + s)
         body.fingers(s, curl, index=curl * 0.6, thumb=0.5)
-        r.curl([[f"薬指{d}{s}" for d in "０１２３"]], 1.05); r.curl([[f"小指{d}{s}" for d in "０１２３"]], 1.15)   # two fingers do the work
-        t_ = (tip(body, s, "人指") + tip(body, s, "中指")) * 0.5
+        r.curl([[f"ring{d}{s}" for d in "0123"]], 1.05); r.curl([[f"pinky{d}{s}" for d in "0123"]], 1.15)   # two fingers do the work
+        t_ = (tip(body, s, "index") + tip(body, s, "middle")) * 0.5
         W = W + (goal - t_)
     def pose_hand():
-        body.hand(s, palm=-n, fingers=(f - n * 0.35).normalized()); r.limit("手首" + s)
+        body.hand(s, palm=-n, fingers=(f - n * 0.35).normalized()); r.limit("wrist" + s)
         body.fingers(s, curl, index=curl * 0.6, thumb=0.5)
-        r.curl([[f"薬指{d}{s}" for d in "０１２３"]], 1.05); r.curl([[f"小指{d}{s}" for d in "０１２３"]], 1.15)
+        r.curl([[f"ring{d}{s}" for d in "0123"]], 1.05); r.curl([[f"pinky{d}{s}" for d in "0123"]], 1.15)
     lift_out(body, s, bvh, W, n, pose_hand, pole, allow=-0.004)
     return P
 
@@ -277,37 +277,37 @@ def cup(body, s, bvh, anchor, along, pole, pad=0.007, palm_lift=0.017, iters=5):
     for _ in range(iters):
         body.arm_ik(s, W, pole)
         body.hand(s, palm=-n, fingers=f)
-        r.limit("手首" + s)
+        r.limit("wrist" + s)
         body.fingers(s, 0.05, thumb=0.15)
         W = W + (goal - palm_centre(body, s))
     for _ in range(2):                                       # concave skin (a crease): lift the hand until it clears
         worst = min(tip_gap(bvh, q) for q in [palm_centre(body, s)] + [tip(body, s, f_) for f_ in FINGERS])
         if worst >= pad * 0.5: break
         W = W + n * (pad - worst); body.arm_ik(s, W, pole); body.hand(s, palm=-n, fingers=f)
-        r.limit("手首" + s); body.fingers(s, 0.05, thumb=0.15)
+        r.limit("wrist" + s); body.fingers(s, 0.05, thumb=0.15)
     lastc = r.__dict__.setdefault("_last_curl", {})
     def settle_curl(key, c):                                 # fingers move smoothly from frame to frame
         p_ = lastc.get(key); c = c if p_ is None else p_ + max(-0.12, min(0.12, c - p_)); lastc[key] = c; return c
     for fn_ in FINGERS:                                      # wrap: smallest curl whose pad reaches the skin
-        chain = [f"{fn_}{d}{s}" for d in "０１２３"]
+        chain = [f"{fn_}{d}{s}" for d in "0123"]
         best = 0.05
         for c in [0.05 + 0.08 * k for k in range(18)]:
             r.curl([chain], c)
             if tip_gap(bvh, tip(body, s, fn_)) <= pad: best = c; break
             best = c
         r.curl([chain], settle_curl(chain[0], best))
-    th = [f"親指{d}{s}" for d in "０１２"]
+    th = [f"thumb{d}{s}" for d in "012"]
     best = 0.15
     for c in [0.15 + 0.08 * k for k in range(12)]:
         r.curl([th], c, decay=(0.6, 0.9, 0.8))
         best = c
         if tip_gap(bvh, r.tail(th[-1])) <= pad: break
     r.curl([th], settle_curl(th[0], best), decay=(0.6, 0.9, 0.8))
-    snap = {k_: r.basis[k_].copy() for k_ in r.basis if k_.endswith(s) and k_.startswith(("親指", "人指", "中指", "薬指", "小指"))}
+    snap = {k_: r.basis[k_].copy() for k_ in r.basis if k_.endswith(s) and k_.startswith(("thumb", "index", "middle", "ring", "pinky"))}
     def pose_hand():
-        body.hand(s, palm=-n, fingers=f); r.limit("手首" + s)
+        body.hand(s, palm=-n, fingers=f); r.limit("wrist" + s)
         for k_, m_ in snap.items(): r.basis[k_] = m_.copy()
-        r.fk("手首" + s)
+        r.fk("wrist" + s)
     for _ in range(2):
         g = hand_skin_gap(body, s, bvh)
         if not (0.005 < g < 0.08): break
@@ -317,30 +317,30 @@ def cup(body, s, bvh, anchor, along, pole, pad=0.007, palm_lift=0.017, iters=5):
 
 def her_rub_hand(V, s, phase, target, radius=0.011, bvh=None):
     """her fingertips circle on her clit, on the skin: pads touching, palm resting above the mons (not in it)"""
-    r = V.rig; sx = dict(sides(V, "腕"))[s]
+    r = V.rig; sx = dict(sides(V, "upper_arm"))[s]
     a = 2 * math.pi * phase
-    fwd = V.fwd_dir("下半身"); up = V.up_dir("下半身"); left = V.left_dir("下半身")
+    fwd = V.fwd_dir("pelvis"); up = V.up_dir("pelvis"); left = V.left_dir("pelvis")
     anchor = target + (left * math.cos(a) + up * math.sin(a)) * radius + fwd * 0.01
     bvh = bvh or surface(V)
-    sh = r.head("腕" + s)
-    lat = sh - r.head("上半身2"); lat = (lat - fwd * fwd.dot(lat)).normalized()   # out of her torso at that shoulder
+    sh = r.head("upper_arm" + s)
+    lat = sh - r.head("chest"); lat = (lat - fwd * fwd.dot(lat)).normalized()   # out of her torso at that shoulder
     return touch_tips(V, s, bvh, anchor, -up, sh + lat * 0.30 - fwd * 0.05 - up * 0.30, curl=0.22, pad=0.005, lift=0.032,
                       frame_key=(CURRENT, "rub", s), free_pole=False)
 
 def her_breast_hand(V, s, phase, nipple_lm, bvh=None):
     """her hand cups her breast from below-outside, fingers wrapping the curve, squeezing gently with the phase"""
-    r = V.rig; sx = dict(sides(V, "腕"))[s]
-    N = V.lm(nipple_lm); fwd = V.fwd_dir("上半身2"); up = V.up_dir("上半身2"); left = V.left_dir("上半身2")
+    r = V.rig; sx = dict(sides(V, "upper_arm"))[s]
+    N = V.lm(nipple_lm); fwd = V.fwd_dir("chest"); up = V.up_dir("chest"); left = V.left_dir("chest")
     k = 0.5 + 0.5 * math.sin(2 * math.pi * phase)
     anchor = N - up * 0.045 + left * sx * 0.025 - fwd * 0.01        # lower-outer curve of the breast
     bvh = bvh or surface(V)
-    sh = r.head("腕" + s)
+    sh = r.head("upper_arm" + s)
     cup(V, s, bvh, anchor, nrm(up * 0.9 - left * sx * 0.35), sh + left * sx * 0.3 - fwd * 0.1 - up * 0.25, palm_lift=0.010 - 0.004 * k)
 
 def kneel_his_legs(M, knee_w=0.17, knee_z=0.055, shin_dir=V3(0, -1, 0.04)):
     r = M.rig
-    for s, sx in sides(M, "足"):
-        H = r.head("足" + s); L = M.len["thigh" + s]
+    for s, sx in sides(M, "thigh"):
+        H = r.head("thigh" + s); L = M.len["thigh" + s]
         dz = H.z - (BED_TOP + knee_z)
         dy = math.sqrt(max(1e-4, L * L - dz * dz - (sx * knee_w - H.x) ** 2))
         K = V3(sx * knee_w, H.y - dy, BED_TOP + knee_z)
@@ -357,7 +357,7 @@ def lean_to_reach(M, targets, pelvis_up_deg, angles=range(0, 75, 3), bend=0.9):
         err = 0.0
         for s, T in targets.items():
             L = M.len["upper" + s] + M.len["fore" + s]
-            err += abs((M.rig.head("腕" + s) - T).length - bend * L)
+            err += abs((M.rig.head("upper_arm" + s) - T).length - bend * L)
         if best is None or err < best[0]: best = (err, a)
     a = best[1]
     M.spine(forward=nrm(yz(-90 + (a + pelvis_up_deg) / 2)), up=nrm(yz((a + pelvis_up_deg) / 2)),
@@ -368,8 +368,8 @@ def his_hands_on_bed(M, y, w=0.31):
     """his weight on his hands: palms flat, pressed a few mm into the mattress"""
     from positions2 import hands_to
     r = M.rig
-    for s, sx in sides(M, "腕"):
-        sh = r.head("腕" + s)
+    for s, sx in sides(M, "upper_arm"):
+        sh = r.head("upper_arm" + s)
         hands_to(M, s, V3(sx * w, y, BED_TOP + 0.035), V3(0, 0, -1), nrm(V3(sx * 0.25, 1, 0)), sh + V3(sx * 0.6, -0.25, 0.35), 0.15, plant=True)
 
 # ---------------------------------------------------------------- MISSIONARY
@@ -388,9 +388,9 @@ def missionary(ctx, t, rub=None, embrace=0.0):
     M.place(E - D * 0.25 + V3(0, 0, 0.05), V3(0, 1, -0.6), V3(0, 0.6, 1))
     align_pelvis_to(M, D, up_hint=V3(0, 0.75, 0.66))
     ctx.penetrate(0.5)                                                 # lean is solved at mid-stroke, then kept
-    sh_her = (V.rig.head("腕.L") + V.rig.head("腕.R")) / 2
+    sh_her = (V.rig.head("upper_arm.L") + V.rig.head("upper_arm.R")) / 2
     hy = sh_her.y + 0.06                                               # hands beside her shoulders, forearms clear of her chest
-    pel_up = math.degrees(math.atan2(M.up_dir("下半身").z, M.up_dir("下半身").y))
+    pel_up = math.degrees(math.atan2(M.up_dir("pelvis").z, M.up_dir("pelvis").y))
     if embrace <= 0:
         targets = {".L": V3(0.50, hy, BED_TOP + 0.035), ".R": V3(-0.50, hy, BED_TOP + 0.035)}
         lean_to_reach(M, targets, pel_up)
@@ -400,35 +400,35 @@ def missionary(ctx, t, rub=None, embrace=0.0):
     ctx.penetrate(t)
     kneel_his_legs(M, knee_w=0.13)
     if embrace <= 0:
-        for s, sx in sides(M, "腕"):
-            sh = M.rig.head("腕" + s)
+        for s, sx in sides(M, "upper_arm"):
+            sh = M.rig.head("upper_arm" + s)
             M.arm_ik(s, V3(sx * 0.50, hy, BED_TOP + 0.065), sh + V3(sx * 0.9, -0.15, 0.2))
             M.hand(s, palm=V3(0, 0, -1), fingers=nrm(V3(sx * 0.25, 1, 0))); M.fingers(s, 0.15)
     else:
-        hh = V.rig.head("頭")
-        for s, sx in sides(M, "腕"):
-            sh = M.rig.head("腕" + s)
+        hh = V.rig.head("head")
+        for s, sx in sides(M, "upper_arm"):
+            sh = M.rig.head("upper_arm" + s)
             M.arm_ik(s, V3(sx * 0.47, sh_her.y + 0.22, BED_TOP + 0.05), sh + V3(sx * 0.9, -0.1, -0.3))
             M.hand(s, palm=V3(0, 0, -1), fingers=nrm(V3(-sx * 0.2, 1, 0))); M.fingers(s, 0.35)
-        his_side = dict(sides(M, "腕"))
+        his_side = dict(sides(M, "upper_arm"))
         def her_arms(v):
             kind, a, b = v
-            for s, sx in sides(V, "腕"):
-                sh = V.rig.head("腕" + s)
+            for s, sx in sides(V, "upper_arm"):
+                sh = V.rig.head("upper_arm" + s)
                 hs = ".L" if his_side[".L"] == sx else ".R"            # his limb on the same world side
                 if kind == "back":                                  # around his flanks, hands on his back
-                    T = M.lm("back" + s) - M.up_dir("上半身2") * a + V3(sx * 0.04, 0, 0.035)
+                    T = M.lm("back" + s) - M.up_dir("chest") * a + V3(sx * 0.04, 0, 0.035)
                     V.arm_ik(s, T, sh + V3(sx * 0.75, -0.05, b))
                     V.hand(s, palm=V3(0, 0, -1), fingers=nrm(V3(-sx * 0.6, 0.4, 0)))
                 else:                                               # holding his upper arms from below
-                    A0 = M.rig.head("腕" + hs); A1 = M.rig.head("ひじ" + hs)
+                    A0 = M.rig.head("upper_arm" + hs); A1 = M.rig.head("elbow" + hs)
                     T = A0 + (A1 - A0) * a + V3(0, 0, -0.055)
-                    cup(V, s, surface(M, exclude=("手首", "親指", "人指", "中指", "薬指", "小指")), T, nrm(V3(sx * 0.3, 0.6, 0.2)), sh + V3(sx * 0.5, -0.1, b))
+                    cup(V, s, surface(M, exclude=("wrist", "thumb", "index", "middle", "ring", "pinky")), T, nrm(V3(sx * 0.3, 0.6, 0.2)), sh + V3(sx * 0.5, -0.1, b))
                     continue
                 V.fingers(s, 0.45)
         best_of("her_arms", [("back", d, z) for d in (0.0, 0.1) for z in (0.0, 0.5)] +
                 [("arm", f, z) for f in (0.5, 0.6, 0.7, 0.8) for z in (-0.4, 0.0, 0.3)], her_arms, (V,))
-    M.look(V.rig.head("頭") + V3(0, 0, 0.05))
+    M.look(V.rig.head("head") + V3(0, 0, 0.05))
 
 # ---------------------------------------------------------------- SOLO (Vivian alone; Marcus watches from the bedside)
 def marcus_bedside(M, look_at):
@@ -448,10 +448,10 @@ def solo(ctx, phase, rub=True):
     else:
         her_arms_overhead(V)
         b = 0.5 + 0.5 * math.sin(2 * math.pi * phase)              # idle: slow breath-like sway of the knees
-        for s, sx in sides(V, "足"):
-            H = V.rig.head("足" + s)
+        for s, sx in sides(V, "thigh"):
+            H = V.rig.head("thigh" + s)
             V.leg_ik(s, V3(sx * 0.30, 1.02 - 0.36, BED_TOP + 0.075), H + V3(sx * (0.48 + 0.04 * b), -0.05, 0.55))
-    marcus_bedside(M, V.rig.head("下半身"))
+    marcus_bedside(M, V.rig.head("pelvis"))
 
 CLIPS = {
     # name: (fn, frames, kind)  kind: "depth" (t = depth 0..1) | "loop" (t = phase, loops) | "pose" (single pose)

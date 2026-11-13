@@ -18,7 +18,7 @@ namespace {
 std::string lowerS(std::string s) { for (auto& c : s) c = (char)std::tolower((unsigned char)c); return s; }
 
 // glTF names as the file wrote them: some exporters keep non-ASCII names JSON-escaped ("\u4e0a\u534a\u8eab" for
-// 上半身) and cgltf hands them over undecoded, so they would never match the character's UTF-8 bone names
+// spine) and cgltf hands them over undecoded, so they would never match the character's UTF-8 bone names
 std::string unescapeJson(const std::string& in) {
     if (in.find('\\') == std::string::npos) return in;
     std::string out;

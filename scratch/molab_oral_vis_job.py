@@ -3,7 +3,7 @@ job=r'''import pathlib, subprocess, json, time, os
 r=pathlib.Path('/root');sp=r/'board/status.json'
 def status(p,d,n):
  x=json.loads(sp.read_text());x.update(phase=p,detail=d,updated=time.time(),commit='pending');x['pass']=n;x['shots']=len(list((r/'board/shots').glob('**/*.png')));sp.write_text(json.dumps(x))
-status('Aligning the mouth to the visible glans','Using the skin-weighted 竿先 surface tip instead of the unweighted 竿端 helper.','oral-vis-r1')
+status('Aligning the mouth to the visible glans','Using the skin-weighted shaft_tip surface tip instead of the unweighted shaft_end helper.','oral-vis-r1')
 with (r/'oral-vis-build.log').open('w') as log: b=subprocess.run(['cmake','--build',str(r/'build'),'-j','12'],cwd=r/'Afterglow',stdout=log,stderr=subprocess.STDOUT)
 if b.returncode: status('Visible-glans build failed','See /root/oral-vis-build.log.','oral-vis-r1');raise SystemExit(1)
 out=r/'board/_experiments/oral-vis-r1';out.mkdir(parents=True,exist_ok=True);env=dict(os.environ,LIBGL_ALWAYS_SOFTWARE='1',GALLIUM_DRIVER='llvmpipe')

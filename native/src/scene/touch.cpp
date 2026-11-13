@@ -57,7 +57,7 @@ void TouchRig::init(Character& c) {
                 }
             }
         }
-        int bone = node("下半身");
+        int bone = node("pelvis");
         if (cnt > 0 && bone >= 0) {
             V3 p = sum * (float)(1.0 / cnt);
             // the opening's normals partly cancel: lean on the direction out from the pelvis
@@ -70,7 +70,7 @@ void TouchRig::init(Character& c) {
     }
     // ---- breasts: the most forward skin weighted to each breast bone (the nipple), at rest ----
     for (int side = 0; side < 2; ++side) {
-        int bone = node(side == 0 ? "乳親.L" : "乳親.R");
+        int bone = node(side == 0 ? "breast.L" : "breast.R");
         if (bone < 0 || m.skins.empty()) continue;
         int joint = -1;
         for (size_t j = 0; j < m.skins[0].joints.size(); ++j) if (m.skins[0].joints[j] == bone) joint = (int)j;
@@ -104,21 +104,21 @@ void TouchRig::init(Character& c) {
         zones_[side == 0 ? (int)Zone::BreastL : (int)Zone::BreastR] = {bone, xformPoint(inv, p), normalize(xformDir(inv, n)), true};
     }
     // ---- arms ----
-    const char* fing[4] = {"人指", "中指", "薬指", "小指"};
-    const char* digits[4] = {"０", "１", "２", "３"};
+    const char* fing[4] = {"index", "middle", "ring", "pinky"};
+    const char* digits[4] = {"0", "1", "2", "3"};
     for (int s = 0; s < 2; ++s) {
         std::string sx = s == 0 ? ".L" : ".R";
         Arm& arm = arms_[s];
-        arm.upper = node("腕" + sx); arm.elbow = node("ひじ" + sx); arm.wrist = node("手首" + sx);
-        arm.middle0 = node(std::string("中指") + digits[1] + sx);
-        arm.index1 = node(std::string("人指") + digits[1] + sx);
-        arm.pinky1 = node(std::string("小指") + digits[1] + sx);
+        arm.upper = node("upper_arm" + sx); arm.elbow = node("elbow" + sx); arm.wrist = node("wrist" + sx);
+        arm.middle0 = node(std::string("middle") + digits[1] + sx);
+        arm.index1 = node(std::string("index") + digits[1] + sx);
+        arm.pinky1 = node(std::string("pinky") + digits[1] + sx);
         arm.side = s == 0 ? -1.f : 1.f;
         for (int f = 0; f < 4; ++f) {
             arm.fingers[f].clear();
             for (int d = 1; d <= 3; ++d) { int b = node(std::string(fing[f]) + digits[d] + sx); if (b >= 0) arm.fingers[f].push_back(b); }
         }
-        int tip = node(std::string("中指") + digits[3] + sx), mid2 = node(std::string("中指") + digits[2] + sx);
+        int tip = node(std::string("middle") + digits[3] + sx), mid2 = node(std::string("middle") + digits[2] + sx);
         if (arm.wrist >= 0 && tip >= 0) {
             float last = mid2 >= 0 ? length(P(a, tip) - P(a, mid2)) : 0.02f;
             arm.handLen = length(P(a, tip) - P(a, arm.wrist)) + last * 0.8f;
@@ -129,7 +129,7 @@ void TouchRig::init(Character& c) {
             for (size_t j = 0; j < m.skins[0].joints.size(); ++j) {
                 const std::string& nm = m.nodes[(size_t)m.skins[0].joints[j]].name;
                 if (nm.size() < sx.size() || nm.compare(nm.size() - sx.size(), sx.size(), sx) != 0) continue;
-                bool hand = nm.rfind("手首", 0) == 0 || nm.rfind("親指", 0) == 0;
+                bool hand = nm.rfind("wrist", 0) == 0 || nm.rfind("thumb", 0) == 0;
                 for (const char* f : fing) hand = hand || nm.rfind(f, 0) == 0;
                 if (!hand) continue;
                 lo = std::min(lo, (int)j); hi = std::max(hi, (int)j);
@@ -143,7 +143,7 @@ void TouchRig::init(Character& c) {
     std::vector<char> trunk;
     if (!m.skins.empty()) {
         trunk.assign(m.skins[0].joints.size(), 0);
-        for (const char* b : {"センター", "グルーブ", "腰", "上半身", "上半身2", "下半身", "乳親.L", "乳親.R"}) {
+        for (const char* b : {"center", "groove", "waist", "spine", "chest", "pelvis", "breast.L", "breast.R"}) {
             int nb = node(b);
             for (size_t j = 0; j < m.skins[0].joints.size(); ++j) if (m.skins[0].joints[j] == nb) trunk[j] = 1;
         }
@@ -177,7 +177,7 @@ void TouchRig::init(Character& c) {
         zones_[(int)z] = {bone, xformPoint(inv, bp), normalize(xformDir(inv, bn)), true};
     };
     // ---- the face: lip front at the midline (the vertices the kiss pucker moves), the nose tip, the surface around ----
-    int headBone = node("頭");
+    int headBone = node("head");
     const auto* kissT = c.morphTargets("kiss");
     if (headBone >= 0 && kissT) {
         struct LV { V3 p, d; };
@@ -247,11 +247,11 @@ void TouchRig::init(Character& c) {
         }
     }
     // bind pose faces +Z; the character's left (.L) is +X
-    anchor(Zone::ChestL, "上半身2", V3{0.09f, 0.22f, 0.f}, V3{0.f, 0.f, 1.f});    // over the pectorals
-    anchor(Zone::ChestR, "上半身2", V3{-0.09f, 0.22f, 0.f}, V3{0.f, 0.f, 1.f});
-    anchor(Zone::WaistL, "下半身", V3{0.f, 0.10f, 0.f}, normalize(V3{1.f, 0.f, 0.15f}));    // the natural waist
-    anchor(Zone::WaistR, "下半身", V3{0.f, 0.10f, 0.f}, normalize(V3{-1.f, 0.f, 0.15f}));
-    anchor(Zone::Sternum, "上半身2", V3{0.f, 0.29f, 0.f}, V3{0.f, 0.f, 1.f});
+    anchor(Zone::ChestL, "chest", V3{0.09f, 0.22f, 0.f}, V3{0.f, 0.f, 1.f});    // over the pectorals
+    anchor(Zone::ChestR, "chest", V3{-0.09f, 0.22f, 0.f}, V3{0.f, 0.f, 1.f});
+    anchor(Zone::WaistL, "pelvis", V3{0.f, 0.10f, 0.f}, normalize(V3{1.f, 0.f, 0.15f}));    // the natural waist
+    anchor(Zone::WaistR, "pelvis", V3{0.f, 0.10f, 0.f}, normalize(V3{-1.f, 0.f, 0.15f}));
+    anchor(Zone::Sternum, "chest", V3{0.f, 0.29f, 0.f}, V3{0.f, 0.f, 1.f});
     for (int z = 0; z < (int)Zone::Count; ++z) {   // the animator still holds the bind pose
         if (!zones_[z].valid) continue;
         bindPos_[z] = xformPoint(a.global(zones_[z].bone), zones_[z].local);
@@ -435,7 +435,7 @@ void TouchRig::solveArm(Animator& a, const Arm& arm, const HandGoal& g) {
     if (g.world) { zp = g.pos; zn = normalize(g.normal); }
     else if (!zoneWorld(a, g.zone, zp, zn)) return;
     const Model* m = a.model();
-    int chest = m->findNode("上半身2"), hips = m->findNode("下半身");
+    int chest = m->findNode("chest"), hips = m->findNode("pelvis");
     V3 up = chest >= 0 && hips >= 0 ? normalize(P(a, chest) - P(a, hips)) : V3{0, 1, 0};
     bool breast = g.world || g.zone != Zone::Vulva;   // a resting palm: fingertips a little beyond the point
     // fingers lie along the surface: toward the vulva from the belly; up over the breast toward the collarbone
