@@ -6,12 +6,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw
-from mathutils import Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 import blender_env as BE
+from mathutils import Vector
 import motion_metrics as MM
 import contact_sheet as CS
 
@@ -113,8 +113,38 @@ def audit_clip(clip, scene_id="story", work_root="/work/renders", audit_root="au
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return metrics
 
+def audit_all_baseline(clips=None, work_root="/work/renders", audit_root="audit"):
+    import shutil
+    BE.load_scene("pair")
+    all_clips = clips or BE.list_actions()
+    scorecard = {"version": 1, "baseline": {}, "current": {}}
+    base_dir = os.path.join(audit_root, "baseline")
+    os.makedirs(base_dir, exist_ok=True)
+    t0 = time.time()
+    for idx, c in enumerate(all_clips):
+        t_c = time.time()
+        m = audit_clip(c, scene_id="baseline", work_root=work_root, audit_root=audit_root, already_loaded=True)
+        slug = c.replace(".", "_")
+        cdir = os.path.join(base_dir, c)
+        for fn in ("sheet_3q.png", "sheet_side.png", "onion.png", "trace.png", "velocity.png", "metrics.json"):
+            src_f = os.path.join(cdir, fn)
+            if os.path.exists(src_f):
+                shutil.copyfile(src_f, os.path.join(base_dir, f"{slug}_{fn}"))
+        scorecard["baseline"][c] = {k: v for k, v in m.items() if k != "series"}
+        scorecard["current"][c] = {k: v for k, v in m.items() if k != "series"}
+        el = time.time() - t0
+        eta = (el / (idx + 1)) * (len(all_clips) - (idx + 1))
+        print(f"[baseline {idx+1}/{len(all_clips)}] {c}: score={m['doll_score']} fails={m['fail_count']} ({time.time()-t_c:.1f}s, ETA {eta:.0f}s)", flush=True)
+    with open(os.path.join(audit_root, "scorecard.json"), "w") as fp:
+        json.dump(scorecard, fp, indent=2)
+    return scorecard
+
 if __name__ == "__main__":
-    c = sys.argv[1] if len(sys.argv) > 1 else "stand.idle"
-    sc = sys.argv[2] if len(sys.argv) > 2 else "the_massage"
-    m = audit_clip(c, sc)
-    print(f"[render_audit] {c} ({sc}): doll_score={m['doll_score']} fails={m['fail_count']} {m['failing_fields']}", flush=True)
+    if len(sys.argv) > 1 and sys.argv[1] == "--all-baseline":
+        subset = sys.argv[2].split(",") if len(sys.argv) > 2 else None
+        audit_all_baseline(subset)
+    else:
+        c = sys.argv[1] if len(sys.argv) > 1 else "stand.idle"
+        sc = sys.argv[2] if len(sys.argv) > 2 else "the_massage"
+        m = audit_clip(c, sc)
+        print(f"[render_audit] {c} ({sc}): doll_score={m['doll_score']} fails={m['fail_count']} {m['failing_fields']}", flush=True)

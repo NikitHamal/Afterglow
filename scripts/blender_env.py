@@ -58,8 +58,8 @@ def list_actions():
     return clips
 
 def bind_clip(clip):
-    """Bind clip action to all armatures in the scene and return (f_start, f_end)."""
-    f0, f1 = 1, 49
+    """Bind clip action to all armatures and shape-key blocks in the scene and return (f_start, f_end)."""
+    f0, f1 = 0, 48
     for arm in _armatures():
         arm.animation_data_create()
         tag = "VIV" if "vivian" in arm.name.lower() else ("MAR" if "marcus" in arm.name.lower() else "")
@@ -68,12 +68,30 @@ def bind_clip(clip):
         if act is not None:
             arm.animation_data.action = act
             if hasattr(arm.animation_data, "action_slot") and getattr(act, "slots", None):
-                try:
-                    arm.animation_data.action_slot = act.slots[0]
-                except Exception:
-                    pass
+                for sl in act.slots:
+                    if getattr(sl, "target_id_type", "") == "OBJECT" or arm.name.lower() in sl.name_display.lower():
+                        try:
+                            arm.animation_data.action_slot = sl
+                            break
+                        except Exception:
+                            pass
             r0, r1 = act.frame_range
             f0, f1 = int(round(r0)), max(int(round(r0)) + 1, int(round(r1)))
+            # Bind shape-key slot if present on body mesh
+            prefix = "vivian_" if tag == "VIV" else "marcus_"
+            for o in bpy.context.scene.objects:
+                if o.type == "MESH" and o.name.startswith(prefix) and o.data.shape_keys:
+                    sk = o.data.shape_keys
+                    sk.animation_data_create()
+                    sk.animation_data.action = act
+                    if hasattr(sk.animation_data, "action_slot") and getattr(act, "slots", None):
+                        for sl in act.slots:
+                            if getattr(sl, "target_id_type", "") == "KEY":
+                                try:
+                                    sk.animation_data.action_slot = sl
+                                    break
+                                except Exception:
+                                    pass
     bpy.context.view_layer.update()
     return f0, f1
 
@@ -188,15 +206,29 @@ def render_clay(clip, out_dir, cam="3q", res=(720, 720), frames=None, motion_blu
     _apply_clay_and_lights()
     sc = bpy.context.scene
     available = {e.identifier for e in sc.render.bl_rna.properties["engine"].enum_items}
-    use_eevee = os.environ.get("AG_USE_EEVEE", "1") == "1"
-    if use_eevee and "BLENDER_EEVEE_NEXT" in available:
-        sc.render.engine = "BLENDER_EEVEE_NEXT"
-    elif use_eevee and "BLENDER_EEVEE" in available:
-        sc.render.engine = "BLENDER_EEVEE"
+    pref = os.environ.get("AG_ENGINE", "WORKBENCH")
+    if pref == "WORKBENCH" and "BLENDER_WORKBENCH" in available:
+        sc.render.engine = "BLENDER_WORKBENCH"
+        sh = sc.display.shading
+        sh.light = "STUDIO"
+        sh.color_type = "MATERIAL"
+        sh.show_shadows = True
+        sh.show_cavity = True
+    elif pref == "EEVEE" and ("BLENDER_EEVEE_NEXT" in available or "BLENDER_EEVEE" in available):
+        sc.render.engine = "BLENDER_EEVEE_NEXT" if "BLENDER_EEVEE_NEXT" in available else "BLENDER_EEVEE"
+        if hasattr(sc, "eevee") and hasattr(sc.eevee, "taa_render_samples"):
+            sc.eevee.taa_render_samples = 4
     else:
         sc.render.engine = "CYCLES"
-        sc.cycles.device = "CPU"
-        sc.cycles.samples = 8
+    sc.cycles.device = "CPU"
+    sc.cycles.samples = int(os.environ.get("AG_SAMPLES", "2"))
+    sc.cycles.use_denoising = False
+    sc.cycles.max_bounces = 1
+    sc.cycles.diffuse_bounces = 1
+    sc.cycles.glossy_bounces = 0
+    sc.cycles.transmission_bounces = 0
+    sc.cycles.volume_bounces = 0
+    sc.cycles.transparent_max_bounces = 0
     sc.render.resolution_x, sc.render.resolution_y = res[0], res[1]
     sc.render.resolution_percentage = 100
     sc.render.use_motion_blur = bool(motion_blur)
@@ -213,8 +245,6 @@ def render_clay(clip, out_dir, cam="3q", res=(720, 720), frames=None, motion_blu
             bpy.ops.render.render(write_still=True)
         except Exception:
             sc.render.engine = "CYCLES"
-            sc.cycles.device = "CPU"
-            sc.cycles.samples = 8
             bpy.ops.render.render(write_still=True)
         rendered.append(fp)
     dt = time.time() - t0
