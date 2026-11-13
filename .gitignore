@@ -50,3 +50,5 @@ native/android/build/
 native/android/app/build/
 native/android/local.properties
 native/android/app/src/main/assets/
+notebooks/public/
+__marimo__/

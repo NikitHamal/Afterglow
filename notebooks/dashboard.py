@@ -1,80 +1,112 @@
 import marimo
 
-__generated_with = "0.9.0"
-app = marimo.App(width="full", app_title="Afterglow — Kill The Doll Motion Audit")
+__generated_with = "0.25.2"
+app = marimo.App(width="full", app_title="Afterglow — Motion Review Board")
+
 
 @app.cell
-def __():
-    import os, glob, json, subprocess
+def _():
+    import json, os, sys, glob, time
+    from pathlib import Path
     import marimo as mo
-    refresh = mo.ui.refresh(options=["3s", "5s", "10s"], default_interval="3s", label="Live Auto-Refresh")
-    scenes = ["the_massage", "the_storm", "old_flames", "neighbours", "salt_and_sun", "baseline"]
-    scorecard_path = "audit/scorecard.json"
-    scorecard = json.load(open(scorecard_path)) if os.path.exists(scorecard_path) else {"baseline": {}, "current": {}}
-    clips = sorted(set(list(scorecard.get("current", {}).keys()) + ["stand.idle", "stand.embrace", "kiss.stand", "sit.bed", "kiss.sit"]))
-    scene_sel = mo.ui.dropdown(options=scenes, value="the_massage", label="Scene")
-    clip_sel = mo.ui.dropdown(options=clips, value="stand.idle", label="Clip")
-    work_files = sorted(glob.glob("/work/**/*.glb", recursive=True) + glob.glob("native/assets/characters/*.glb") + glob.glob("/work/**/*.blend", recursive=True))
-    file_sel = mo.ui.dropdown(options=work_files or ["native/assets/characters/vivian.glb"], value=(work_files[0] if work_files else "native/assets/characters/vivian.glb"), label="Load /work Asset")
-    return clips, clip_sel, file_sel, glob, json, mo, os, refresh, scene_sel, scenes, scorecard, subprocess, work_files
+    for _p in (str(Path(__file__).resolve().parent) if "__file__" in globals() else "", "/work/repo/notebooks", "notebooks"):
+        if _p and os.path.exists(os.path.join(_p, "dash_lib.py")) and _p not in sys.path:
+            sys.path.insert(0, _p)
+    import dash_lib as D
+    refresh = mo.ui.refresh(options=["3s", "5s", "10s"], default_interval="3s", label="Live auto-refresh")
+    ka = D.keepalive("http://127.0.0.1:2718/api/status" if os.path.isdir("/marimo") else None)
+    return D, Path, glob, json, ka, mo, os, refresh, time
+
 
 @app.cell
-def __(clip_sel, file_sel, json, mo, os, refresh, scene_sel, scorecard):
-    _ = refresh.value
-    sc = scene_sel.value
-    cl = clip_sel.value
-    b_dir = os.path.join("audit", "baseline", cl)
-    c_dir = os.path.join("audit", sc, cl) if os.path.exists(os.path.join("audit", sc, cl)) else b_dir
-    b_met = scorecard.get("baseline", {}).get(cl, {})
-    c_met = scorecard.get("current", {}).get(cl, b_met)
-    b_score = b_met.get("doll_score", 0.0)
-    c_score = c_met.get("doll_score", b_score)
-    delta = round(c_score - b_score, 1)
-    arrow = f"▲ +{delta}" if delta > 0 else (f"▼ {delta}" if delta < 0 else "● 0.0")
-
-    def _img(folder, name):
-        p = os.path.join(folder, name)
-        return mo.image(src=p, width=340) if os.path.exists(p) else mo.md(f"*Missing `{p}`*")
-
-    card1 = mo.vstack([
-        mo.md(f"## Card 1 — LIVE REVIEW PLAYER (`{sc}` → `{cl}`) | Score: **{c_score}** ({arrow} vs baseline {b_score})"),
-        mo.hstack([refresh, scene_sel, clip_sel]),
-        mo.hstack([
-            mo.vstack([mo.md("**Baseline 3/4 & Side**"), _img(b_dir, "sheet_3q.png"), _img(b_dir, "sheet_side.png"), _img(b_dir, "onion.png"), _img(b_dir, "trace.png"), _img(b_dir, "velocity.png")]),
-            mo.vstack([mo.md("**Current 3/4 & Side**"), _img(c_dir, "sheet_3q.png"), _img(c_dir, "sheet_side.png"), _img(c_dir, "onion.png"), _img(c_dir, "trace.png"), _img(c_dir, "velocity.png")]),
-        ]),
+def _(D, glob, mo, os, refresh, time, ka):
+    refresh.value
+    sha, subject = D.sync()
+    shots = D.newest_shots(8)
+    strip = mo.hstack([mo.vstack([mo.image(src=p, width=230), mo.md(f"`{os.path.relpath(p, D.ROOT)}` · {time.strftime('%H:%M:%S', time.localtime(os.path.getmtime(p)))}")]) for p in shots], wrap=True) if shots else mo.md("_no shots yet_")
+    n_clips = len(glob.glob(str(D.ROOT / "audit" / "**" / "metrics.json"), recursive=True))
+    mo.vstack([
+        mo.md(f"# Afterglow — Motion Review Board\n**main @ `{sha}`** — {subject} · keep-alive: `{ka}` · {n_clips} audited clips · refreshed {time.strftime('%H:%M:%S')}"),
+        refresh,
+        mo.md("### Latest shots (newest first)"),
+        strip,
     ])
+    return
 
+
+@app.cell
+def _(D, Path, mo, os):
+    import anywidget, traitlets
+    _pub = Path("/marimo/public") if os.path.isdir("/marimo") else D.HERE / "public"
+    _pubdir, _copied = D.install_stage(_pub)
+
+    class AfterglowStage(anywidget.AnyWidget):
+        _esm = D.ROOT / "tools" / "qa" / "molab_stage" / "stage_bundle.js"
+        public_base = traitlets.Unicode("/public/afterglow/" if os.path.isdir("/marimo") else "./public/afterglow/").tag(sync=True)
+        notebook_id = traitlets.Unicode("").tag(sync=True)
+        clip = traitlets.Unicode("stand.idle").tag(sync=True)
+        capture = traitlets.Unicode("").tag(sync=True)
+
+    stage = mo.ui.anywidget(AfterglowStage())
+    mo.vstack([
+        mo.md("## Interactive 3D stage — shipped room, both rigs, every baked clip\nOrbit / zoom / scrub, switch clip + speed + camera, toggle **Rig bones** to see the English skeleton (`pelvis`, `spine`, `chest`, `upper_arm.L` …)."),
+        stage,
+    ])
+    return
+
+
+@app.cell
+def _(D, json, mo, os):
+    sc_path = D.ROOT / "audit" / "scorecard.json"
+    scorecard = json.load(open(sc_path)) if sc_path.exists() else {"baseline": {}, "current": {}}
+    scenes = sorted(d.name for d in (D.ROOT / "audit").iterdir() if d.is_dir() and any(d.glob("*/sheet_3q.png")))
+    clips = sorted(scorecard.get("current", {}).keys()) or ["stand.idle"]
+    scene_sel = mo.ui.dropdown(options=sorted(set(scenes + ["baseline"])), value=(scenes[0] if scenes else "baseline"), label="Scene")
+    clip_sel = mo.ui.dropdown(options=clips, value=clips[0], label="Clip")
+    return clip_sel, clips, scene_sel, scenes, scorecard
+
+
+@app.cell
+def _(D, clip_sel, mo, os, scene_sel, scorecard):
+    def _img(folder, name, w=330):
+        p = folder / name
+        return mo.image(src=str(p), width=w) if p.exists() else mo.md(f"_missing `{name}`_")
+
+    cl, sc = clip_sel.value, scene_sel.value
+    b_dir = D.ROOT / "audit" / "baseline" / cl
+    c_dir = D.ROOT / "audit" / sc / cl
+    if not c_dir.exists():
+        c_dir = b_dir
+    b, c = scorecard.get("baseline", {}).get(cl, {}), scorecard.get("current", {}).get(cl, {})
+    names = ["sheet_3q.png", "sheet_side.png", "onion.png", "trace.png", "velocity.png", "compare_3q.png"]
+    mo.vstack([
+        mo.md(f"## Before / after review — `{sc}` → `{cl}`  ·  doll score **{b.get('doll_score', '–')} → {c.get('doll_score', '–')}**"),
+        mo.hstack([scene_sel, clip_sel]),
+        mo.hstack([mo.vstack([mo.md("**Baseline**")] + [_img(b_dir, n) for n in names[:5]]),
+                   mo.vstack([mo.md("**Current**")] + [_img(c_dir, n) for n in names[:5]])], gap=2),
+        _img(c_dir, "compare_3q.png", 700),
+    ])
+    return
+
+
+@app.cell
+def _(D, mo, os, scorecard):
     rows = []
     for k, cur in scorecard.get("current", {}).items():
         base = scorecard.get("baseline", {}).get(k, cur)
-        d = round(cur.get("doll_score", 0.0) - base.get("doll_score", 0.0), 1)
-        row = {"clip": k, "doll_score": cur.get("doll_score", 0.0), "delta": d, "fails": cur.get("fail_count", 0)}
-        row.update(cur.get("fields", {}))
-        rows.append(row)
-    rows.sort(key=lambda r: r["delta"])
-    card2 = mo.vstack([mo.md("## Card 2 — DOLL-FACTOR SCORECARD"), mo.ui.table(rows)])
+        rows.append({"clip": k, "baseline": base.get("doll_score", 0), "current": cur.get("doll_score", 0),
+                     "fails": cur.get("fail_count", 0), **cur.get("fields", {})})
+    rows.sort(key=lambda r: r["current"])
+    rd = lambda n: (D.ROOT / n).read_text() if (D.ROOT / n).exists() else ""
+    mo.ui.tabs({
+        "Scorecard (weakest first)": mo.ui.table(rows, page_size=25),
+        "Issue board": mo.md(rd("audit/ISSUES.md")),
+        "Changelog": mo.md(rd("audit/CHANGELOG.md")),
+        "Rig names (legacy → English)": mo.ui.table(D.rig_rows(), selection=None, page_size=40),
+        "ANIMATION_STATUS": mo.md(rd("ANIMATION_STATUS.md")),
+    })
+    return
 
-    issues_md = open("audit/ISSUES.md").read() if os.path.exists("audit/ISSUES.md") else "No issues."
-    card3 = mo.vstack([mo.md("## Card 3 — ISSUE BOARD"), mo.md(issues_md)])
-
-    scene_chips = []
-    for s_id in ["the_massage", "the_storm", "old_flames", "neighbours", "salt_and_sun"]:
-        s_clips = glob.glob(f"audit/{s_id}/*/metrics.json") if "glob" in dir() else []
-        scene_chips.append(f"- **`{s_id}`**: {len(s_clips)} clips audited")
-    card4 = mo.vstack([mo.md("## Card 4 — SCENE BROWSER"), mo.md("\n".join(scene_chips))])
-
-    card5 = mo.vstack([
-        mo.md("## Card 5 — LIVE PLAYGROUND (`/work/` & Repo Asset Loader)"),
-        file_sel,
-        mo.md(f"Selected asset: `{file_sel.value}` | Active clip scorecard: `{json.dumps(c_met.get('fields', {}))}`"),
-    ])
-
-    card6 = mo.vstack([
-        mo.md("## Card 6 — BEFORE / AFTER SCENES"),
-        mo.md(open("ANIMATION_STATUS.md").read() if os.path.exists("ANIMATION_STATUS.md") else ""),
-    ])
-    return mo.vstack([card1, card2, card3, card4, card5, card6])
 
 if __name__ == "__main__":
     app.run()

@@ -1,7 +1,7 @@
-import * as THREE from "/public/afterglow/vendor/three.module.js?v=169";
-import { OrbitControls } from "/public/afterglow/vendor/OrbitControls.js?v=169";
-import { GLTFLoader } from "/public/afterglow/vendor/GLTFLoader.js?v=169";
-import { RoomEnvironment } from "/public/afterglow/vendor/RoomEnvironment.js?v=169";
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 
 export default function render({ model, el }) {
   el.style.width = "100%";
@@ -90,6 +90,7 @@ export default function render({ model, el }) {
         <span class="agw-sep"></span>
         <label class="agw-pill"><input id="agwRoom" type="checkbox" checked> Room</label>
         <label class="agw-pill"><input id="agwLoop" type="checkbox" checked> Loop</label>
+        <label class="agw-pill"><input id="agwRig" type="checkbox"> Rig bones</label>
         <button id="agwShot" type="button">Save shot</button>
       </div>
     </div>
@@ -109,6 +110,8 @@ export default function render({ model, el }) {
   const roomBox = el.querySelector("#agwRoom");
   const loopBox = el.querySelector("#agwLoop");
   const shotBtn = el.querySelector("#agwShot");
+  const rigBox = el.querySelector("#agwRig");
+  const rigHelpers = [];
   const viewBtns = [...el.querySelectorAll("[data-view]")];
   const base = model.get("public_base") || "/public/afterglow/";
   const notebookId = model.get("notebook_id") || "";
@@ -382,6 +385,18 @@ export default function render({ model, el }) {
   timeEl.addEventListener("input", onTimeInput, { signal });
   speedSel.addEventListener("change", () => { speed = Number(speedSel.value) || 1; }, { signal });
   focusSel.addEventListener("change", () => { focus = focusSel.value; syncFocus(); setView("profile"); }, { signal });
+  rigBox.addEventListener("change", () => {
+    if (rigBox.checked && !rigHelpers.length) {
+      for (const who of ["vivian", "marcus"]) {
+        if (!roots[who]) continue;
+        const h = new THREE.SkeletonHelper(roots[who]);
+        h.material.depthTest = false; h.material.linewidth = 2;
+        h.renderOrder = 10; h.frustumCulled = false;
+        scene.add(h); rigHelpers.push(h);
+      }
+    }
+    for (const h of rigHelpers) h.visible = rigBox.checked;
+  }, { signal });
   roomBox.addEventListener("change", () => { if (room) room.visible = roomBox.checked; grid.visible = !roomBox.checked; }, { signal });
   loopBox.addEventListener("change", () => { for (const entries of actions.values()) for (const e of entries) e.action.clampWhenFinished = !loopBox.checked; }, { signal });
   viewBtns.forEach((b) => b.addEventListener("click", () => setView(b.dataset.view), { signal }));
