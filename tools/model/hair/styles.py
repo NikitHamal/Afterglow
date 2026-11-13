@@ -329,4 +329,79 @@ def crop(h, rng):
     print(f"[style] crop: {len(b.F)} faces ({nb} hairline, cap {nc})", flush=True)
     return b
 
-STYLES = {"chignon": chignon, "bob": bob, "puff": puff, "crop": crop}
+def long_waves(h, rng):
+    b = Builder(h)
+    k = h.k
+    part = -0.022 * k
+    roots = h.roots(0.006 * k, 0.0032 * k, 0.026 * k, n_cand=35000)
+
+    def flow(p, n):
+        side = 1.0 if p[0] >= part else -1.0
+        crown = float(ss(h.EC[2] + 0.045 * k, h.TOP_Z - 0.005 * k, p[2]))
+        f = np.array([side * (0.35 + crown), 0.10, -1.0 + 0.85 * crown])
+        if p[1] < h.EC[1] + 0.025 * k:
+            edge = float(ss(h.hairline_z(p, False) + 0.034 * k, h.hairline_z(p, False) + 0.004 * k, p[2]))
+            f = f * (1 - edge) + np.array([side, 0.26, 0.08]) * edge
+        return tangent(f, n)
+
+    for layer, (lift, fraction, width) in enumerate(((0.002, 1.0, 0.007), (0.004, 0.8, 0.006), (0.007, 0.5, 0.004))):
+        strands = []
+        for root in roots[rng.random(len(roots)) < fraction]:
+            path = grow_on_skull(h, root, flow,
+                                 lambda s, p: k * (lift + 0.009 * float(ss(h.EC[2] + 0.045 * k, h.TOP_Z, p[2]))),
+                                 lambda p, s: p[2] < h.EC[2] + 0.002 * k, max_len=0.32 * k)
+            if len(path) < 3:
+                continue
+            p = path[-1].copy()
+            side = 1.0 if p[0] >= part else -1.0
+            front = p[1] < h.Ch[1] + 0.010 * k
+            end_z = h.CHIN_Z - rng.uniform(0.28, 0.38) * k
+            t = np.linspace(0.0, 1.0, 48)
+            fall = np.repeat(p[None], len(t), axis=0)
+            ease = ss(0.0, 0.8, t)
+            fall[:, 2] = p[2] + (end_z - p[2]) * t
+            spread = side * ((0.135 if front else 0.095) + lift) * k
+            fall[:, 0] += (spread - p[0]) * ease
+            fall[:, 1] += ((h.EC[1] - 0.035 * k if front else h.Ch[1] + 0.11 * k) - p[1]) * ease
+            phase = rng.uniform(-0.35, 0.35)
+            wave = np.sin(t * 2.8 * math.pi + phase) * ss(0.10, 0.65, t)
+            fall[:, 0] += side * 0.012 * k * wave
+            fall[:, 1] += 0.008 * k * np.sin(t * 2.5 * math.pi + phase) * ease
+            for i, q in enumerate(fall):
+                loc, normal, distance = h.near(q)
+                signed = float((q - loc) @ normal)
+                clearance = (lift + 0.008) * k
+                if signed < clearance and distance < 0.08 * k:
+                    fall[i] = loc + normal * clearance
+                if front and q[2] > h.CHIN_Z - 0.03 * k:
+                    half = h.face_half(q[2]) + (lift + 0.008) * k
+                    fall[i, 0] = side * max(abs(fall[i, 0]), half)
+            guide, length = resample(np.vstack((path, fall[1:])), 33)
+            if length > 0.15 * k:
+                strands.append(guide)
+        for guide in strands:
+            directions = nrm(np.gradient(guide, axis=0))
+            outward = guide - h.Ch
+            outward[:, 0] /= 0.09 * k
+            outward[:, 1] /= 0.10 * k
+            outward[:, 2] = np.maximum(outward[:, 2], 0) / (0.105 * k)
+            across = nrm(np.cross(directions, nrm(outward)))
+            for i in range(1, len(across)):
+                if across[i] @ across[i - 1] < 0:
+                    across[i] *= -1
+            for _ in range(3):
+                across[1:-1] = nrm(across[:-2] + 2 * across[1:-1] + across[2:])
+            widths = width * k * (1 - 0.92 * np.linspace(0, 1, len(guide)))
+            b.card(guide, across, widths, int(rng.choice((0, 1, 2, 3))), lambda u: {HEAD: 1.0})
+        print(f"[style] long waves layer {layer}: {len(strands)} guides", flush=True)
+    baby_hairs(b, h, flow, rng, n=160, phi_max=1.65)
+    flyaways(b, h, roots, flow, rng, n=28, length=(0.06, 0.11))
+
+    def cap_uv(p):
+        angle = math.atan2(p[1] - h.Ch[1], p[0] - part)
+        return (3 * (angle / (2 * math.pi) + 0.5), (h.TOP_Z - p[2]) / 0.05)
+
+    b.cap(0.0015 * k, -0.002 * k, cap_uv, fade_from=0.002 * k)
+    return b
+
+STYLES = {"chignon": chignon, "bob": bob, "puff": puff, "crop": crop, "long_waves": long_waves}

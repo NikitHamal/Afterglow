@@ -40,6 +40,10 @@ node_modules/
 task-shots/
 .claude/
 
+# Local modeling, rendering, and release artifacts
+/scratch/
+*.jks
+
 # Android build outputs and generated content
 native/android/.gradle/
 native/android/build/
