@@ -375,6 +375,9 @@ def his_hands_on_bed(M, y, w=0.31):
 # ---------------------------------------------------------------- MISSIONARY
 def missionary(ctx, t, rub=None, embrace=0.0):
     V, M = ctx.V, ctx.M
+    emb_ph = 2.0 * math.pi * t if embrace > 0.0 else 0.0
+    if embrace > 0.0:
+        t = 0.52 + 0.06 * math.sin(emb_ph) + 0.02 * math.sin(2.0 * emb_ph - 0.4)
     k = ss(0.45, 1.0, t)                                               # how hard he is in: her body answers
     head_pt = V3(0.55 - 0.10 * k, 1.75 + 0.20 * k, BED_TOP + 0.50 + 0.10 * k)  # face turned toward the room, chin lifts as he goes deep
     supine_her(V, pelvis_y=0.98 + 0.004 * t + 0.012 * k, tilt=-24 - 3 * k, knees_w=0.95 + 0.08 * k, feet_w=0.62, feet_back=0.30,
@@ -457,7 +460,7 @@ CLIPS = {
     # name: (fn, frames, kind)  kind: "depth" (t = depth 0..1) | "loop" (t = phase, loops) | "pose" (single pose)
     "missionary.in":      (lambda c, t: missionary(c, t), 25, "depth"),
     "missionary.rub":     (lambda c, t: missionary(c, 0.5, rub=t), 25, "loop"),
-    "missionary.embrace": (lambda c, t: missionary(c, 0.5, embrace=1.0), 2, "pose"),
+    "missionary.embrace": (lambda c, t: missionary(c, t, embrace=1.0), 25, "loop"),
     "solo.rub":           (lambda c, t: solo(c, t, rub=True), 25, "loop"),
     "solo.idle":          (lambda c, t: solo(c, t, rub=False), 49, "loop"),
 }
