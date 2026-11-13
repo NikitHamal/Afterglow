@@ -33,35 +33,36 @@ def _apply_pose_fixes(clip, arm):
                 _add_quat_delta(el, -0.06, 0.0, -0.06 * sgn)
     elif clip in ("oral.in", "handjob.in", "titjob.in"):
         if not is_viv:
-            # Fix Marcus's 150-deg backward-folded forearms in supine clips using his verified cowgirl supine arm pose
+            # Rest Marcus's arms flat on the mattress beside his hips (clear of Vivian's shoulders)
             for side, sgn in ((".L", 1.0), (".R", -1.0)):
                 ua = arm.pose.bones.get("upper_arm" + side)
                 el = arm.pose.bones.get("elbow" + side)
                 wr = arm.pose.bones.get("wrist" + side)
                 if ua:
-                    q_fix = Euler((-0.41, 0.60 * sgn, 0.06 * sgn), "XYZ").to_quaternion()
+                    q_fix = Euler((-0.16, 0.55 * sgn, -0.18 * sgn), "XYZ").to_quaternion()
                     ua.rotation_quaternion = q_fix
                     ua.matrix_basis = Matrix.Translation(ua.matrix_basis.to_translation()) @ q_fix.to_matrix().to_4x4()
                 if el:
-                    q_el = Euler((0.08, 0.04 * sgn, 0.14 * sgn), "XYZ").to_quaternion()
+                    q_el = Euler((0.05, 0.0, 0.06 * sgn), "XYZ").to_quaternion()
                     el.rotation_quaternion = q_el
                     el.matrix_basis = Matrix.Translation(el.matrix_basis.to_translation()) @ q_el.to_matrix().to_4x4()
                 if wr:
-                    q_wr = Euler((0.06, -0.08 * sgn, 0.0), "XYZ").to_quaternion()
+                    q_wr = Euler((0.04, -0.06 * sgn, 0.0), "XYZ").to_quaternion()
                     wr.rotation_quaternion = q_wr
                     wr.matrix_basis = Matrix.Translation(wr.matrix_basis.to_translation()) @ q_wr.to_matrix().to_4x4()
         elif clip == "oral.in":
-            # Keep Vivian's left elbow tucked back toward her hip (mirroring her right arm) instead of jutting past her head
-            ua_l = arm.pose.bones.get("upper_arm.L")
-            el_l = arm.pose.bones.get("elbow.L")
-            if ua_l:
-                q_ul = Euler((-1.02, 0.15, 0.04), "XYZ").to_quaternion()
-                ua_l.rotation_quaternion = q_ul
-                ua_l.matrix_basis = Matrix.Translation(ua_l.matrix_basis.to_translation()) @ q_ul.to_matrix().to_4x4()
-            if el_l:
-                q_el = Euler((-0.95, -0.45, -1.05), "XYZ").to_quaternion()
-                el_l.rotation_quaternion = q_el
-                el_l.matrix_basis = Matrix.Translation(el_l.matrix_basis.to_translation()) @ q_el.to_matrix().to_4x4()
+            # Smooth both of Vivian's arms in oral.in (eliminating left elbow jut and right hand f7/f18 IK jump)
+            for side, sgn in ((".L", 1.0), (".R", -1.0)):
+                ua = arm.pose.bones.get("upper_arm" + side)
+                el = arm.pose.bones.get("elbow" + side)
+                if ua:
+                    q_u = Euler((-1.02, 0.15 * sgn, 0.04 * sgn), "XYZ").to_quaternion()
+                    ua.rotation_quaternion = q_u
+                    ua.matrix_basis = Matrix.Translation(ua.matrix_basis.to_translation()) @ q_u.to_matrix().to_4x4()
+                if el:
+                    q_e = Euler((-0.95, -0.45 * sgn, -1.05 * sgn), "XYZ").to_quaternion()
+                    el.rotation_quaternion = q_e
+                    el.matrix_basis = Matrix.Translation(el.matrix_basis.to_translation()) @ q_e.to_matrix().to_4x4()
     elif clip in ("cowgirl.in", "cowgirl.rub") and is_viv:
         # Lean Vivian's torso forward (X + 0.22 on spine & chest) so her palms rest on Marcus's chest
         for sb, ang in (("spine", 0.20), ("chest", 0.22), ("neck", -0.22)):
