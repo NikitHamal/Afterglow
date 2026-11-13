@@ -137,15 +137,23 @@ void Procedural::apply(Animator& a, float dt, const ProcParams& p) {
 
 void Procedural::breathing(Animator& a, float dt, const ProcParams& p) {
     breathPhase_ += dt * p.breathRate * 2.f * kPi;
-    float s = std::sin(breathPhase_), amp = p.breathAmp;
+    float amp = p.breathAmp;
     if (amp <= 0.f) return;
-    auto tilt = [&](int n, float ang) {
+    // Asymmetric inhale/exhale wave with diaphragmatic-to-thoracic phase lag and clavicle follow
+    auto wave = [](float ph) { return std::sin(ph) + 0.22f * std::sin(2.f * ph - 0.45f); };
+    float sBelly = wave(breathPhase_);
+    float sChest = wave(breathPhase_ - 0.35f);
+    float sClav  = wave(breathPhase_ - 0.55f);
+    float sNeck  = wave(breathPhase_ - 0.75f);
+    auto tiltAxis = [&](int n, const V3& ax, float ang) {
         if (n < 0) return;
-        a.r(n) = qnormalize(qmul(a.r(n), qaxis(V3{1, 0, 0}, ang)));
+        a.r(n) = qnormalize(qmul(a.r(n), qaxis(ax, ang)));
     };
-    tilt(chest_, -0.028f * amp * s);
-    tilt(belly_, 0.012f * amp * s);
-    tilt(neck_, 0.016f * amp * s);
+    tiltAxis(belly_, V3{1, 0, 0}, 0.014f * amp * sBelly);
+    tiltAxis(chest_, V3{1, 0, 0}, -0.030f * amp * sChest);
+    tiltAxis(shoulderL_, V3{0, 0, 1}, 0.018f * amp * sClav);
+    tiltAxis(shoulderR_, V3{0, 0, 1}, -0.018f * amp * sClav);
+    tiltAxis(neck_, V3{1, 0, 0}, 0.018f * amp * sNeck);
 }
 
 void Procedural::look(Animator& a, float dt, const ProcParams& p) {
