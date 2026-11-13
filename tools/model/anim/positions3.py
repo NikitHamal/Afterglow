@@ -44,7 +44,7 @@ def handjob(ctx, t):
     V.look(R0 + S * 0.08 + V3(0, 0.25 * math.sin(t * math.pi), 0.10))   # glances up at him as her hand rises
     for s, sx in sides(M, "upper_arm"):
         sh = m.head("upper_arm" + s)
-        hands_to(M, s, V3(sx * 0.34, sh.y + 0.02, BED_TOP + 0.075), V3(0, 0, -1), nrm(V3(sx, 0.2, 0)), sh + V3(sx * 0.3, -0.3, 0.1), 0.08)
+        hands_to(M, s, V3(sx * 0.34, sh.y - 0.36, BED_TOP + 0.075), V3(0, 0, -1), nrm(V3(sx * 0.25, -1, 0)), sh + V3(sx * 0.28, -0.18, 0.08), 0.18)
     M.look(r.head("head"))
 
 # ---------------------------------------------------------------- TITJOB: his shaft between her breasts, her hands press them together

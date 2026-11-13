@@ -142,9 +142,9 @@ def cowgirl(ctx, t, reverse=False, rub=None):
         else:                                   # knees ahead of her beside his thighs, shins fanned back past his hips
             kneel(V, w, -1, lambda sx: nrm(V3(sx * v[3], 1, 0.04)), knee_z=0.045, min_dy=0.04)
     if not reverse:
-        best_of("seat", [(tl, ln, w) for tl, ln in ((-0.22, 18), (0.05, 26), (0.30, 36)) for w in (0.20, 0.23, 0.26, 0.29, 0.32, 0.35)], seat, (V, M))
+        best_of("seat", [(tl, ln, w) for tl, ln in ((-0.15, 28), (0.05, 34), (0.25, 42)) for w in (0.20, 0.23, 0.26, 0.29, 0.32, 0.35)], seat, (V, M))
     else:
-        best_of("seat", [(tl, 18, w, f) for tl in (0.30, 0.50) for w in (0.24, 0.30, 0.36, 0.42) for f in (0.5, 0.9)], seat, (V, M))
+        best_of("seat", [(tl, 22, w, f) for tl in (0.30, 0.50) for w in (0.24, 0.30, 0.36, 0.42) for f in (0.5, 0.9)], seat, (V, M))
     bvhM = surface(M); bvhV_self = None
     his_leg = dict(sides(M, "thigh"))
     for s, sx in sides(V, "upper_arm"):
@@ -249,13 +249,13 @@ def oral(ctx, t):
         if s == ".R":                                   # grip low on the shaft, fingers around it
             side = V3(sx, 0, 0); around = S.cross(side).normalized()
             cup(V, s, bvhM, R0 + S * 0.06 + side * 0.03, around, sh + V3(sx * 0.3, -0.25, -0.2))
-        else:                                           # the other hand on his inner thigh, near the groin
+        else:                                           # the other hand on his inner thigh, near the groin (elbow back toward her hip, never past her head)
             hs = ".L" if his_leg[".L"] == sx else ".R"
             H = M.rig.head("thigh" + hs); K = M.rig.head("knee" + hs)
-            cup(V, s, bvhM, H + (K - H) * 0.40 + V3(0, 0, 0.08), (K - H).normalized(), sh + V3(sx * 0.4, -0.2, -0.2))
+            cup(V, s, bvhM, H + (K - H) * 0.35 + V3(0, 0, 0.08), (K - H).normalized(), sh + V3(sx * 0.35, -0.35, -0.25))
     for s, sx in sides(M, "upper_arm"):
         sh = m.head("upper_arm" + s)
-        hands_to(M, s, V3(sx * 0.36, sh.y + 0.05, BED_TOP + 0.075), V3(0, 0, -1), nrm(V3(sx, 0.2, 0)), sh + V3(sx * 0.3, -0.3, 0.1), 0.08)
+        hands_to(M, s, V3(sx * 0.34, sh.y - 0.36, BED_TOP + 0.075), V3(0, 0, -1), nrm(V3(sx * 0.25, -1, 0)), sh + V3(sx * 0.28, -0.18, 0.08), 0.18)
     M.look(r.head("head"))
 
 def lick(ctx, t):
