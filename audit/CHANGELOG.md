@@ -23,3 +23,13 @@
 
 ## Cross-Runtime Parity & Release Beauty Sweep (`Pass 5 / Step 7`)
 - `AF-008` (`2a42edb`) | `all` | Verified cross-runtime parity (`tests/test_anim_parity.py`, `audit/parity/parity_report.json`) with `0.000m` skeleton/pose drift and generated Cycles beauty stills (`audit/<scene>/beauty.png`) across all 5 story scenes.
+
+## Session A2: Visual Pose Polish, Runtime Layering & Shipped GLB Splice (`AF-014` – `AF-029`)
+- `AF-014` (`82c5477`) | `all` | Fixed distal finger phalanx indexing (`index3/middle3/ring3/pinky3.L/R`) with PIP/DIP phase lag in `scripts/overhaul_clips.py`.
+- `AF-015` & `AF-027` (`6239bfd`, `fc13235`) | `all` | Upgraded `_make_matcap_clay` in `scripts/blender_env.py` to a 3-stop sculpted LayerWeight clay ramp and corrected `upper_arm` local `X` adduction vs `Z*sgn` sagittal swing.
+- `AF-016` & `AF-019` (`48439e4`, `a072c25`) | `all` | Added `ag::SaccadeGaze` in `native/src/scene/facelife.h` and wired it into `Actor::update` (`native/src/scene/actor.{h,cpp}`) for eye-triangle dwell.
+- `AF-017` (`fff93a9`) | `all` | Upgraded `Procedural::breathing` (`native/src/anim/procedural.cpp`) with phase-lagged multi-harmonic belly->chest->clavicle (`shoulder.L/R`)->neck waves.
+- `AF-018` (`3fc22f9`) | `all` | Added proximal-to-distal phase lag (`0.28..0.85 rad`) and beat delay across shoulder->upper_arm->elbow->wrist in `Actor::pose` (`native/src/scene/actor.cpp`).
+- `AF-020` & `AF-021` (`f489cb0`, `5aab6c4`) | `all` | Fixed `Game::presentPlay` `.embrace` layer scrubbing with `idlePhase_` instead of static `0.f`, distributed `Game::archBody` across `spine`/`chest`/`neck`, and enabled runtime `proc.saccades`.
+- `AF-022`–`AF-024` (`83a936a`, `a197d2b`, `06556d8`) | `positions*.py` | Upgraded `missionary.embrace` to a 25-frame loop, fixed supine arm targets in `oral`/`handjob`/`titjob`, increased `cowgirl` torso lean, and fixed `relaxed_arms` elbow bow.
+- `AF-025`–`AF-029` (`ca36f6c`, `1aafac3`, `ffc5bd7`, `HEAD`) | `all` | Fixed Marcus's supine mattress arm rest (`z=0.68m`) and lumbar counter-rotation in `oral.in`, eliminated `f7`/`f18` IK hop via 2-pass binomial Gaussian smoothing, and spliced all 21 overhauled clips into `native/assets/characters/{vivian,marcus}.glb` and `assets/{vivian/vivian,marcus/marcus}.glb` (`mean doll_score = 100.0`, `0` fails across all 21 clips).

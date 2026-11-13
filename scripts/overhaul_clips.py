@@ -33,17 +33,17 @@ def _apply_pose_fixes(clip, arm):
                 _add_quat_delta(el, -0.06, 0.0, -0.06 * sgn)
     elif clip in ("oral.in", "handjob.in", "titjob.in"):
         if not is_viv:
-            # Rest Marcus's arms flat on the mattress beside his hips (clear of Vivian's shoulders)
+            # Rest Marcus's elbows (z=0.69) and wrists (z=0.68, y=1.11) flat on the mattress beside his hips
             for side, sgn in ((".L", 1.0), (".R", -1.0)):
                 ua = arm.pose.bones.get("upper_arm" + side)
                 el = arm.pose.bones.get("elbow" + side)
                 wr = arm.pose.bones.get("wrist" + side)
                 if ua:
-                    q_fix = Euler((-0.16, 0.55 * sgn, -0.18 * sgn), "XYZ").to_quaternion()
+                    q_fix = Euler((-0.50, -1.20 * sgn, 0.70 * sgn), "XYZ").to_quaternion()
                     ua.rotation_quaternion = q_fix
                     ua.matrix_basis = Matrix.Translation(ua.matrix_basis.to_translation()) @ q_fix.to_matrix().to_4x4()
                 if el:
-                    q_el = Euler((0.05, 0.0, 0.06 * sgn), "XYZ").to_quaternion()
+                    q_el = Euler((0.70, -0.30 * sgn, 1.00 * sgn), "XYZ").to_quaternion()
                     el.rotation_quaternion = q_el
                     el.matrix_basis = Matrix.Translation(el.matrix_basis.to_translation()) @ q_el.to_matrix().to_4x4()
                 if wr:
@@ -145,13 +145,16 @@ def overhaul_loaded_clip(clip, profile="idle"):
                 pel.keyframe_insert("location", frame=f)
                 pel.keyframe_insert("rotation_quaternion", frame=f)
 
-            # PASS 1 & 2: 4-segment spine chain with phase lag (overlap, ~5.5-7 deg peak-to-peak)
-            for s_i, (sb, lag, gain) in enumerate((("spine", 0.25, 0.105), ("chest", 0.55, 0.115), ("neck", 0.85, -0.11), ("head", 1.15, 0.12))):
+            # PASS 1 & 2: 4-segment spine chain with phase lag (counter-stabilize spine on supine Marcus so shoulders stay planted)
+            is_supine_mar = ("marcus" in arm.name.lower()) and any(k in clip for k in ("oral", "handjob", "titjob", "cowgirl", "revcowgirl"))
+            sp_gain = -0.095 if is_supine_mar else 0.105
+            ch_gain = 0.065 if is_supine_mar else 0.115
+            for s_i, (sb, lag, gain) in enumerate((("spine", 0.25, sp_gain), ("chest", 0.55, ch_gain), ("neck", 0.85, -0.11), ("head", 1.15, 0.12))):
                 pb = arm.pose.bones.get(sb)
                 if pb:
                     w_s = math.sin(th - lag) + 0.18 * math.sin(2.0 * (th - lag))
                     w_c = math.cos(th - lag * 0.8)
-                    _add_quat_delta(pb, gain * amp * w_s, 0.065 * amp * w_c, 0.075 * amp * math.sin(th - lag + 0.4))
+                    _add_quat_delta(pb, gain * amp * w_s, 0.055 * amp * w_c, 0.065 * amp * math.sin(th - lag + 0.4))
                     pb.keyframe_insert("rotation_quaternion", frame=f)
 
             # PASS 1: Clavicles follow arms + breathing lift (~6 deg excursion, arms stay naturally by sides)
@@ -231,14 +234,78 @@ def overhaul_loaded_clip(clip, profile="idle"):
 
 
 def splice_overhauled_into_glb(glb_path, arm_obj, clips=None):
-    """Write all overhauled armature actions directly into `glb_path` (preserving meshes, morphs, materials, and 0.000mm rest rig)."""
+    """Write all overhauled armature actions directly into `glb_path` (compacting old animation buffers while preserving meshes, morphs, materials, and 0.000mm rest rig)."""
     import struct
     b = open(glb_path, "rb").read()
     ln, _ = struct.unpack_from("<II", b, 12)
     j = json.loads(b[20:20 + ln].decode("utf-8"))
-    bin_chunk = bytearray(b[20 + ln + 8:])
+    old_bin = b[20 + ln + 8:]
     nodes = j["nodes"]
     node_by_name = {n["name"]: (i, n) for i, n in enumerate(nodes) if "name" in n}
+
+    # Identify accessors and bufferViews used by non-animation parts (meshes, skins, images)
+    anim_accs = set()
+    for anim in j.get("animations", []):
+        for smp in anim.get("samplers", []):
+            anim_accs.add(smp["input"])
+            anim_accs.add(smp["output"])
+    old_accs = j["accessors"]
+    old_bvs = j["bufferViews"]
+    keep_bvs = set()
+    for idx_a, acc in enumerate(old_accs):
+        if idx_a not in anim_accs and "bufferView" in acc:
+            keep_bvs.add(acc["bufferView"])
+    for img in j.get("images", []):
+        if "bufferView" in img:
+            keep_bvs.add(img["bufferView"])
+    for m in j.get("meshes", []):
+        for p in m.get("primitives", []):
+            for t in p.get("targets", []):
+                for acc_i in t.values():
+                    if "bufferView" in old_accs[acc_i]:
+                        keep_bvs.add(old_accs[acc_i]["bufferView"])
+
+    bin_chunk = bytearray()
+    bv_remap = {}
+    new_bvs = []
+    for idx_bv, bv in enumerate(old_bvs):
+        if idx_bv in keep_bvs or idx_bv not in {old_accs[a].get("bufferView") for a in anim_accs}:
+            while len(bin_chunk) % 4 != 0:
+                bin_chunk.append(0)
+            off = bv.get("byteOffset", 0)
+            blen = bv["byteLength"]
+            nbv = dict(bv)
+            nbv["byteOffset"] = len(bin_chunk)
+            bin_chunk.extend(old_bin[off:off + blen])
+            bv_remap[idx_bv] = len(new_bvs)
+            new_bvs.append(nbv)
+    acc_remap = {}
+    new_accs = []
+    for idx_a, acc in enumerate(old_accs):
+        if idx_a not in anim_accs:
+            nacc = dict(acc)
+            if "bufferView" in nacc:
+                nacc["bufferView"] = bv_remap[nacc["bufferView"]]
+            acc_remap[idx_a] = len(new_accs)
+            new_accs.append(nacc)
+    # Remap mesh and skin accessor references and image bufferView references
+    for m in j.get("meshes", []):
+        for p in m.get("primitives", []):
+            if "indices" in p:
+                p["indices"] = acc_remap[p["indices"]]
+            for k in list(p.get("attributes", {}).keys()):
+                p["attributes"][k] = acc_remap[p["attributes"][k]]
+            for t in p.get("targets", []):
+                for k in list(t.keys()):
+                    t[k] = acc_remap[t[k]]
+    for sk in j.get("skins", []):
+        if "inverseBindMatrices" in sk:
+            sk["inverseBindMatrices"] = acc_remap[sk["inverseBindMatrices"]]
+    for img in j.get("images", []):
+        if "bufferView" in img:
+            img["bufferView"] = bv_remap[img["bufferView"]]
+    j["bufferViews"] = new_bvs
+    j["accessors"] = new_accs
 
     def _append_bytes(raw_bytes):
         while len(bin_chunk) % 4 != 0:

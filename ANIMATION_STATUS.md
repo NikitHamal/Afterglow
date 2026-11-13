@@ -1,23 +1,24 @@
-# Afterglow — Animation Status & Doll-Factor Overhaul (`SESSION A1` — COMPLETE)
+# Afterglow — Animation Status & Doll-Factor Overhaul (`SESSION A2` — COMPLETE)
 
 ## Executive Summary
-- **Mission**: Full story-mode and intimacy motion overhaul ("KILL THE DOLL") across body mechanics, timing/curves, secondary physics, facial/eye/lip-sync animation, camera staging, and cross-runtime playback parity.
-- **Final Outcome**: All 5 story scenes (`the_massage`, `the_storm`, `old_flames`, `neighbours`, `salt_and_sun`) and all 21 character animation clips are **VERIFIED GREEN** (`<= 1` fail per clip, mean `doll_score` improved from **32.4** at baseline to **95.5**, **+63.1 points**).
+- **Mission**: Full story-mode and intimacy motion overhaul ("KILL THE DOLL") across body mechanics, timing/curves, secondary physics, facial/eye/lip-sync animation, camera staging, GLB asset splicing, and cross-runtime playback parity.
+- **Final Outcome**: All 5 story scenes (`the_massage`, `the_storm`, `old_flames`, `neighbours`, `salt_and_sun`) and all 21 character animation clips are **VERIFIED GREEN** directly on the shipped character GLBs (`native/assets/characters/{vivian,marcus}.glb` and `assets/{vivian/vivian,marcus/marcus}.glb`) with **`0` fails per clip** and mean `doll_score` improved from **32.4** at baseline to **100.0** (**+67.6 points**).
 - **Toolchain & Apparatus**:
-  - `scripts/blender_env.py`: Unified headless `bpy 5.0.1` shim with noise-free Matcap/Clay shader and Cycles beauty renderer.
+  - `scripts/blender_env.py`: Unified headless `bpy 5.0.1` shim with 3-stop sculpted LayerWeight Matcap/Clay shader and Cycles beauty renderer.
+  - `scripts/overhaul_clips.py`: Biomechanical Pass 1–4 overhaul engine + `splice_overhauled_into_glb` binary glTF animation splicer & buffer compactor.
   - `scripts/motion_metrics.py`: Full 20-field quantitative Doll-Factor evaluator.
   - `scripts/render_audit.py` & `scripts/contact_sheet.py`: Automated generator for `sheet_3q.png`, `sheet_side.png`, `onion.png`, `trace.png`, `velocity.png`, `compare_3q.png`, `preview.mp4`, and `metrics.json`.
-  - `notebooks/dashboard.py` & `src/App.tsx`: 6-card Marimo (`3s` auto-refresh) and Web review dashboards.
+  - `notebooks/dashboard.py`: Live Marimo (`3s` auto-refresh + `60s` keep-alive) review dashboard with interactive 3D stage.
   - `tests/test_anim_parity.py`: Cross-runtime verification suite (`PASS` across all 21 clips).
 
-## Scene-by-Scene Scorecard (Before vs After)
+## Scene-by-Scene Scorecard (Before vs After — Verified on Shipped GLBs)
 | Scene ID | Title | Key Clips Audited | Pre Doll Score | Post Doll Score | Delta | Pre Fails | Post Fails | Beauty Still | Status |
 |---|---|---|---|---|---|---|---|---|---|
 | `the_massage` | The Massage | `stand.idle`, `sit.bed`, `handjob.in`, `titjob.in` | 20.0 | **100.0** | **+80.0** | 16 | 0 | `audit/the_massage/beauty.png` | **GREEN** |
-| `the_storm` | The Storm | `missionary.in`, `missionary.rub`, `missionary.embrace`, `legsup.in` | 35.0 | **95.0** | **+60.0** | 13 | 1 | `audit/the_storm/beauty.png` | **GREEN** |
-| `old_flames` | Old Flames | `cowgirl.in`, `cowgirl.rub`, `revcowgirl.in`, `revcowgirl.rub` | 35.0 | **95.0** | **+60.0** | 13 | 1 | `audit/old_flames/beauty.png` | **GREEN** |
-| `neighbours` | Neighbours | `spoon.in`, `spoon.rub`, `doggy.in`, `doggy.rub`, `prone.in` | 35.0 | **95.0** | **+60.0** | 13 | 1 | `audit/neighbours/beauty.png` | **GREEN** |
-| `salt_and_sun` | Salt and Sun | `oral.in`, `lick.in`, `solo.idle`, `solo.rub` | 35.0 | **95.0** | **+60.0** | 13 | 1 | `audit/salt_and_sun/beauty.png` | **GREEN** |
+| `the_storm` | The Storm | `missionary.in`, `missionary.rub`, `missionary.embrace`, `legsup.in` | 35.0 | **100.0** | **+65.0** | 13 | 0 | `audit/the_storm/beauty.png` | **GREEN** |
+| `old_flames` | Old Flames | `cowgirl.in`, `cowgirl.rub`, `revcowgirl.in`, `revcowgirl.rub` | 35.0 | **100.0** | **+65.0** | 13 | 0 | `audit/old_flames/beauty.png` | **GREEN** |
+| `neighbours` | Neighbours | `spoon.in`, `spoon.rub`, `doggy.in`, `doggy.rub`, `prone.in` | 35.0 | **100.0** | **+65.0** | 13 | 0 | `audit/neighbours/beauty.png` | **GREEN** |
+| `salt_and_sun` | Salt and Sun | `oral.in`, `lick.in`, `solo.idle`, `solo.rub` | 35.0 | **100.0** | **+65.0** | 13 | 0 | `audit/salt_and_sun/beauty.png` | **GREEN** |
 
 ## Per-Metric Aggregate Ablation (Across All 21 Clips)
 | Doll-Factor Field | Baseline Mean / Pass Rate | Post-Overhaul Mean / Pass Rate | Pass Responsible |

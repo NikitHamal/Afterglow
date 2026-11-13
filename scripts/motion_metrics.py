@@ -214,7 +214,12 @@ def _derive_scorecard(clip, frames, fps, pos_tracks, all_bone_quats, secondary_a
     interp_bezier = round(bez_auto / max(1, bez_total), 3) if bez_total > 0 else 0.85
 
     footL = np.asarray(pos_tracks["foot_L"], dtype=np.float64)
-    contact_present = bool(np.min(np.linalg.norm(np.diff(footL, axis=0), axis=1)) < 0.008) if len(footL) > 1 else True
+    footR = np.asarray(pos_tracks["foot_R"], dtype=np.float64)
+    min_step = min(
+        float(np.min(np.linalg.norm(np.diff(arr, axis=0), axis=1)))
+        for arr in (footL, footR, handL, handR) if len(arr) > 1
+    ) if len(footL) > 1 else 0.0
+    contact_present = bool(min_step < 0.008)
     cam_dynamic = True
 
     fields = {
