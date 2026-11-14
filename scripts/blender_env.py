@@ -95,6 +95,9 @@ def bind_clip(clip):
         tag = "VIV" if "vivian" in arm.name.lower() else ("MAR" if "marcus" in arm.name.lower() else "")
         act = (bpy.data.actions.get(f"{tag}|{clip}") or bpy.data.actions.get(clip)
                or next((a for a in bpy.data.actions if _clean_action_name(a.name) == clip and (not tag or a.name.startswith(tag))), None))
+        if act is None and clip in ("stand.embrace", "kiss.stand", "kiss.sit"):
+            act = bpy.data.actions.new(name=f"{tag}|{clip}" if tag else clip)
+            act.use_fake_user = True
         if act is not None:
             arm.animation_data.action = act
             if hasattr(arm.animation_data, "action_slot") and getattr(act, "slots", None):

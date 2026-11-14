@@ -314,7 +314,7 @@ def hands_on_thighs(body, f, left, which=None):
         if which is not None and s not in which: continue
         leg = [ls for ls, lx in lr(body, f) if lx == sx][0]
         H = r.head("thigh" + leg); K = r.head("knee" + leg)
-        cup(body, s, bvh, H + (K - H) * 0.50 + UP * 0.07, nrm(K - H), r.head("upper_arm" + s) + left * sx * 0.18 - UP * 0.25 - f * 0.28)
+        cup(body, s, bvh, H + (K - H) * 0.62 + UP * 0.07, nrm(K - H), r.head("upper_arm" + s) + left * sx * 0.12 - UP * 0.3 - f * 0.05)
 
 def sit_bed(ctx, t):
     V, M = ctx.V, ctx.M; r = V.rig; m = M.rig
@@ -330,7 +330,7 @@ def sit_bed(ctx, t):
     far = ".R" if near == ".L" else ".L"
     toward_her = nrm(r.head("chest") - m.head("chest")); toward_her.z = 0; toward_her.normalize()
     her_far = max((".L", ".R"), key=lambda q: (r.head("upper_arm" + q) - r.head("chest")).dot(toward_her))   # his arm round her shoulders
-    cup(M, near, bvhV, r.head("upper_arm" + her_far) + UP * 0.02 - fv * 0.03 - toward_her * 0.02, nrm(toward_her - UP * 0.3), m.head("upper_arm" + near) - fm * 0.25 - UP * 0.25)
+    cup(M, near, bvhV, r.head("upper_arm" + her_far) - toward_her * 0.055 + UP * 0.05 - fv * 0.02, nrm(toward_her - UP * 0.25), m.head("upper_arm" + near) - toward_her * 0.1 - UP * 0.25 - fm * 0.15)
     hands_on_thighs(M, fm, lm, which=(far,))
     V.look(m.head("head") + V3(0.05, 0.015 * math.sin(2 * ph), -0.05 + 0.012 * math.cos(ph)), neck_share=0.48)
     M.look(r.head("head") + V3(0, -0.015 * math.cos(2 * ph), 0.01 * math.sin(ph + 0.5)), neck_share=0.48)
