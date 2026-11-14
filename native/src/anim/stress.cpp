@@ -87,8 +87,8 @@ void flex(Ctx& c, const std::string& parent, const std::string& hinge, float deg
 
 // keep the feet on the floor: lower the body by how far the lower ankle rose above its rest height
 void plant(Ctx& c) {
-    int ctr = node(c, "\xe3\x82\xbb\xe3\x83\xb3\xe3\x82\xbf\xe3\x83\xbc");   // center
-    int fl = node(c, "\xe8\xb6\xb3\xe9\xa6\x96.L"), fr = node(c, "\xe8\xb6\xb3\xe9\xa6\x96.R");   // ankle.L / .R
+    int ctr = node(c, "center");
+    int fl = node(c, "ankle.L"), fr = node(c, "ankle.R");
     if (ctr < 0 || fl < 0 || fr < 0) return;
     // rest ankle height (model space): chain of rest transforms
     auto restY = [&](int n) {
@@ -107,10 +107,10 @@ void plant(Ctx& c) {
     c.a.recomputeSubtree(ctr);
 }
 
-const std::string kArm = "\xe8\x85\x95", kElbow = "\xe3\x81\xb2\xe3\x81\x98", kWrist = "\xe6\x89\x8b\xe9\xa6\x96";   // upper_arm elbow wrist
-const std::string kLeg = "\xe8\xb6\xb3", kKnee = "\xe3\x81\xb2\xe3\x81\x96", kAnkle = "\xe8\xb6\xb3\xe9\xa6\x96";   // thigh knee ankle
-const std::string kSpine = "\xe4\xb8\x8a\xe5\x8d\x8a\xe8\xba\xab", kChest = "\xe4\xb8\x8a\xe5\x8d\x8a\xe8\xba\xab" "2";   // spine chest
-const std::string kNeck = "\xe9\xa6\x96", kHead = "\xe9\xa0\xad";   // neck head
+const std::string kArm = "upper_arm", kElbow = "elbow", kWrist = "wrist";
+const std::string kLeg = "thigh", kKnee = "knee", kAnkle = "ankle";
+const std::string kSpine = "spine", kChest = "chest";
+const std::string kNeck = "neck", kHead = "head";
 
 std::string R(const std::string& b) { return b + ".R"; }
 

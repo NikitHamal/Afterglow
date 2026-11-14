@@ -30,7 +30,7 @@ bool HairStyle::load(const std::string& path, const std::string& st, const Chara
                 else node = model.nodes[(size_t)node].parent;
             }
             if (hit < 0) {
-                auto head = charJoint.find("\xe9\xa0\xad");   // head: anything unmatched rides the head, never the root
+                auto head = charJoint.find("head");   // head: anything unmatched rides the head, never the root
                 hit = head != charJoint.end() ? head->second : 0;
                 ++missing;
             }
