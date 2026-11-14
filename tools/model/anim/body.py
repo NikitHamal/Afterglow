@@ -93,7 +93,7 @@ class Body:
             chains.append([f"{f}{d}{s}" for d in "0123"])
         grad = {"index": 0.80, "middle": 1.0, "ring": 1.10, "pinky": 1.22}     # a relaxed hand: index straightest, pinky most curled
         for ch in chains:
-            nm = ch[0][:2]
+            nm = ch[0].split("0")[0]
             a = index if (index is not None and nm == "index") else min(1.0, curl * grad.get(nm, 1.0))
             self.rig.curl([ch], a)
         th = [f"thumb{d}{s}" for d in "012"]

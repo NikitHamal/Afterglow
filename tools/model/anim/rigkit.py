@@ -206,7 +206,7 @@ class Rig:
         L1 = (E0 - S).length; L2 = (W0 - E0).length
         T = Vector(target); d = T - S
         dn = d.normalized() if d.length > 1e-9 else Vector((0, 0, -1))
-        key = lower[:2]
+        key = lower.split(".")[0]
         sign = self.FLEX_SIGN.get(key, 1.0); fmax = self.MAX_FLEX.get(key, 160.0)
         if natural is None: natural = key == "elbow"
         hl_up = self.hinge.get(upper, Vector((1, 0, 0))); hl_lo = self.hinge.get(lower, Vector((1, 0, 0)))
