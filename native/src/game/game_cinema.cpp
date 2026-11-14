@@ -513,8 +513,8 @@ void Game::applyStoryPose(float dt) {
         actors_[w].leanMax = sit ? 0.2f : (w ? 0.17f : 0.12f);
         actors_[w].turn = sit && !(authored && k > 0.001f) ? std::max(nr, k) : 0.f;
         actors_[w].eyesClosed = k > 0.6f;
-        actors_[w].kissW = meet ? k : 0.f;
-        actors_[w].kissRoll = 0.38f;
+        actors_[w].kissW = meet ? (authored ? 0.22f * k : k) : 0.f;
+        actors_[w].kissRoll = authored ? 0.f : 0.38f;
         actors_[w].kissTarget = meetAt + u * (w ? 0.001f : -0.001f);
         if (w && contact) actors_[w].kissTarget.y -= (lm.y - lv.y) * smoothstep(0.65f, 1.f, k);
         float& kissExpr = actors_[w].expr["kiss"];

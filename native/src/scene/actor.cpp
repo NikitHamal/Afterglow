@@ -350,11 +350,14 @@ void Actor::kissIK(Animator& a) {
     V3 H = P(a, head);
     V3 facing = qrotate(a.worldRot(head), c_->procedural.headForwardLocal());
     V3 toTarget = T - H;
-    if (length(facing) > 1e-4f && length(toTarget) > 1e-4f) {
-        V3 right = cross(facing, V3{0, 1, 0});
-        if (length(right) > 1e-4f) toTarget += normalize(right) * (0.24f * length(toTarget));
-        Quat faceAim = qfromto(normalize(facing), normalize(toTarget));
-        rotq(a, head, qslerp(Quat{}, faceAim, kissW));
+    float horizLen = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
+    if (length(facing) > 1e-4f && horizLen > 1e-4f) {
+        V3 fHoriz = normalize(V3{facing.x, 0.f, facing.z});
+        V3 tHoriz = normalize(V3{toTarget.x, 0.f, toTarget.z});
+        V3 right = cross(fHoriz, V3{0, 1, 0});
+        if (length(right) > 1e-4f) tHoriz = normalize(tHoriz + normalize(right) * 0.22f);
+        Quat faceAim = qfromto(fHoriz, tHoriz);
+        rotq(a, head, qslerp(Quat{}, faceAim, kissW * 0.65f));
         clampTurn(0);
         rom.clampNode(a, head);
     }

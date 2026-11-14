@@ -536,13 +536,13 @@ std::string fitGarment(std::vector<FitPart>& parts, bool drapeIt) {
             }
             p.swap(q);
         };
-        for (int it = 0; it < 12; ++it) { pass(0.5f); pass(-0.53f); }
-        // cloth bridges hollows but never sinks: smoothing pulls convex places (chest, shoulders) inward, and cloth
-        // below its own offset surface ends up under the skin, which then shows in front of it. At most 1.5 mm in.
+        for (int it = 0; it < 12; ++it) { pass(0.5f); pass(-0.515f); }
+        // cloth bridges hollows gently without ballooning shoulders, and smooths small convex bumps up to 4 mm in
         for (uint32_t i = 0; i < m; ++i) {
             V3 dlt = p[i] - X[i], n = normalize(VN[i]);
             float dn = dot(dlt, n);
-            if (dn < -0.0015f) dlt -= n * (dn + 0.0015f);
+            if (dn < -0.0040f) dlt -= n * (dn + 0.0040f);
+            if (dn > 0.0050f) dlt -= n * (dn - 0.0050f);
             moved = std::max(moved, length(dlt));
             X[i] += dlt;
         }
