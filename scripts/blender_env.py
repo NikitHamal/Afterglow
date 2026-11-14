@@ -1,5 +1,12 @@
 # Single Blender (bpy) entry-point shim for scene loading, rig queries, and clay/matcap rendering.
-import os, sys, time, math
+import os, sys, time, math, ctypes
+for _so in ("libX11.so.6", "libXext.so.6", "libXrender.so.1", "libXfixes.so.3", "libXi.so.6", "libxkbcommon.so.0", "libICE.so.6", "libSM.so.6", "libXxf86vm.so.1", "libGL.so.1"):
+    _p = os.path.join("/tmp/xlibs", _so)
+    if os.path.exists(_p):
+        try:
+            ctypes.CDLL(_p, mode=ctypes.RTLD_GLOBAL)
+        except Exception:
+            pass
 import bpy
 import numpy as np
 from mathutils import Vector, Matrix, Quaternion
