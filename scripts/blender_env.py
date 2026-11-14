@@ -59,6 +59,13 @@ def load_scene(path=None):
                 loaded_actions[a.name] = a
         elif ext == ".fbx":
             bpy.ops.import_scene.fbx(filepath=p)
+    for o in bpy.context.scene.objects:
+        if o.animation_data and o.animation_data.nla_tracks:
+            for tr in list(o.animation_data.nla_tracks):
+                o.animation_data.nla_tracks.remove(tr)
+        if o.type == "MESH" and o.data.shape_keys and o.data.shape_keys.animation_data:
+            for tr in list(o.data.shape_keys.animation_data.nla_tracks):
+                o.data.shape_keys.animation_data.nla_tracks.remove(tr)
     bpy.context.view_layer.update()
     return {o.name: o for o in bpy.context.scene.objects}
 

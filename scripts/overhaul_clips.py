@@ -1,13 +1,12 @@
 # Scoped per-clip motion overhaul engine in bpy (Pass 1-4: body mechanics, timing/arcs, secondary physics, face/eyes).
 import os, sys, json, math, shutil
 import numpy as np
-import bpy
-from mathutils import Vector, Quaternion, Euler, Matrix
-
 HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 import blender_env as BE
+import bpy
+from mathutils import Vector, Quaternion, Euler, Matrix
 import render_audit as RA
 import contact_sheet as CS
 
