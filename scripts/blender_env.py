@@ -1,6 +1,13 @@
 # Single Blender (bpy) entry-point shim for scene loading, rig queries, and clay/matcap rendering.
-import os, sys, time, math, ctypes
-for _so in ("libX11.so.6", "libXext.so.6", "libXrender.so.1", "libXfixes.so.3", "libXi.so.6", "libxkbcommon.so.0", "libICE.so.6", "libSM.so.6", "libXxf86vm.so.1", "libGL.so.1"):
+import os, sys, time, math, ctypes, subprocess
+_XLIBS = ("libX11.so.6", "libXext.so.6", "libXrender.so.1", "libXfixes.so.3", "libXi.so.6", "libxkbcommon.so.0", "libICE.so.6", "libSM.so.6", "libXxf86vm.so.1", "libGL.so.1")
+if not os.path.exists("/tmp/xlibs/libXrender.so.1"):
+    os.makedirs("/tmp/xlibs", exist_ok=True)
+    for _so in _XLIBS:
+        _p = os.path.join("/tmp/xlibs", _so)
+        if not os.path.exists(_p):
+            subprocess.run(["gcc", "-shared", "-fPIC", "-xc", "-", "-Wl,-soname," + _so, "-o", _p], input=b"void _stub(void){}\n", check=False)
+for _so in _XLIBS:
     _p = os.path.join("/tmp/xlibs", _so)
     if os.path.exists(_p):
         try:
