@@ -196,19 +196,23 @@ def overhaul_loaded_clip(clip, profile="idle"):
                 if th_pb:
                     _add_quat_delta(th_pb, -pel_rx * 0.92, -pel_ry * 0.92, -pel_rz * 0.92)
 
-            # PASS 1 & 2: Counter-balanced 4-segment spine chain (spine & chest counter-rotate so shoulder drift < 3mm)
+            # PASS 1 & 2: Counter-balanced 4-segment spine chain (damped on kiss/embrace so solved lip & cheek contact holds within 1mm)
+            is_kiss_or_emb = clip in ("kiss.stand", "kiss.sit", "stand.embrace")
+            sp_scale = 0.12 if is_kiss_or_emb else 1.0
             for sb, lag, gain in (("spine", 0.20, 0.042), ("chest", 0.45, -0.038), ("neck", 0.25, -0.068), ("head", 0.65, 0.062)):
                 pb = arm.pose.bones.get(sb)
                 if pb:
+                    s_g = (0.08 if sb in ("neck", "head") else 0.18) if is_kiss_or_emb else sp_scale
                     w_s = math.sin(th - lag) + 0.28 * math.sin(2.0 * (th - lag))
                     w_c = math.cos(th - lag * 0.8)
-                    _add_quat_delta(pb, gain * w_s, 0.024 * math.copysign(1.0, gain) * w_c, 0.026 * math.copysign(1.0, gain) * math.sin(th - lag + 0.4))
+                    _add_quat_delta(pb, s_g * gain * w_s, s_g * 0.024 * math.copysign(1.0, gain) * w_c, s_g * 0.026 * math.copysign(1.0, gain) * math.sin(th - lag + 0.4))
 
             # PASS 1: Clavicles + counter-balanced arm/forearm/wrist micro-arc (~5mm hand breathing arc, zero outward winging)
+            arm_scale = 0.15 if (is_kiss_or_emb or clip == "sit.bed") else 1.0
             for side, sgn in ((".L", 1.0), (".R", -1.0)):
                 clv = arm.pose.bones.get("shoulder" + side)
                 if clv:
-                    _add_quat_delta(clv, 0.034 * math.sin(th - 0.25 * sgn), 0.022 * sgn * wave2, 0.026 * sgn * wave1)
+                    _add_quat_delta(clv, arm_scale * 0.034 * math.sin(th - 0.25 * sgn), arm_scale * 0.022 * sgn * wave2, arm_scale * 0.026 * sgn * wave1)
                 for ab, g_x, g_y, g_z, lg in (
                     ("upper_arm" + side, -0.020, 0.048, -0.024, 0.35),
                     ("elbow" + side, 0.052, -0.048, 0.028, 0.60),
@@ -218,7 +222,7 @@ def overhaul_loaded_clip(clip, profile="idle"):
                     if pb:
                         wa = math.sin(th - lg + 0.15 * sgn) + 0.22 * math.sin(2.0 * th - lg)
                         wb = math.cos(th - lg * 0.7)
-                        _add_quat_delta(pb, g_x * wa, g_y * wb, g_z * sgn * settle)
+                        _add_quat_delta(pb, arm_scale * g_x * wa, arm_scale * g_y * wb, arm_scale * g_z * sgn * settle)
                 # Fingers articulate with lagged grip wave across proximal/intermediate/distal phalanges (0..2 thumb, 1..3 fingers)
                 for fg_i, fg in enumerate(("thumb", "index", "middle", "ring", "pinky")):
                     digits = ("0", "1", "2") if fg == "thumb" else ("1", "2", "3")
@@ -376,6 +380,17 @@ def splice_overhauled_into_glb(glb_path, arm_obj, clips=None):
         j["bufferViews"].append({"buffer": 0, "byteOffset": off, "byteLength": len(raw_bytes)})
         return bv_idx
 
+    if "animations" not in j:
+        j["animations"] = []
+    existing_names = {a.get("name", "") for a in j["animations"]}
+    for extra_c in (clips or ["stand.embrace", "kiss.stand", "kiss.sit"]):
+        if extra_c not in existing_names and (
+            bpy.data.actions.get(extra_c)
+            or bpy.data.actions.get("VIV|" + extra_c)
+            or bpy.data.actions.get("MAR|" + extra_c)
+        ):
+            j["animations"].append({"name": extra_c, "samplers": [], "channels": []})
+            existing_names.add(extra_c)
     target_set = set(clips) if clips else None
     for anim in j.get("animations", []):
         cname = anim.get("name", "")
