@@ -265,54 +265,60 @@ def smooth_nearest(bvh, anchor, radius=0.03):
         if l2 is not None and Vector(n2).dot(n0) > 0.3: acc += Vector(n2)
     return P, acc.normalized()
 
-def cup(body, s, bvh, anchor, along, pole, pad=0.007, palm_lift=0.017, iters=5):
-    """palm on the skin at `anchor` (fingers `along` the surface), then every finger curls until its pad meets the
-    curve (wraps a breast, a thigh, a shaft); the thumb closes from the other side"""
+def cup(body, s, bvh, anchor, along, pole, pad=0.006, palm_lift=0.012, iters=5):
+    """palm on the skin at `anchor` (fingers `along` the surface, blended with forearm tangent so wrists never gooseneck),
+    then every finger curls until its pad meets the curve; the thumb closes from the other side"""
     r = body.rig
     P, n = smooth_nearest(bvh, anchor)
-    f = Vector(along); f = (f - n * n.dot(f)).normalized()
+    f0 = Vector(along); f0 = (f0 - n * n.dot(f0)).normalized()
     goal = P + n * palm_lift
-    W = goal - f * 0.05
-    pole = natural_pole(body, s, W, -n, f, pole)
+    W = goal - f0 * 0.05
+    pole = natural_pole(body, s, W, -n, f0, pole)
+    f = f0; p_dir = -n
     for _ in range(iters):
         body.arm_ik(s, W, pole)
-        body.hand(s, palm=-n, fingers=f)
+        fa = (r.head("wrist" + s) - r.head("elbow" + s)).normalized()
+        fa_t = fa - n * n.dot(fa)
+        f = (f0 * 0.58 + fa_t.normalized() * 0.42).normalized() if fa_t.length > 0.15 else f0
+        p_dir = (-n * 0.76 + (fa.cross(f).cross(fa)).normalized() * 0.24).normalized() if fa.cross(f).length > 0.1 else -n
+        if p_dir.dot(-n) < 0.5: p_dir = (-n * 0.82 - fa * 0.18).normalized()
+        body.hand(s, palm=p_dir, fingers=f)
         r.limit("wrist" + s)
-        body.fingers(s, 0.05, thumb=0.15)
+        body.fingers(s, 0.16, thumb=0.20)
         W = W + (goal - palm_centre(body, s))
     for _ in range(2):                                       # concave skin (a crease): lift the hand until it clears
         worst = min(tip_gap(bvh, q) for q in [palm_centre(body, s)] + [tip(body, s, f_) for f_ in FINGERS])
         if worst >= pad * 0.5: break
-        W = W + n * (pad - worst); body.arm_ik(s, W, pole); body.hand(s, palm=-n, fingers=f)
-        r.limit("wrist" + s); body.fingers(s, 0.05, thumb=0.15)
+        W = W + n * (pad - worst); body.arm_ik(s, W, pole); body.hand(s, palm=p_dir, fingers=f)
+        r.limit("wrist" + s); body.fingers(s, 0.16, thumb=0.20)
     lastc = r.__dict__.setdefault("_last_curl", {})
     def settle_curl(key, c):                                 # fingers move smoothly from frame to frame
         p_ = lastc.get(key); c = c if p_ is None else p_ + max(-0.18, min(0.18, c - p_)); lastc[key] = c; return c
     grad_cup = {"index": 0.88, "middle": 1.00, "ring": 1.10, "pinky": 1.20}
-    for fn_ in FINGERS:                                      # wrap: natural minimum soft cup (0.30..0.78 rad), never flat starfish or clenched fist
+    for fn_ in FINGERS:                                      # wrap: soft contour cup (0.18..0.58 rad), flush palm + pads
         chain = [f"{fn_}{d}{s}" for d in "0123"]
-        c_min = 0.30 * grad_cup.get(fn_, 1.0)
+        c_min = 0.18 * grad_cup.get(fn_, 1.0)
         best = c_min
-        for c in [c_min + 0.05 * k for k in range(10)]:
+        for c in [c_min + 0.05 * k for k in range(9)]:
             r.curl([chain], c)
             if tip_gap(bvh, tip(body, s, fn_)) <= pad: best = c; break
             best = c
-        r.curl([chain], settle_curl(chain[0], min(0.78, best)))
+        r.curl([chain], settle_curl(chain[0], min(0.58, best)))
     th = [f"thumb{d}{s}" for d in "012"]
-    best = 0.28
-    for c in [0.28 + 0.05 * k for k in range(8)]:
+    best = 0.22
+    for c in [0.22 + 0.05 * k for k in range(7)]:
         r.curl([th], c, decay=(0.5, 0.85, 0.75))
         best = c
         if tip_gap(bvh, r.tail(th[-1])) <= pad: break
-    r.curl([th], settle_curl(th[0], min(0.65, best)), decay=(0.5, 0.85, 0.75))
+    r.curl([th], settle_curl(th[0], min(0.52, best)), decay=(0.5, 0.85, 0.75))
     snap = {k_: r.basis[k_].copy() for k_ in r.basis if k_.endswith(s) and k_.startswith(("thumb", "index", "middle", "ring", "pinky"))}
     def pose_hand():
-        body.hand(s, palm=-n, fingers=f); r.limit("wrist" + s)
+        body.hand(s, palm=p_dir, fingers=f); r.limit("wrist" + s)
         for k_, m_ in snap.items(): r.basis[k_] = m_.copy()
         r.fk("wrist" + s)
     for _ in range(2):
         g = hand_skin_gap(body, s, bvh)
-        if not (0.005 < g < 0.08): break
+        if not (0.004 < g < 0.08): break
         W = W - n * (g - 0.002); body.arm_ik(s, W, pole); pose_hand()
     lift_out(body, s, bvh, W, n, pose_hand, pole, allow=-0.004)
     return P
