@@ -402,7 +402,14 @@ class Rig:
     def limit(self, n, carry_twist_to=None):
         """clamp bone n to its ROM; excess twist of a wrist is handed to the forearm (pronation/supination)"""
         if n not in self.ROM: return
+        if n.startswith("wrist.") and carry_twist_to is None:
+            carry_twist_to = "elbow" + n[-2:]
         smax, tmax = self.ROM[n]; sa, ta, sw, tw = self.swing_twist(n)
+        if carry_twist_to and abs(ta) > 40.0 and carry_twist_to in self.basis:
+             _, ta_lo, _, _ = self.swing_twist(carry_twist_to)
+            if abs(ta_lo) < 55.0:
+                self.share_twist(carry_twist_to, n, 0.45)
+                sa, ta, sw, tw = self.swing_twist(n)
         if not hasattr(self, "_last_twist"): self._last_twist = {}
         last = self._last_twist.get(n)
         if last is not None and abs(ta - last) > 180.0: ta += math.copysign(360.0, last - ta)   # clamp toward last frame's side

@@ -194,11 +194,11 @@ def lip_gap(V, M):
     return lambda: max(0.0, (V.lm("mouth") - M.lm("mouth")).length - 0.001)
 
 def kiss_heads(V, M, fv, fm, key, nod=0.0, goal_w=2e4, rom_w=0.05):
-    """the lips meet (1 mm), each head rolled ~17 deg to its own right so the noses pass, he bends down more than
+    """the lips meet (1 mm), each head rolled ~24 deg to its own right so the noses pass cleanly, he bends down more than
     she reaches up; a slow nod keeps the kiss alive. Returns the lip gap (m)."""
     V.look(M.rig.head("head"), up_hint=UP, neck_share=0.5)            # face each other; the roll comes in the solve
     M.look(V.rig.head("head"), up_hint=UP, neck_share=0.5)
-    g = solve_heads(V, M, fv, fm, lip_gap(V, M), key, roll=(20.0, 20.0), yaw_r=(5.0, 5.0), goal_w=goal_w, skin_w=300.0, rom_w=rom_w)
+    g = solve_heads(V, M, fv, fm, lip_gap(V, M), key, roll=(24.0, 24.0), yaw_r=(8.0, 8.0), clear=0.168, goal_w=goal_w, skin_w=220.0, rom_w=rom_w)
     if nod:
         V.rig.rotate_world("head", Matrix.Rotation(math.radians(nod), 3, left_of(fv)))
         M.rig.rotate_world("head", Matrix.Rotation(math.radians(-nod), 3, left_of(fm)))

@@ -73,8 +73,47 @@ def _get_story_ctx():
         nk = who_b.rig.rest["neck"].translation
         sel = (np.abs(arr[:, 0]) < 0.02) & (np.abs(arr[:, 2] - (nk.z + 0.04)) < 0.02)
         who_b.add_landmark("nape", "neck", Vector(arr[sel][np.argmax(arr[sel][:, 1])]))
-    P4.LOCAL_SURF = {V.obj.name: {}, M.obj.name: {}}
-    P4.HEAD_PTS = {V.obj.name: [], M.obj.name: []}
+    import scene as SC
+    from mathutils.bvhtree import BVHTree as _BVH
+    def _local_surfaces(body_, rest, bones_=("head", "neck", "chest", "spine", "breast.L", "breast.R", "shoulder.L", "shoulder.R", "upper_arm.L", "upper_arm.R")):
+        dom = SC.dominant_bone(body_.obj); polys = [tuple(p.vertices) for p in body_.obj.data.polygons]
+        owner = {}
+        for f in polys:
+            cnt = {}
+            for i in f: cnt[dom[i]] = cnt.get(dom[i], 0) + 1
+            owner.setdefault(max(cnt, key=cnt.get), []).append(f)
+        out = {}
+        for bn in bones_:
+            if bn not in owner or bn not in body_.rig.rest: continue
+            R_ = body_.rig.rest[bn].inverted()
+            out[bn] = _BVH.FromPolygons([tuple(R_ @ Vector(v)) for v in rest], owner[bn])
+        return out
+    def _head_samples(body_, rest, n=70):
+        dom = SC.dominant_bone(body_.obj)
+        idx = np.where(np.array([d == "head" for d in dom]))[0]
+        lip = np.array(body_.lm("mouth")) if "mouth" in body_.landmarks else None
+        R_ = body_.rig.rest["head"].inverted()
+        pts = []
+        for i in idx[:: max(1, len(idx) // n)]:
+            if lip is not None and np.linalg.norm(rest[i] - lip) < 0.024: continue
+            pts.append(R_ @ Vector(rest[i]))
+        return pts
+    def _caps(rig_, trunk, limb, arms):
+        out = [(rig_, "pelvis", "neck", trunk, 0.02), (rig_, "head", None, 0.095, 0.02), (rig_, "thigh.L", "thigh.R", trunk * 0.85, 0.02)]
+        for s_ in (".L", ".R"):
+            out += [(rig_, "shoulder" + s_, "upper_arm" + s_, 0.055, 0.015),
+                    (rig_, "upper_arm" + s_, "spine", trunk * 0.8, 0.015)]
+            if "breast" + s_ in rig_.bones: out += [(rig_, "breast" + s_, None, 0.07, 0.015)]
+            out += [(rig_, "thigh" + s_, "knee" + s_, limb, 0.015), (rig_, "knee" + s_, "ankle" + s_, limb * 0.68, 0.01)]
+            if arms: out += [(rig_, "upper_arm" + s_, "elbow" + s_, 0.045, 0.008), (rig_, "elbow" + s_, "wrist" + s_, 0.04, 0.008)]
+        return out
+    V.local_bvh = _local_surfaces(V, B); M.local_bvh = _local_surfaces(M, MBr)
+    V.head_samples = _head_samples(V, B); M.head_samples = _head_samples(M, MBr)
+    V.rig.floor_z = M.rig.floor_z = SC.BED_TOP
+    V.rig.obstacles = _caps(V.rig, 0.11, 0.075, False) + _caps(M.rig, 0.13, 0.08, True)
+    M.rig.obstacles = _caps(M.rig, 0.13, 0.08, False) + _caps(V.rig, 0.11, 0.075, True)
+    V.core = np.array([b in SC.CORE_BONES for b in SC.dominant_bone(v_body)])
+    M.core = np.array([b in SC.CORE_BONES for b in SC.dominant_bone(m_body)])
     class _Ctx: pass
     ctx = _Ctx(); ctx.V = V; ctx.M = M
     _STORY_CTX = ctx
