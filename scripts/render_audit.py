@@ -2,9 +2,6 @@
 # Produces: sheet_3q.png, sheet_side.png, onion.png, trace.png, velocity.png, preview.mp4, metrics.json
 import os, sys, json, time, subprocess
 import numpy as np
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -69,23 +66,20 @@ def _build_trace_image(base_frame_path, series, cam_obj, out_path):
     im.save(out_path, "PNG", optimize=True)
 
 def _build_velocity_plot(clip, series, out_path):
-    fig, ax = plt.subplots(figsize=(6.4, 3.2), dpi=100)
-    fig.patch.set_facecolor("#16161c")
-    ax.set_facecolor("#1e1e26")
-    fr = series["frames"][1:] if len(series["frames"]) > 1 else [1]
-    ax.plot(fr, series["v_hand"], color="#4fd8ff", lw=2.0, label="hand speed (m/s)")
-    ax.plot(fr, series["v_head"], color="#ffd15c", lw=1.6, label="head speed (m/s)")
-    ax.plot(fr, series["v_root"], color="#ff6392", lw=1.6, label="root speed (m/s)")
-    ax.set_title(f"Velocity Profile — {clip}", color="#ece8e2", fontsize=11)
-    ax.set_xlabel("Frame", color="#b8b4ae")
-    ax.set_ylabel("Speed (m/s)", color="#b8b4ae")
-    ax.tick_params(colors="#b8b4ae")
-    ax.grid(True, alpha=0.2, color="#888899")
-    ax.legend(facecolor="#252530", edgecolor="#444455", labelcolor="#ece8e2", fontsize=8)
-    fig.tight_layout()
+    w, h = 640, 320
+    im = Image.new("RGB", (w, h), (22, 22, 28))
+    dr = ImageDraw.Draw(im)
+    px0, py0, px1, py1 = 54, 36, w - 20, h - 36
+    dr.rectangle([px0, py0, px1, py1], fill=(30, 30, 38), outline=(68, 68, 85))
+    dr.text((px0, 12), f"Velocity Profile — {clip}  [Hand(C) Head(Y) Root(M)]", fill=(236, 232, 226))
+    vmax = max(1e-3, max([max(series.get(k, [0.0]) or [0.0]) for k in ("v_hand", "v_head", "v_root")]))
+    for k, col in (("v_hand", (79, 216, 255)), ("v_head", (255, 209, 92)), ("v_root", (255, 99, 146))):
+        vals = series.get(k, [])
+        if len(vals) >= 2:
+            pts = [(int(px0 + (px1 - px0) * i / (len(vals) - 1)), int(py1 - (py1 - py0) * (v / vmax))) for i, v in enumerate(vals)]
+            dr.line(pts, fill=col, width=2)
     os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
-    fig.savefig(out_path, dpi=100)
-    plt.close(fig)
+    im.save(out_path, "PNG", optimize=True)
 
 def audit_clip(clip, scene_id="story", work_root="/work/renders", audit_root="audit", already_loaded=False):
     if not already_loaded:

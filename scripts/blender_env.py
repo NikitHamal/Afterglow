@@ -1,12 +1,21 @@
 # Single Blender (bpy) entry-point shim for scene loading, rig queries, and clay/matcap rendering.
 import os, sys, time, math, ctypes, subprocess
 _XLIBS = ("libX11.so.6", "libXext.so.6", "libXrender.so.1", "libXfixes.so.3", "libXi.so.6", "libxkbcommon.so.0", "libICE.so.6", "libSM.so.6", "libXxf86vm.so.1", "libGL.so.1")
-if not os.path.exists("/tmp/xlibs/libXrender.so.1"):
+if not os.path.exists("/tmp/xlibs/glx_ready2"):
     os.makedirs("/tmp/xlibs", exist_ok=True)
+    import glob
+    _syms = set()
+    for _bso in glob.glob("/usr/local/lib/python*/dist-packages/bpy/**/*.so*", recursive=True):
+        _r = subprocess.run(["nm", "-D", "-u", _bso], capture_output=True, text=True)
+        for _ln in _r.stdout.splitlines():
+            _tok = _ln.split()[-1].split("@")[0] if _ln.split() else ""
+            if _tok.startswith(("X", "_X", "gl", "GL", "xkb_", "Ice", "Smc")):
+                _syms.add(_tok)
+    _c_code = "\n".join(f"long {s}(void){{return 0;}}" for s in sorted(_syms)).encode("utf-8")
     for _so in _XLIBS:
         _p = os.path.join("/tmp/xlibs", _so)
-        if not os.path.exists(_p):
-            subprocess.run(["gcc", "-shared", "-fPIC", "-xc", "-", "-Wl,-soname," + _so, "-o", _p], input=b"void _stub(void){}\n", check=False)
+        subprocess.run(["gcc", "-shared", "-fPIC", "-xc", "-", "-Wl,-soname," + _so, "-o", _p], input=_c_code, check=False)
+    open("/tmp/xlibs/glx_ready2", "w").close()
 for _so in _XLIBS:
     _p = os.path.join("/tmp/xlibs", _so)
     if os.path.exists(_p):
