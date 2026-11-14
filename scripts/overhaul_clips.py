@@ -239,10 +239,11 @@ def overhaul_loaded_clip(clip, profile="idle"):
                     pb.rotation_mode = "QUATERNION"
                     pb.rotation_quaternion = pb.matrix_basis.to_quaternion()
 
-            # PASS 1: Subtle pelvis/waist breathing/weight shift + roll, counter-stabilized in thighs (and spine on kiss/embrace)
+            # PASS 1: Subtle pelvis/waist breathing/weight shift + roll, counter-stabilized in thighs (zero post-IK drift on kiss)
+            is_kiss = clip in ("kiss.stand", "kiss.sit")
             is_kiss_or_emb = clip in ("kiss.stand", "kiss.sit", "stand.embrace")
             is_story_clip = clip in ("stand.idle", "sit.bed", "stand.embrace", "kiss.stand", "kiss.sit")
-            pel_scale = 0.15 if is_kiss_or_emb else (0.45 if clip == "sit.bed" else 1.0)
+            pel_scale = 0.0 if is_kiss else (0.15 if is_kiss_or_emb else (0.45 if clip == "sit.bed" else 1.0))
             pel = arm.pose.bones.get("pelvis")
             wst = arm.pose.bones.get("waist")
             pel_rx, pel_ry, pel_rz = pel_scale * 0.032 * wave1, pel_scale * 0.022 * wave2, pel_scale * 0.026 * settle
@@ -262,14 +263,14 @@ def overhaul_loaded_clip(clip, profile="idle"):
                 if th_pb:
                     _add_quat_delta(th_pb, -pel_rx * 0.92, -pel_ry * 0.92, -pel_rz * 0.92)
 
-            if is_kiss_or_emb and arm.pose.bones.get("spine"):
+            if is_kiss_or_emb and not is_kiss and arm.pose.bones.get("spine"):
                 _add_quat_delta(arm.pose.bones["spine"], -pel_rx * 0.95, -pel_ry * 0.95, -pel_rz * 0.95)
-            # PASS 1 & 2: Counter-balanced 4-segment spine chain (damped on kiss/embrace so solved lip & cheek contact holds within 1mm)
-            sp_scale = 0.12 if is_kiss_or_emb else 1.0
+            # PASS 1 & 2: Counter-balanced 4-segment spine chain (zero post-solve neck/spine drift on kiss so solved lip contact holds <1.5mm)
+            sp_scale = 0.0 if is_kiss else (0.12 if is_kiss_or_emb else 1.0)
             for sb, lag, gain in (("spine", 0.20, 0.042), ("chest", 0.45, -0.038), ("neck", 0.25, -0.068), ("head", 0.65, 0.062)):
                 pb = arm.pose.bones.get(sb)
                 if pb:
-                    s_g = (0.08 if sb in ("neck", "head") else 0.18) if is_kiss_or_emb else sp_scale
+                    s_g = 0.0 if is_kiss else ((0.06 if sb in ("neck", "head") else 0.15) if is_kiss_or_emb else sp_scale)
                     w_s = math.sin(th - lag) + 0.28 * math.sin(2.0 * (th - lag))
                     w_c = math.cos(th - lag * 0.8)
                     _add_quat_delta(pb, s_g * gain * w_s, s_g * 0.024 * math.copysign(1.0, gain) * w_c, s_g * 0.026 * math.copysign(1.0, gain) * math.sin(th - lag + 0.4))
@@ -374,9 +375,12 @@ def splice_overhauled_into_glb(glb_path, arm_obj, clips=None):
     nodes = j["nodes"]
     node_by_name = {n["name"]: (i, n) for i, n in enumerate(nodes) if "name" in n}
 
-    # Identify accessors and bufferViews used by non-animation parts (meshes, skins, images)
+    # Identify accessors and bufferViews used by animations being replaced
+    target_set = set(clips) if clips else None
     anim_accs = set()
     for anim in j.get("animations", []):
+        if target_set and anim.get("name", "") not in target_set:
+            continue
         for smp in anim.get("samplers", []):
             anim_accs.add(smp["input"])
             anim_accs.add(smp["output"])
@@ -458,10 +462,12 @@ def splice_overhauled_into_glb(glb_path, arm_obj, clips=None):
         ):
             j["animations"].append({"name": extra_c, "samplers": [], "channels": []})
             existing_names.add(extra_c)
-    target_set = set(clips) if clips else None
     for anim in j.get("animations", []):
         cname = anim.get("name", "")
         if target_set and cname not in target_set:
+            for smp in anim.get("samplers", []):
+                smp["input"] = acc_remap[smp["input"]]
+                smp["output"] = acc_remap[smp["output"]]
             continue
         f0, f1 = BE.bind_clip(cname)
         frames = list(range(f0, f1 + 1))
