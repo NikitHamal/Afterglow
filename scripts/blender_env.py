@@ -127,24 +127,29 @@ def bind_clip(clip):
                                     break
                                 except Exception:
                                     pass
-                    if not bound_key and o.name == "vivian_body":
+                    if not bound_key and o.name in ("vivian_body", "marcus_body"):
                         kbs = sk.key_blocks
                         N_f = max(2, (f1 - f0) + 1)
                         b_amp = 1.0 if N_f > 30 else 0.28
+                        is_kiss_c = clip in ("kiss.stand", "kiss.sit")
+                        is_story_c = clip in ("stand.idle", "sit.bed", "stand.embrace", "kiss.stand", "kiss.sit")
                         for idx_f, fr in enumerate(range(f0, f1 + 1)):
                             u = idx_f / float(N_f - 1)
                             th = 2.0 * math.pi * u
                             if "blink" in kbs:
-                                kbs["blink"].value = float(b_amp * math.exp(-((u - 0.32) / 0.045) ** 2))
+                                kbs["blink"].value = float((0.88 + 0.06 * math.sin(th)) if is_kiss_c else (b_amp * math.exp(-((u - 0.32) / 0.045) ** 2)))
                                 kbs["blink"].keyframe_insert("value", frame=fr)
+                            if "kiss" in kbs:
+                                kbs["kiss"].value = float((0.55 + 0.08 * math.sin(th)) if is_kiss_c else 0.0)
+                                kbs["kiss"].keyframe_insert("value", frame=fr)
                             if "smile" in kbs:
-                                kbs["smile"].value = float(0.18 + 0.12 * math.sin(th - 0.4))
+                                kbs["smile"].value = float((0.10 + 0.05 * math.sin(th - 0.4)) if is_kiss_c else (0.16 + 0.10 * math.sin(th - 0.4)))
                                 kbs["smile"].keyframe_insert("value", frame=fr)
                             if "gasp" in kbs:
-                                kbs["gasp"].value = float(0.14 + 0.10 * math.sin(2.0 * th + 0.3))
+                                kbs["gasp"].value = float(0.02 * (0.5 + 0.5 * math.sin(th)) if is_story_c else (0.14 + 0.10 * math.sin(2.0 * th + 0.3)))
                                 kbs["gasp"].keyframe_insert("value", frame=fr)
                             if "moan" in kbs:
-                                kbs["moan"].value = float(0.08 + 0.06 * math.cos(th))
+                                kbs["moan"].value = float(0.0 if is_story_c else (0.08 + 0.06 * math.cos(th)))
                                 kbs["moan"].keyframe_insert("value", frame=fr)
     bpy.context.view_layer.update()
     return f0, f1
