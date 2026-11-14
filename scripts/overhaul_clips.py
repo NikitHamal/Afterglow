@@ -242,12 +242,20 @@ def splice_overhauled_into_glb(glb_path, arm_obj, clips=None):
     nodes = j["nodes"]
     node_by_name = {n["name"]: (i, n) for i, n in enumerate(nodes) if "name" in n}
 
-    # Identify accessors and bufferViews used by non-animation parts (meshes, skins, images)
+    target_set = set(clips) if clips else None
+    # Identify accessors and bufferViews used only by animations being replaced
     anim_accs = set()
+    kept_anim_accs = set()
     for anim in j.get("animations", []):
+        is_replaced = (not target_set) or (anim.get("name", "") in target_set)
         for smp in anim.get("samplers", []):
-            anim_accs.add(smp["input"])
-            anim_accs.add(smp["output"])
+            if is_replaced:
+                anim_accs.add(smp["input"])
+                anim_accs.add(smp["output"])
+            else:
+                kept_anim_accs.add(smp["input"])
+                kept_anim_accs.add(smp["output"])
+    anim_accs -= kept_anim_accs
     old_accs = j["accessors"]
     old_bvs = j["bufferViews"]
     keep_bvs = set()
@@ -315,10 +323,16 @@ def splice_overhauled_into_glb(glb_path, arm_obj, clips=None):
         j["bufferViews"].append({"buffer": 0, "byteOffset": off, "byteLength": len(raw_bytes)})
         return bv_idx
 
-    target_set = set(clips) if clips else None
+    existing_names = {a.get("name", "") for a in j.get("animations", [])}
+    if target_set:
+        for cname in sorted(target_set - existing_names):
+            j.setdefault("animations", []).append({"name": cname, "samplers": [], "channels": []})
     for anim in j.get("animations", []):
         cname = anim.get("name", "")
         if target_set and cname not in target_set:
+            for smp in anim.get("samplers", []):
+                smp["input"] = acc_remap[smp["input"]]
+                smp["output"] = acc_remap[smp["output"]]
             continue
         f0, f1 = BE.bind_clip(cname)
         frames = list(range(f0, f1 + 1))
