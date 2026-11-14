@@ -406,7 +406,7 @@ class Rig:
             carry_twist_to = "elbow" + n[-2:]
         smax, tmax = self.ROM[n]; sa, ta, sw, tw = self.swing_twist(n)
         if carry_twist_to and abs(ta) > 40.0 and carry_twist_to in self.basis:
-             _, ta_lo, _, _ = self.swing_twist(carry_twist_to)
+            _, ta_lo, _, _ = self.swing_twist(carry_twist_to)
             if abs(ta_lo) < 55.0:
                 self.share_twist(carry_twist_to, n, 0.45)
                 sa, ta, sw, tw = self.swing_twist(n)

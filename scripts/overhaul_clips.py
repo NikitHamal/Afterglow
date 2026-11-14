@@ -95,7 +95,7 @@ def _get_story_ctx():
         R_ = body_.rig.rest["head"].inverted()
         pts = []
         for i in idx[:: max(1, len(idx) // n)]:
-            if lip is not None and np.linalg.norm(rest[i] - lip) < 0.024: continue
+            if lip is not None and np.linalg.norm(rest[i] - lip) < 0.036: continue
             pts.append(R_ @ Vector(rest[i]))
         return pts
     def _caps(rig_, trunk, limb, arms):
@@ -161,10 +161,16 @@ def overhaul_loaded_clip(clip, profile="idle"):
     if clip in ("stand.idle", "sit.bed", "stand.embrace", "kiss.stand", "kiss.sit"):
         ctx = _get_story_ctx()
         fn_story = P.CLIPS[clip][0]
-        P4._HEADS.pop(clip, None)
+        for b_ in (ctx.V, ctx.M):
+            b_.rig._last_hinge = {}; b_.rig._last_twist = {}; b_.rig._last_curl = {}; b_.rig._last_pole = {}; b_.rig._last_bend = {}; b_.rig._last_share = {}; b_.rig._frame_bend = {}
+        P4._HEADS.clear(); P4._LAYOUT.clear()
+        fn_story(ctx, 0.5)
+        fn_story(ctx, 0.0)
+        for b_ in (ctx.V, ctx.M): b_.rig.limit_all(); b_.rig.end_frame()
         for idx, f in enumerate(frames):
             BE.set_frame(f)
             fn_story(ctx, idx / float(N - 1))
+            for b_ in (ctx.V, ctx.M): b_.rig.limit_all(); b_.rig.end_frame()
             SC.apply_rigs(ctx.V, ctx.M)
             for arm in arms:
                 raw_basis[arm.name][f] = {pb.name: pb.matrix_basis.copy() for pb in arm.pose.bones}
