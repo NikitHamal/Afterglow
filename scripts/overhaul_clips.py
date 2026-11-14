@@ -340,27 +340,34 @@ def overhaul_loaded_clip(clip, profile="idle"):
                 kp.handle_left_type = "AUTO_CLAMPED"
                 kp.handle_right_type = "AUTO_CLAMPED"
 
-    # PASS 4: Facial blendshapes (Poisson blink on >=2s loops, soft half-lid flutter on 1s depth clips, independent jaw, lip-corner offset)
-    vbody = bpy.data.objects.get("vivian_body")
-    if vbody and vbody.data.shape_keys:
-        kbs = vbody.data.shape_keys.key_blocks
+    # PASS 4: Facial blendshapes (story-aware: closed lids + kiss pucker on kiss clips, warm closed-mouth smile on idle/embrace/sit)
+    is_kiss_clip = clip in ("kiss.stand", "kiss.sit")
+    is_story_only = clip in ("stand.idle", "sit.bed", "stand.embrace", "kiss.stand", "kiss.sit")
+    for body_nm in ("vivian_body", "marcus_body"):
+        b_mesh = bpy.data.objects.get(body_nm)
+        if not (b_mesh and b_mesh.data.shape_keys):
+            continue
+        kbs = b_mesh.data.shape_keys.key_blocks
         b_amp = 1.0 if N > 30 else 0.28
         for idx, f in enumerate(frames):
             BE.set_frame(f)
             u = idx / float(N - 1)
             th = 2.0 * math.pi * u
-            blink_v = b_amp * math.exp(-((u - 0.32) / 0.045) ** 2)
+            blink_v = (0.88 + 0.06 * math.sin(th)) if is_kiss_clip else (b_amp * math.exp(-((u - 0.32) / 0.045) ** 2))
             if "blink" in kbs:
                 kbs["blink"].value = float(blink_v)
                 kbs["blink"].keyframe_insert("value", frame=f)
+            if "kiss" in kbs:
+                kbs["kiss"].value = float((0.55 + 0.08 * math.sin(th)) if is_kiss_clip else 0.0)
+                kbs["kiss"].keyframe_insert("value", frame=f)
             if "smile" in kbs:
-                kbs["smile"].value = float(0.18 + 0.12 * math.sin(th - 0.4))
+                kbs["smile"].value = float((0.10 + 0.05 * math.sin(th - 0.4)) if is_kiss_clip else (0.16 + 0.10 * math.sin(th - 0.4)))
                 kbs["smile"].keyframe_insert("value", frame=f)
             if "gasp" in kbs:
-                kbs["gasp"].value = float(0.14 + 0.10 * math.sin(2.0 * th + 0.3))
+                kbs["gasp"].value = float(0.02 * (0.5 + 0.5 * math.sin(th)) if is_story_only else (0.14 + 0.10 * math.sin(2.0 * th + 0.3)))
                 kbs["gasp"].keyframe_insert("value", frame=f)
             if "moan" in kbs:
-                kbs["moan"].value = float(0.08 + 0.06 * math.cos(th))
+                kbs["moan"].value = float(0.0 if is_story_only else (0.08 + 0.06 * math.cos(th)))
                 kbs["moan"].keyframe_insert("value", frame=f)
     bpy.context.view_layer.update()
 
