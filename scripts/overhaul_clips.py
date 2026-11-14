@@ -42,11 +42,11 @@ def _apply_pose_fixes(clip, arm):
                 ua.rotation_quaternion = q_fix
                 ua.matrix_basis = Matrix.Translation(ua.matrix_basis.to_translation()) @ q_fix.to_matrix().to_4x4()
             if el:
-                q_el = Euler((0.58 if is_cg else 0.70, -0.25 * sgn, (0.88 if is_cg else 1.00) * sgn), "XYZ").to_quaternion()
+                q_el = Euler((0.52 if is_cg else 0.70, -0.35 * sgn, (0.85 if is_cg else 1.00) * sgn), "XYZ").to_quaternion()
                 el.rotation_quaternion = q_el
                 el.matrix_basis = Matrix.Translation(el.matrix_basis.to_translation()) @ q_el.to_matrix().to_4x4()
             if wr:
-                q_wr = Euler((0.08 if is_cg else 0.04, -0.06 * sgn, 0.0), "XYZ").to_quaternion()
+                q_wr = Euler((-0.25 if is_cg else 0.04, -0.15 * sgn, 0.0), "XYZ").to_quaternion()
                 wr.rotation_quaternion = q_wr
                 wr.matrix_basis = Matrix.Translation(wr.matrix_basis.to_translation()) @ q_wr.to_matrix().to_4x4()
     if clip == "oral.in" and is_viv:
@@ -63,8 +63,8 @@ def _apply_pose_fixes(clip, arm):
                 el.rotation_quaternion = q_e
                 el.matrix_basis = Matrix.Translation(el.matrix_basis.to_translation()) @ q_e.to_matrix().to_4x4()
     if clip in ("cowgirl.in", "cowgirl.rub") and is_viv:
-        # Lean Vivian's torso forward (X + 0.22 on spine & chest) so her palms rest on Marcus's chest
-        for sb, ang in (("spine", 0.20), ("chest", 0.22), ("neck", -0.22)):
+        # Moderate torso lean (+0.11 spine, +0.12 chest) so palms rest on Marcus's chest without sinking at f4/f8
+        for sb, ang in (("spine", 0.11), ("chest", 0.12), ("neck", -0.14)):
             pb = arm.pose.bones.get(sb)
             if pb:
                 _add_quat_delta(pb, ang, 0.0, 0.0)
