@@ -384,8 +384,8 @@ def kiss_sit(ctx, t):
     mnear = [s for s, sx in arm_side(M, fm) if sx < 0][0]              # his right faces her
     mfar = ".R" if mnear == ".L" else ".L"
     sh_v = r.head("upper_arm" + vnear)
-    target_v = (M.lm("chest.L") * 0.72 + M.lm("chest.R") * 0.28) + UP * 0.015
-    cup(V, vnear, bvhM, target_v, nrm(UP * 0.45 + lv * 0.78 - fv * 0.20), sh_v + lv * 0.22 + fv * 0.24 - UP * 0.24, palm_lift=0.006)
+    target_v = (M.lm("chest.L") * 0.55 + M.lm("chest.R") * 0.45) + UP * 0.035
+    cup(V, vnear, bvhM, target_v, nrm(UP * 0.62 + lv * 0.65 + fv * 0.25), sh_v - UP * 0.30 + lv * 0.08 + fv * 0.06, palm_lift=0.005)
     her_side = ".L" if (V.lm("back_low.L") - m.head("chest")).length < (V.lm("back_low.R") - m.head("chest")).length else ".R"
     sh_m = m.head("upper_arm" + mnear)
     cup(M, mnear, bvhV, V.lm("back_low" + her_side) + V3(0.01, 0.02, 0.025), nrm(fm * 0.45 - lm * 0.80 - UP * 0.15), sh_m - lm * 0.20 + fm * 0.08 - UP * 0.30, palm_lift=0.009)
