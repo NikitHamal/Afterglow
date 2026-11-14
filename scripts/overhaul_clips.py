@@ -49,7 +49,8 @@ def _get_story_ctx():
         if tobj:
             T = np.array([tuple(v.co) for v in tobj.data.vertices], np.float32)
             f = T[(np.abs(T[:, 0]) < 0.01)]; p = f[np.argmin(f[:, 1])]
-            who_b.add_landmark("mouth", "head", Vector((0.0, float(p[1]) - 0.013, float(p[2]) - 0.004)))
+            who_b.add_landmark("mouth", "head", Vector((0.0, float(p[1]) - 0.014, float(p[2]) - 0.010)))
+            who_b.add_landmark("nose", "head", Vector((0.0, float(p[1]) - 0.023, float(p[2]) + 0.013)))
     MBr = np.array([tuple(v.co) for v in m_body.data.vertices], np.float32)
     c2 = M.rig.rest["chest"].translation
     for s, sx in ((".L", 1), (".R", -1)):

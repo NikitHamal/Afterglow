@@ -342,13 +342,28 @@ class Rig:
         self.set_pose(n, Matrix.Translation(self.head(n)) @ R_new.to_4x4())
 
     def curl(self, fingers, amount, base_extra=0.0, decay=(1.0, 0.85, 0.65)):
-        """curl finger chains toward the palm: fingers = list of chains [b0, b1, b2(, b3)]; amount in radians"""
+        """curl finger chains toward the palm: fingers = list of chains [b0, b1, b2(, b3)]; amount in radians.
+        For 4-bone finger chains (0=metacarpal inside palm, 1=MCP, 2=PIP, 3=DIP), keep the metacarpal nearly flat
+        so the back of the hand never folds in half, and gently adduct fingers together as they curl."""
+        adduct_map = {"index": -0.09, "middle": 0.0, "ring": 0.07, "pinky": 0.14}
         for chain in fingers:
+            is_four = len(chain) >= 4 and not chain[0].startswith("thumb")
+            dec4 = (0.14, 0.85, 1.00, 0.72)
             for k, b in enumerate(chain):
                 if b not in self.bones: continue
-                a = amount * decay[min(k, len(decay) - 1)] + (base_extra if k == 0 else 0.0)
-                self.basis[b] = Matrix.Rotation(a, 4, "X")
-            if chain and chain[0] in self.bones: self.fk(chain[0])
+                d_k = dec4[min(k, 3)] if is_four else decay[min(k, len(decay) - 1)]
+                a = amount * d_k + (base_extra if (k == 1 if is_four else k == 0) else 0.0)
+                rot_m = Matrix.Rotation(a, 4, "X")
+                if is_four and k == 1:
+                    fn_prefix = b.split("1")[0]
+                    sgn = -1.0 if b.endswith(".L") else 1.0
+                    add_z = adduct_map.get(fn_prefix, 0.0) * sgn * min(1.0, max(0.25, amount / 0.5))
+                    rot_m = rot_m @ Matrix.Rotation(add_z, 4, "Z")
+                self.basis[b] = rot_m
+            for b0 in chain:
+                if b0 in self.bones:
+                    self.fk(b0)
+                    break
 
     # ---------------------------------------------------------------- output
     def apply(self):
@@ -431,7 +446,6 @@ class Rig:
     def limit_all(self):
         for n in ("neck", "head"): self.limit(n)
         for s in (".L", ".R"):
-            self.share_twist("elbow" + s, "wrist" + s, 0.5)
             self.limit("wrist" + s)
             self.limit("ankle" + s)
 

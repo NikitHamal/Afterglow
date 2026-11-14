@@ -69,9 +69,16 @@ def mouth_point(teeth_obj):
     T = np.array([tuple(v.co) for v in teeth_obj.data.vertices], np.float32)
     f = T[(np.abs(T[:, 0]) < 0.01)]
     p = f[np.argmin(f[:, 1])]
-    return Vector((0.0, float(p[1]) - 0.011, float(p[2]) - 0.004))
+    return Vector((0.0, float(p[1]) - 0.014, float(p[2]) - 0.010))
+def nose_point(teeth_obj):
+    T = np.array([tuple(v.co) for v in teeth_obj.data.vertices], np.float32)
+    f = T[(np.abs(T[:, 0]) < 0.01)]
+    p = f[np.argmin(f[:, 1])]
+    return Vector((0.0, float(p[1]) - 0.023, float(p[2]) + 0.013))
 V.add_landmark("mouth", "head", mouth_point(objs["vivian_teeth"]))
 M.add_landmark("mouth", "head", mouth_point(objs["marcus_teeth"]))
+V.add_landmark("nose", "head", nose_point(objs["vivian_teeth"]))
+M.add_landmark("nose", "head", nose_point(objs["marcus_teeth"]))
 MBr = np.array([tuple(v.co) for v in objs["marcus_body"].data.vertices], np.float32)
 c2 = M.rig.rest["chest"].translation
 for s, sx in ((".L", 1), (".R", -1)):

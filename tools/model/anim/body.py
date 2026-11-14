@@ -86,6 +86,7 @@ class Body:
 
     def hand(self, s, palm, fingers):
         self.rig.hand("wrist" + s, palm, fingers)
+        self.rig.share_twist("elbow" + s, "wrist" + s, 0.5)
 
     def fingers(self, s, curl, thumb=None, spread=0.0, index=None):
         chains = []

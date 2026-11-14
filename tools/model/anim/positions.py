@@ -287,22 +287,24 @@ def cup(body, s, bvh, anchor, along, pole, pad=0.007, palm_lift=0.017, iters=5):
         r.limit("wrist" + s); body.fingers(s, 0.05, thumb=0.15)
     lastc = r.__dict__.setdefault("_last_curl", {})
     def settle_curl(key, c):                                 # fingers move smoothly from frame to frame
-        p_ = lastc.get(key); c = c if p_ is None else p_ + max(-0.12, min(0.12, c - p_)); lastc[key] = c; return c
-    for fn_ in FINGERS:                                      # wrap: smallest curl whose pad reaches the skin
+        p_ = lastc.get(key); c = c if p_ is None else p_ + max(-0.18, min(0.18, c - p_)); lastc[key] = c; return c
+    grad_cup = {"index": 0.88, "middle": 1.00, "ring": 1.10, "pinky": 1.20}
+    for fn_ in FINGERS:                                      # wrap: natural minimum soft cup (0.30..0.78 rad), never flat starfish or clenched fist
         chain = [f"{fn_}{d}{s}" for d in "0123"]
-        best = 0.05
-        for c in [0.05 + 0.08 * k for k in range(18)]:
+        c_min = 0.30 * grad_cup.get(fn_, 1.0)
+        best = c_min
+        for c in [c_min + 0.05 * k for k in range(10)]:
             r.curl([chain], c)
             if tip_gap(bvh, tip(body, s, fn_)) <= pad: best = c; break
             best = c
-        r.curl([chain], settle_curl(chain[0], best))
+        r.curl([chain], settle_curl(chain[0], min(0.78, best)))
     th = [f"thumb{d}{s}" for d in "012"]
-    best = 0.15
-    for c in [0.15 + 0.08 * k for k in range(12)]:
-        r.curl([th], c, decay=(0.6, 0.9, 0.8))
+    best = 0.28
+    for c in [0.28 + 0.05 * k for k in range(8)]:
+        r.curl([th], c, decay=(0.5, 0.85, 0.75))
         best = c
         if tip_gap(bvh, r.tail(th[-1])) <= pad: break
-    r.curl([th], settle_curl(th[0], best), decay=(0.6, 0.9, 0.8))
+    r.curl([th], settle_curl(th[0], min(0.65, best)), decay=(0.5, 0.85, 0.75))
     snap = {k_: r.basis[k_].copy() for k_ in r.basis if k_.endswith(s) and k_.startswith(("thumb", "index", "middle", "ring", "pinky"))}
     def pose_hand():
         body.hand(s, palm=-n, fingers=f); r.limit("wrist" + s)
