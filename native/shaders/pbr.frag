@@ -415,13 +415,11 @@ void main() {
         if (u_fitMode == 2) {
             float hemD = v_fit.x - u_fitHide.x;   // metres from the trimmed edge
             if (!gl_FrontFacing) insideK = mix(0.8, 0.22, smoothstep(0.0, 0.06, hemD));
-            else if (hemW > 0.0 && hemD < hemW + 0.004) {
-                float px = length(fwidth(v_wpos)), st = (hemD - (hemW - 0.0035)) / 0.0006;
-                float hh = 0.0012 * smoothstep(0.0, 0.003, hemD)
-                         + 0.0004 * (1.0 - smoothstep(hemW - 0.001, hemW + 0.0008, hemD))
-                         - 0.00035 * exp(-st * st) * (1.0 - smoothstep(0.0006, 0.0015, px));
-                N = bumpNormal(N, hh, 1.0);
-                base.rgb *= 1.0 - 0.16 * (1.0 - smoothstep(0.0, 0.0015, hemD));
+            else if (hemW > 0.0 && hemD < hemW + 0.008) {
+                float hh = 0.0008 * smoothstep(0.0, 0.008, hemD)
+                         + 0.00025 * (1.0 - smoothstep(hemW - 0.006, hemW + 0.006, hemD));
+                N = bumpNormal(N, hh, 0.25);
+                base.rgb *= 1.0 - 0.06 * (1.0 - smoothstep(0.0, 0.004, hemD));
             }
         }
         base.rgb *= 1.0 - 0.45 * undressRim;   // the edge where it lifts off reads as a shadowed fold
