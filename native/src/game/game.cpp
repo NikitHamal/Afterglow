@@ -455,7 +455,7 @@ void Game::render(int w, int h) {
         // story staging: the bake was lit for the bed and the actors stand away from the lamps; a film key from the
         // camera side lights their faces, and the room itself comes up a little so scenes read in the dark moods
         Lights& L = scene.lights;
-        V3 hv = scene.vivian.bonePos("\xe9\xa0\xad"), hm = scene.marcus.bonePos("\xe9\xa0\xad");
+        V3 hv = scene.vivian.bonePos("head"), hm = scene.marcus.bonePos("head");
         V3 mid = scene.showVivian && scene.showMarcus ? (hv + hm) * 0.5f : (scene.showVivian ? hv : hm);
         V3 toCam = cam_.eye - mid;
         toCam.y = 0.f;
