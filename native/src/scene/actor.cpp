@@ -235,20 +235,22 @@ void Actor::pose(Animator& a) {
         f = normalize(cross(up, r));
     }
     V3 rl = normalize(cross(toP, up));   // leaning in goes toward the partner
+    float kw = clampf(kissW, 0.f, 1.f);
+    float freeArms = clampf(1.f - std::max(kw * 2.f, lean * 1.4f), 0.f, 1.f);
     // torso: a slow weight shift, leaning in a little while speaking, more for a kiss
-    rot(a, upper, f, 0.022f * std::sin(time_ * 0.55f + (female_ ? 0.f : 2.f)) * (1.f - sit) * w);
-    rot(a, upper, r, -(0.045f * speakW_ * (0.4f + energy_)) * w);
+    rot(a, upper, f, 0.022f * std::sin(time_ * 0.55f + (female_ ? 0.f : 2.f)) * (1.f - sit) * freeArms * w);
+    rot(a, upper, r, -(0.032f * speakW_ * (0.4f + energy_)) * freeArms * w);
     rot(a, upper, rl, -leanMax * lean * w);
     rot(a, chest, rl, -0.05f * lean * w);
-    // arms: talk gestures (additive to the clip), with a little life from the speech itself
-    if (gestW_ < 0.002f) return;
+    // arms: talk gestures (additive to the clip), suppressed during embrace / kiss so hands stay on partner
+    if (gestW_ * freeArms < 0.002f) return;
     Arm L, R;
     gestureTargets(L, R);
     for (int s = 0; s < 2; ++s) {
         Arm g = s == 1 ? R : L;
         if (g.flex == 0.f && g.elbow == 0.f && g.abduct == 0.f) continue;
         float sg = s == 1 ? 1.f : -1.f;
-        float k = gestW_ * w * kD2R;
+        float k = gestW_ * freeArms * w * kD2R;
         float phBase = time_ * 2.3f + (float)s * 1.7f;
         float liveSh  = (std::sin(phBase) * 3.5f * loud_ - 6.f * bump(beatT_, 0.28f)) * speakW_;
         float liveArm = (std::sin(phBase - 0.28f) * 4.5f * loud_ - 8.f * bump(beatT_ - 0.04f, 0.30f)) * speakW_;
@@ -284,18 +286,20 @@ void Actor::postPose(Animator& a) {
     if (head_ == "nod") hp -= 0.11f * bump(headT_, 0.45f) + 0.06f * bump(headT_ - 0.45f, 0.4f);
     else if (head_ == "shake") hy += 0.09f * std::sin(headT_ * 6.2832f * 2.4f) * (1.f - smoothstep(0.5f, 1.1f, headT_));
     else if (head_ == "tilt") hr += 0.11f * tiltSide_ * smoothstep(0.f, 0.45f, headT_) * (speaking_ || lineT_ < 3.f ? 1.f : 0.f);
-    else if (head_ == "down") hp -= 0.18f * smoothstep(0.f, 0.5f, headT_);
+    else if (head_ == "down") hp -= (look_ == "down" ? 0.05f : 0.11f) * smoothstep(0.f, 0.5f, headT_);
     else if (head_ == "up") hp += 0.1f * smoothstep(0.f, 0.5f, headT_);
-    hp -= 0.05f * (0.4f + energy_) * bump(beatT_, 0.28f) * speakW_;
+    hp -= 0.04f * (0.4f + energy_) * bump(beatT_, 0.28f) * speakW_;
     if (react_ == "nod") hp -= 0.1f * bump(reactT_, 0.45f) + 0.05f * bump(reactT_ - 0.45f, 0.4f);
     else if (react_ == "laugh") hp += 0.035f * std::sin(reactT_ * 6.2832f * 3.2f) * (1.f - smoothstep(0.f, 1.4f, reactT_));
     else if (react_ == "gasp") hp += 0.06f * bump(reactT_, 0.9f);
-    else if (react_ == "shy") hp -= 0.1f * smoothstep(0.f, 0.4f, reactT_) * (1.f - smoothstep(2.4f, 3.f, reactT_));
+    else if (react_ == "shy") hp -= 0.08f * smoothstep(0.f, 0.4f, reactT_) * (1.f - smoothstep(2.4f, 3.f, reactT_));
+    float kw = clampf(kissW, 0.f, 1.f);
+    float hw = w * (1.f - 0.85f * kw);
     int hb = neck >= 0 ? neck : head;
-    rot(a, hb, r, hp * 0.4f * w);
-    rot(a, head, r, hp * 0.6f * w);
-    rot(a, head, up, hy * w);
-    rot(a, head, f, hr * w);
+    rot(a, hb, r, hp * 0.4f * hw);
+    rot(a, head, r, hp * 0.6f * hw);
+    rot(a, head, up, hy * hw);
+    rot(a, head, f, hr * hw);
     kissIK(a);
 }
 
