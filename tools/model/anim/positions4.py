@@ -195,13 +195,16 @@ def lip_gap(V, M):
 
 def kiss_heads(V, M, fv, fm, key, nod=0.0, goal_w=2e4, rom_w=0.05):
     """the lips meet (1 mm), each head rolled ~24 deg to its own right so the noses pass cleanly, he bends down more than
-    she reaches up; a slow nod keeps the kiss alive. Returns the lip gap (m)."""
-    V.look(M.rig.head("head"), up_hint=UP, neck_share=0.5)            # face each other; the roll comes in the solve
+    she reaches up; a slow nod keeps the kiss alive while keeping lips in contact. Returns the lip gap (m)."""
+    for b_ in (V, M):
+        for bn_ in ("neck", "head"):
+            b_.rig.basis[bn_] = Matrix.Identity(4)
+        b_.rig.fk("neck")
+    V.look(M.rig.head("head"), up_hint=UP, neck_share=0.5)            # face each other from clean neck/head basis
     M.look(V.rig.head("head"), up_hint=UP, neck_share=0.5)
-    g = solve_heads(V, M, fv, fm, lip_gap(V, M), key, roll=(24.0, 24.0), yaw_r=(8.0, 8.0), clear=0.168, goal_w=goal_w, skin_w=220.0, rom_w=rom_w)
-    if nod:
-        V.rig.rotate_world("head", Matrix.Rotation(math.radians(nod), 3, left_of(fv)))
-        M.rig.rotate_world("head", Matrix.Rotation(math.radians(-nod), 3, left_of(fm)))
+    r_v = 24.0 + 2.0 * nod
+    r_m = 24.0 - 2.0 * nod
+    g = solve_heads(V, M, fv, fm, lip_gap(V, M), key, roll=(r_v, r_m), yaw_r=(8.0, 8.0), clear=0.148, goal_w=8e4, skin_w=80.0, rom_w=rom_w)
     g = (V.lm("mouth") - M.lm("mouth")).length
     if _DBG: print("[kissdbg]", key, "gap", round(g * 1000, 1), "heads", round((V.rig.head("head") - M.rig.head("head")).length * 1000), flush=True)
     return g
@@ -238,28 +241,29 @@ def chest_gap(V, M):
     return g
 
 def embrace_arms(V, M, fv, fm, kiss):
-    """hers round his neck / upper shoulders with straight wrists (fingers continuing the forearm line upward/inward);
-    his round her waist and mid-back with fingers wrapping forward/inward along the forearm"""
+    """hers on his upper back / shoulders (using his back.L/R landmarks so palms lie flush on the broad scapula surface);
+    his round her waist and mid-back with elbows tucked"""
     bvhV = surface(V); bvhM = surface(M); r = V.rig; m = M.rig
     lv, lm = left_of(fv), left_of(fm)
     for s, sx in arm_side(V, fv):
         side = lv * sx; sh = r.head("upper_arm" + s)
-        T = M.lm("nape") + side * 0.068 - UP * (0.045 if kiss else 0.065)
-        along_v = nrm(-side * 0.72 + UP * 0.32 + fv * 0.35)
-        cup(V, s, bvhM, T, along_v, sh + side * 0.32 - UP * 0.28 + fv * 0.08)
+        his = ".L" if (M.lm("back.L") - M.lm("back.R")).dot(side) > 0 else ".R"
+        T = M.lm("back" + his) + UP * (0.045 if kiss else 0.030) - side * 0.015
+        along_v = nrm(-side * 0.55 + UP * 0.55 + fv * 0.35)
+        cup(V, s, bvhM, T, along_v, sh + side * 0.26 - UP * 0.28 + fv * 0.10, palm_lift=0.011)
     for s, sx in arm_side(M, fm):
         side = lm * sx; sh = m.head("upper_arm" + s)
         her = ".L" if (V.lm("back_low.L") - V.lm("back_low.R")).dot(side) > 0 else ".R"
-        T = V.lm(("back_low" if sx > 0 else "back_mid") + her) - UP * 0.01 + side * 0.035
-        along_m = nrm(fm * 0.58 - side * 0.68 - UP * 0.18)
-        cup(M, s, bvhV, T, along_m, sh + side * 0.28 - UP * 0.30 + fm * 0.12)
+        T = V.lm(("back_low" if sx > 0 else "back_mid") + her) + UP * 0.01 - side * 0.015
+        along_m = nrm(fm * 0.55 - side * 0.72 - UP * 0.15)
+        cup(M, s, bvhV, T, along_m, sh + side * 0.18 - UP * 0.32 + fm * 0.14, palm_lift=0.012)
 
 def embrace(ctx, t, kiss):
     V, M = ctx.V, ctx.M
     ph = 2 * math.pi * t; breath = math.sin(ph)
     C = V3(0.0, -0.55, 0.0); ax = nrm(V3(0.84, -0.17, 0))              # her -> him, where they stood talking
     key = "kiss.stand" if kiss else "stand.embrace"
-    leanV, leanM, rounds = (3.0, 10.0, 4) if kiss else (-3.0, 6.0, 1)
+    leanV, leanM, rounds = (3.0, 11.0, 4) if kiss else (-2.0, 8.0, 1)
     if key in _LAYOUT: leanV, leanM = _LAYOUT[key]; rounds = 1          # decided on the first frame: no pops
     d = 0.32; best = None
     for rnd in range(rounds):
@@ -310,26 +314,30 @@ def sit(body, x, y, face, lean=8.0, chest_turn=0.0, knee_out=0.05, breath=0.0, s
         body.foot_relaxed(s, 24, splay=ll * sx)
     return f, left
 
-def hands_on_thighs(body, f, left, which=None, curl_amt=0.34):
+def hands_on_thighs(body, f, left, which=None, curl_amt=0.10):
     r = body.rig; bvh = surface(body)
     for s, sx in arm_side(body, f):
         if which is not None and s not in which: continue
         leg = [ls for ls, lx in lr(body, f) if lx == sx][0]
         H = r.head("thigh" + leg); K = r.head("knee" + leg)
         sh = r.head("upper_arm" + s)
-        anchor = H + (K - H) * 0.54 + UP * 0.062 - left * sx * 0.015
-        along = nrm((K - H) - left * sx * 0.08)
-        pole = sh + left * sx * 0.06 - UP * 0.32 - f * 0.12
+        anchor = H + (K - H) * 0.50 + UP * 0.052 - left * sx * 0.010
+        along = nrm((K - H) - left * sx * 0.06)
+        pole = sh + left * sx * 0.05 - UP * 0.32 - f * 0.14
         P_pt, n_v = P.smooth_nearest(bvh, anchor)
-        f_v = (along - n_v * n_v.dot(along)).normalized()
-        W = P_pt + n_v * 0.022 - f_v * 0.045
+        t_dir = (along - n_v * n_v.dot(along)).normalized()
+        f_v = nrm(t_dir + n_v * 0.22)
+        goal = P_pt + n_v * 0.008
+        W = goal - t_dir * 0.045
         def pose_h(s=s, n_v=n_v, f_v=f_v):
             body.hand(s, palm=-n_v, fingers=f_v)
             r.limit("wrist" + s)
-            body.fingers(s, curl_amt, thumb=0.28)
-        body.arm_ik(s, W, pole)
-        pose_h()
-        lift_out(body, s, bvh, W, n_v, pose_h, pole, allow=0.002, iters=3)
+            body.fingers(s, curl_amt, thumb=0.14)
+        for _ in range(4):
+            body.arm_ik(s, W, pole)
+            pose_h()
+            W = W + (goal - P.palm_centre(body, s))
+        lift_out(body, s, bvh, W, n_v, pose_h, pole, allow=-0.004, iters=3)
 
 def sit_bed(ctx, t):
     V, M = ctx.V, ctx.M; r = V.rig; m = M.rig
@@ -338,8 +346,8 @@ def sit_bed(ctx, t):
     bm = math.sin(ph + 0.8) + 0.22 * math.sin(2 * ph + 0.35)
     fv, lv = sit(V, MAT_W / 2 - 0.20, 0.98, V3(1, 0, 0), lean=6.0 + 1.4 * math.sin(ph - 0.3), chest_turn=10.0, breath=bv, side_lean=1.6 * math.sin(ph - 0.2), leg_yaw=-8.0)
     fm, lm = sit(M, MAT_W / 2 - 0.22, 1.40, V3(1, 0, 0), lean=9.0 + 1.2 * math.sin(ph + 0.5), chest_turn=-12.0, breath=bm, side_lean=-1.4 * math.sin(ph + 0.6), leg_yaw=8.0)
-    hands_on_thighs(V, fv, lv, curl_amt=0.34 + 0.06 * math.sin(ph - 0.3))
-    hands_on_thighs(M, fm, lm, curl_amt=0.36 + 0.06 * math.sin(ph + 0.5))
+    hands_on_thighs(V, fv, lv, curl_amt=0.10 + 0.04 * math.sin(ph - 0.3))
+    hands_on_thighs(M, fm, lm, curl_amt=0.12 + 0.04 * math.sin(ph + 0.5))
     V.look(m.head("head") + V3(0.05, 0.015 * math.sin(2 * ph), -0.05 + 0.012 * math.cos(ph)), neck_share=0.48)
     M.look(r.head("head") + V3(0, -0.015 * math.cos(2 * ph), 0.01 * math.sin(ph + 0.5)), neck_share=0.48)
 

@@ -49,7 +49,7 @@ def _get_story_ctx():
         if tobj:
             T = np.array([tuple(v.co) for v in tobj.data.vertices], np.float32)
             f = T[(np.abs(T[:, 0]) < 0.01)]; p = f[np.argmin(f[:, 1])]
-            who_b.add_landmark("mouth", "head", Vector((0.0, float(p[1]) - 0.011, float(p[2]) - 0.004)))
+            who_b.add_landmark("mouth", "head", Vector((0.0, float(p[1]) - 0.013, float(p[2]) - 0.004)))
     MBr = np.array([tuple(v.co) for v in m_body.data.vertices], np.float32)
     c2 = M.rig.rest["chest"].translation
     for s, sx in ((".L", 1), (".R", -1)):
@@ -95,7 +95,7 @@ def _get_story_ctx():
         R_ = body_.rig.rest["head"].inverted()
         pts = []
         for i in idx[:: max(1, len(idx) // n)]:
-            if lip is not None and np.linalg.norm(rest[i] - lip) < 0.036: continue
+            if lip is not None and np.linalg.norm(rest[i] - lip) < 0.044: continue
             pts.append(R_ @ Vector(rest[i]))
         return pts
     def _caps(rig_, trunk, limb, arms):
@@ -167,13 +167,31 @@ def overhaul_loaded_clip(clip, profile="idle"):
         fn_story(ctx, 0.5)
         fn_story(ctx, 0.0)
         for b_ in (ctx.V, ctx.M): b_.rig.limit_all(); b_.rig.end_frame()
-        for idx, f in enumerate(frames):
+        key_indices = list(range(0, len(frames), 2))
+        if (len(frames) - 1) not in key_indices:
+            key_indices.append(len(frames) - 1)
+        for idx in key_indices:
+            f = frames[idx]
             BE.set_frame(f)
             fn_story(ctx, idx / float(N - 1))
             for b_ in (ctx.V, ctx.M): b_.rig.limit_all(); b_.rig.end_frame()
             SC.apply_rigs(ctx.V, ctx.M)
             for arm in arms:
                 raw_basis[arm.name][f] = {pb.name: pb.matrix_basis.copy() for pb in arm.pose.bones}
+        for idx in range(len(frames)):
+            if idx not in key_indices:
+                f = frames[idx]
+                f_prev = frames[idx - 1]
+                f_next = frames[min(len(frames) - 1, idx + 1)]
+                for arm in arms:
+                    interp_b = {}
+                    for pb in arm.pose.bones:
+                        bn = pb.name
+                        m0, m2 = raw_basis[arm.name][f_prev][bn], raw_basis[arm.name][f_next][bn]
+                        t_m = (m0.to_translation() + m2.to_translation()) * 0.5
+                        q_m = m0.to_quaternion().slerp(m2.to_quaternion(), 0.5)
+                        interp_b[bn] = Matrix.Translation(t_m) @ q_m.to_matrix().to_4x4()
+                    raw_basis[arm.name][f] = interp_b
     else:
         for arm in arms:
             for idx, f in enumerate(frames):
@@ -221,11 +239,14 @@ def overhaul_loaded_clip(clip, profile="idle"):
                     pb.rotation_mode = "QUATERNION"
                     pb.rotation_quaternion = pb.matrix_basis.to_quaternion()
 
-            # PASS 1: Subtle 3.5mm pelvis/waist breathing/weight shift + 1.8 deg roll, counter-stabilized in thighs
+            # PASS 1: Subtle pelvis/waist breathing/weight shift + roll, counter-stabilized in thighs (and spine on kiss/embrace)
+            is_kiss_or_emb = clip in ("kiss.stand", "kiss.sit", "stand.embrace")
+            is_story_clip = clip in ("stand.idle", "sit.bed", "stand.embrace", "kiss.stand", "kiss.sit")
+            pel_scale = 0.15 if is_kiss_or_emb else (0.45 if clip == "sit.bed" else 1.0)
             pel = arm.pose.bones.get("pelvis")
             wst = arm.pose.bones.get("waist")
-            pel_rx, pel_ry, pel_rz = 0.032 * wave1, 0.022 * wave2, 0.026 * settle
-            shift = Vector((0.0032 * wave1, 0.0022 * wave2, -0.0035 * math.sin(2.0 * th)))
+            pel_rx, pel_ry, pel_rz = pel_scale * 0.032 * wave1, pel_scale * 0.022 * wave2, pel_scale * 0.026 * settle
+            shift = Vector((pel_scale * 0.0032 * wave1, pel_scale * 0.0022 * wave2, -pel_scale * 0.0035 * math.sin(2.0 * th)))
             if wst:
                 w_loc = wst.matrix_basis.to_translation()
                 wst.matrix_basis = Matrix.Translation(w_loc + shift) @ wst.matrix_basis.to_quaternion().to_matrix().to_4x4()
@@ -241,8 +262,9 @@ def overhaul_loaded_clip(clip, profile="idle"):
                 if th_pb:
                     _add_quat_delta(th_pb, -pel_rx * 0.92, -pel_ry * 0.92, -pel_rz * 0.92)
 
+            if is_kiss_or_emb and arm.pose.bones.get("spine"):
+                _add_quat_delta(arm.pose.bones["spine"], -pel_rx * 0.95, -pel_ry * 0.95, -pel_rz * 0.95)
             # PASS 1 & 2: Counter-balanced 4-segment spine chain (damped on kiss/embrace so solved lip & cheek contact holds within 1mm)
-            is_kiss_or_emb = clip in ("kiss.stand", "kiss.sit", "stand.embrace")
             sp_scale = 0.12 if is_kiss_or_emb else 1.0
             for sb, lag, gain in (("spine", 0.20, 0.042), ("chest", 0.45, -0.038), ("neck", 0.25, -0.068), ("head", 0.65, 0.062)):
                 pb = arm.pose.bones.get(sb)
@@ -275,7 +297,7 @@ def overhaul_loaded_clip(clip, profile="idle"):
                         fpb = arm.pose.bones.get(f"{fg}{d}{side}")
                         if fpb:
                             phalanx_gain = (0.85, 1.10, 0.75)[d_idx]
-                            curl_w = 0.15 * phalanx_gain * (1.0 + 0.6 * math.sin(th - 0.25 * fg_i - 0.18 * d_idx + 0.3 * sgn))
+                            curl_w = (0.045 * phalanx_gain * math.sin(th - 0.25 * fg_i - 0.18 * d_idx + 0.3 * sgn)) if is_story_clip else (0.12 * phalanx_gain * (0.6 + 0.6 * math.sin(th - 0.25 * fg_i - 0.18 * d_idx + 0.3 * sgn)))
                             _add_quat_delta(fpb, curl_w, 0.03 * sgn * math.cos(th - 0.15 * d_idx), 0.02 * math.sin(2.0 * th))
                             fpb.keyframe_insert("rotation_quaternion", frame=f)
 
