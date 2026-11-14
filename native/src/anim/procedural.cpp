@@ -149,11 +149,11 @@ void Procedural::breathing(Animator& a, float dt, const ProcParams& p) {
         if (n < 0) return;
         a.r(n) = qnormalize(qmul(a.r(n), qaxis(ax, ang)));
     };
-    tiltAxis(belly_, V3{1, 0, 0}, 0.014f * amp * sBelly);
-    tiltAxis(chest_, V3{1, 0, 0}, -0.030f * amp * sChest);
-    tiltAxis(shoulderL_, V3{0, 0, 1}, 0.018f * amp * sClav);
-    tiltAxis(shoulderR_, V3{0, 0, 1}, -0.018f * amp * sClav);
-    tiltAxis(neck_, V3{1, 0, 0}, 0.018f * amp * sNeck);
+    tiltAxis(belly_, V3{1, 0, 0}, -0.008f * amp * sBelly);
+    tiltAxis(chest_, V3{1, 0, 0}, -0.016f * amp * sChest);
+    tiltAxis(shoulderL_, V3{0, 0, 1}, 0.004f * amp * sClav);
+    tiltAxis(shoulderR_, V3{0, 0, 1}, -0.004f * amp * sClav);
+    tiltAxis(neck_, V3{1, 0, 0}, 0.006f * amp * sNeck);
 }
 
 void Procedural::look(Animator& a, float dt, const ProcParams& p) {

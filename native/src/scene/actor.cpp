@@ -111,10 +111,11 @@ void Actor::update(float dt, const V3& partnerHead, bool hasPartner, const V3& c
     if (length(lastLook_) > 0.5f && dot(dir, lastLook_) < 0.966f) blinker_.trigger(0.55f);   // > ~15 degrees
     lastLook_ = dir;
     // (close in for a kiss the neck does less of the work: the lean and the step bring the faces together)
-    // (seated side by side nothing steps in: the look keeps turning the heads toward each other through the kiss)
-    c_->proc.lookWeight = ((look_ == "camera" ? 0.5f : 0.62f) * acting + 0.25f) * (1.f - 0.45f * lean * (1.f - sit));
-    c_->proc.eyeWeight = 1.f;
-    c_->proc.saccades = !eyesClosed;
+    // (when an authored kiss is playing, procedural look stands down so the solved head roll and lip contact hold)
+    float kw = clampf(kissW, 0.f, 1.f);
+    c_->proc.lookWeight = ((look_ == "camera" ? 0.5f : 0.62f) * acting + 0.25f) * (1.f - 0.45f * lean * (1.f - sit)) * (1.f - 0.9f * kw);
+    c_->proc.eyeWeight = 1.f - 0.8f * kw;
+    c_->proc.saccades = !eyesClosed && kw < 0.3f;
     face(dt);
 }
 
